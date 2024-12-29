@@ -1,0 +1,6 @@
+POST http://localhost:8000/api/execute
+Content-Type: application/json
+
+{
+  "task": "기업은행 지난주 거래 내역 "
+}
