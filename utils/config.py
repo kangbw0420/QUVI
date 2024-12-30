@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 # .env 파일의 환경 변수 로드
 load_dotenv()
 
+
 class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     MONGO_URI = os.getenv("MONGO_URI")

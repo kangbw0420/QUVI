@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from api.api import api
 from fastapi.middleware.cors import CORSMiddleware
 from api.data_api import data_api
+
 app = FastAPI()
 
 
@@ -26,7 +27,6 @@ if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)  # 명시적으로 이벤트 루프 설정
 
-
     async def main():
         # FastAPI 서버 실행
         config = uvicorn.Config(
@@ -39,7 +39,6 @@ if __name__ == "__main__":
             server.serve(),  # FastAPI 서버 실행
             # terminal_test()
         )
-
 
     try:
         loop.run_until_complete(main())  # 루프 실행

@@ -1,0 +1,4 @@
+{
+  "aicfo_get_cabo_2010": "com_nm:회사명\nreg_dt:등록일시\nbank_nm:은행명\nacct_no:계좌번호\nacct_bal_amt:잔고\nreal_amt:가용자금\ncntrct_amt:약정금액\nintr_rate:이자율\nacct_dv:상품명\nopen_dt:개설일자\ndue_dt:만기일자\ntrmn_yn:해지여부\ntrmn_dt:해지일자\nacct_bal_upd_dtm:최종잔액변경일시",
+  "aicfo_get_cabo_2011": "seq_no:순번\ncom_nm:회사명\ntrsc_dt:거래일자\ntrsc_tm:거래시간\nin_out_dv:입출금구분\nbank_nm:은행명\nacct_no:계좌번호\ntrsc_amt:거래금액\ntrsc_bal:잔액\nnote1:적요"
+}

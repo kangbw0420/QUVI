@@ -25,7 +25,7 @@ def connect_postgresql_pool():
             port=PostgreSQL.port,
             database=PostgreSQL.database,
             user=PostgreSQL.user,
-            password=PostgreSQL.password
+            password=PostgreSQL.password,
         )
     if PostgreSQL.pool_prompt is None:
         PostgreSQL.pool_prompt = psycopg2.pool.SimpleConnectionPool(
@@ -35,7 +35,7 @@ def connect_postgresql_pool():
             port=PostgreSQL.port,
             database=Config.DB_DATABASE_PROMPT,  # Prompt용 데이터베이스
             user=PostgreSQL.user,
-            password=PostgreSQL.password
+            password=PostgreSQL.password,
         )
 
 
@@ -82,12 +82,17 @@ def insert_prompt(prompt_name: str, prompt: str):
 
 # 벡터 데이터를 가져오는 함수
 def get_vector_data(data: PostgreToVectorData):
-    if data.type == 'C' and data.collection_name is not None:
-        return query_execute( "SELECT * FROM vector_data WHERE document = %s AND del_yn = 'N'", params=(data.collection_name,), use_prompt_db=True )
-    elif data.type == 'I' and data.item_id is not None:
+    if data.type == "C" and data.collection_name is not None:
+        return query_execute(
+            "SELECT * FROM vector_data WHERE document = %s AND del_yn = 'N'",
+            params=(data.collection_name,),
+            use_prompt_db=True,
+        )
+    elif data.type == "I" and data.item_id is not None:
         return query_execute(
             "SELECT * FROM vector_data WHERE idx = %s AND del_yn = 'N'",
-            params=(data.item_id,), use_prompt_db=True
+            params=(data.item_id,),
+            use_prompt_db=True,
         )
     else:
         raise ValueError("Invalid vector data type or missing parameter")
@@ -97,7 +102,9 @@ def get_vector_data(data: PostgreToVectorData):
 def insert_vector_data(data: PostgreToVectorData):
     query = "INSERT INTO vector_data (data, document) VALUES (%s, %s)"
 
-    return query_execute(query, params=(data.text, data.collection_name), use_prompt_db=True)
+    return query_execute(
+        query, params=(data.text, data.collection_name), use_prompt_db=True
+    )
 
 
 # 벡터 데이터 업데이트 함수
@@ -105,20 +112,26 @@ def update_vector_data(data: PostgreToVectorData):
     # 기존 데이터 가져오기
     get_data = query_execute(
         "SELECT * FROM vector_data WHERE idx = %s AND del_yn = 'N'",
-        params=(data.item_id,)
-        , use_prompt_db=True
+        params=(data.item_id,),
+        use_prompt_db=True,
     )
     if get_data:
         get_data = get_data[0]  # 첫 번째 결과를 가져옴
         # 텍스트나 컬렉션명이 다를 경우 업데이트
-        if (get_data["data"] != data.text or get_data["document"] != data.collection_name):
+        if (
+            get_data["data"] != data.text
+            or get_data["document"] != data.collection_name
+        ):
             update_query = """
                 UPDATE vector_data
                 SET data = %s, document = %s, del_yn = 'Y'
                 WHERE idx = %s
             """
-            return query_execute(update_query, params=(data.text, data.collection_name, data.item_id),
-                                 use_prompt_db=True)
+            return query_execute(
+                update_query,
+                params=(data.text, data.collection_name, data.item_id),
+                use_prompt_db=True,
+            )
 
 
 # 쿼리를 실행하는 일반 함수

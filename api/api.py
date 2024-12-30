@@ -8,30 +8,31 @@ from fastapi import APIRouter, HTTPException
 from data_class.request import RequestData
 from langfuse.decorators import langfuse_context, observe
 
-from nodes.graph import LangGraphManager
+from graph.graph import make_graph
 from fuse.langfuse_handler import langfuse_handler
 from fuse.langfuse_client import LangfuseClient
-from utils.json_serializer import convert_dataframe_for_json, prepare_trace_data
+from utils.json_serializer import convert_dataframe_for_json
 
 # 디버깅용 import
 from datetime import datetime
 
+
 class Input(BaseModel):
     task: str
     user_id: str = "default_user"  # 사용자 식별을 위한 기본값
+
 
 class Feedback(BaseModel):
     trace_id: str
     score: float
     comment: str = None
 
-api = APIRouter(tags=["api"])
-graph_manager = LangGraphManager()
-graph = graph_manager.initialize_graph()
 
-langfuse_client = LangfuseClient(
-    base_url="http://localhost:8001"
-)
+api = APIRouter(tags=["api"])
+graph = make_graph()
+
+langfuse_client = LangfuseClient(base_url="http://localhost:8001")
+
 
 @api.post("/execute")
 async def execute(request: RequestData):
@@ -55,6 +56,7 @@ async def execute(request: RequestData):
         except Exception as e:
             print(f"Error: {str(e)}")
 
+
 @api.post("/process")
 async def process_input(request: RequestData):
     """프로덕션용 엔드포인트"""
@@ -73,7 +75,7 @@ async def process_input(request: RequestData):
 async def debug_process_input(input: Input):
     print("\n=== Debug Process Started ===")
     trace_id = str(uuid.uuid4())
-    
+
     # 실행 타임라인 초기화
     execution_timeline = {
         "planner": {"start": None, "end": None},
@@ -90,7 +92,10 @@ async def debug_process_input(input: Input):
         elif "Tool Execution -" in message:
             execution_timeline["tools"].append({"start": timestamp, "end": None})
         elif "Tool Execution (Updated)" in message:
-            if execution_timeline["tools"] and execution_timeline["tools"][-1]["end"] is None:
+            if (
+                execution_timeline["tools"]
+                and execution_timeline["tools"][-1]["end"] is None
+            ):
                 execution_timeline["tools"][-1]["end"] = timestamp
         elif "Solver -" in message:
             execution_timeline["solver"]["start"] = timestamp
@@ -108,12 +113,10 @@ async def debug_process_input(input: Input):
         session_response = await langfuse_client.create_session(input.user_id)
         session_id = session_response["session_id"]
         print(f"Session created: {session_id}")
-        
+
         # 2. Create initial QNA entry
         qna_response = await langfuse_client.create_qna(
-            user_id=input.user_id,
-            session_id=session_id,
-            question=input.task
+            user_id=input.user_id, session_id=session_id, question=input.task
         )
         qna_id = qna_response["qna_id"]
         print(f"Initial QNA created: {qna_id}")
@@ -125,7 +128,7 @@ async def debug_process_input(input: Input):
         try:
             data = await graph.ainvoke(
                 {"task": input.task},
-                config={"callbacks": [langfuse_handler] if langfuse_handler else None}
+                config={"callbacks": [langfuse_handler] if langfuse_handler else None},
             )
         finally:
             sys.stdout = original_stdout
@@ -136,7 +139,7 @@ async def debug_process_input(input: Input):
             qna_id=qna_id,
             answer=data["result"]["answer"],
             answer_timestamp=datetime.utcnow().isoformat(),
-            trace_id=trace_id
+            trace_id=trace_id,
         )
         print(f"QNA updated with answer and trace_id")
 
@@ -156,8 +159,8 @@ async def debug_process_input(input: Input):
                         k: {"shape": v.shape, "columns": list(v.columns)}
                         for k, v in data.get("dataframes", {}).items()
                     },
-                    "calc_data": data.get("calc_data")
-                }
+                    "calc_data": data.get("calc_data"),
+                },
             }
             await langfuse_client.create_trace(trace_data)
             print(f"Trace created: {trace_id}")
@@ -176,8 +179,16 @@ async def debug_process_input(input: Input):
                     last_key = df_keys[-1]
                     last_df = dataframes[last_key]
 
-                    solver_table_cols = data["result"]["table"] if isinstance(data["result"]["table"], list) else []
-                    last_df_cols = list(last_df.columns) if last_df is not None and hasattr(last_df, 'columns') else []
+                    solver_table_cols = (
+                        data["result"]["table"]
+                        if isinstance(data["result"]["table"], list)
+                        else []
+                    )
+                    last_df_cols = (
+                        list(last_df.columns)
+                        if last_df is not None and hasattr(last_df, "columns")
+                        else []
+                    )
 
                     if len(solver_table_cols) < len(last_df_cols):
                         raw_data = last_df
@@ -197,12 +208,8 @@ async def debug_process_input(input: Input):
 
     except Exception as e:
         print(f"Error in debug_process_input: {str(e)}")
-        if 'session_id' in locals():
+        if "session_id" in locals():
             await langfuse_client.update_session(session_id, "error")
         raise HTTPException(
-            status_code=500,
-            detail={
-                "error": str(e),
-                "trace": traceback.format_exc()
-            }
+            status_code=500, detail={"error": str(e), "trace": traceback.format_exc()}
         )
