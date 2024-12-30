@@ -1,11 +1,8 @@
 from langfuse.callback import CallbackHandler
 from langfuse import Langfuse
-from dotenv import load_dotenv
 from datetime import datetime
 import uuid
 from typing import Optional, Dict, Any, List
-
-load_dotenv()
 
 def create_langfuse_handler():
     try:
@@ -13,6 +10,11 @@ def create_langfuse_handler():
             def __init__(self, **kwargs):
                 super().__init__(**kwargs)
                 self._current_span = None
+                self._node_spans = {
+                    "planner": None,
+                    "executor": None,
+                    "solver": None
+                }
                 self._tool_span = None
                 self._llm_span = None
                 self.trace_id = str(uuid.uuid4())
@@ -22,122 +24,145 @@ def create_langfuse_handler():
             def create_trace(self):
                 return self.langfuse.trace(
                     id=self.trace_id,
-                    name="LangChain Trace",
-                    metadata={"source": "langchain"}
+                    name="AICFO Execution Trace",
+                    metadata={"source": "aicfo"}
                 )
 
             def on_chain_start(
                 self,
-                serialized: Optional[Dict[str, Any]] = None,
-                inputs: Optional[Dict[str, Any]] = None,
+                serialized: Dict[str, Any],
+                inputs: Dict[str, Any],
                 **kwargs
             ) -> None:
-                name = kwargs.get('name', 'unnamed_chain')
-                if serialized:
-                    name = serialized.get('name', name)
+                if not serialized:
+                    print("\nWarning: serialized is None or empty in on_chain_start")
+                    return
                 
-                self._current_span = self._trace.span(
-                    name=f"Node: {name}",
-                    input=inputs or {},
-                    start_time=datetime.utcnow()
-                )
+                name = serialized.get('name', 'unnamed_chain').lower()
+                print(f"\nChain Start - Name: {name}")
+                
+                # 노드별로 다른 처리 (planner, executor, solver)
+                if name in ["planner", "executor", "solver"]:
+                    self._node_spans[name] = self._trace.span(
+                        name=f"Node: {name}",
+                        input=inputs,
+                        metadata={
+                            "node_type": name,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                    )
+                    self._current_span = self._node_spans[name]
+                    print(f"Created span for node: {name}")
 
             def on_chain_end(
                 self,
-                outputs: Optional[Dict[str, Any]] = None,
+                outputs: Dict[str, Any],
                 **kwargs
             ) -> None:
-                if self._current_span:
-                    self._current_span.end(
-                        output=outputs or {},
-                        end_time=datetime.utcnow()
+                print("\nChain End")
+                active_node = None
+                
+                # 현재 활성화된 노드 찾기
+                for node_name, span in self._node_spans.items():
+                    if span and span == self._current_span:
+                        active_node = node_name
+                        break
+                
+                if active_node:
+                    self._node_spans[active_node].end(
+                        output=outputs,
+                        metadata={
+                            "end_timestamp": datetime.utcnow().isoformat(),
+                            "node_status": "completed",
+                            "output_summary": {
+                                "type": active_node,
+                                "status": "success",
+                                "timestamp": datetime.utcnow().isoformat()
+                            }
+                        }
                     )
-                    self._current_span = None
-
-            def on_tool_start(
-                self,
-                serialized: Optional[Dict[str, Any]] = None,
-                input_str: Optional[str] = None,
-                **kwargs
-            ) -> None:
-                if self._current_span:
-                    name = kwargs.get('name', 'unnamed_tool')
-                    if serialized:
-                        name = serialized.get('name', name)
-                    
-                    self._tool_span = self._current_span.span(
-                        name=f"Tool: {name}",
-                        input={"input": input_str} if input_str else {},
-                        start_time=datetime.utcnow()
-                    )
-
-            def on_tool_end(
-                self,
-                output: Optional[str] = None,
-                **kwargs
-            ) -> None:
-                if self._tool_span:
-                    self._tool_span.end(
-                        output={"output": output} if output else {},
-                        end_time=datetime.utcnow()
-                    )
+                    print(f"Node span ended: {active_node}")
+                    self._node_spans[active_node] = None
+                
+                self._current_span = None
 
             def on_llm_start(
                 self,
-                serialized: Optional[Dict[str, Any]] = None,
-                prompts: Optional[List[str]] = None,
+                serialized: Dict[str, Any],
+                prompts: List[str],
                 **kwargs
             ) -> None:
                 if self._current_span:
-                    name = kwargs.get('name', 'unnamed_llm')
-                    if serialized:
-                        name = serialized.get('name', name)
-                    
+                    print("\nLLM Start")
                     self._llm_span = self._current_span.span(
-                        name=f"LLM: {name}",
-                        input={"prompts": prompts} if prompts else {},
-                        start_time=datetime.utcnow()
+                        name="LLM",
+                        input={"prompts": prompts}
                     )
+                    print("Created LLM span")
 
             def on_llm_end(
                 self,
-                response: Optional[Dict[str, Any]] = None,
+                response: Dict[str, Any],
                 **kwargs
             ) -> None:
                 if self._llm_span:
-                    self._llm_span.end(
-                        output=response or {},
-                        end_time=datetime.utcnow()
-                    )
+                    print("\nLLM End")
+                    self._llm_span.end(output=response)
+                    print("LLM span ended")
+                    self._llm_span = None
 
-            def on_retriever_start(
+            def on_tool_start(
                 self,
-                serialized: Optional[Dict[str, Any]] = None,
-                query: Optional[str] = None,
+                serialized: Dict[str, Any],
+                input_str: str,
                 **kwargs
             ) -> None:
-                name = kwargs.get('name', 'unnamed_retriever')
-                if serialized:
-                    name = serialized.get('name', name)
-                
-                # Create a new span for retriever
-                self._retriever_span = self._trace.span(
-                    name=f"Retriever: {name}",
-                    input={"query": query} if query else {},
-                    start_time=datetime.utcnow()
-                )
+                if self._current_span:
+                    name = serialized.get('name', 'unnamed_tool')
+                    print(f"\nTool Start - Name: {name}")
+                    self._tool_span = self._current_span.span(
+                        name=f"Tool: {name}",
+                        input={"input": input_str}
+                    )
+                    print("Created tool span")
+
+            def on_tool_end(
+                self,
+                output: str,
+                **kwargs
+            ) -> None:
+                if self._tool_span:
+                    print("\nTool End")
+                    self._tool_span.end(output={"output": output})
+                    print("Tool span ended")
+                    self._tool_span = None
+
+            # retriever 관련 메소드 오버라이드 - 빈 구현
+            def on_retriever_start(
+                self,
+                serialized: Dict[str, Any],
+                query: str,
+                **kwargs
+            ) -> None:
+                pass  # 아무 동작도 하지 않음
 
             def on_retriever_end(
                 self,
-                documents: Optional[List[Any]] = None,
+                documents: List[Any],
                 **kwargs
             ) -> None:
-                if hasattr(self, '_retriever_span') and self._retriever_span:
-                    self._retriever_span.end(
-                        output={"documents": str(documents)} if documents else {},
-                        end_time=datetime.utcnow()
-                    )
-                    self._retriever_span = None
+                pass  # 아무 동작도 하지 않음
+
+            # BaseCallbackHandler의 다른 retriever 관련 메소드들도 오버라이드
+            def on_retriever_error(
+                self,
+                error: Union[Exception, KeyboardInterrupt],
+                **kwargs: Any,
+            ) -> None:
+                pass
+
+            def get_trace_id(self):
+                return self.trace_id
 
         return CustomCallbackHandler()
     except Exception as e:

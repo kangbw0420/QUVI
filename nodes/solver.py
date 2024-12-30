@@ -4,6 +4,7 @@ from utils.types import State
 from llm_models.models import solver_llm as llm
 from utils.debug_print import print_state_debug, Timer
 from database.postgresql import get_prompt
+from fuse.langfuse_handler import langfuse_handler
 
 json_schema_part = get_prompt("solver_json_schema_part")[0]['prompt']
 explanation_part = get_prompt("solver_explanation_part")[0]['prompt']
@@ -16,6 +17,13 @@ def solve(state: State):
     Timer.start_node("Solver")
     print_state_debug(state, "Solver")
     try:
+        # Langfuse에 solver 노드 시작을 기록
+        if langfuse_handler:
+            langfuse_handler.on_chain_start(
+                serialized={"name": "solver"},  # 명시적으로 이름 지정
+                inputs=state
+            )
+
         # Build the plan string
         plan = ""
         for _plan, step_name, tool, tool_input in state["steps"]:

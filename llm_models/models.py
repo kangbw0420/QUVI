@@ -58,11 +58,21 @@ class CustomChatLLM(BaseLLM, BaseModel):
         generations = []
         for prompt in prompts:
             try:
+                # 콜백 핸들러에게 LLM 시작을 알림
+                if self.callbacks:
+                    for callback in self.callbacks:
+                        callback.on_llm_start({"name": self.model}, [prompt])
+                
                 response = self._call(prompt, stop)
-                # 여기서 AIMessage 객체를 생성하지 않고 직접 Generation 객체를 생성
                 generations.append([Generation(text=response)])
+                
+                # 콜백 핸들러에게 LLM 종료를 알림
+                if self.callbacks:
+                    for callback in self.callbacks:
+                        callback.on_llm_end(LLMResult(generations=[generations[-1]]))
+                        
             except Exception as e:
-                raise ValueError(f"Generation error: {str(e)}")
+                raise ValueError(f"오류 발생: {str(e)}")
         return LLMResult(generations=generations)
 
     @property

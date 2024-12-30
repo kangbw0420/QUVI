@@ -1,4 +1,5 @@
 from time import time
+
 from mock_api.api.load_cash_data import (
     load_balance_data_api,
     load_transaction_data_api,
@@ -18,12 +19,20 @@ from tools.nl2sql_tools import (
 from tools.calculator_tools import calculator
 from utils.types import State, _get_current_task
 from utils.debug_print import print_state_debug, Timer
+from fuse.langfuse_handler import langfuse_handler
 
 # tool execution node
 def tool_execution(state: State):
     Timer.start_node("Tool Execution")
     print_state_debug(state, "Tool Execution")
     try:
+        # Langfuse에 executor 노드 시작을 기록
+        if langfuse_handler:
+            langfuse_handler.on_chain_start(
+                serialized={"name": "executor"},  # 명시적으로 이름 지정
+                inputs=state
+            )
+
         _step = _get_current_task(state)
         print(f"Current step: {_step}")
 
@@ -55,9 +64,6 @@ def tool_execution(state: State):
         tool_start = time()
         if tool == "load_transaction_data":
             from_date, to_date = eval(tool_input)
-            # Convert YYYYMMDD to YYYY-MM-DD format
-            # from_date = f"{from_date[:4]}-{from_date[4:6]}-{from_date[6:]}" if from_date else None
-            # to_date = f"{to_date[:4]}-{to_date[4:6]}-{to_date[6:]}" if to_date else None
             result, df = load_transaction_data_api(from_date, to_date)
 
         elif tool == "load_balance_data":
