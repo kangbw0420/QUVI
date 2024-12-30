@@ -15,3 +15,8 @@ class VectorDataQuery(BaseModel):
     collection_name: str
     query_text: str
     top_k: str
+
+
+class PromptInput(BaseModel):
+    prompt_name: str
+    prompt: str

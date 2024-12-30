@@ -48,12 +48,17 @@ class EmbeddingAPIClient:
         """
         서버에서 텍스트를 검색하는 함수
         """
+
+        print("111 ===> " )
         url = f"{BASE_URL}/query"
+        print("222 ===> ", url)
         payload = {
             "collection_name": collection_name,
             "query_text": query_text,
             "top_k": top_k
         }
+        print("333 ===> ", payload)
+
 
         try:
             response = requests.post(url, json=payload)

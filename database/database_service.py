@@ -33,7 +33,7 @@ class DatabaseService:
 
     @staticmethod
     def get_vector_few_shot(data : VectorDataQuery):
-        return vector_client.get_vector_data(
+        return vector_client.query_embedding(
             collection_name=data.collection_name,
             query_text = data.query_text,
             top_k = data.top_k # 조회할 건수 기본 1건
