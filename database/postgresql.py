@@ -67,17 +67,17 @@ def query_execute(query, params=None, use_prompt_db=False):
 
 # Prompt 데이터를 가져오는 함수
 def get_prompt(prompt_name: str):
-    query = "SELECT * FROM prompt WHERE prompt_name = %s AND version = (SELECT MAX(version) FROM prompt)"
-    return query_execute(query, params=(prompt_name,), use_prompt_db=True)
+    query = "SELECT * FROM prompt WHERE prompt_name = %s AND version = (SELECT MAX(version) FROM prompt WHERE prompt_name = %s)"
+    return query_execute(query, params=(prompt_name, prompt_name), use_prompt_db=True)
 
 
 # 새 Prompt 데이터를 삽입하는 함수
 def insert_prompt(prompt_name: str, prompt: str):
     query = """
         INSERT INTO prompt (prompt_name, prompt, version) 
-        VALUES (%s, %s, (SELECT COALESCE(MAX(version), 0) FROM prompt) + 0.1)
+        VALUES (%s, %s, (SELECT COALESCE(MAX(version), 0) FROM prompt WHERE prompt_name = %s) + 0.1)
     """
-    return query_execute(query, params=(prompt_name, prompt), use_prompt_db=True)
+    return query_execute(query, params=(prompt_name, prompt, prompt_name), use_prompt_db=True)
 
 
 # 벡터 데이터를 가져오는 함수
