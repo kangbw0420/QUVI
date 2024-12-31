@@ -34,27 +34,6 @@ graph = make_graph()
 langfuse_client = LangfuseClient(base_url="http://localhost:8001")
 
 
-@api.post("/execute")
-async def execute(request: RequestData):
-    result = []
-
-    if request.user_question:
-        try:
-            data = graph.invoke({"user_question": request.user_question})
-            for step in data["steps"]:
-                step_name = step[1]
-                trans_step_name = step_name.replace("#E", "단계")
-                step_desc = step[0].strip("\n")
-                print(f"{trans_step_name}: {step_desc}")
-                if step_name in data["dataframes"].keys():
-                    result.append(data["dataframes"][step_name])
-
-            return {"result": result}
-
-        except Exception as e:
-            print(f"Error: {str(e)}")
-
-
 @api.post("/process")
 async def process_input(request: RequestData):
     """프로덕션용 엔드포인트"""
@@ -76,9 +55,10 @@ async def debug_process_input(input: Input):
 
     # 실행 타임라인 초기화
     execution_timeline = {
-        "planner": {"start": None, "end": None},
-        "tools": [],
-        "solver": {"start": None, "end": None},
+        "question_analyzer": {"start": None, "end": None},
+        "sql_creator": {"start": None, "end": None},
+        "result_executor": {"start": None, "end": None},
+        "sql_respondent": {"start": None, "end": None},
     }
 
     def update_timeline(message: str):
@@ -125,7 +105,7 @@ async def debug_process_input(input: Input):
         sys.stdout = PrintWrapper()
         try:
             data = await graph.ainvoke(
-                {"task": input.task},
+                {"user_question": input.user_question},
                 config={"callbacks": [langfuse_handler] if langfuse_handler else None},
             )
         finally:
