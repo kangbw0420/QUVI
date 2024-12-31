@@ -18,7 +18,7 @@ from datetime import datetime
 
 
 class Input(BaseModel):
-    task: str
+    user_question: str
     user_id: str = "default_user"  # 사용자 식별을 위한 기본값
 
 
@@ -36,13 +36,11 @@ langfuse_client = LangfuseClient(base_url="http://localhost:8001")
 
 @api.post("/execute")
 async def execute(request: RequestData):
-    task = request.task
-    print(task)
     result = []
 
-    if task:
+    if request.user_question:
         try:
-            data = graph.invoke({"task": task})
+            data = graph.invoke({"user_question": request.user_question})
             for step in data["steps"]:
                 step_name = step[1]
                 trans_step_name = step_name.replace("#E", "단계")
@@ -62,10 +60,10 @@ async def process_input(request: RequestData):
     """프로덕션용 엔드포인트"""
     try:
         # LangGraph 실행
-        data = await graph.ainvoke({"task": request.task})
+        data = await graph.ainvoke({"user_question": request.user_question})
 
         # solver에서 이미 원하는 형태로 result를 생성했으므로 그대로 반환
-        return {"result": data["result"]}
+        return {"result": data["final_answer"]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing input: {str(e)}")
 

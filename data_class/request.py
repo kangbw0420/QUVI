@@ -1,15 +1,17 @@
 from pydantic import BaseModel
 
+
 class RequestData(BaseModel):
-    task: str
+    user_question: str
 
 
 class PostgreToVectorData(BaseModel):
     collection_name: str
     item_id: str
     text: str
-    type : str = "C"
-    del_yn : str = "N"
+    type: str = "C"
+    del_yn: str = "N"
+
 
 class VectorDataQuery(BaseModel):
     collection_name: str
