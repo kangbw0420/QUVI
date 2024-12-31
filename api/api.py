@@ -94,7 +94,7 @@ async def debug_process_input(input: Input):
 
         # 2. Create initial QNA entry
         qna_response = await langfuse_client.create_qna(
-            user_id=input.user_id, session_id=session_id, question=input.task
+            user_id=input.user_id, session_id=session_id, question=input.user_question
         )
         qna_id = qna_response["qna_id"]
         print(f"Initial QNA created: {qna_id}")
@@ -115,7 +115,7 @@ async def debug_process_input(input: Input):
         # 4. Update QNA with answer
         await langfuse_client.update_qna(
             qna_id=qna_id,
-            answer=data["result"]["answer"],
+            answer=data["final_answer"],
             answer_timestamp=datetime.utcnow().isoformat(),
             trace_id=trace_id,
         )
@@ -129,15 +129,11 @@ async def debug_process_input(input: Input):
                 "node_type": "main",
                 "model": "claude-3.5-sonnet",
                 "meta_data": {
-                    "plan_string": data.get("plan_string"),
-                    "steps": data.get("steps"),
-                    "results": data.get("results"),
-                    "result": data.get("result"),
-                    "dataframes": {
-                        k: {"shape": v.shape, "columns": list(v.columns)}
-                        for k, v in data.get("dataframes", {}).items()
-                    },
-                    "calc_data": data.get("calc_data"),
+                    "analyzed_question": data.get("analyzed_question"),
+                    "sql_query": data.get("sql_query"),
+                    "query_result_stats": data.get("query_result_stats"),
+                    "query_result": data.get("query_result"),
+                    "final_answer": data.get("final_answer"),
                 },
             }
             await langfuse_client.create_trace(trace_data)
@@ -147,37 +143,10 @@ async def debug_process_input(input: Input):
         await langfuse_client.update_session(session_id, "completed")
         print("Session status updated to completed")
 
-        # 7. Prepare raw_data
-        raw_data = pd.DataFrame()
-        if "dataframes" in data:
-            dataframes = data["dataframes"]
-            if dataframes:
-                df_keys = sorted(dataframes.keys())
-                if len(df_keys) >= 1:
-                    last_key = df_keys[-1]
-                    last_df = dataframes[last_key]
-
-                    solver_table_cols = (
-                        data["result"]["table"]
-                        if isinstance(data["result"]["table"], list)
-                        else []
-                    )
-                    last_df_cols = (
-                        list(last_df.columns)
-                        if last_df is not None and hasattr(last_df, "columns")
-                        else []
-                    )
-
-                    if len(solver_table_cols) < len(last_df_cols):
-                        raw_data = last_df
-                    elif len(df_keys) >= 2:
-                        prev_key = df_keys[-2]
-                        raw_data = dataframes[prev_key]
-
         return {
             "status": "success",
-            "result": data["result"],
-            "raw_data": convert_dataframe_for_json(raw_data),
+            "result": data["final_answer"],
+            "raw_data": data["query_result"],
             "trace_id": trace_id,
             "session_id": session_id,
             "qna_id": qna_id,

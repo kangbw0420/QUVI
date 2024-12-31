@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 import pandas as pd
 import numpy as np
+from decimal import Decimal
 
 
 class JSONSerializer(json.JSONEncoder):
@@ -19,6 +20,8 @@ class JSONSerializer(json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
+        elif isinstance(obj, Decimal):
+            return float(obj)
         elif pd.isna(obj):
             return None
         return super().default(obj)
