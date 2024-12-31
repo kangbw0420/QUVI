@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 class RequestData(BaseModel):
     user_question: str
+    user_id: str
 
 
 class PostgreToVectorData(BaseModel):

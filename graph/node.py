@@ -19,14 +19,20 @@ class GraphState(TypedDict):
 
 
 def question_analyzer(state: GraphState) -> GraphState:
+    print("\n=== Question Analyzer Node ===")
+    print(f"Received user question: {state['user_question']}")
+    
     user_question = state["user_question"]
     analyzed_question = analyze_user_question(user_question)
+    # analyzed_question = "aicfo_get_cabo_2011[24년 급여 내역]"
 
+    print(f"Analyzed question: {analyzed_question}")
     state.update({"analyzed_question": analyzed_question})
+    print("State updated with analyzed question")
     return state
 
 
-def query_creator(state: GraphState) -> GraphState:
+async def query_creator(state: GraphState) -> GraphState:
     """
     사용자 질문을 기반으로 SQL 쿼리를 생성하고 상태를 업데이트하는 노드.
 
@@ -36,11 +42,16 @@ def query_creator(state: GraphState) -> GraphState:
     Returns:
         GraphState: 업데이트된 그래프 상태
     """
+    print("\n=== Query Creator Node ===")
+    print(f"Received analyzed question: {state['analyzed_question']}")
+    
     analyzed_question = state["analyzed_question"]
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = create_query(analyzed_question, today)
+    print("Attempting to create SQL query...")
+    sql_query = await create_query(analyzed_question, today)
+    print(f"SQL query created: {sql_query}")
     # 상태 업데이트
     state.update(
         {

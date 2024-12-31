@@ -10,6 +10,9 @@ from sqlalchemy.engine import Result
 from .utils import load_prompt
 from llm_models.models import llama_70b_llm, llama_8b_llm, qwen_llm
 
+from prompts.retriever import retriever
+import asyncio
+
 load_dotenv()
 
 
@@ -45,7 +48,7 @@ def analyze_user_question(user_question: str) -> str:
     return analyzed_question
 
 
-def create_query(analyzed_question: str, today: str) -> str:
+async def create_query(analyzed_question: str, today: str) -> str:
     """
     Args:
         analyzed_question (str): 사용자의 질문.
@@ -82,10 +85,32 @@ def create_query(analyzed_question: str, today: str) -> str:
             + "칼럼명:\n"
             + load_prompt("prompts/create_query/schema.json")[table_name]
         )
-        examples = load_prompt("prompts/create_query/fewshots.json")
+
+
+        print("\n=== Few-shot Retrieval Process ===")
+        print(f"Query text: {refined_question}")
+        
+        # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
+        back_number = re.search(r'\d{4}$', table_name).group()
+        collection_name = f"shots_{back_number}"
+
+        print(f"Using collection name: {collection_name}")
+
+        # retriever를 사용하여 동적으로 few-shot 예제 가져오기
+        few_shots = await retriever.get_few_shots(
+            query_text=refined_question,
+            task_type="creator",
+            collection_name=collection_name
+        )
+        
+        print(f"\nRetrieved {len(few_shots)} few-shot examples:")
+        for i, shot in enumerate(few_shots, 1):
+            print(f"\nExample {i}:")
+            print(f"Input: {shot['input']}")
+            print(f"Output: {shot['output']}")
 
         few_shot_prompt = []
-        for example in examples:
+        for example in few_shots:
             few_shot_prompt.append(("human", example["input"]))
             few_shot_prompt.append(("ai", example["output"]))
 

@@ -88,7 +88,7 @@ async function sendQuestion() {
         addDebugLog(`Request options prepared`);
 
         addDebugLog('Sending request to backend...');
-        const response = await fetch('http://localhost:8000/debug/process', requestOptions);
+        const response = await fetch('http://localhost:8000/process', requestOptions);
         addDebugLog(`Response received (Status: ${response.status})`);
 
         if (!response.ok) {
