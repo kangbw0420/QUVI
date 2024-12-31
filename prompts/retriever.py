@@ -46,7 +46,6 @@ class FewShotRetriever:
         async with httpx.AsyncClient() as client:
             try:
                 # Print request details for debugging
-                print(f"\nMaking request to: {self.base_url}/query")
                 request_payload = {
                     'collection_name': collection_name,
                     'query_text': query_text,
@@ -56,11 +55,7 @@ class FewShotRetriever:
                 
                 response = await client.post(
                     f"{self.base_url}/query",
-                    json={
-                        "collection_name": collection_name,
-                        "query_text": query_text,
-                        "top_k": top_k
-                    }
+                    json=request_payload
                 )
                 
                 # Print response details for debugging
@@ -71,11 +66,22 @@ class FewShotRetriever:
                 
                 try:
                     data = response.json()
-                    if isinstance(data, dict):
-                        return data.get("results", [])
+                    if isinstance(data, dict) and "results" in data:
+                        results = data["results"]
+                        if "documents" in results and isinstance(results["documents"], list):
+                            # 응답 구조에 맞게 결과 포맷팅
+                            formatted_results = []
+                            documents = results["documents"][0] if results["documents"] else []
+                            for doc in documents:
+                                formatted_results.append({"document": doc})
+                            return formatted_results
+                        else:
+                            print("Unexpected documents format in response")
+                            return []
                     else:
-                        print(f"Unexpected response format. Expected dict, got {type(data)}")
+                        print(f"Unexpected response format. Expected dict with 'results', got {type(data)}")
                         return []
+                    
                 except json.JSONDecodeError as e:
                     print(f"Failed to decode JSON response: {str(e)}")
                     return []

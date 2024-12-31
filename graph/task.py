@@ -154,7 +154,7 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
     """
     parameters = {}
     execution_options = {}
-    db_path = os.getenv("DATA_DB")
+    db_path = os.getenv("DB_HOST")
     engine = create_engine(db_path)
 
     with engine.begin() as connection:

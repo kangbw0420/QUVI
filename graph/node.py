@@ -23,8 +23,8 @@ def question_analyzer(state: GraphState) -> GraphState:
     print(f"Received user question: {state['user_question']}")
     
     user_question = state["user_question"]
-    analyzed_question = analyze_user_question(user_question)
-    # analyzed_question = "aicfo_get_cabo_2011[24년 급여 내역]"
+    # analyzed_question = analyze_user_question(user_question)
+    analyzed_question = "aicfo_get_cabo_2011[24년 급여 내역]"
 
     print(f"Analyzed question: {analyzed_question}")
     state.update({"analyzed_question": analyzed_question})
