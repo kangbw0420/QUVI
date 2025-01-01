@@ -9,6 +9,7 @@ from sqlalchemy.sql.expression import Executable
 from sqlalchemy.engine import Result
 from .utils import load_prompt
 from llm_models.models import llama_70b_llm, llama_8b_llm, qwen_llm
+from utils.config import Config
 
 from prompts.retriever import retriever
 import asyncio
@@ -88,13 +89,10 @@ async def create_query(analyzed_question: str, today: str) -> str:
 
 
         print("\n=== Few-shot Retrieval Process ===")
-        print(f"Query text: {refined_question}")
         
         # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
         back_number = re.search(r'\d{4}$', table_name).group()
         collection_name = f"shots_{back_number}"
-
-        print(f"Using collection name: {collection_name}")
 
         # retriever를 사용하여 동적으로 few-shot 예제 가져오기
         few_shots = await retriever.get_few_shots(
@@ -102,12 +100,6 @@ async def create_query(analyzed_question: str, today: str) -> str:
             task_type="creator",
             collection_name=collection_name
         )
-        
-        print(f"\nRetrieved {len(few_shots)} few-shot examples:")
-        for i, shot in enumerate(few_shots, 1):
-            print(f"\nExample {i}:")
-            print(f"Input: {shot['input']}")
-            print(f"Output: {shot['output']}")
 
         few_shot_prompt = []
         for example in few_shots:
@@ -152,38 +144,88 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
 
     If the statement returns no rows, an empty list is returned.
     """
-    parameters = {}
-    execution_options = {}
-    db_path = os.getenv("DB_HOST")
-    engine = create_engine(db_path)
+    print("\n=== Execute Query Started ===")
+    print(f"Query to execute: {command}")
+    print(f"Fetch mode: {fetch}")
+    
+    try:
+        print("\n=== Setting up DB Connection ===")
+        parameters = {}
+        execution_options = {}
+        # db_path = os.getenv("DB_HOST")
+        # print(f"Database path: {db_path}")
 
-    with engine.begin() as connection:
-        if isinstance(command, str):
-            command = text(command)
-        elif isinstance(command, Executable):
-            pass
-        else:
-            raise TypeError(f"Query expression has unknown type: {type(command)}")
+        # URL encode the password to handle special characters
+        from urllib.parse import quote_plus
+        password = quote_plus(str(Config.DB_PASSWORD))
+        db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
+        
+        print("Creating database engine...")
+        engine = create_engine(db_url)
+        print("Engine created successfully")
 
-        cursor = connection.execute(
-            command,
-            parameters,
-            execution_options=execution_options,
-        )
-        if cursor.returns_rows:
-            if fetch == "all":
-                result = [x._asdict() for x in cursor.fetchall()]
-            elif fetch == "one":
-                first_result = cursor.fetchone()
-                result = [] if first_result is None else [first_result._asdict()]
-            elif fetch == "cursor":
-                return cursor
+        print("\n=== Executing Query ===")
+        with engine.begin() as connection:
+            print("Connection established")
+            
+            if isinstance(command, str):
+                print("Converting string command to SQLAlchemy text...")
+                command = text(command)
+                print("Conversion successful")
+            elif isinstance(command, Executable):
+                print("Command is already SQLAlchemy executable")
             else:
-                raise ValueError(
-                    "Fetch parameter must be either 'one', 'all', or 'cursor'"
-                )
+                print(f"Invalid command type: {type(command)}")
+                raise TypeError(f"Query expression has unknown type: {type(command)}")
 
-            return result
+            print("Executing command...")
+            cursor = connection.execute(
+                command,
+                parameters,
+                execution_options=execution_options,
+            )
+            print("Command executed successfully")
+
+            if cursor.returns_rows:
+                print("\n=== Processing Results ===")
+                if fetch == "all":
+                    print("Fetching all rows...")
+                    rows = cursor.fetchall()
+                    print(f"Retrieved {len(rows)} rows")
+                    result = [x._asdict() for x in rows]
+                    print("Converted rows to dictionaries")
+                elif fetch == "one":
+                    print("Fetching one row...")
+                    first_result = cursor.fetchone()
+                    if first_result is None:
+                        print("No results found")
+                        result = []
+                    else:
+                        print("Converting single row to dictionary")
+                        result = [first_result._asdict()]
+                elif fetch == "cursor":
+                    print("Returning cursor directly")
+                    return cursor
+                else:
+                    print(f"Invalid fetch mode: {fetch}")
+                    raise ValueError(
+                        "Fetch parameter must be either 'one', 'all', or 'cursor'"
+                    )
+
+                print(f"Returning {len(result)} results")
+                return result
+            else:
+                print("Query does not return any rows")
+                return []
+
+    except Exception as e:
+        print("\n=== Error in execute_query ===")
+        print(f"Error type: {type(e)}")
+        print(f"Error message: {str(e)}")
+        import traceback
+        print("Full traceback:")
+        traceback.print_exc()
+        raise
 
 
 def sql_response(user_question, sql_query, query_result_stats) -> str:

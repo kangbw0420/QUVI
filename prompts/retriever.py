@@ -39,58 +39,52 @@ class FewShotRetriever:
             query_text: Text to find similar examples for
             collection_name: Name of the collection to query
             top_k: Number of results to return
-            
+                
         Returns:
-            List of similar examples
+            List of dictionaries containing query results
         """
         async with httpx.AsyncClient() as client:
             try:
-                # Print request details for debugging
                 request_payload = {
                     'collection_name': collection_name,
                     'query_text': query_text,
                     'top_k': top_k
                 }
-                print("Request payload:", json.dumps(request_payload, ensure_ascii=False, indent=2))
+                print("\nRequest payload:", json.dumps(request_payload, ensure_ascii=False, indent=2))
                 
                 response = await client.post(
                     f"{self.base_url}/query",
                     json=request_payload
                 )
                 
-                # Print response details for debugging
                 print(f"Response status: {response.status_code}")
-                print(f"Response content: {response.text[:500]}...")  # First 500 chars
+                print(f"Response content preview: {response.text[:500]}...")
                 
                 response.raise_for_status()
+                data = response.json()
                 
-                try:
-                    data = response.json()
-                    if isinstance(data, dict) and "results" in data:
-                        results = data["results"]
-                        if "documents" in results and isinstance(results["documents"], list):
-                            # 응답 구조에 맞게 결과 포맷팅
-                            formatted_results = []
-                            documents = results["documents"][0] if results["documents"] else []
-                            for doc in documents:
-                                formatted_results.append({"document": doc})
-                            return formatted_results
-                        else:
-                            print("Unexpected documents format in response")
-                            return []
-                    else:
-                        print(f"Unexpected response format. Expected dict with 'results', got {type(data)}")
-                        return []
-                    
-                except json.JSONDecodeError as e:
-                    print(f"Failed to decode JSON response: {str(e)}")
-                    return []
-                    
-            except httpx.HTTPError as e:
-                print(f"HTTP Error querying vector store: {str(e)}")
+                formatted_results = []
+                if isinstance(data, dict) and "results" in data:
+                    results = data["results"]
+                    if "documents" in results and "metadatas" in results:
+                        documents = results["documents"][0]  # First list contains documents
+                        metadatas = results["metadatas"][0]  # First list contains metadatas
+                        
+                        # Pair documents with their metadata
+                        for doc, meta in zip(documents, metadatas):
+                            formatted_results.append({
+                                "document": doc,
+                                "metadata": meta
+                            })
+                        
+                        print(f"\nFormatted {len(formatted_results)} results")
+                        return formatted_results
+                
+                print("Warning: Unexpected response format")
                 return []
+                
             except Exception as e:
-                print(f"Unexpected error in query_vector_store: {str(e)}")
+                print(f"Error in query_vector_store: {str(e)}")
                 return []
 
     async def format_few_shots(self, results: List[Dict]) -> List[Dict]:
@@ -98,25 +92,40 @@ class FewShotRetriever:
         Format vector store results into few-shot examples.
         
         Args:
-            results: Raw results from vector store
-            
+            results: List of dictionaries containing query results
+                
         Returns:
-            List of formatted few-shot examples
+            List of formatted few-shot examples with input (question) and output (SQL)
         """
         few_shots = []
-        for result in results:
-            try:
-                # Parse the stored example data
-                example_data = json.loads(result.get("document", "{}"))
-                few_shot = {
-                    "input": example_data.get("input", ""),
-                    "output": example_data.get("output", "")
-                }
-                few_shots.append(few_shot)
-            except json.JSONDecodeError:
-                print(f"Error parsing example data: {result.get('document')}")
-                continue
-        return few_shots
+        
+        try:            
+            for result in results:
+                if "document" in result:
+                    document = result["document"]
+                    # Extract the question from document
+                    question = document.strip()
+                    
+                    # Find corresponding metadata with SQL
+                    metadata = result.get("metadata", {})
+                    sql = metadata.get("SQL", "")
+                    
+                    if question and sql:
+                        few_shot = {
+                            "input": question,
+                            "output": sql
+                        }
+                        few_shots.append(few_shot)
+                        print(f"\nProcessed few-shot example:")
+                        print(f"Question: {few_shot['input']}")
+                        print(f"SQL: {few_shot['output']}")
+            
+            return few_shots
+                
+        except Exception as e:
+            print(f"Error formatting few-shots: {str(e)}")
+            print(f"Input results structure: {results}")
+            return []
 
     async def get_few_shots(self, query_text: str, task_type: str, collection_name: Optional[str] = None) -> List[Dict]:
         """
