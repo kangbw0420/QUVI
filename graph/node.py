@@ -35,8 +35,7 @@ def question_analyzer(state: GraphState) -> GraphState:
 
 
 async def query_creator(state: GraphState) -> GraphState:
-    """
-    사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
+    """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
     Returns:
         GraphState: sql_query가 추가된 상태.
     Raises:
