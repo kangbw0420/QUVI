@@ -16,9 +16,13 @@ class GraphState(TypedDict):
 
 
 ########################### 정의된 노드 ###########################
-
-
 def question_analyzer(state: GraphState) -> GraphState:
+    """사용자 질문을 분석하여 간소화(개떡같은 질문을 찰떡같은 질문으로)
+    Returns:
+        GraphState: analyzed_question이 추가된 상태.
+    Raises:
+        KeyError: state에 user_question이 없는 경우.
+    """
     print(f"Received user question: {state['user_question']}")
     
     user_question = state["user_question"]
@@ -32,14 +36,13 @@ def question_analyzer(state: GraphState) -> GraphState:
 
 async def query_creator(state: GraphState) -> GraphState:
     """
-    사용자 질문을 기반으로 SQL 쿼리를 생성하고 상태를 업데이트하는 노드.
-
-    Args:
-        state (GraphState): 그래프 상태
-
+    사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
     Returns:
-        GraphState: 업데이트된 그래프 상태
-    """    
+        GraphState: sql_query가 추가된 상태.
+    Raises:
+        KeyError: state에 analyzed_question이 없는 경우.
+        ValueError: SQL 쿼리 생성에 실패한 경우.
+    """  
     analyzed_question = state["analyzed_question"]
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -56,6 +59,12 @@ async def query_creator(state: GraphState) -> GraphState:
 
 
 def result_executor(state: GraphState) -> GraphState:
+    """SQL 쿼리를 실행하고 결과를 분석
+    Returns:
+        GraphState: query_result와 query_result_stats가 추가된 상태.
+    Raises:
+        ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
+    """
     # SQL 쿼리 가져오기
     query = state.get("sql_query")
     if not query:
@@ -77,6 +86,12 @@ def result_executor(state: GraphState) -> GraphState:
 
 
 def sql_respondent(state: GraphState) -> GraphState:
+    """쿼리 결과를 바탕으로 최종 응답을 생성
+    Returns:
+        GraphState: final_answer가 추가된 상태.
+    Raises:
+        KeyError: (user_question, sql_query, query_result_stats)가 없는 경우.
+    """
     user_question = state["user_question"]
     sql_query = state["sql_query"]
     query_result_stats = state.get("query_result_stats", [])

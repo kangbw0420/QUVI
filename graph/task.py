@@ -18,14 +18,19 @@ load_dotenv()
 
 
 def analyze_user_question(user_question: str) -> str:
+    """사용자의 질문을 분석하여 표준화된 형식으로 변환
+    Returns:
+        str: 'aicfo_get_cabo_YYYY[질문내용]' 형식으로 변환된 질문
+    Raises:
+        ValueError: 질문이 분석 가능한 형식이 아닌 경우.
+    """
     output_parser = StrOutputParser()
 
     """
         프롬프트는 세 부분으로 구성됩니다.
         1) 시스템 프롬프트
         2) 퓨 샷
-        3) 사용자 프롬프트 (사용자의 질문만)
-        
+        3) 사용자 프롬프트 (사용자의 질문만)        
     """
     system_prompt = load_prompt("prompts/analyze_user_question/system.prompt")
     examples = load_prompt("prompts/analyze_user_question/fewshots.json")
@@ -50,13 +55,12 @@ def analyze_user_question(user_question: str) -> str:
 
 
 async def create_query(analyzed_question: str, today: str) -> str:
-    """
-    Args:
-        analyzed_question (str): 사용자의 질문.
-        today (str): 오늘 날짜
-
+    """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
-        str: 생성된 SQL 쿼리.
+        str: 생성된 SQL 쿼리문
+    Raises:
+        ValueError: SQL 쿼리를 생성할 수 없거나, 추출 패턴이 매치되지 않는 경우
+        TypeError: LLM 응답이 예상된 형식이 아닌 경우.
     """
     try:
 
@@ -76,7 +80,6 @@ async def create_query(analyzed_question: str, today: str) -> str:
         2) 스키마 프롬프트 (테이블의 칼럼명을 가져옵니다.)
         3) 퓨 샷
         4) 사용자 프롬프트 (오늘 날짜 및 분석된 질의)
-        
         """
         system_prompt = load_prompt("prompts/create_query/system.prompt").format(
             today=today
@@ -139,10 +142,16 @@ async def create_query(analyzed_question: str, today: str) -> str:
 
 
 def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict[str, Any]], Result]:  # type: ignore
-    """
-    Executes SQL command through underlying engine.
-
-    If the statement returns no rows, an empty list is returned.
+    """SQL 쿼리를 실행하고 결과를 반환합니다.
+    Returns:
+        Union[Sequence[Dict[str, Any]], Result]: 쿼리 실행 결과.
+        fetch='all': 모든 결과 행을 딕셔너리 리스트로 반환.
+        fetch='one': 첫 번째 결과 행을 딕셔너리로 반환.
+        fetch='cursor': 커서 객체 직접 반환.
+    Raises:
+        ValueError: fetch 파라미터가 유효하지 않은 경우.
+        TypeError: command가 문자열이나 Executable이 아닌 경우.
+        Exception: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생시.
     """
     print("\n=== Execute Query Started ===")
     print(f"Query to execute: {command}")
@@ -229,6 +238,12 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
 
 
 def sql_response(user_question, sql_query, query_result_stats) -> str:
+    """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
+    Returns:
+        str: 생성된 자연어 응답.
+    Raises:
+        ValueError: 프롬프트 템플릿 로딩 실패 또는 LLM 응답 생성 실패시.
+    """
     output_parser = StrOutputParser()
 
     system_prompt = load_prompt("prompts/sql_response/system.prompt").format(

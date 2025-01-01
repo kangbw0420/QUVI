@@ -19,29 +19,23 @@ class FewShotRetriever:
         self.table_pattern = r"aicfo_get_cabo_\d{4}"
 
     async def get_collection_name(self, task_type: str, collection_name: Optional[str] = None) -> str:
-        """
-        Get the appropriate collection name based on task type and table name.
-        
-        Args:
-            task_type: Type of task (analyzer, creator, executor, respondent)
-            collection_name: Optional table name for query_creator
-            
+        """작업 유형과 collection_name을 기반으로 적절한 컬렉션 이름을 결정합니다.
         Returns:
-            Collection name to query
+            str: 사용할 컬렉션 이름.
+        Raises:
+            ValueError: task_type이 유효하지 않은 경우.
         """
         return collection_name
 
     async def query_vector_store(self, query_text: str, collection_name: str, top_k: int = 3) -> List[Dict]:
-        """
-        Query the vector store through the API endpoint.
+        """벡터 스토어에 쿼리를 보내 유사한 예제들을 검색합니다.
         
-        Args:
-            query_text: Text to find similar examples for
-            collection_name: Name of the collection to query
-            top_k: Number of results to return
-                
         Returns:
-            List of dictionaries containing query results
+            List[Dict]: 검색된 문서와 메타데이터를 포함하는 결과 리스트.
+            빈 리스트는 결과를 찾지 못했거나 에러가 발생한 경우를 의미.
+        Raises:
+            httpx.RequestError: API 요청 중 네트워크 오류 발생시.
+            ValueError: API 응답이 예상된 형식이 아닌 경우.
         """
         async with httpx.AsyncClient() as client:
             try:
@@ -88,14 +82,13 @@ class FewShotRetriever:
                 return []
 
     async def format_few_shots(self, results: List[Dict]) -> List[Dict]:
-        """
-        Format vector store results into few-shot examples.
+        """벡터 스토어 검색 결과를 few-shot 예제 형식으로 변환합니다.
         
-        Args:
-            results: List of dictionaries containing query results
-                
         Returns:
-            List of formatted few-shot examples with input (question) and output (SQL)
+            List[Dict]: 입력(input)과 출력(output)을 포함하는 few-shot 예제 리스트.
+            빈 리스트는 변환할 결과가 없거나 변환 중 오류가 발생한 경우를 의미.
+        Raises:
+            KeyError: 필요한 필드가 results에 없는 경우.
         """
         few_shots = []
         
@@ -128,16 +121,14 @@ class FewShotRetriever:
             return []
 
     async def get_few_shots(self, query_text: str, task_type: str, collection_name: Optional[str] = None) -> List[Dict]:
-        """
-        Main method to get few-shot examples for a given query.
+        """주어진 쿼리에 대한 few-shot 예제들을 검색합니다.
         
-        Args:
-            query_text: The query to find similar examples for
-            task_type: Type of task (analyzer, creator, executor, respondent)
-            collection_name: Optional table name for query_creator
-            
         Returns:
-            List of few-shot examples formatted for use in prompts
+            List[Dict]: 검색된 few-shot 예제 리스트.
+            빈 리스트는 예제를 찾지 못했거나 처리 중 오류가 발생한 경우를 의미.
+        Raises:
+            ValueError: task_type이 유효하지 않거나 컬렉션을 찾을 수 없는 경우.
+            httpx.RequestError: 벡터 스토어 API 통신 중 오류 발생시.
         """
         collection_name = await self.get_collection_name(task_type, collection_name)
         if not collection_name:
