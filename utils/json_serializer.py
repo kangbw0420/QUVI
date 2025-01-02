@@ -3,6 +3,8 @@ import uuid
 from datetime import datetime
 import pandas as pd
 import numpy as np
+from decimal import Decimal
+
 
 class JSONSerializer(json.JSONEncoder):
     def default(self, obj):
@@ -18,22 +20,24 @@ class JSONSerializer(json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
+        elif isinstance(obj, Decimal):
+            return float(obj)
         elif pd.isna(obj):
             return None
         return super().default(obj)
+
 
 def convert_dataframe_for_json(df):
     """Convert DataFrame to JSON-serializable format with proper encoding"""
     if df is None or df.empty:
         return []
-    
+
     # Convert DataFrame to records
-    records = df.to_dict('records')
-    
+    records = df.to_dict("records")
+
     # Convert using custom JSONSerializer
-    return json.loads(
-        json.dumps(records, cls=JSONSerializer, ensure_ascii=False)
-    )
+    return json.loads(json.dumps(records, cls=JSONSerializer, ensure_ascii=False))
+
 
 def prepare_trace_data(input_data, output_data=None, error=None):
     try:
@@ -48,11 +52,11 @@ def prepare_trace_data(input_data, output_data=None, error=None):
                 "results": output_data.get("results") if output_data else None,
                 "result": output_data.get("result") if output_data else None,
                 "calc_data": output_data.get("calc_data") if output_data else None,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             },
             "duration_ms": 0.0,
             "token_usage": 0,
-            "model": "unknown"
+            "model": "unknown",
         }
 
         # DataFrame handling - store only column information
@@ -63,7 +67,7 @@ def prepare_trace_data(input_data, output_data=None, error=None):
                     dataframe_info[k] = {
                         "columns": list(df.columns),
                         "shape": df.shape,
-                        "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()}
+                        "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
                     }
                 else:
                     dataframe_info[k] = None
@@ -73,7 +77,9 @@ def prepare_trace_data(input_data, output_data=None, error=None):
             trace_data["meta_data"]["status"] = "error"
             trace_data["meta_data"]["error"] = str(error)
 
-        return json.loads(json.dumps(trace_data, cls=JSONSerializer, ensure_ascii=False))
+        return json.loads(
+            json.dumps(trace_data, cls=JSONSerializer, ensure_ascii=False)
+        )
 
     except Exception as e:
         return {
@@ -83,9 +89,9 @@ def prepare_trace_data(input_data, output_data=None, error=None):
                 "input": str(input_data),
                 "status": "error",
                 "error": "Error preparing trace data",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             },
             "duration_ms": 0.0,
             "token_usage": 0,
-            "model": "unknown"
+            "model": "unknown",
         }

@@ -1,10 +1,10 @@
-import json
-
 from fastapi import APIRouter, HTTPException
 from database.database_service import DatabaseService
-from data_class.request import PostgreToVectorData, VectorDataQuery, PromptInput
+from data_class.request import PostgreToVectorData, PromptInput
+
 data_api = APIRouter(tags=["data"])
 data_service = DatabaseService()
+
 
 @data_api.post("/upload")
 def add_few_shot(data: PostgreToVectorData):

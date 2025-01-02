@@ -1,0 +1,10 @@
+{
+    "python.analysis.extraPaths": [
+        "C:\\Users\\Lenovo\\AppData\\Local\\Programs\\Python\\Python311\\Lib",
+        "C:\\Users\\Lenovo\\AppData\\Local\\Programs\\Python\\Python311\\DLLs",
+        "C:\\Users\\Lenovo\\AppData\\Local\\Programs\\Python\\Python311",
+        "C:\\Users\\Lenovo\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages",
+        "${workspaceFolder}"  // 현재 작업 중인 프로젝트 폴더
+    ],
+    "python.analysis.autoImportCompletions": true
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "input": "우리 은행 잔액은?",
+    "output": "FROM aicfo_get_cabo_2010 WHERE BANK_NM = '우리은행'"
+  },
+  {
+    "input": "은행별 잔액은?",
+    "output": "SELECT BANK_NM, SUM(REAL_AMT) AS REAL_AMT FROM aicfo_get_cabo_2010 GROUP BY BANK_NM"
+  },
+  {
+    "input": "총 잔액 및 은행별 잔액을 계산해줘",
+    "output": "SELECT COALESCE(BANK_NM, '총 잔액') as BANK_NM, SUM(REAL_AMT) AS BANK_REAL_AMT, COUNT(*) as COUNT FROM aicfo_get_cabo_2010 GROUP BY ROLLUP(BANK_NM)"
+  },
+  {
+    "input": "계좌번호가 6789로 끝나는 계좌의 잔액을 보여줘",
+    "output": "FROM aicfo_get_cabo_2010 WHERE ACCT_NO LIKE '%6789'"
+  },
+  {
+    "input": "기업은행 계좌만 금액이 많은 순으로 정렬해줘",
+    "output": "SELECT * FROM aicfo_get_cabo_2010 WHERE BANK_NM = '기업은행' ORDER BY REAL_AMT DESC"
+  },
+  {
+    "input": "농협은행 계좌만 보여줘",
+    "output": "SELECT * FROM aicfo_get_cabo_2010 WHERE BANK_NM = '농협'"
+  },
+  {
+    "input": "수협은행의 잔액을 큰 순서대로 정렬해줘",
+    "output": "SELECT * FROM aicfo_get_cabo_2010 WHERE BANK_NM = '수협은행' ORDER BY REAL_AMT DESC"
+  },
+  {
+    "input": "농협 잔액을 작은 순으로 정렬해줘",
+    "output": "SELECT * FROM aicfo_get_cabo_2010 WHERE BANK_NM = '농협' ORDER BY REAL_AMT ASC"
+  },
+  {
+    "input": "우리은행 수시 입출 계좌 잔액 작은 순으로 조회",
+    "output": "SELECT * FROM aicfo_get_cabo_2010 WHERE BANK_NM = '우리은행' ORDER BY REAL_AMT ASC"
+  }
+]
