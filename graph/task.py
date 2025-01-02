@@ -17,7 +17,7 @@ import asyncio
 load_dotenv()
 
 
-def analyze_user_question(user_question: str) -> str:
+async def analyze_user_question(user_question: str) -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
@@ -32,22 +32,18 @@ def analyze_user_question(user_question: str) -> str:
         2) 퓨 샷
         3) 사용자 프롬프트 (사용자의 질문만)        
     """
+    print("\n=== Analyze User Question Started ===")
+    print(f"Processing question: {user_question}")
     system_prompt = load_prompt("prompts/analyze_user_question/system.prompt")
 
-    # few_shots = await retriever.get_few_shots(
-    #     query_text=user_question,
-    #     task_type="analyzer",
-    #     collection_name="shots_analyzer"
-    # )
+    few_shots = await retriever.get_few_shots(
+        query_text=user_question,
+        task_type="analyzer",
+        collection_name="shots_analyzer"
+    )
 
-    # few_shot_prompt = []
-    # for example in few_shots:
-    #     few_shot_prompt.append(("human", example["input"]))
-    #     few_shot_prompt.append(("ai", example["output"]))
-
-    examples = load_prompt("prompts/analyze_user_question/fewshots.json")
     few_shot_prompt = []
-    for example in examples:
+    for example in few_shots:
         few_shot_prompt.append(("human", example["input"]))
         few_shot_prompt.append(("ai", example["output"]))
 
@@ -62,6 +58,8 @@ def analyze_user_question(user_question: str) -> str:
     analyze_chain = ANALYZE_PROMPT | qwen_llm | output_parser
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
+    print(f"Final analyzed question: {analyzed_question}")
+    print("=== Analyze User Question Completed ===\n")
     return analyzed_question
 
 
