@@ -20,7 +20,7 @@ load_dotenv()
 def analyze_user_question(user_question: str) -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
-        str: 'aicfo_get_cabo_YYYY[질문내용]' 형식으로 변환된 질문
+        str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
     Raises:
         ValueError: 질문이 분석 가능한 형식이 아닌 경우.
     """
@@ -33,8 +33,19 @@ def analyze_user_question(user_question: str) -> str:
         3) 사용자 프롬프트 (사용자의 질문만)        
     """
     system_prompt = load_prompt("prompts/analyze_user_question/system.prompt")
-    examples = load_prompt("prompts/analyze_user_question/fewshots.json")
 
+    # few_shots = await retriever.get_few_shots(
+    #     query_text=user_question,
+    #     task_type="analyzer",
+    #     collection_name="shots_analyzer"
+    # )
+
+    # few_shot_prompt = []
+    # for example in few_shots:
+    #     few_shot_prompt.append(("human", example["input"]))
+    #     few_shot_prompt.append(("ai", example["output"]))
+
+    examples = load_prompt("prompts/analyze_user_question/fewshots.json")
     few_shot_prompt = []
     for example in examples:
         few_shot_prompt.append(("human", example["input"]))
@@ -90,9 +101,7 @@ async def create_query(analyzed_question: str, today: str) -> str:
             + load_prompt("prompts/create_query/schema.json")[table_name]
         )
 
-
         print("\n=== Few-shot Retrieval Process ===")
-        
         # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
         back_number = re.search(r'\d{4}$', table_name).group()
         collection_name = f"shots_{back_number}"
