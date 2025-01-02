@@ -59,7 +59,6 @@ async def analyze_user_question(user_question: str) -> str:
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
     print(f"Final analyzed question: {analyzed_question}")
-    print("=== Analyze User Question Completed ===\n")
     return analyzed_question
 
 
@@ -99,7 +98,6 @@ async def create_query(analyzed_question: str, today: str) -> str:
             + load_prompt("prompts/create_query/schema.json")[table_name]
         )
 
-        print("\n=== Few-shot Retrieval Process ===")
         # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
         back_number = re.search(r'\d{4}$', table_name).group()
         collection_name = f"shots_{back_number}"
@@ -176,42 +174,31 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         password = quote_plus(str(Config.DB_PASSWORD))
         db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
         
-        print("Creating database engine...")
         engine = create_engine(db_url)
-        print("Engine created successfully")
 
         print("\n=== Executing Query ===")
         with engine.begin() as connection:
-            print("Connection established")
-            
             if isinstance(command, str):
                 print("Converting string command to SQLAlchemy text...")
                 command = text(command)
-                print("Conversion successful")
             elif isinstance(command, Executable):
                 print("Command is already SQLAlchemy executable")
             else:
-                print(f"Invalid command type: {type(command)}")
                 raise TypeError(f"Query expression has unknown type: {type(command)}")
 
-            print("Executing command...")
             cursor = connection.execute(
                 command,
                 parameters,
                 execution_options=execution_options,
             )
-            print("Command executed successfully")
 
             if cursor.returns_rows:
                 print("\n=== Processing Results ===")
                 if fetch == "all":
-                    print("Fetching all rows...")
                     rows = cursor.fetchall()
                     print(f"Retrieved {len(rows)} rows")
                     result = [x._asdict() for x in rows]
-                    print("Converted rows to dictionaries")
                 elif fetch == "one":
-                    print("Fetching one row...")
                     first_result = cursor.fetchone()
                     if first_result is None:
                         print("No results found")

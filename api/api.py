@@ -70,31 +70,6 @@ async def debug_process_input(input: Input):
         "sql_respondent": {"start": None, "end": None},
     }
 
-    def update_timeline(message: str):
-        timestamp = datetime.now().isoformat()
-        if "Planner -" in message:
-            execution_timeline["planner"]["start"] = timestamp
-        elif "Planner (Updated)" in message:
-            execution_timeline["planner"]["end"] = timestamp
-        elif "Tool Execution -" in message:
-            execution_timeline["tools"].append({"start": timestamp, "end": None})
-        elif "Tool Execution (Updated)" in message:
-            if (
-                execution_timeline["tools"]
-                and execution_timeline["tools"][-1]["end"] is None
-            ):
-                execution_timeline["tools"][-1]["end"] = timestamp
-        elif "Solver -" in message:
-            execution_timeline["solver"]["start"] = timestamp
-        elif "Solver (Updated)" in message:
-            execution_timeline["solver"]["end"] = timestamp
-
-    class PrintWrapper:
-        def write(self, message):
-            if "===" in message:
-                update_timeline(message)
-            sys.__stdout__.write(message)
-
     try:
         # 1. Create session
         session_response = await langfuse_client.create_session(input.user_id)
@@ -111,7 +86,6 @@ async def debug_process_input(input: Input):
         # 3. Process with graph
         print("Processing with graph...")
         original_stdout = sys.stdout
-        sys.stdout = PrintWrapper()
         try:
             data = await graph.ainvoke(
                 {"user_question": input.user_question},
