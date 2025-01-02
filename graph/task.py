@@ -27,10 +27,10 @@ async def analyze_user_question(user_question: str) -> str:
     output_parser = StrOutputParser()
 
     """
-        프롬프트는 세 부분으로 구성됩니다.
-        1) 시스템 프롬프트
-        2) 퓨 샷
-        3) 사용자 프롬프트 (사용자의 질문만)        
+    프롬프트는 세 부분으로 구성됩니다.
+    1) 시스템 프롬프트
+    2) 퓨 샷
+    3) 사용자 프롬프트 (사용자의 질문만)        
     """
     print("\n=== Analyze User Question Started ===")
     print(f"Processing question: {user_question}")
