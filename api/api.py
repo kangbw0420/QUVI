@@ -33,16 +33,13 @@ graph = make_graph()
 
 langfuse_client = LangfuseClient(base_url="http://localhost:8001")
 
-
 @api.post("/process")
-@observe()  # Langfuse 데코레이터 추가
 async def process_input(request: RequestData):
    """프로덕션용 엔드포인트"""
    try:
        # 트레이스 ID 생성
        trace_id = str(uuid.uuid4())
        
-       # LangGraph 실행 - callbacks 추가
        data = await graph.ainvoke(
            {"user_question": request.user_question},
            config={"callbacks": [langfuse_handler]}
@@ -59,8 +56,8 @@ async def process_input(request: RequestData):
            detail=f"Error processing input: {str(e)}"
        )
 
-@api.post("/debug/process")
 @observe()
+@api.post("/debug/process")
 async def debug_process_input(input: Input):
     print("\n=== Debug Process Started ===")
     trace_id = str(uuid.uuid4())

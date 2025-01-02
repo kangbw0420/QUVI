@@ -17,6 +17,7 @@ class GraphState(TypedDict):
 
 
 ########################### 정의된 노드 ###########################
+
 @observe()
 async def question_analyzer(state: GraphState) -> GraphState:
     """사용자 질문을 분석하여 간소화(개떡같은 질문을 찰떡같은 질문으로)
@@ -28,13 +29,10 @@ async def question_analyzer(state: GraphState) -> GraphState:
     print(f"Received user question: {state['user_question']}")
     
     user_question = state["user_question"]
-    print("Calling analyze_user_question...")
     analyzed_question = await analyze_user_question(user_question)
-    print(f"Received analyzed question: {analyzed_question}")
-
+    
     print(f"Analyzed question: {analyzed_question}")
     state.update({"analyzed_question": analyzed_question})
-    print("=== Question Analyzer Completed ===\n")
     return state
 
 @observe()
@@ -60,7 +58,7 @@ async def query_creator(state: GraphState) -> GraphState:
     )
     return state
 
-
+@observe()
 def result_executor(state: GraphState) -> GraphState:
     """SQL 쿼리를 실행하고 결과를 분석
     Returns:
