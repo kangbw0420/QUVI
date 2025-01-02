@@ -5,7 +5,7 @@ import time
 def test_korean_questions():
     # 테스트할 한글 질문들
     questions = [
-        "작년에 거래금액이 가장 컸던 계좌가 뭐야",
+        "24년 국민은행 거래액",
     ]
 
     for question in questions:
