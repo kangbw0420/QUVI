@@ -6,7 +6,7 @@ import pandas as pd
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 from data_class.request import RequestData
-from langfuse.decorators import langfuse_context, observe
+from langfuse.decorators import observe
 
 from graph.graph import make_graph
 from fuse.langfuse_handler import langfuse_handler
@@ -35,17 +35,29 @@ langfuse_client = LangfuseClient(base_url="http://localhost:8001")
 
 
 @api.post("/process")
+@observe()  # Langfuse 데코레이터 추가
 async def process_input(request: RequestData):
-    """프로덕션용 엔드포인트"""
-    try:
-        # LangGraph 실행
-        data = await graph.ainvoke({"user_question": request.user_question})
-
-        # solver에서 이미 원하는 형태로 result를 생성했으므로 그대로 반환
-        return {"result": data["final_answer"]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing input: {str(e)}")
-
+   """프로덕션용 엔드포인트"""
+   try:
+       # 트레이스 ID 생성
+       trace_id = str(uuid.uuid4())
+       
+       # LangGraph 실행 - callbacks 추가
+       data = await graph.ainvoke(
+           {"user_question": request.user_question},
+           config={"callbacks": [langfuse_handler]}
+       )
+       
+       # solver에서 이미 원하는 형태로 result를 생성했으므로 그대로 반환
+       return {
+           "result": data["final_answer"],
+           "trace_id": trace_id  # trace_id도 반환
+       }
+   except Exception as e:
+       raise HTTPException(
+           status_code=500, 
+           detail=f"Error processing input: {str(e)}"
+       )
 
 @api.post("/debug/process")
 @observe()

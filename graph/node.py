@@ -2,7 +2,8 @@ from typing import TypedDict
 from .task import analyze_user_question, create_query, sql_response, execute_query
 from datetime import datetime
 from .utils import analyze_data
-
+from fuse.langfuse_handler import langfuse_handler
+from langfuse.decorators import observe
 
 class GraphState(TypedDict):
     user_question: str  # 최초 사용자 질의
@@ -16,6 +17,7 @@ class GraphState(TypedDict):
 
 
 ########################### 정의된 노드 ###########################
+@observe()
 def question_analyzer(state: GraphState) -> GraphState:
     """사용자 질문을 분석하여 간소화(개떡같은 질문을 찰떡같은 질문으로)
     Returns:
@@ -33,7 +35,7 @@ def question_analyzer(state: GraphState) -> GraphState:
     state.update({"analyzed_question": analyzed_question})
     return state
 
-
+@observe()
 async def query_creator(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
     Returns:
@@ -83,7 +85,7 @@ def result_executor(state: GraphState) -> GraphState:
     state.update({"query_result_stats": query_result_stats, "query_result": result})
     return state
 
-
+@observe()
 def sql_respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성
     Returns:
