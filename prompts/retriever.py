@@ -101,17 +101,17 @@ class FewShotRetriever:
                     
                     # Find corresponding metadata with SQL
                     metadata = result.get("metadata", {})
-                    sql = metadata.get("answer", "") # 애가 없음..
-                    print(sql)
-                    if question and sql:
+                    answer = metadata.get("answer", "")
+                    print(answer)
+                    if question and answer:
                         few_shot = {
                             "input": question,
-                            "output": sql
+                            "output": answer
                         }
                         few_shots.append(few_shot)
                         print(f"\nProcessed few-shot example:")
                         print(f"Question: {few_shot['input']}")
-                        print(f"SQL: {few_shot['output']}")
+                        print(f"answer: {few_shot['output']}")
             
             return few_shots
                 
