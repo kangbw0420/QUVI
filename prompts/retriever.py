@@ -29,7 +29,6 @@ class FewShotRetriever:
 
     async def query_vector_store(self, query_text: str, collection_name: str, top_k: int = 9) -> List[Dict]:
         """벡터 스토어에 쿼리를 보내 유사한 예제들을 검색합니다.
-        
         Returns:
             List[Dict]: 검색된 문서와 메타데이터를 포함하는 결과 리스트.
             빈 리스트는 결과를 찾지 못했거나 에러가 발생한 경우를 의미.
@@ -83,7 +82,6 @@ class FewShotRetriever:
 
     async def format_few_shots(self, results: List[Dict]) -> List[Dict]:
         """벡터 스토어 검색 결과를 few-shot 예제 형식으로 변환합니다.
-        
         Returns:
             List[Dict]: 입력(input)과 출력(output)을 포함하는 few-shot 예제 리스트.
             빈 리스트는 변환할 결과가 없거나 변환 중 오류가 발생한 경우를 의미.
