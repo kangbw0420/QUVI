@@ -1,12 +1,19 @@
 from typing import TypedDict
-from .task import analyze_user_question, create_query, sql_response, execute_query
+from .task import (
+    analyze_user_question,
+    create_query,
+    sql_response,
+    execute_query,
+    select_table,
+)
 from datetime import datetime
 from .utils import analyze_data
-from fuse.langfuse_handler import langfuse_handler
 from langfuse.decorators import observe
+
 
 class GraphState(TypedDict):
     user_question: str  # 최초 사용자 질의
+    selected_table: str  # 사용자 질의에 대한 선택된 테이블
     analyzed_question: str  # analyzer를 통해 분석된 질의
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
     query_result_stats: (
@@ -17,6 +24,20 @@ class GraphState(TypedDict):
 
 
 ########################### 정의된 노드 ###########################
+@observe()
+async def table_selector(state: GraphState) -> GraphState:
+    """사용자 질문에 검ㅐ해야 할 table을 선택
+    Returns:
+        GraphState: analyzed_question이 추가된 상태.
+    Raises:
+        KeyError: state에 user_question이 없는 경우.
+    """
+    user_question = state["user_question"]
+    selected_table = await select_table(user_question)
+
+    state.update({"selected_table": selected_table})
+    return state
+
 
 @observe()
 async def question_analyzer(state: GraphState) -> GraphState:
@@ -26,14 +47,14 @@ async def question_analyzer(state: GraphState) -> GraphState:
     Raises:
         KeyError: state에 user_question이 없는 경우.
     """
-    print(f"Received user question: {state['user_question']}")
-    
+
     user_question = state["user_question"]
-    analyzed_question = await analyze_user_question(user_question)
-    
-    print(f"Analyzed question: {analyzed_question}")
+    selected_table = state["selected_table"]
+    analyzed_question = await analyze_user_question(user_question, selected_table)
+
     state.update({"analyzed_question": analyzed_question})
     return state
+
 
 @observe()
 async def query_creator(state: GraphState) -> GraphState:
@@ -43,13 +64,13 @@ async def query_creator(state: GraphState) -> GraphState:
     Raises:
         KeyError: state에 analyzed_question이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
-    """  
+    """
+    selected_table = state["selected_table"]
     analyzed_question = state["analyzed_question"]
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await create_query(analyzed_question, today)
-    print(f"SQL query created: {sql_query}")
+    sql_query = await create_query(selected_table, analyzed_question, today)
     # 상태 업데이트
     state.update(
         {
@@ -57,6 +78,7 @@ async def query_creator(state: GraphState) -> GraphState:
         }
     )
     return state
+
 
 @observe()
 def result_executor(state: GraphState) -> GraphState:
@@ -84,6 +106,7 @@ def result_executor(state: GraphState) -> GraphState:
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": result})
     return state
+
 
 @observe()
 def sql_respondent(state: GraphState) -> GraphState:
