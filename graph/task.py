@@ -33,20 +33,20 @@ async def select_table(user_question: str) -> str:
     """
     system_prompt = load_prompt("prompts/select_table/system.prompt")
 
-    # few_shots = await retriever.get_few_shots(
-    #     query_text=user_question, task_type="selector", collection_name="shots_selector"
-    # )
+    few_shots = await retriever.get_few_shots(
+        query_text=user_question, task_type="selector", collection_name="shots_selector"
+    )
 
     few_shot_prompt = []
-    # for example in few_shots:
-    #     few_shot_prompt.append(("human", example["input"]))
-    #     few_shot_prompt.append(("ai", example["output"]))
+    for example in few_shots:
+        few_shot_prompt.append(("human", example["input"]))
+        few_shot_prompt.append(("ai", example["output"]))
 
     SELECT_TABLE_PROMPT = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=system_prompt),
             *few_shot_prompt,
-            ("human", "사용자 질문: {user_question}"),
+            ("human", "{user_question}\nAI:"),
         ]
     )
 
@@ -94,7 +94,7 @@ async def analyze_user_question(user_question: str, selected_table: str) -> str:
         [
             SystemMessage(content=system_prompt + schema_prompt),
             *few_shot_prompt,
-            ("human", "사용자 질문: {user_question}"),
+            ("human", "{user_question}\nAI:"),
         ]
     )
 
@@ -284,7 +284,7 @@ def sql_response(user_question, sql_query, query_result_stats) -> str:
             SystemMessage(content=system_prompt),
             (
                 "human",
-                """사용자 질문: {user_question}""",
+                """{user_question}\nAI:""",
             ),
         ]
     )

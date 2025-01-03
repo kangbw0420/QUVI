@@ -5,7 +5,7 @@ import time
 def test_korean_questions():
     # 테스트할 한글 질문들
     questions = [
-        "수시입출계좌 거래내역 알려줘"
+        "잔액이 가장 적은 계좌의 지난 일주일 간 거래 내역"
     ]
 
     for question in questions:
