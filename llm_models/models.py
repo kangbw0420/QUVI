@@ -93,6 +93,5 @@ class CustomChatLLM(BaseLLM, BaseModel):
 
 # Create model instances, max_token 설정 안 하면 기본값 125
 llama_70b_llm = CustomChatLLM(model="planner", temperature=0.1, max_tokens=3000)
-# qwen_llm = CustomChatLLM(model="nl2sql", temperature=0.1, max_tokens=1000)
-qwen_llm = ChatOpenAI(model="gpt-4o-mini")
+qwen_llm = CustomChatLLM(model="nl2sql", temperature=0.1, max_tokens=1000)
 llama_8b_llm = CustomChatLLM(model="solver", temperature=0.1, max_tokens=500)
