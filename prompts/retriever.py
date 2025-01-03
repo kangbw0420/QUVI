@@ -52,7 +52,7 @@ class FewShotRetriever:
                 )
                 
                 print(f"Response status: {response.status_code}")
-                print(f"Response content preview: {response.text[:500]}...")
+                print(f"Response content preview: {response.text[:1500]}...")
                 
                 response.raise_for_status()
                 data = response.json()

@@ -158,12 +158,7 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         TypeError: command가 문자열이나 Executable이 아닌 경우.
         Exception: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생시.
     """
-    print("\n=== Execute Query Started ===")
-    print(f"Query to execute: {command}")
-    print(f"Fetch mode: {fetch}")
-    
     try:
-        print("\n=== Setting up DB Connection ===")
         parameters = {}
         execution_options = {}
         # db_path = os.getenv("DB_HOST")
@@ -176,10 +171,8 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         
         engine = create_engine(db_url)
 
-        print("\n=== Executing Query ===")
         with engine.begin() as connection:
             if isinstance(command, str):
-                print("Converting string command to SQLAlchemy text...")
                 command = text(command)
             elif isinstance(command, Executable):
                 print("Command is already SQLAlchemy executable")
