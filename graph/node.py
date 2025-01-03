@@ -110,6 +110,7 @@ def result_executor(state: GraphState) -> GraphState:
 
 @observe()
 def sql_respondent(state: GraphState) -> GraphState:
+    print(11)
     """쿼리 결과를 바탕으로 최종 응답을 생성
     Returns:
         GraphState: final_answer가 추가된 상태.
@@ -119,11 +120,13 @@ def sql_respondent(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     sql_query = state["sql_query"]
     query_result_stats = state.get("query_result_stats", [])
+    print('sql_response 진입')
     final_answer = sql_response(
         user_question=user_question,
         sql_query=sql_query,
         query_result_stats=query_result_stats,
     )
+    print('sql_response 결과 :', final_answer)
 
     state.update({"final_answer": final_answer})
     return state

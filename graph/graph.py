@@ -35,7 +35,7 @@ def make_graph() -> CompiledStateGraph:
 
         # 그래프 컴파일
         app = workflow.compile()
-
+        
         return app
     except Exception as e:
         print(f"Error in make_graph: {str(e)}")
