@@ -33,14 +33,14 @@ async def select_table(user_question: str) -> str:
     """
     system_prompt = load_prompt("prompts/select_table/system.prompt")
 
-    few_shots = await retriever.get_few_shots(
-        query_text=user_question, task_type="selector", collection_name="shots_selector"
-    )
+    # few_shots = await retriever.get_few_shots(
+    #     query_text=user_question, task_type="selector", collection_name="shots_selector"
+    # )
 
     few_shot_prompt = []
-    for example in few_shots:
-        few_shot_prompt.append(("human", example["input"]))
-        few_shot_prompt.append(("ai", example["output"]))
+    # for example in few_shots:
+    #     few_shot_prompt.append(("human", example["input"]))
+    #     few_shot_prompt.append(("ai", example["output"]))
 
     SELECT_TABLE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -154,25 +154,23 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
                 ("human", analyzed_question),
             ]
         )
-
         chain = prompt | qwen_llm
 
         # LLM 호출 및 출력 받기
         output = chain.invoke(
             {"analyzed_question": analyzed_question}
         )  # LLM 응답 (AIMessage 객체)
-
         # 출력에서 SQL 쿼리 추출
-        match = re.search(r"```sql\s*(.*?)\s*```", output.content, re.DOTALL)
+        match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
         if match:
             sql_query = match.group(1)
         else:
-            match = re.search(r"SELECT.*?;", output.content, re.DOTALL)
+            match = re.search(r"SELECT.*?;", output, re.DOTALL)
             if match:
                 sql_query = match.group(0)
+
             else:
                 raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
-
         return sql_query.strip()
 
     except Exception as e:
