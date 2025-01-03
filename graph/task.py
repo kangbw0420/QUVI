@@ -122,21 +122,12 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
         3) 퓨 샷
         4) 사용자 프롬프트 (오늘 날짜 및 분석된 질의)
         """
-        # 테이블 번호에 따라 프롬프트 파일 선택
-        table_num = selected_table[-4:]  # 마지막 4자리 추출
-        
-        if table_num in ['2010', '2020', '2030', '2060']:
-            prompt_file = "prompts/create_query/balance.prompt"
-        elif table_num in ['2011', '2021', '2031', '2061']:
-            prompt_file = "prompts/create_query/transaction.prompt"
-        elif table_num in ['2090', '2091', '2092']:
-            prompt_file = "prompts/create_query/securities.prompt"
-        else:
-            prompt_file = "prompts/create_query/system.prompt"
+        try:
+            prompt_file = f"prompts/create_query/{selected_table}.prompt"
+            system_prompt = load_prompt(prompt_file).format(today=today)
+        except FileNotFoundError:
+            system_prompt = load_prompt("prompts/create_query/system.prompt").format(today=today)
 
-        # 프롬프트 로드
-        system_prompt = load_prompt(prompt_file).format(today=today)
-        
         schema_prompt = (
             f"테이블: {selected_table}\n"
             + "칼럼명:\n"
