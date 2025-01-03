@@ -89,15 +89,12 @@ def result_executor(state: GraphState) -> GraphState:
         ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
     """
     # SQL 쿼리 가져오기
-    print(1)
     query = state.get("sql_query")
-    print(query)
     if not query:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
 
     # DB 쿼리 실행
     result = execute_query(query)
-    print(result)
 
     # 결과가 None인 경우 빈 리스트로 초기화
     if result is None:
