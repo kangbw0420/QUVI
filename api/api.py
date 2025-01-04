@@ -45,13 +45,15 @@ async def process_input(request: RequestData):
             {"user_question": request.user_question},
             config={"callbacks": [langfuse_handler]},
         )
-
         # result
         answer = data["final_answer"]
-        result = {"answer": answer, "table": {"columns": []}}
 
         # raw_data
         raw_data = data["query_result"]
+        col = list(raw_data[0].keys())
+        print(col)
+        result = {"answer": answer, "table":col}
+
 
         return {
             "status": "success",  # 이 부분은 나중에 제거 필요
@@ -62,7 +64,7 @@ async def process_input(request: RequestData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing input: {str(e)}")
 
-
+import json
 from ML.classification import classifier
 from ML.regression import regressor
 
@@ -71,7 +73,23 @@ async def process_classification(request: RequestData):
     """사용자 질문에 대해 분류 분석 결과를 반환하는 엔드포인트"""
     try:
         result = await classifier.analyze_question(request.user_question)
-        return result
+        
+        combined_result = {
+            "answer": "class" + result["answer"],
+            "raw_data": [result["raw_data"]]
+        }
+        
+        final_result = {
+            "status": "success",  # 나중에 제거
+            "result": {
+                "answer": json.dumps(combined_result, ensure_ascii=False),
+                "table": []
+            },
+            "raw_data": [],  # 나중에 수정
+            "trace_id": "100000"  # 나중에 수정
+        }
+        
+        return final_result
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -83,8 +101,19 @@ async def process_regression(request: RequestData):
     """사용자 질문에 대해 회귀 분석 결과를 반환하는 엔드포인트"""
     try:
         result = await regressor.analyze_question(request.user_question)
-        return result
+        print(result.keys())
+        print(result['data'])
+        col = list(result['data'][0].keys())
+        print(col)
+        final_result = {
+           "status": "success",  # 나중에 제거
+           "result": {"answer": result['answer'], "table":col},  # 나중에 수정
+           "raw_data": result['data'],
+           "trace_id": '100000',  # 나중에 수정
+        }
+        return final_result
     except Exception as e:
+        print(e)
         raise HTTPException(
             status_code=500,
             detail=f"Error in regression process: {str(e)}"

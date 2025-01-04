@@ -38,14 +38,6 @@ def print_response(endpoint: str, question: str, response: Dict[str, Any]):
     
     print("="* 50)
 
-# def print_response(endpoint: str, question: str, response: Dict[str, Any]):
-#     """응답 결과를 보기 좋게 출력하는 함수"""
-#     print(f"\n=== {endpoint.upper()} 테스트 ===")
-#     print(f"질문: {question}")
-#     print("\n응답:")
-#     print(json.dumps(response, ensure_ascii=False, indent=2))
-#     print("="* 50)
-
 
 def test_classification():
     """정기 거래 패턴 분석 엔드포인트 테스트"""

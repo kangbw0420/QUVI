@@ -51,7 +51,7 @@ class TransactionRegressor:
     def _create_prompt(self, predictions_df: pd.DataFrame, user_question: str) -> ChatPromptTemplate:
         """Create the prompt for the LLM"""
         prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content="""당신은 금융 데이터 분석 전문가입니다. 아래 표의 데이터를 정확하게 분석하여 사용자의 질문에 직접적으로 답변하세요.
+            ("human", """당신은 금융 데이터 분석 전문가입니다. 아래 표의 데이터를 정확하게 분석하여 사용자의 질문에 직접적으로 답변하세요.
 
     예측 데이터 정보:
     - month: 예측 월
@@ -61,13 +61,14 @@ class TransactionRegressor:
 
     아래는 월간 거래 예측 데이터입니다:
     {predictions}
+                          
+    위 데이터를 기반으로 다음 질문에 답변해주세요: {question}
 
     답변 시 다음 사항을 반드시 지켜주세요:
     1. 질문에 대해 계산된 결과값을 직접적으로 제시하세요
     2. 금액은 쉼표를 포함한 숫자 형식으로 표시하세요 (예: 1,234,567)
     3. '~을 도와드리겠습니다'와 같은 대화형 문구는 사용하지 마세요
-    4. 분석이 필요한 경우, 계산 과정을 간단히 포함하세요"""),
-            HumanMessage(content="{question}")
+    4. 분석이 필요한 경우, 계산 과정을 간단히 포함하세요""")
         ])
 
         return prompt
@@ -105,34 +106,21 @@ class TransactionRegressor:
             
             # 3. Create and format prompt
             print("\n=== Creating LLM Prompt ===")
-            prompt = self._create_prompt(predictions_df, user_question)
+            raw_prompt = self._create_prompt(predictions_df, user_question)
             
             # Format the prompt with actual values
-            formatted_messages = prompt.format_messages(
+            formatted_messages = raw_prompt.format_messages(
                 predictions=predictions_df.to_string(index=False),
                 question=user_question
             )
             
-            # Print formatted prompt with actual values
-            print("\n=== Formatted Prompt ===")
-            for msg in formatted_messages:
-                print(f"\n{msg.type.upper()}:")
-                # Replace template variables with actual values
-                content = msg.content
-                if "{predictions}" in content:
-                    content = content.replace("{predictions}", predictions_df.to_string(index=False))
-                if "{question}" in content:
-                    content = content.replace("{question}", user_question)
-                print(content)
-                
+            prompt_content = formatted_messages[0].content
+            print(prompt_content)
+
             # 4. Create chain and get LLM response
             print("\n=== Getting LLM Response ===")
-            chain = prompt | qwen_llm | self.output_parser
+            llm_response = qwen_llm._call(prompt_content)
             
-            llm_response = chain.invoke({
-                "predictions": predictions_df.to_string(index=False),
-                "question": user_question
-            })
             
             print("\n=== LLM Response ===")
             print(llm_response)

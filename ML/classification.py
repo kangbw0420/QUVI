@@ -94,12 +94,7 @@ class TransactionClassifier:
                 
             # 3. Create chain and get LLM response
             print("\n=== Getting LLM Response ===")
-            chain = prompt_content | qwen_llm | self.output_parser
-            
-            llm_response = chain.invoke({
-                "patterns": json.dumps(patterns_data, ensure_ascii=False, indent=2),
-                "question": user_question
-            })
+            llm_response = qwen_llm._call(prompt_content)
             
             print("\n=== LLM Response ===")
             print(llm_response)
