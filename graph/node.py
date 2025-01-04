@@ -117,10 +117,15 @@ def sql_respondent(state: GraphState) -> GraphState:
         KeyError: (user_question, query_result_stats)가 없는 경우.
     """
     user_question = state["user_question"]
+    analyzed_question = state["analyzed_question"]
     query_result_stats = state.get("query_result_stats", [])
-    final_answer = sql_response(
+    output = sql_response(
         user_question=user_question,
         query_result_stats=query_result_stats,
+    )
+
+    final_answer = (
+        f'데이터 베이스에 "{analyzed_question}"를 조회한 결과입니다.\n\n' + output
     )
 
     state.update({"final_answer": final_answer})

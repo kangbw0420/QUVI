@@ -46,13 +46,15 @@ async def process_input(request: RequestData):
             config={"callbacks": [langfuse_handler]},
         )
 
+        # result
         answer = data["final_answer"]
         result = {"answer": answer, "table": {"columns": []}}
 
+        # raw_data
         raw_data = data["query_result"]
 
         return {
-            "status": "success",
+            "status": "success",  # 이 부분은 나중에 제거 필요
             "result": result,
             "raw_data": raw_data,
             "trace_id": trace_id,
