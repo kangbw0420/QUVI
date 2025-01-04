@@ -61,3 +61,31 @@ async def process_input(request: RequestData):
         }  # trace_id도 반환
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing input: {str(e)}")
+
+
+from ML.classification import classifier
+from ML.regression import regressor
+
+@api.post("/classification")
+async def process_classification(request: RequestData):
+    """사용자 질문에 대해 분류 분석 결과를 반환하는 엔드포인트"""
+    try:
+        result = await classifier.analyze_question(request.user_question)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error in classification process: {str(e)}"
+        )
+
+@api.post("/regression")
+async def process_regression(request: RequestData):
+    """사용자 질문에 대해 회귀 분석 결과를 반환하는 엔드포인트"""
+    try:
+        result = await regressor.analyze_question(request.user_question)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error in regression process: {str(e)}"
+        )
