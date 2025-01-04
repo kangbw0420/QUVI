@@ -126,7 +126,9 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
             prompt_file = f"prompts/create_query/{selected_table}.prompt"
             system_prompt = load_prompt(prompt_file).format(today=today)
         except FileNotFoundError:
-            system_prompt = load_prompt("prompts/create_query/system.prompt").format(today=today)
+            system_prompt = load_prompt("prompts/create_query/system.prompt").format(
+                today=today
+            )
 
         schema_prompt = (
             f"테이블: {selected_table}\n"
@@ -267,7 +269,7 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         raise
 
 
-def sql_response(user_question, sql_query, query_result_stats) -> str:
+def sql_response(user_question, query_result_stats) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -276,16 +278,21 @@ def sql_response(user_question, sql_query, query_result_stats) -> str:
     """
     output_parser = StrOutputParser()
 
-    system_prompt = load_prompt("prompts/sql_response/system.prompt").format(
-        sql_query=sql_query, query_result_stats=query_result_stats
+    system_prompt = load_prompt("prompts/sql_response/system.prompt")
+    few_shots = load_prompt("prompts/sql_response/fewshots.json")
+    few_shot_prompt = []
+    for example in few_shots:
+        few_shot_prompt.append(("human", example["input"]))
+        few_shot_prompt.append(("ai", example["output"]))
+    human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
+        query_result_stats=query_result_stats, user_question=user_question
     )
+
     prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=system_prompt),
-            (
-                "human",
-                """{user_question}\nAI:""",
-            ),
+            *few_shot_prompt,
+            HumanMessage(content=human_prompt),
         ]
     )
     chain = prompt | qwen_llm | output_parser

@@ -114,14 +114,12 @@ def sql_respondent(state: GraphState) -> GraphState:
     Returns:
         GraphState: final_answer가 추가된 상태.
     Raises:
-        KeyError: (user_question, sql_query, query_result_stats)가 없는 경우.
+        KeyError: (user_question, query_result_stats)가 없는 경우.
     """
     user_question = state["user_question"]
-    sql_query = state["sql_query"]
     query_result_stats = state.get("query_result_stats", [])
     final_answer = sql_response(
         user_question=user_question,
-        sql_query=sql_query,
         query_result_stats=query_result_stats,
     )
 

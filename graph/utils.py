@@ -44,25 +44,25 @@ def analyze_data(data: List[Dict]) -> Dict[str, Dict[str, Any]]:
         if isinstance(df[col].iloc[0], Decimal):
             df[col] = df[col].astype(float)
 
-    result = {"numeric_columns": {}, "categorical_columns": {}}
+    result = {"숫자형 칼럼": {}, "범주형 칼럼": {}}
 
     for col in df.columns:
         # 숫자형 컬럼 확인 (float이나 int)
         if pd.api.types.is_numeric_dtype(df[col]):
-            result["numeric_columns"][col] = {
-                "sum": float(df[col].sum()),
-                "mean": float(df[col].mean()),
-                "count": int(df[col].count()),
-                "min": float(df[col].min()),
-                "max": float(df[col].max()),
+            result["숫자형 칼럼"][col] = {
+                "합계": float(df[col].sum()),
+                "평균": float(df[col].mean()),
+                "개수": int(df[col].count()),
+                "최소값": float(df[col].min()),
+                "최댓값": float(df[col].max()),
             }
         else:
             # 비숫자형 컬럼
             value_counts = df[col].value_counts()
-            result["categorical_columns"][col] = {
-                "counts": value_counts.to_dict(),
-                "unique_count": len(value_counts),
-                "total_count": int(value_counts.sum()),
+            result["범주형 칼럼"][col] = {
+                "범주 별 개수": value_counts.to_dict(),
+                "범주 수": len(value_counts),
+                "전체 개수": int(value_counts.sum()),
             }
 
     return result
