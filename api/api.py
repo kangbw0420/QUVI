@@ -11,7 +11,6 @@ from langfuse.decorators import observe
 from graph.graph import make_graph
 from fuse.langfuse_handler import langfuse_handler
 from fuse.langfuse_client import LangfuseClient
-from utils.json_serializer import convert_dataframe_for_json
 
 # 디버깅용 import
 from datetime import datetime
