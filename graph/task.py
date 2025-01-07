@@ -1,3 +1,4 @@
+from json import load
 import re, os
 from typing import Union, Sequence, Dict, Any
 from dotenv import load_dotenv
@@ -10,14 +11,52 @@ from sqlalchemy.engine import Result
 from .utils import load_prompt
 from llm_models.models import llama_70b_llm, llama_8b_llm, qwen_llm
 from utils.config import Config
-
 from prompts.retriever import retriever
-import asyncio
 
 load_dotenv()
 
 
-async def analyze_user_question(user_question: str) -> str:
+async def select_table(user_question: str) -> str:
+    """사용자의 질문으로부터 테이블을 선택
+    Returns:
+        str: 'aicfo_get_cabo_XXXX'의 테이블
+    Raises:
+        ValueError: 질문이 분석 가능한 형식이 아닌 경우.
+    """
+    output_parser = StrOutputParser()
+
+    """
+    프롬프트는 세 부분으로 구성됩니다.
+    1) 시스템 프롬프트
+    2) 퓨 샷
+    3) 사용자 프롬프트 (사용자의 질문만)        
+    """
+    system_prompt = load_prompt("prompts/select_table/system.prompt")
+
+    # few_shots = await retriever.get_few_shots(
+    #     query_text=user_question, task_type="selector", collection_name="shots_selector"
+    # )
+
+    # few_shot_prompt = []
+    # for example in few_shots:
+    #     few_shot_prompt.append(("human", example["input"]))
+    #     few_shot_prompt.append(("ai", example["output"]))
+
+    SELECT_TABLE_PROMPT = ChatPromptTemplate.from_messages(
+        [
+            SystemMessage(content=system_prompt),
+            # *few_shot_prompt,
+            ("human", "{user_question}\nAI:"),
+        ]
+    )
+
+    select_table_chain = SELECT_TABLE_PROMPT | llama_70b_llm | output_parser
+    selected_table = select_table_chain.invoke({"user_question": user_question})
+
+    return selected_table
+
+
+async def analyze_user_question(user_question: str, selected_table: str) -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
@@ -36,10 +75,14 @@ async def analyze_user_question(user_question: str) -> str:
     print(f"Processing question: {user_question}")
     system_prompt = load_prompt("prompts/analyze_user_question/system.prompt")
 
+    schema_prompt = (
+        f"테이블: {selected_table}\n"
+        + "칼럼명:\n"
+        + load_prompt("prompts/schema.json")[selected_table]
+    )
+
     few_shots = await retriever.get_few_shots(
-        query_text=user_question,
-        task_type="analyzer",
-        collection_name="shots_analyzer"
+        query_text=user_question, task_type="analyzer", collection_name="shots_analyzer"
     )
 
     few_shot_prompt = []
@@ -49,9 +92,9 @@ async def analyze_user_question(user_question: str) -> str:
 
     ANALYZE_PROMPT = ChatPromptTemplate.from_messages(
         [
-            SystemMessage(content=system_prompt),
+            SystemMessage(content=system_prompt + schema_prompt),
             *few_shot_prompt,
-            ("human", "사용자 질문: {user_question}"),
+            ("human", "{user_question}\nAI:"),
         ]
     )
 
@@ -62,7 +105,7 @@ async def analyze_user_question(user_question: str) -> str:
     return analyzed_question
 
 
-async def create_query(analyzed_question: str, today: str) -> str:
+async def create_query(selected_table, analyzed_question: str, today: str) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
         str: 생성된 SQL 쿼리문
@@ -72,16 +115,6 @@ async def create_query(analyzed_question: str, today: str) -> str:
     """
     try:
 
-        # table_name 추출: aicfo_get_cabo_2010[농협은행 잔고]에서 aicfo_get_cabo_2010만 추출
-        table_name_pattern = r"aicfo_get_cabo_\d{4}"
-        table_name = re.search(table_name_pattern, analyzed_question)[0]
-
-        # refined_question 추출: aicfo_get_cabo_2010[농협은행 잔고] "농협은행 잔고"만 추출
-        refined_question_pattern = r"\[(.*?)\]"
-        refined_question = re.search(refined_question_pattern, analyzed_question).group(
-            1
-        )
-
         """
         프롬프트는 네 부분으로 구성됩니다.
         1) 시스템 프롬프트
@@ -89,24 +122,29 @@ async def create_query(analyzed_question: str, today: str) -> str:
         3) 퓨 샷
         4) 사용자 프롬프트 (오늘 날짜 및 분석된 질의)
         """
-        system_prompt = load_prompt("prompts/create_query/system.prompt").format(
-            today=today
-        )
+        try:
+            prompt_file = f"prompts/create_query/{selected_table}.prompt"
+            system_prompt = load_prompt(prompt_file).format(today=today)
+        except FileNotFoundError:
+            system_prompt = load_prompt("prompts/create_query/system.prompt").format(
+                today=today
+            )
+
         schema_prompt = (
-            f"테이블: {table_name}\n"
+            f"테이블: {selected_table}\n"
             + "칼럼명:\n"
-            + load_prompt("prompts/create_query/schema.json")[table_name]
+            + load_prompt("prompts/schema.json")[selected_table]
         )
 
         # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
-        back_number = re.search(r'\d{4}$', table_name).group()
+        back_number = re.search(r"\d{4}$", selected_table).group()
         collection_name = f"shots_{back_number}"
 
         # retriever를 사용하여 동적으로 few-shot 예제 가져오기
         few_shots = await retriever.get_few_shots(
-            query_text=refined_question,
+            query_text=analyzed_question,
             task_type="creator",
-            collection_name=collection_name
+            collection_name=collection_name,
         )
 
         few_shot_prompt = []
@@ -118,17 +156,15 @@ async def create_query(analyzed_question: str, today: str) -> str:
             [
                 SystemMessage(content=system_prompt + schema_prompt),
                 *few_shot_prompt,
-                ("human", refined_question),
+                ("human", analyzed_question),
             ]
         )
-
         chain = prompt | qwen_llm
 
         # LLM 호출 및 출력 받기
         output = chain.invoke(
-            {"refined_question": refined_question}
+            {"analyzed_question": analyzed_question}
         )  # LLM 응답 (AIMessage 객체)
-
         # 출력에서 SQL 쿼리 추출
         match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
         if match:
@@ -137,9 +173,9 @@ async def create_query(analyzed_question: str, today: str) -> str:
             match = re.search(r"SELECT.*?;", output, re.DOTALL)
             if match:
                 sql_query = match.group(0)
+
             else:
                 raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
-
         return sql_query.strip()
 
     except Exception as e:
@@ -158,7 +194,12 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         TypeError: command가 문자열이나 Executable이 아닌 경우.
         Exception: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생시.
     """
+    print("\n=== Execute Query Started ===")
+    print(f"Query to execute: {command}")
+    print(f"Fetch mode: {fetch}")
+
     try:
+        print("\n=== Setting up DB Connection ===")
         parameters = {}
         execution_options = {}
         # db_path = os.getenv("DB_HOST")
@@ -166,13 +207,16 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
 
         # URL encode the password to handle special characters
         from urllib.parse import quote_plus
+
         password = quote_plus(str(Config.DB_PASSWORD))
         db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
-        
+
         engine = create_engine(db_url)
 
+        print("\n=== Executing Query ===")
         with engine.begin() as connection:
             if isinstance(command, str):
+                print("Converting string command to SQLAlchemy text...")
                 command = text(command)
             elif isinstance(command, Executable):
                 print("Command is already SQLAlchemy executable")
@@ -219,12 +263,13 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         print(f"Error type: {type(e)}")
         print(f"Error message: {str(e)}")
         import traceback
+
         print("Full traceback:")
         traceback.print_exc()
         raise
 
 
-def sql_response(user_question, sql_query, query_result_stats) -> str:
+def sql_response(user_question, query_result_stats) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -233,16 +278,21 @@ def sql_response(user_question, sql_query, query_result_stats) -> str:
     """
     output_parser = StrOutputParser()
 
-    system_prompt = load_prompt("prompts/sql_response/system.prompt").format(
-        sql_query=sql_query, query_result_stats=query_result_stats
+    system_prompt = load_prompt("prompts/sql_response/system.prompt")
+    few_shots = load_prompt("prompts/sql_response/fewshots.json")
+    few_shot_prompt = []
+    for example in few_shots:
+        few_shot_prompt.append(("human", example["input"]))
+        few_shot_prompt.append(("ai", example["output"]))
+    human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
+        query_result_stats=query_result_stats, user_question=user_question
     )
+
     prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=system_prompt),
-            (
-                "human",
-                """사용자 질문: {user_question}""",
-            ),
+            *few_shot_prompt,
+            HumanMessage(content=human_prompt),
         ]
     )
     chain = prompt | qwen_llm | output_parser

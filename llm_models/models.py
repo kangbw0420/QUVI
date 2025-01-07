@@ -5,7 +5,6 @@ from langchain_core.outputs import LLMResult, Generation
 from pydantic import Field, BaseModel
 from utils.config import Config
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 
 
 load_dotenv()
