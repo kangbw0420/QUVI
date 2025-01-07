@@ -92,14 +92,6 @@ def sql_respondent(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     analyzed_question = state["analyzed_question"]
     query_result_stats = state.get("query_result_stats", [])
-
-    # 결과가 없는 경우 처리
-    if query_result_stats == {"숫자형 칼럼": {}, "범주형 칼럼": {}}:
-        final_answer = f'죄송합니다. 요청주신 내용에 따라 데이터베이스에서 다음 내용을 검색했지만 데이터가 없었습니다.: {analyzed_question}'
-        state.update({"final_answer": final_answer})
-        return state
-
-    # 결과가 있는 경우 기존 로직대로 처리
     output = sql_response(
         user_question=user_question,
         query_result_stats=query_result_stats,
@@ -108,7 +100,6 @@ def sql_respondent(state: GraphState) -> GraphState:
     final_answer = (
         f'데이터 베이스에 "{analyzed_question}"를 조회한 결과입니다.\n\n' + output
     )
-    print(final_answer)
 
     state.update({"final_answer": final_answer})
     return state
