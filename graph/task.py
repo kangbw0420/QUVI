@@ -275,7 +275,7 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         raise
 
 
-def sql_response(user_question, query_result_stats) -> str:
+def sql_response(user_question, query_result_stats = None, query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -290,8 +290,10 @@ def sql_response(user_question, query_result_stats) -> str:
     for example in few_shots:
         few_shot_prompt.append(("human", example["input"]))
         few_shot_prompt.append(("ai", example["output"]))
+
+    # query_result_stats vs query_result
     human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
-        query_result_stats=query_result_stats, user_question=user_question
+        query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
 
     prompt = ChatPromptTemplate.from_messages(
