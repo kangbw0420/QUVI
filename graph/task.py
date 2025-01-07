@@ -16,7 +16,7 @@ from prompts.retriever import retriever
 load_dotenv()
 
 
-async def select_table(user_question: str) -> str:
+async def select_table(user_question: str, last_data: str = "") -> str:
     """사용자의 질문으로부터 테이블을 선택
     Returns:
         str: 'aicfo_get_cabo_XXXX'의 테이블
@@ -32,31 +32,31 @@ async def select_table(user_question: str) -> str:
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
     system_prompt = load_prompt("prompts/select_table/system.prompt")
+    contents = system_prompt + last_data if len(last_data)>1 else system_prompt
+    few_shots = await retriever.get_few_shots(
+        query_text=user_question, task_type="selector", collection_name="shots_selector"
+    )
 
-    # few_shots = await retriever.get_few_shots(
-    #     query_text=user_question, task_type="selector", collection_name="shots_selector"
-    # )
-
-    # few_shot_prompt = []
-    # for example in few_shots:
-    #     few_shot_prompt.append(("human", example["input"]))
-    #     few_shot_prompt.append(("ai", example["output"]))
+    few_shot_prompt = []
+    for example in few_shots:
+        few_shot_prompt.append(("human", example["input"]))
+        few_shot_prompt.append(("ai", example["output"]))
 
     SELECT_TABLE_PROMPT = ChatPromptTemplate.from_messages(
         [
-            SystemMessage(content=system_prompt),
-            # *few_shot_prompt,
+            SystemMessage(content=contents),
+            *few_shot_prompt,
             ("human", "{user_question}\nAI:"),
         ]
     )
 
-    select_table_chain = SELECT_TABLE_PROMPT | llama_70b_llm | output_parser
+    select_table_chain = SELECT_TABLE_PROMPT | qwen_llm | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
 
     return selected_table
 
 
-async def analyze_user_question(user_question: str, selected_table: str) -> str:
+async def analyze_user_question(user_question: str, selected_table: str, last_data: str = "", last_question:str = "") -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
@@ -81,8 +81,10 @@ async def analyze_user_question(user_question: str, selected_table: str) -> str:
         + load_prompt("prompts/schema.json")[selected_table]
     )
 
+    contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
+    
     few_shots = await retriever.get_few_shots(
-        query_text=user_question, task_type="analyzer", collection_name="shots_analyzer"
+        query_text= user_question, task_type="analyzer", collection_name="shots_analyzer"
     )
 
     few_shot_prompt = []
@@ -92,12 +94,16 @@ async def analyze_user_question(user_question: str, selected_table: str) -> str:
 
     ANALYZE_PROMPT = ChatPromptTemplate.from_messages(
         [
-            SystemMessage(content=system_prompt + schema_prompt),
+            SystemMessage(content=contents),
             *few_shot_prompt,
             ("human", "{user_question}\nAI:"),
         ]
     )
-
+    # with open("analyzer_prompt.txt", 'a+', encoding="utf-8") as f:
+    #     f.write(f"user_question: {user_question}")
+    #     f.write(f"\nSystemPrompt: {contents}")
+    #     f.write(f"\nFew_Shots: {few_shot_prompt}")
+    #     f.write(f"human: {user_question}\nAI:\n")
     analyze_chain = ANALYZE_PROMPT | qwen_llm | output_parser
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
