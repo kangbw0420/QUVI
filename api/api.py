@@ -40,7 +40,6 @@ async def process_input(request: RequestData):
            {"user_question": request.user_question},
            config={"callbacks": [langfuse_handler]}
        )
-       
        # solver에서 이미 원하는 형태로 result를 생성했으므로 그대로 반환
        return {
            "result": data["final_answer"],
