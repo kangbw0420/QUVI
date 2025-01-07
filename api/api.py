@@ -20,12 +20,6 @@ class Input(BaseModel):
     user_id: str = "default_user"  # 사용자 식별을 위한 기본값
 
 
-class Feedback(BaseModel):
-    trace_id: str
-    score: float
-    comment: str = None
-
-
 api = APIRouter(tags=["api"])
 graph = make_graph()
 

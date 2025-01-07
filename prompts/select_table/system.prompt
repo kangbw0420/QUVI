@@ -6,3 +6,5 @@
 - transaction: (증권 계좌 제외) 계좌 거래 내역
 - securities: 증권 계좌
 - ML: 미래에 대한 예측 정보가 담긴 데이터
+
+balance/transaction/securities/ML 외에는 어떤 것도 답해서는 안 됩니다.
