@@ -5,7 +5,7 @@ import time
 def test_korean_questions():
     # 테스트할 한글 질문들
     questions = [
-        "2024년 웹케시 월간 거래내역 정리해줘"
+        "농협 3억 이상 출금 내역"
     ]
     temp = ""
     for question in questions:
