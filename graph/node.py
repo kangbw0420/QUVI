@@ -120,8 +120,8 @@ def result_executor(state: GraphState) -> GraphState:
     # 결과가 None인 경우 빈 리스트로 초기화
     if result is None:
         result = {"columns": [], "rows": []}
-
-        # 통계값 추출
+    
+    # 통계값 추출
     query_result_stats = analyze_data(result)
 
     # 상태 업데이트
@@ -136,10 +136,17 @@ def sql_respondent(state: GraphState) -> GraphState:
     Raises:
         KeyError: (user_question, query_result_stats)가 없는 경우.
     """
-    output = sql_response(
-        user_question=state["user_question"],
-        query_result_stats=state.get("query_result_stats", []),
-    )
+    query_result = state["query_result"]    # row가 5개 이하?
+    if len(query_result) < 6:
+        output = sql_response(
+            user_question=state["user_question"],
+            query_result = query_result
+        )
+    else:
+        output = sql_response(
+            user_question=state["user_question"],
+            query_result_stats=state.get("query_result_stats", []),
+        )
 
     final_answer = (
         f'데이터 베이스에 "{state["analyzed_question"]}"를 조회한 결과입니다.\n\n' + output
