@@ -8,10 +8,11 @@ from .task import (
 )
 from datetime import datetime
 from .utils import analyze_data
-from langfuse.decorators import observe
-
 
 class GraphState(TypedDict):
+    last_question: str  # 이전 그래프의 사용자 질문
+    last_answer: str    # 이전 그래프의 LLM 답변
+    last_sql_query: str # 이전 그래프의 SQL 쿼리
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
     analyzed_question: str  # analyzer를 통해 분석된 질의
@@ -21,25 +22,36 @@ class GraphState(TypedDict):
     )
     query_result: dict  # sql_query 실행 결과 데이터 (데이터프레임 형식)
     final_answer: str  # 최종 답변
-
+    
+    
+def check_last_data(state: GraphState ) -> bool:
+    required_fields = ['last_question', 'last_answer', 'last_sql_query']
+    return all(len(state[field]) > 1 for field in required_fields)
 
 ########################### 정의된 노드 ###########################
-@observe()
 async def table_selector(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택
     Returns:
-        GraphState: analyzed_question이 추가된 상태.
+        GraphState: selected_table 업데이트.
     Raises:
         KeyError: state에 user_question이 없는 경우.
     """
     user_question = state["user_question"]
-    selected_table = await select_table(user_question)
+    if check_last_data(state):
+
+        last_data = "\n당신이 참고할 수 있는 앞선 대화의 내용입니다."+\
+                    f"\n- 이전 질문\n{state['last_question']}"+\
+                    f"\n- 이전 질문에 대한 SQL쿼리\n{state['last_sql_query']}"+\
+                    f"\n- 이전 질문에 대한 답변\n{state['last_answer']}"
+        
+        selected_table = await select_table(state['last_question']+" "+user_question, last_data)
+    else:
+        selected_table = await select_table(user_question)
 
     state.update({"selected_table": selected_table})
     return state
 
 
-@observe()
 async def question_analyzer(state: GraphState) -> GraphState:
     """사용자 질문을 분석하여 간소화(개떡같은 질문을 찰떡같은 질문으로)
     Returns:
@@ -48,15 +60,25 @@ async def question_analyzer(state: GraphState) -> GraphState:
         KeyError: state에 user_question이 없는 경우.
     """
 
-    user_question = state["user_question"]
-    selected_table = state["selected_table"]
-    analyzed_question = await analyze_user_question(user_question, selected_table)
+    if check_last_data(state):
+        last_data = "\n*Context"+\
+                    f"\n**이전 질문\n- {state['last_question']}"#+\
+                    # f"\n**이전 질문에 대한 SQL쿼리\n- {state['last_sql_query']}"+\
+                    # f"\n**이전 질문에 대한 답변\n- {state['last_answer']}"
+
+        analyzed_question = await analyze_user_question(
+            state["user_question"], 
+            state["selected_table"], 
+            last_data, state['last_question']
+            )
+
+    else:
+        analyzed_question = await analyze_user_question(state["user_question"], state["selected_table"])
 
     state.update({"analyzed_question": analyzed_question})
     return state
 
 
-@observe()
 async def query_creator(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
     Returns:
@@ -68,7 +90,7 @@ async def query_creator(state: GraphState) -> GraphState:
     selected_table = state["selected_table"]
     analyzed_question = state["analyzed_question"]
     today = datetime.now().strftime("%Y-%m-%d")
-
+    
     # SQL 쿼리 생성
     sql_query = await create_query(selected_table, analyzed_question, today)
     # 상태 업데이트
@@ -80,7 +102,6 @@ async def query_creator(state: GraphState) -> GraphState:
     return state
 
 
-@observe()
 def result_executor(state: GraphState) -> GraphState:
     """SQL 쿼리를 실행하고 결과를 분석
     Returns:
@@ -108,7 +129,6 @@ def result_executor(state: GraphState) -> GraphState:
     return state
 
 
-@observe()
 def sql_respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성
     Returns:
@@ -116,16 +136,13 @@ def sql_respondent(state: GraphState) -> GraphState:
     Raises:
         KeyError: (user_question, query_result_stats)가 없는 경우.
     """
-    user_question = state["user_question"]
-    analyzed_question = state["analyzed_question"]
-    query_result_stats = state.get("query_result_stats", [])
     output = sql_response(
-        user_question=user_question,
-        query_result_stats=query_result_stats,
+        user_question=state["user_question"],
+        query_result_stats=state.get("query_result_stats", []),
     )
 
     final_answer = (
-        f'데이터 베이스에 "{analyzed_question}"를 조회한 결과입니다.\n\n' + output
+        f'데이터 베이스에 "{state["analyzed_question"]}"를 조회한 결과입니다.\n\n' + output
     )
 
     state.update({"final_answer": final_answer})
