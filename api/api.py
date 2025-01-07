@@ -42,15 +42,15 @@ async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
     try:
         # 트레이스 ID 생성 (langfuse)
-        # trace_id = str(uuid.uuid4())
-        # print("request:", request.user_question)
+        trace_id = str(uuid.uuid4())
+
         data = await graph.ainvoke(
             {"user_question": request.user_question,
              "last_question": request.last_question,
              "last_answer": request.last_answer,
              "last_sql_query": request.last_sql_query,
-            }#,
-            #config={"callbacks": [langfuse_handler]},
+            },
+            config={"callbacks": [langfuse_handler]},
         )
         # print("data:",data)
         # 본문 {"result": {"answer": string, "table": []}, "raw_data": [], "SQL": ""}
@@ -63,12 +63,11 @@ async def process_input(request: Input) -> Output:
         print(col)
         result = {"answer": answer, "table":col}
 
-
         return {
             "status": "success",  # 이 부분은 나중에 제거 필요
             "result": result,
             "raw_data": raw_data,
             "trace_id": trace_id,
-        }  # trace_id도 반환
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing input: {str(e)}")
