@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class RequestData(BaseModel):
     user_question: str
     user_id: str = 'default_user'
+    session_id: str = 'default_session'
     # user_id: str
 
 
