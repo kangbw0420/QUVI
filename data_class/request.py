@@ -3,18 +3,15 @@ from typing import Optional
 
 class Input(BaseModel):
     user_question: str
-    user_id: str = 'default_user'
-    session_id:str = 'default_session'
-    last_question: Optional[str]  # 이전 그래프의 사용자 질문
-    last_answer: Optional[str]    # 이전 그래프의 LLM 답변
-    last_sql_query: Optional[str] # 이전 그래프의 SQL 쿼리
+    user_id: str = 'default_user' # 프로덕션 수정
+    session_id: str = 'test_session' # 프로덕션 수정
 
 
 class Output(BaseModel):
-    status: int# 200
-    success: bool# True
+    status: int # 200
+    success: bool # True
     retCd: int # 200 
-    message: str# 질답 성공
+    message: str # 질답 성공
     body: dict # 본문
 
 
