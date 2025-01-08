@@ -1,37 +1,14 @@
-import uuid
 import traceback
 
-from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 from data_class.request import RequestData
-from typing import Optional
+from data_class.request import Input, Output
 
 from graph.graph import make_graph
 
 
-# 디버깅용 import
-from datetime import datetime
-
-class Output(BaseModel):
-    status: int# 200
-    success: bool# True
-    retCd: int # 200 
-    message: str# 질답 성공
-    body: dict # 본문
-    
-class Input(BaseModel):
-    user_question: str
-    user_id: str = 'default_user'
-    session_id:str = 'default_session'
-    last_question: Optional[str]  # 이전 그래프의 사용자 질문
-    last_answer: Optional[str]    # 이전 그래프의 LLM 답변
-    last_sql_query: Optional[str] # 이전 그래프의 SQL 쿼리
-
-class Feedback(BaseModel):
-    trace_id: str
-    score: float
-    comment: str = None
-
+from utils.langfuse_handler import langfuse_handler
+from session.session_manager import check_session_id, make_session_id, save_record, extract_last_data
 
 api = APIRouter(tags=["api"])
 graph = make_graph()
@@ -41,40 +18,42 @@ graph = make_graph()
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
     try:
-        # 트레이스 ID 생성 (langfuse)
-        # trace_id = str(uuid.uuid4())
-        # print("request:", request.user_question)
-        data = await graph.ainvoke(
-            {"user_question": request.user_question,
-             "last_question": request.last_question,
-             "last_answer": request.last_answer,
-             "last_sql_query": request.last_sql_query,
-            }#,
-            #config={"callbacks": [langfuse_handler]},
-        )
-        # print("data:",data)
-        # 본문 {"result": {"answer": string, "table": []}, "raw_data": [], "SQL": ""}
-        question = data["analyzed_question"]
-        # result - answer
-        answer = data["final_answer"]
-        # raw_data
-        raw_data = data["query_result"]
-        # result - table()
-        try:
-            table = list(raw_data[0].keys())
-        except IndexError as E:
-            table = []
-        # result {answer, table}
-        result = {"question" :question,"answer": answer, "table":table}
-        # SQL
-        sql_query = data["sql_query"]
-        
+        if check_session_id(request.user_id, request.session_id):
+            last_data = extract_last_data(request.session_id)
+
+            final_state = await graph.ainvoke(
+                {"user_question": request.user_question,
+                 "last_data": last_data
+                },
+                config={"callbacks": [langfuse_handler]},
+                )
+        else:
+            final_state = await graph.ainvoke(
+                {"user_question": request.user_question,
+                },
+                config={"callbacks": [langfuse_handler]},
+            )   
+ 
+        answer = final_state["final_answer"]
+        raw_data = final_state["query_result"]
+        session_id = request.session_id if check_session_id(request.user_id, request.session_id) else make_session_id(request.user_id)
+        analyzed_question = final_state["analyzed_question"]
+        sql_query = final_state["sql_query"]
+        save_record(session_id, analyzed_question, answer, sql_query)
+
+
         return Output(
-            status = 200,
-            success = True,
-            retCd = 200,
-            message="질답성공",
-            body = {"result": result, "raw_data": raw_data, "SQL": sql_query}
+            status=200,
+            success=True,
+            retCd=200,
+            session_id=session_id,
+            message="질답 성공",
+            body={
+                "answer": answer,
+                "raw_data": raw_data,
+                "analyzed_question": analyzed_question,
+                "sql_query": sql_query
+            }
         )
         
     except Exception as e:
