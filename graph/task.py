@@ -1,5 +1,4 @@
-from json import load
-import re, os
+import re
 from typing import Union, Sequence, Dict, Any
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
@@ -56,7 +55,7 @@ async def select_table(user_question: str, last_data: str = "") -> str:
     return selected_table
 
 
-async def analyze_user_question(user_question: str, selected_table: str, last_data: str = "", last_question:str = "") -> str:
+async def analyze_user_question(user_question: str, selected_table: str, last_data: str = "") -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
