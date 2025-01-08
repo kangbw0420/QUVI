@@ -10,9 +10,6 @@ from datetime import datetime
 from .utils import analyze_data
 
 class GraphState(TypedDict):
-    last_question: str  # 이전 그래프의 사용자 질문
-    last_answer: str    # 이전 그래프의 LLM 답변
-    last_sql_query: str # 이전 그래프의 SQL 쿼리
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
     analyzed_question: str  # analyzer를 통해 분석된 질의
@@ -22,11 +19,8 @@ class GraphState(TypedDict):
     )
     query_result: dict  # sql_query 실행 결과 데이터 (데이터프레임 형식)
     final_answer: str  # 최종 답변
+    last_data: list     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
     
-    
-def check_last_data(state: GraphState ) -> bool:
-    required_fields = ['last_question', 'last_answer', 'last_sql_query']
-    return all(len(state[field]) > 1 for field in required_fields)
 
 ########################### 정의된 노드 ###########################
 async def table_selector(state: GraphState) -> GraphState:
@@ -37,18 +31,23 @@ async def table_selector(state: GraphState) -> GraphState:
         KeyError: state에 user_question이 없는 경우.
     """
     user_question = state["user_question"]
-    if check_last_data(state):
+    
+    # last_data 존재 검증은 try-except문으로 수행
+    try:
+        last_data = ''
+        for x in state['last_data']:
+            last_template = "\n당신이 참고할 수 있는 앞선 대화의 내용입니다."+\
+                    f"\n- 이전 질문\n{x[0]}"+\
+                    f"\n- 이전 질문에 대한 SQL쿼리\n{x[2]}"+\
+                    f"\n- 이전 질문에 대한 답변\n{x[1]}\n"
+            last_data += last_template
 
-        last_data = "\n당신이 참고할 수 있는 앞선 대화의 내용입니다."+\
-                    f"\n- 이전 질문\n{state['last_question']}"+\
-                    f"\n- 이전 질문에 대한 SQL쿼리\n{state['last_sql_query']}"+\
-                    f"\n- 이전 질문에 대한 답변\n{state['last_answer']}"
-        
-        selected_table = await select_table(state['last_question']+" "+user_question, last_data)
-    else:
+        selected_table = await select_table(user_question, last_data)
+    except KeyError:
         selected_table = await select_table(user_question)
 
     state.update({"selected_table": selected_table})
+
     return state
 
 
@@ -59,20 +58,23 @@ async def question_analyzer(state: GraphState) -> GraphState:
     Raises:
         KeyError: state에 user_question이 없는 경우.
     """
-
-    if check_last_data(state):
-        last_data = "\n*Context"+\
-                    f"\n**이전 질문\n- {state['last_question']}"#+\
-                    # f"\n**이전 질문에 대한 SQL쿼리\n- {state['last_sql_query']}"+\
-                    # f"\n**이전 질문에 대한 답변\n- {state['last_answer']}"
-
+    # last_data 존재 검증은 try-except문으로 수행
+    try:
+        last_data = '\n*Context'
+        
+        for x in state['last_data']:
+            last_template = f"\n**이전 질문\n- {x[0]}"#+\
+                    # f"\n**이전 질문에 대한 SQL쿼리\n- {x[2]}"+\
+                    # f"\n**이전 질문에 대한 답변\n- {x[1]}"
+            last_data += last_template
+        
         analyzed_question = await analyze_user_question(
             state["user_question"], 
             state["selected_table"], 
-            last_data, state['last_question']
+            last_data
             )
 
-    else:
+    except KeyError:
         analyzed_question = await analyze_user_question(state["user_question"], state["selected_table"])
 
     state.update({"analyzed_question": analyzed_question})
