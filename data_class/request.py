@@ -1,11 +1,18 @@
 from pydantic import BaseModel
 
 
-class RequestData(BaseModel):
+class Input(BaseModel):
     user_question: str
     user_id: str = 'default_user'
-    session_id: str = 'default_session'
-    # user_id: str
+    session_id:str = 'default_session'
+ 
+class Output(BaseModel):
+    status: int# 200
+    success: bool# True
+    retCd: int # 200 
+    session_id: str # 해당 그래프의 세션id
+    message: str# 질답 성공
+    body: dict # 본문
 
 
 class PostgreToVectorData(BaseModel):
