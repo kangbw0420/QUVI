@@ -10,7 +10,7 @@ from sqlalchemy.engine import Result
 from .utils import load_prompt
 from llm_models.models import llama_70b_llm, llama_8b_llm, qwen_llm
 from utils.config import Config
-from prompts.retriever import retriever
+from utils.retriever import retriever
 
 load_dotenv()
 
@@ -75,7 +75,7 @@ async def analyze_user_question(user_question: str, selected_table: str, last_da
     system_prompt = load_prompt("prompts/analyze_user_question/system.prompt")
 
     schema_prompt = (
-        f"테이블: {selected_table}\n"
+        f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
         + load_prompt("prompts/schema.json")[selected_table]
     )
@@ -129,8 +129,11 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
         """
         try:
             prompt_file = f"prompts/create_query/{selected_table}.prompt"
+            print(f"Attempting to load prompt from: {prompt_file}")      
             system_prompt = load_prompt(prompt_file).format(today=today)
-        except FileNotFoundError:
+            print("Successfully loaded custom prompt")
+            
+        except FileNotFoundError as e:
             system_prompt = load_prompt("prompts/create_query/system.prompt").format(
                 today=today
             )
@@ -141,11 +144,10 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
             + load_prompt("prompts/schema.json")[selected_table]
         )
 
-        # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
-        back_number = re.search(r"\d{4}$", selected_table).group()
-        collection_name = f"shots_{back_number}"
+        # # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
+        collection_name = f"shots_{selected_table}"
 
-        # retriever를 사용하여 동적으로 few-shot 예제 가져오기
+        # # retriever를 사용하여 동적으로 few-shot 예제 가져오기
         few_shots = await retriever.get_few_shots(
             query_text=analyzed_question,
             task_type="creator",

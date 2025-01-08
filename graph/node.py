@@ -138,20 +138,35 @@ def sql_respondent(state: GraphState) -> GraphState:
     Raises:
         KeyError: (user_question, query_result_stats)가 없는 경우.
     """
+    user_question = state["user_question"]
+    analyzed_question = state["analyzed_question"]
     query_result = state["query_result"]    # row가 5개 이하?
-    if len(query_result) < 6:
-        output = sql_response(
-            user_question=state["user_question"],
-            query_result = query_result
-        )
-    else:
-        output = sql_response(
-            user_question=state["user_question"],
-            query_result_stats=state.get("query_result_stats", []),
-        )
+    query_result_stats = state.get("query_result_stats", [])
+
+    # 결과가 없는 경우 처리
+    if query_result_stats == {"숫자형 칼럼": {}, "범주형 칼럼": {}}:
+        final_answer = f'죄송합니다. 요청주신 내용에 따라 데이터베이스에서 다음 내용을 검색했지만 데이터가 없었습니다.: {analyzed_question}'
+        state.update({"final_answer": final_answer})
+        return state
+    
+    output = sql_response(
+        user_question=user_question,
+        query_result_stats=query_result_stats
+    )
+
+    # if len(query_result) < 6:
+    #     output = sql_response(
+    #         user_question=user_question,
+    #         query_result = query_result
+    #     )
+    # else:
+    #     output = sql_response(
+    #         user_question=user_question,
+    #         query_result_stats=query_result_stats
+    #     )
 
     final_answer = (
-        f'데이터 베이스에 "{state["analyzed_question"]}"를 조회한 결과입니다.\n\n' + output
+        f'데이터 베이스에서 "{state["analyzed_question"]}"를 조회한 결과입니다.\n\n' + output
     )
 
     state.update({"final_answer": final_answer})

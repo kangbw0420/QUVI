@@ -16,7 +16,6 @@ class FewShotRetriever:
             "executor": "result_executor",
             "respondent": "sql_respondent"
         }
-        self.table_pattern = r"aicfo_get_cabo_\d{4}"
 
     async def get_collection_name(self, task_type: str, collection_name: Optional[str] = None) -> str:
         """작업 유형과 collection_name을 기반으로 적절한 컬렉션 이름을 결정합니다.
