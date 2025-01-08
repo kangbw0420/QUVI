@@ -11,7 +11,7 @@ from sqlalchemy.engine import Result
 from .utils import load_prompt
 from llm_models.models import llama_70b_llm, llama_8b_llm, qwen_llm
 from utils.config import Config
-from prompts.retriever import retriever
+from utils.retriever import retriever
 
 load_dotenv()
 
@@ -76,7 +76,7 @@ async def analyze_user_question(user_question: str, selected_table: str, last_da
     system_prompt = load_prompt("prompts/analyze_user_question/system.prompt")
 
     schema_prompt = (
-        f"테이블: {selected_table}\n"
+        f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
         + load_prompt("prompts/schema.json")[selected_table]
     )
@@ -146,25 +146,24 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
         )
 
         # # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
-        # back_number = re.search(r"\d{4}$", selected_table).group()
-        # collection_name = f"shots_{back_number}"
+        collection_name = f"shots_{selected_table}"
 
         # # retriever를 사용하여 동적으로 few-shot 예제 가져오기
-        # few_shots = await retriever.get_few_shots(
-        #     query_text=analyzed_question,
-        #     task_type="creator",
-        #     collection_name=collection_name,
-        # )
+        few_shots = await retriever.get_few_shots(
+            query_text=analyzed_question,
+            task_type="creator",
+            collection_name=collection_name,
+        )
 
-        # few_shot_prompt = []
-        # for example in few_shots:
-        #     few_shot_prompt.append(("human", example["input"]))
-        #     few_shot_prompt.append(("ai", example["output"]))
+        few_shot_prompt = []
+        for example in few_shots:
+            few_shot_prompt.append(("human", example["input"]))
+            few_shot_prompt.append(("ai", example["output"]))
 
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=system_prompt + schema_prompt),
-                # *few_shot_prompt,
+                *few_shot_prompt,
                 ("human", analyzed_question),
             ]
         )
