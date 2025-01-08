@@ -5,19 +5,21 @@ import time
 def test_korean_questions():
     # 테스트할 한글 질문들
     questions = [
-        "2024년 웹케시 월간 거래내역 정리해줘"
+        "잔액이 많은 상위 5개 계좌를  보여줘.",
+        "현재 잔액을 보여줘.",
+        "거래내역을 보여줘.",
+        "10억 이상 되는 계좌를 보여줘.",
+        "그 계좌의 거래내역 보여줘.",
+        "123계좌 오늘자 잔액을 보여줘.",
+        "거래내역을 보여줘."
     ]
-    temp = ""
     for question in questions:
         print(f"\n테스트 질문: {question}")
 
         payload = {
             "user_question": question,
             "user_id": "default_user",
-            "last_question":"",
-            "last_answer":"",
-            "last_sql_query":"",
-            "session_id": "default_session"
+            "session_id": "f0e89beb-eac9-4d8e-bff9-79a83f1b2b5a",# f0e89beb-eac9-4d8e-bff9-79a83f1b2b5a
         }
 
         try:
@@ -26,7 +28,6 @@ def test_korean_questions():
                 headers={"Content-Type": "application/json; charset=utf-8"},
                 json=payload
             )
-            
             print("상태 코드:", response.status_code)
             print("응답 결과:", json.dumps(response.json(), ensure_ascii=False, indent=2))
             
@@ -34,46 +35,7 @@ def test_korean_questions():
             print("오류 발생:", str(e))
 
         time.sleep(2)  # 요청 간 간격
-        # 테스트할 한글 질문들
-    
-    questions = [
-        "오늘은 어때?"
-    ]
-    temp = json.loads(json.dumps(response.json(), ensure_ascii=False, indent=2))
-
-    for question in questions:
-        print(f"\n테스트 질문: {question}")
-        try:
-            payload = {
-                "user_question": question,
-                "user_id": "default_user",
-                "last_question": temp.get("body").get("result").get("question"),
-                "last_answer": temp.get("body").get("result").get("answer"),
-                "last_sql_query": temp.get("body").get("SQL"),
-                
-            }
-        except Exception as E:
-            print("Before process fails.")
-            payload = {
-                "user_question": question,
-                "user_id": "default_user",
-                "session_id": "default_session"
-            }
-
-        try:
-            response = requests.post(
-                "http://localhost:8000/process",
-                headers={"Content-Type": "application/json; charset=utf-8"},
-                json=payload
-            )
-            
-            print("상태 코드:", response.status_code)
-            print("응답 결과:", json.dumps(response.json(), ensure_ascii=False, indent=2))
-            
-        except Exception as e:
-            print("오류 발생:", str(e))
-
-        time.sleep(2)  # 요청 간 간격
+        
 
 if __name__ == "__main__":
     test_korean_questions()
