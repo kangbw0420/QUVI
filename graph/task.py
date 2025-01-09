@@ -308,3 +308,47 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
 
     output = chain.invoke({"user_question": user_question})
     return output
+
+
+def columns_filter(query_result: list, selected_table_name:str):
+    result = query_result
+
+    import json
+    with open("temp.json", 'r', encoding='utf-8') as f: # 테이블에 따른 컬럼리스트 (type: JSON)
+        columns_list = json.load(f)
+        
+    # node에서 query_result 의 element 존재유무를 검사했으니 
+    # row가 갖고 있는 column name 기준으로 '거래내역'과 '잔액'을 구분
+    # amt 잔액, trsc 거래내역
+    if selected_table_name == "trsc":   # '거래내역'
+        filtered_result = []    # 필터링한 결과를 출력할 변수
+        # view_dv로 인텐트트 구분
+        # 모든 row가 갖고 있는 column name list는 같으므로
+        if 'view_dv' in result[0]:
+            intent = columns_list['trsc'][result[0]['view_dv']]
+            for x in result:
+                x = {k: v for k, v in x.items() if k in intent}
+                filtered_result.append(x)
+        else:   # view_dv가 없기 때문에 '전체'에 해당되는 column list만 출력
+            intent = columns_list['trsc']['전체']
+            for x in result:
+                x = {k: v for k, v in x.items() if k in intent}
+                filtered_result.append(x)
+        return filtered_result
+    elif selected_table_name == "amt": # '잔액'
+        filtered_result = []    # 필터링한 결과를 출력할 변수
+        # view_dv로 세부 항목 구분
+        # 모든 row가 갖고 있는 column name list는 같으므로
+        if 'view_dv' in result[0]:
+            intent = columns_list['amt'][result[0]['view_dv']]
+            for x in result:
+                x = {k: v for k, v in x.items() if k in intent}
+                filtered_result.append(x)
+        else:   # view_dv가 없기 때문에 '전체'에 해당되는 column list만 출력
+            intent = columns_list['amt']['전체']
+            for x in result:
+                x = {k: v for k, v in x.items() if k in intent}
+                filtered_result.append(x)
+        return filtered_result
+    else:                       # 해당사항 없으므로 본래 resul값 출력 
+        return result
