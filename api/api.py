@@ -1,7 +1,6 @@
 import traceback
 
 from fastapi import APIRouter, HTTPException
-from data_class.request import RequestData
 from data_class.request import Input, Output
 
 from graph.graph import make_graph
