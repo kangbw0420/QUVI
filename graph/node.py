@@ -59,6 +59,7 @@ async def question_analyzer(state: GraphState) -> GraphState:
     Raises:
         KeyError: state에 user_question이 없는 경우.
     """
+    today = datetime.now().strftime("%Y-%m-%d")
     # last_data 존재 검증은 try-except문으로 수행
     try:
         last_data = '\n*Context'
@@ -72,11 +73,12 @@ async def question_analyzer(state: GraphState) -> GraphState:
         analyzed_question = await analyze_user_question(
             state["user_question"], 
             state["selected_table"], 
-            last_data
+            last_data,
+            today
             )
 
     except KeyError:
-        analyzed_question = await analyze_user_question(state["user_question"], state["selected_table"])
+        analyzed_question = await analyze_user_question(state["user_question"], state["selected_table"], today)
 
     state.update({"analyzed_question": analyzed_question})
     return state

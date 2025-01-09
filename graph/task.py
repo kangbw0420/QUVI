@@ -55,7 +55,7 @@ async def select_table(user_question: str, last_data: str = "") -> str:
     return selected_table
 
 
-async def analyze_user_question(user_question: str, selected_table: str, last_data: str = "") -> str:
+async def analyze_user_question(user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
@@ -72,7 +72,7 @@ async def analyze_user_question(user_question: str, selected_table: str, last_da
     """
     print("\n=== Analyze User Question Started ===")
     print(f"Processing question: {user_question}")
-    system_prompt = load_prompt("prompts/analyze_user_question/system.prompt")
+    system_prompt = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
 
     schema_prompt = (
         f"테이블: aicfo_get_all_{selected_table}\n"

@@ -1,5 +1,5 @@
 {
-    "잔액": 
+    "amt": 
         {
             "전체": ["com_nm", "reg_dt", "bank_nm", "acct_no", "curr_cd", "acct_bal_amt", "acct_bal_won", "acct_nick_nm", "acct_bal_upd_dtm", "acct_dv"],
             "수시": ["com_nm", "reg_dt", "bank_nm", "acct_no", "curr_cd", "acct_bal_amt", "acct_bal_won", "acct_nick_nm", "acct_bal_upd_dtm", "acct_dv", "real_amt"],
@@ -7,7 +7,7 @@
             "대출": ["com_nm", "reg_dt", "bank_nm", "acct_no", "curr_cd", "acct_bal_amt", "acct_bal_won", "acct_nick_nm", "acct_bal_upd_dtm", "acct_dv", "open_dt", "due_dt"],
             "증권": []
         },
-    "거래내역":
+    "trsc":
         {
             "전체": ["seq_no", "com_nm", "trsc_dt", "trsc_tm", "in_out_dv", "bank_nm", "acct_no", "trsc_amt", "trsc_bal", "note1", "curr_cd"],
             "수시": ["seq_no", "com_nm", "trsc_dt", "trsc_tm", "in_out_dv", "bank_nm", "acct_no", "trsc_amt", "trsc_bal", "note1", "curr_cd"],
