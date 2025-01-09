@@ -14,7 +14,7 @@ def test_korean_questions():
         payload = {
             "user_question": question,
             "user_id": "default_user",
-            "session_id": "f0e89beb-eac9-4d8e-bff9-79a83f1b2b5a",# f0e89beb-eac9-4d8e-bff9-79a83f1b2b5a
+            "session_id": "DEV_SESSION_ID",# DEV_SESSION_ID=꼬리물기 및 DB저장 X,  f0e89beb-eac9-4d8e-bff9-79a83f1b2b5a
         }
 
         try:
