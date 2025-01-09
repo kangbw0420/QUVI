@@ -5,6 +5,7 @@ from .task import (
     sql_response,
     execute_query,
     select_table,
+    columns_filter
 )
 from datetime import datetime
 from .utils import analyze_data
@@ -119,12 +120,22 @@ def result_executor(state: GraphState) -> GraphState:
     # DB 쿼리 실행
     result = execute_query(query)
 
+    
     # 결과가 None인 경우 빈 리스트로 초기화
     if result is None:
         result = {"columns": [], "rows": []}
-    
-    # 통계값 추출
-    query_result_stats = analyze_data(result)
+        # 통계값 추출
+        query_result_stats = analyze_data(result)
+    else:
+        if len(result)==0:
+            query_result_stats = analyze_data(result)
+        else:
+            # 통계값 추출
+            query_result_stats = analyze_data(result)
+            # 컬럼 필터 result
+            result = columns_filter(result, state["selected_table"])
+
+
 
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": result})
@@ -154,6 +165,7 @@ def sql_respondent(state: GraphState) -> GraphState:
         query_result_stats=query_result_stats
     )
 
+
     # if len(query_result) < 6:
     #     output = sql_response(
     #         user_question=user_question,
@@ -164,6 +176,7 @@ def sql_respondent(state: GraphState) -> GraphState:
     #         user_question=user_question,
     #         query_result_stats=query_result_stats
     #     )
+
 
     final_answer = (
         f'데이터 베이스에서 "{state["analyzed_question"]}"를 조회한 결과입니다.\n\n' + output
