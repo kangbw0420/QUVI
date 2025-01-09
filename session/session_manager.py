@@ -7,7 +7,9 @@ load_dotenv()
 
 
 def check_session_id(user_id: str, session_id: str) -> bool :
-
+    # session_id가 개발용인지 검증
+    if session_id =="DEV_SESSION_ID":
+        return 0
     # 일단 session_id만 검증
     command = f"SELECT 1 FROM session WHERE session_id = '{session_id}';"
     # session_status를 체크, active면 True, 그외(completed, error)면 False
@@ -32,7 +34,10 @@ def check_session_id(user_id: str, session_id: str) -> bool :
 
 
 
-def make_session_id(user_id:str) -> str:
+def make_session_id(user_id:str, session_id:str) -> str:
+    # session_id가 개발용인지 검증
+    if session_id =="DEV_SESSION_ID":
+        return session_id
     session_id = str(uuid.uuid4())
         
     from urllib.parse import quote_plus
@@ -53,7 +58,9 @@ def make_session_id(user_id:str) -> str:
     return session_id
 
 def save_record(session_id:str, analyzed_question:str, answer:str, sql_query:str) -> bool:
-    
+    # session_id가 개발용인지 검증
+    if session_id =="DEV_SESSION_ID":
+        return 0
     from urllib.parse import quote_plus
     password = quote_plus(str(Config.DB_PASSWORD))
     db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
