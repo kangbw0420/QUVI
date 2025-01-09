@@ -49,7 +49,7 @@ async def select_table(user_question: str, last_data: str = "") -> str:
         ]
     )
 
-    select_table_chain = SELECT_TABLE_PROMPT | qwen_llm | output_parser
+    select_table_chain = SELECT_TABLE_PROMPT | llama_70b_llm | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
 
     return selected_table
@@ -103,7 +103,7 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
     #     f.write(f"\nSystemPrompt: {contents}")
     #     f.write(f"\nFew_Shots: {few_shot_prompt}")
     #     f.write(f"human: {user_question}\nAI:\n")
-    analyze_chain = ANALYZE_PROMPT | qwen_llm | output_parser
+    analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
     print(f"Final analyzed question: {analyzed_question}")
@@ -304,7 +304,7 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
             HumanMessage(content=human_prompt),
         ]
     )
-    chain = prompt | qwen_llm | output_parser
+    chain = prompt | llama_70b_llm | output_parser
 
     output = chain.invoke({"user_question": user_question})
     return output
