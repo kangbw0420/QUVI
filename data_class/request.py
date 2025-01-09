@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class Input(BaseModel):
     user_question: str
     user_id: str = 'default_user'
-    session_id:str = 'default_session'
+    session_id: str = 'default_session'
  
 class Output(BaseModel):
     status: int# 200

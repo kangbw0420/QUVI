@@ -24,8 +24,13 @@ def test_korean_questions():
                 json=payload
             )
             
-            print("상태 코드:", response.status_code)
-            print("응답 결과:", json.dumps(response.json(), ensure_ascii=False, indent=2))
+            # 응답 결과를 JSON 문자열로 변환
+            response_str = json.dumps(response.json(), ensure_ascii=False, indent=2)
+            # 1000자로 제한하고 잘렸다는 것을 표시
+            if len(response_str) > 1000:
+                print("응답 결과:", response_str[:1000] + "...")
+            else:
+                print("응답 결과:", response_str)
             
         except Exception as e:
             print("오류 발생:", str(e))

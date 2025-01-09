@@ -72,9 +72,17 @@ def save_record(session_id:str, analyzed_question:str, answer:str, sql_query:str
         command2 = f"SELECT * FROM record;"
         cursor = connection.execute(text(command2))
         length = len(cursor.fetchall())
-        command = f"INSERT INTO record (id, session_id, last_analyzed_question , last_answer , last_sql_query ) VALUES ('{length+4}', '{session_id}', '{analyzed_question}', '{answer}', '{sql_query}');"
+        command = text("INSERT INTO record (id, session_id, last_analyzed_question, last_answer, last_sql_query) VALUES (:id, :session_id, :question, :answer, :query)")
         
-        cursor = connection.execute(text(command))
+        # sql_query에 한글이 있을 경우 SQLAlchemy가 자동으로 적절한 이스케이프 처리를 하도록 params로 저장장
+        params = {
+            "id": length+4,
+            "session_id": session_id,
+            "question": analyzed_question,
+            "answer": answer,
+            "query": sql_query
+        }
+        cursor = connection.execute(command, params)
 
     return 0
 
