@@ -1,19 +1,20 @@
 import re
 from typing import Union, Sequence, Dict, Any
 from dotenv import load_dotenv
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import SystemMessage, HumanMessage
 from sqlalchemy import create_engine, text
 from sqlalchemy.sql.expression import Executable
 from sqlalchemy.engine import Result
+
 from .utils import load_prompt
 from llm_models.models import llama_70b_llm, llama_8b_llm, qwen_llm
 from utils.config import Config
 from utils.retriever import retriever
 
 load_dotenv()
-
 
 async def select_table(user_question: str, last_data: str = "") -> str:
     """사용자의 질문으로부터 테이블을 선택
@@ -32,6 +33,7 @@ async def select_table(user_question: str, last_data: str = "") -> str:
     """
     system_prompt = load_prompt("prompts/select_table/system.prompt")
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
+
     few_shots = await retriever.get_few_shots(
         query_text=user_question, task_type="selector", collection_name="shots_selector"
     )
@@ -129,9 +131,7 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
         """
         try:
             prompt_file = f"prompts/create_query/{selected_table}.prompt"
-            print(f"Attempting to load prompt from: {prompt_file}")      
             system_prompt = load_prompt(prompt_file).format(today=today)
-            print("Successfully loaded custom prompt")
             
         except FileNotFoundError as e:
             system_prompt = load_prompt("prompts/create_query/system.prompt").format(
@@ -139,12 +139,12 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
             )
 
         schema_prompt = (
-            f"테이블: {selected_table}\n"
+            f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
             + load_prompt("prompts/schema.json")[selected_table]
         )
 
-        # # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
+        # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
 
         # # retriever를 사용하여 동적으로 few-shot 예제 가져오기
@@ -206,11 +206,8 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
     print(f"Fetch mode: {fetch}")
 
     try:
-        print("\n=== Setting up DB Connection ===")
         parameters = {}
         execution_options = {}
-        # db_path = os.getenv("DB_HOST")
-        # print(f"Database path: {db_path}")
 
         # URL encode the password to handle special characters
         from urllib.parse import quote_plus
@@ -222,13 +219,18 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
 
         print("\n=== Executing Query ===")
         with engine.begin() as connection:
+            # SQLAlchemy를 활용해 실행 가능한 쿼리 객체로 변경
             if isinstance(command, str):
-                print("Converting string command to SQLAlchemy text...")
                 command = text(command)
             elif isinstance(command, Executable):
-                print("Command is already SQLAlchemy executable")
+                pass
             else:
                 raise TypeError(f"Query expression has unknown type: {type(command)}")
+            
+            # # (production) 사용하려는 스키마 지정
+            # schemaQuery = f"SET search_path TO {Config.DB_SCHEMA}"
+            # print(f"::::::::::::::: schemaQuery : {schemaQuery}")
+            # connection.execute(text(schemaQuery))
 
             cursor = connection.execute(
                 command,

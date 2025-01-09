@@ -70,7 +70,7 @@ def add_prompt(prompt: PromptInput):
     새 Prompt를 추가합니다.
     """
     try:
-        success = data_service.add_prompt(prompt.prompt_name, prompt.prompt)
+        success = data_service.add_prompt(prompt.node_nm, prompt.prompt_nm, prompt.prompt)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to insert prompt data")
         return {"message": "Prompt added successfully"}
@@ -78,16 +78,30 @@ def add_prompt(prompt: PromptInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Prompt 데이터 조회
-@data_api.get("/prompt/get/{prompt_name}")
-def get_prompt(prompt_name: str):
+# Prompt 데이터 전체 조회
+@data_api.get("/prompt/getAll")
+def get_all_prompt():
     """
-    지정된 이름의 Prompt 데이터를 조회합니다.
+    전체 Prompt 데이터 리스트를 조회합니다.
     """
     try:
-        result = data_service.get_prompt(prompt_name)
-        if not result:
-            raise HTTPException(status_code=404, detail="Prompt not found")
+        result = data_service.get_all_prompt()
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# 250109. KimGoon. 단건 조회는 안 쓸 듯.
+# # Prompt 데이터 조회
+# @data_api.get("/prompt/get/{prompt_nm}")
+# def get_prompt(prompt_nm: str):
+#     """
+#     지정된 이름의 Prompt 데이터를 조회합니다.
+#     """
+#     try:
+#         result = data_service.get_prompt(prompt_nm)
+#         if not result:
+#             raise HTTPException(status_code=404, detail="Prompt not found")
+#         return {"data": result}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))

@@ -21,21 +21,21 @@ def connect_postgresql_pool():
         PostgreSQL.pool_data = psycopg2.pool.SimpleConnectionPool(
             minconn=1,
             maxconn=10,
-            host=PostgreSQL.host,
-            port=PostgreSQL.port,
-            database=PostgreSQL.database,
-            user=PostgreSQL.user,
-            password=PostgreSQL.password
+            host=Config.DB_HOST,
+            port=Config.DB_PORT,
+            database=Config.DB_DATABASE,
+            user=Config.DB_USER,
+            password=Config.DB_PASSWORD
         )
     if PostgreSQL.pool_prompt is None:
         PostgreSQL.pool_prompt = psycopg2.pool.SimpleConnectionPool(
             minconn=1,
             maxconn=10,
-            host=PostgreSQL.host,
-            port=PostgreSQL.port,
+            host=Config.DB_HOST_PROMPT,
+            port=Config.DB_PORT_PROMPT,
             database=Config.DB_DATABASE_PROMPT,  # Prompt용 데이터베이스
-            user=PostgreSQL.user,
-            password=PostgreSQL.password
+            user=Config.DB_USER_PROMPT,
+            password=Config.DB_PASSWORD_PROMPT
         )
 
 
@@ -48,7 +48,14 @@ def query_execute(query, params=None, use_prompt_db=False):
         pool = PostgreSQL.pool_prompt if use_prompt_db else PostgreSQL.pool_data
         connection = pool.getconn()  # 선택된 풀에서 연결 가져오기
         cursor = connection.cursor(cursor_factory=RealDictCursor)
-        cursor.execute(query, params if params else ())  # 쿼리 실행
+
+        # 사용하려는 스키마 지정
+        schema = Config.DB_SCHEMA_PROMPT if use_prompt_db else Config.DB_SCHEMA
+        print(f"schema : {schema}")
+        cursor.execute("SET search_path TO '%s'" % schema)
+
+        # 쿼리 실행
+        cursor.execute(query, params if params else ())
         # SELECT 쿼리라면 결과 반환
         if query.strip().upper().startswith("SELECT"):
             return cursor.fetchall()
@@ -65,19 +72,25 @@ def query_execute(query, params=None, use_prompt_db=False):
             pool.putconn(connection)
 
 
-# Prompt 데이터를 가져오는 함수
-def get_prompt(prompt_name: str):
-    query = "SELECT * FROM prompt WHERE prompt_name = %s AND version = (SELECT MAX(version) FROM prompt WHERE prompt_name = %s)"
-    return query_execute(query, params=(prompt_name, prompt_name), use_prompt_db=True)
+# 전체 Prompt 데이터 리스트를 가져오는 함수
+def get_all_prompt():
+    query = "SELECT * FROM (SELECT DISTINCT ON (node_nm, prompt_nm) * FROM prompt ORDER BY node_nm, prompt_nm, version DESC) AS innerQuery ORDER BY created_at DESC"
+    return query_execute(query, params=(), use_prompt_db=True)
+
+
+# # Prompt 데이터를 가져오는 함수
+# def get_prompt(prompt_nm: str):
+#     query = "SELECT * FROM prompt WHERE prompt_nm = %s AND version = (SELECT MAX(version) FROM prompt WHERE prompt_nm = %s)"
+#     return query_execute(query, params=(prompt_nm, prompt_nm), use_prompt_db=True)
 
 
 # 새 Prompt 데이터를 삽입하는 함수
-def insert_prompt(prompt_name: str, prompt: str):
+def insert_prompt(node_nm: str, prompt_nm: str, prompt: str):
     query = """
-        INSERT INTO prompt (prompt_name, prompt, version) 
-        VALUES (%s, %s, (SELECT COALESCE(MAX(version), 0) FROM prompt WHERE prompt_name = %s) + 0.1)
+        INSERT INTO prompt (node_nm, prompt_nm, prompt, version) 
+        VALUES (%s, %s, %s, (SELECT COALESCE(MAX(version), 0) FROM prompt WHERE node_nm = %s AND prompt_nm = %s) + 0.1)
     """
-    return query_execute(query, params=(prompt_name, prompt, prompt_name), use_prompt_db=True)
+    return query_execute(query, params=(node_nm, prompt_nm, prompt, node_nm, prompt_nm), use_prompt_db=True)
 
 
 # 벡터 데이터를 가져오는 함수

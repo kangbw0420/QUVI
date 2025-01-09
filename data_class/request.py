@@ -30,5 +30,6 @@ class VectorDataQuery(BaseModel):
 
 
 class PromptInput(BaseModel):
-    prompt_name: str
+    node_nm: str
+    prompt_nm: str
     prompt: str
