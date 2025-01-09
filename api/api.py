@@ -35,7 +35,7 @@ async def process_input(request: Input) -> Output:
  
         answer = final_state["final_answer"]
         raw_data = final_state["query_result"]
-        session_id = request.session_id if check_session_id(request.user_id, request.session_id) else make_session_id(request.user_id)
+        session_id = request.session_id if check_session_id(request.user_id, request.session_id) else make_session_id(request.user_id, request.session_id)
         analyzed_question = final_state["analyzed_question"]
         sql_query = final_state["sql_query"]
         save_record(session_id, analyzed_question, answer, sql_query)
