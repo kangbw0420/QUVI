@@ -1,3 +1,4 @@
+'''
 import psycopg2.pool
 from psycopg2.extras import RealDictCursor
 from utils.config import Config
@@ -141,3 +142,4 @@ def execute_query(query):
 
 # PostgreSQL 연결 풀 초기화
 connect_postgresql_pool()
+'''

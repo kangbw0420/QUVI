@@ -1,3 +1,4 @@
+'''
 from database.postgresql import execute_query, get_all_prompt, insert_prompt, get_vector_data, insert_vector_data, update_vector_data
 from database.vector_db import EmbeddingAPIClient
 from data_class.request import PostgreToVectorData, VectorDataQuery
@@ -64,3 +65,4 @@ class DatabaseService:
     # @staticmethod
     # def get_prompt(prompt_nm: str):
     #     return get_prompt(prompt_nm)
+'''

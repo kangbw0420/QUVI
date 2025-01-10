@@ -32,6 +32,8 @@ async def select_table(user_question: str, last_data: str = "") -> str:
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
     system_prompt = load_prompt("prompts/select_table/system.prompt")
+    # 추가) system_prompt = postgresql에서 get_prompt(node=select_table, prompt_name=system)
+
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
 
     few_shots = await retriever.get_few_shots(
@@ -75,11 +77,13 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
     print("\n=== Analyze User Question Started ===")
     print(f"Processing question: {user_question}")
     system_prompt = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
+    # 추가) system_prompt = postgresql에서 get_prompt(node=analyze_user_question, prompt_name=system).format(today=today)
 
     schema_prompt = (
         f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
         + load_prompt("prompts/schema.json")[selected_table]
+        # 추가) + postgresql에서 get_prompt(node=analyze_user_question, prompt_name=selected_table)
     )
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
@@ -100,11 +104,7 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
             ("human", "{user_question}\nAI:"),
         ]
     )
-    # with open("analyzer_prompt.txt", 'a+', encoding="utf-8") as f:
-    #     f.write(f"user_question: {user_question}")
-    #     f.write(f"\nSystemPrompt: {contents}")
-    #     f.write(f"\nFew_Shots: {few_shot_prompt}")
-    #     f.write(f"human: {user_question}\nAI:\n")
+
     analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
