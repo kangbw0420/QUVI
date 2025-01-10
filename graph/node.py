@@ -9,7 +9,7 @@ from .task import (
 )
 from datetime import datetime
 from .utils import analyze_data
-from llm_admin.state_manager import StateManager
+
 
 class GraphState(TypedDict):
     user_question: str  # 최초 사용자 질의
@@ -23,7 +23,7 @@ class GraphState(TypedDict):
     final_answer: str  # 최종 답변
     last_data: list     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
     
-state_manager = StateManager()
+
 ########################### 정의된 노드 ###########################
 async def table_selector(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택
@@ -49,11 +49,6 @@ async def table_selector(state: GraphState) -> GraphState:
         selected_table = await select_table(user_question)
 
     state.update({"selected_table": selected_table})
-
-    # 상태 변경 기록
-    state_manager.update_state(state['state_id'], {
-        'selected_table': selected_table
-    })
 
     return state
 
@@ -87,13 +82,8 @@ async def question_analyzer(state: GraphState) -> GraphState:
         analyzed_question = await analyze_user_question(state["user_question"], state["selected_table"], today)
 
     state.update({"analyzed_question": analyzed_question})
-    
-    # 상태 변경 기록
-    state_manager.update_state(state['state_id'], {
-        'analyzed_question': analyzed_question
-    })
-
     return state
+
 
 async def query_creator(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
@@ -103,26 +93,19 @@ async def query_creator(state: GraphState) -> GraphState:
         KeyError: state에 analyzed_question이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
-    try:
-        selected_table = state["selected_table"]
-        analyzed_question = state["analyzed_question"]
-        today = datetime.now().strftime("%Y-%m-%d")
-        
-        sql_query = await create_query(selected_table, analyzed_question, today)
-        
-        # SQL 쿼리 생성
-        state.update({"sql_query": sql_query})
-        
-        # 상태 변경 기록
-        state_manager.update_state(state['state_id'], {
-            'sql_query': sql_query
-        })
-
-        return state
-
-    except Exception as e:
-        print(f"Error in query_creator: {str(e)}")
-        raise
+    selected_table = state["selected_table"]
+    analyzed_question = state["analyzed_question"]
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # SQL 쿼리 생성
+    sql_query = await create_query(selected_table, analyzed_question, today)
+    # 상태 업데이트
+    state.update(
+        {
+            "sql_query": sql_query,
+        }
+    )
+    return state
 
 
 def result_executor(state: GraphState) -> GraphState:
@@ -158,17 +141,7 @@ def result_executor(state: GraphState) -> GraphState:
 
 
     # 상태 업데이트
-    state.update({
-        "query_result_stats": query_result_stats, 
-        "query_result": result
-    })
-    
-    # 상태 변경 기록
-    state_manager.update_state(state['state_id'], {
-        'query_result_stats': query_result_stats,
-        'query_result': result
-    })
-
+    state.update({"query_result_stats": query_result_stats, "query_result": result})
     return state
 
 
@@ -213,10 +186,4 @@ def sql_respondent(state: GraphState) -> GraphState:
     )
 
     state.update({"final_answer": final_answer})
-    
-    # 상태 변경 기록
-    state_manager.update_state(state['state_id'], {
-        'final_answer': final_answer
-    })
-
     return state

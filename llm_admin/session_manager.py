@@ -1,4 +1,5 @@
 import uuid
+from urllib.parse import quote_plus
 from utils.config import Config
 
 from sqlalchemy import create_engine, text
@@ -34,34 +35,55 @@ def check_session_id(user_id: str, session_id: str) -> bool :
 
 
 
-def make_session_id(user_id:str, session_id:str) -> str:
-    # session_id가 개발용인지 검증
-    if session_id =="DEV_SESSION_ID":
-        return session_id
+def make_session_id(user_id:str) -> str:
     session_id = str(uuid.uuid4())
-        
-    from urllib.parse import quote_plus
 
     password = quote_plus(str(Config.DB_PASSWORD))
     db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
     engine = create_engine(db_url)
     with engine.begin() as connection:
+        command = text("""
+            INSERT INTO session (user_id, session_id, session_status)
+            VALUES (:user_id, :session_id, 'active')
+        """)
         
-        # length관련 코드는 DB의 ID값이 auto가 되면 SQL에서 id를 제외하고 정리할 것
-        command2 = f"SELECT * FROM session;"
-        cursor = connection.execute(text(command2))
-        length = len(cursor.fetchall())
-        command = f"INSERT INTO session (id, user_id, session_id, session_status ) VALUES ('{length+1}', '{user_id}','{session_id}' , 'active');"
-        
-        connection.execute(text(command))
+        connection.execute(command, {
+            'user_id': user_id,
+            'session_id': session_id
+        })
 
+    return session_id
+
+# (프로덕션 제거) 주석처리여도 됨
+def make_dev_session_id(user_id: str, session_id:str) -> str:
+    password = quote_plus(str(Config.DB_PASSWORD))
+    db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
+    engine = create_engine(db_url)
+    
+    with engine.begin() as connection:
+        # 먼저 해당 session_id가 존재하는지 확인
+        check_command = text("""
+            SELECT session_id FROM session WHERE session_id = :session_id
+        """)
+        result = connection.execute(check_command, {'session_id': session_id}).fetchone()
+        
+        # 존재하지 않을 때만 INSERT 실행
+        if not result:
+            command = text("""
+                INSERT INTO session (user_id, session_id, session_status)
+                VALUES (:user_id, :session_id, 'active')
+            """)
+            connection.execute(command, {
+                'user_id': user_id,
+                'session_id': session_id
+            })
+            
     return session_id
 
 def save_record(session_id:str, analyzed_question:str, answer:str, sql_query:str) -> bool:
     # session_id가 개발용인지 검증
     if session_id =="DEV_SESSION_ID":
         return 0
-    from urllib.parse import quote_plus
     password = quote_plus(str(Config.DB_PASSWORD))
     db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
     engine = create_engine(db_url)

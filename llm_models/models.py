@@ -13,7 +13,7 @@ load_dotenv()
 class CustomChatLLM(BaseLLM, BaseModel):
     api_url: str = Config.API_URL
     model: str = Field(...)
-    temperature: float = Field(0.1)
+    temperature: float = Field(0.0)
     max_tokens: int = Field(10000)
 
     class Config:
@@ -62,9 +62,9 @@ class CustomChatLLM(BaseLLM, BaseModel):
             for i, prompt in enumerate(prompts, 1):
                 try:
                     response = self._call(prompt, stop)
-                    
+
                     generations.append([Generation(text=response)])
-            
+
                 except Exception as e:
                     import traceback
                     traceback.print_exc()
@@ -86,6 +86,6 @@ class CustomChatLLM(BaseLLM, BaseModel):
 
 
 # Create model instances, max_token 설정 안 하면 기본값 125
-llama_70b_llm = CustomChatLLM(model="llama_70b", temperature=0.01, max_tokens=3000)
-qwen_llm = CustomChatLLM(model="qwen", temperature=0.01, max_tokens=1000)
-llama_8b_llm = CustomChatLLM(model="llama_8b", temperature=0.01, max_tokens=500)
+llama_70b_llm = CustomChatLLM(model="planner", temperature=0.1, max_tokens=3000)
+qwen_llm = CustomChatLLM(model="nl2sql", temperature=0.1, max_tokens=1000)
+llama_8b_llm = CustomChatLLM(model="solver", temperature=0.1, max_tokens=500)
