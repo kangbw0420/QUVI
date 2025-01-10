@@ -99,7 +99,6 @@ class FewShotRetriever:
                     # Find corresponding metadata with SQL
                     metadata = result.get("metadata", {})
                     answer = metadata.get("answer", "")
-                    print(answer)
                     if question and answer:
                         few_shot = {
                             "input": question,

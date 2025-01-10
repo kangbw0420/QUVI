@@ -55,27 +55,37 @@ class CustomChatLLM(BaseLLM, BaseModel):
             raise ValueError(f"API response error: {str(e)}")
 
     def _generate(
-        self, prompts: List[str], stop: Optional[List[str]] = None
-    ) -> LLMResult:
-        generations = []
-        for prompt in prompts:
-            try:
-                # 콜백 핸들러에게 LLM 시작을 알림
-                if self.callbacks:
-                    for callback in self.callbacks:
-                        callback.on_llm_start({"name": self.model}, [prompt])
+            self, prompts: List[str], stop: Optional[List[str]] = None
+        ) -> LLMResult:
+            print("\n=== Starting LLM Generation ===")
+            print(f"Number of prompts to process: {len(prompts)}")
+            print(f"Model being used: {self.model}")
+            print(f"Temperature: {self.temperature}")
+            print(f"Max tokens: {self.max_tokens}")
+            
+            generations = []
+            for i, prompt in enumerate(prompts, 1):
+                try:
+                    print(f"\n--- Processing Prompt {i}/{len(prompts)} ---")
+                    print(f"Prompt content: {prompt[:200]}..." if len(prompt) > 200 else f"Prompt content: {prompt}")
 
-                response = self._call(prompt, stop)
-                generations.append([Generation(text=response)])
+                    print("\nCalling LLM API...")
+                    response = self._call(prompt, stop)
+                    print(f"Response received (first 200 chars): {response[:200]}..." if len(response) > 200 else f"Response received: {response}")
+                    
+                    generations.append([Generation(text=response)])
+                    print(f"Generation {i} added to results")
 
-                # 콜백 핸들러에게 LLM 종료를 알림
-                if self.callbacks:
-                    for callback in self.callbacks:
-                        callback.on_llm_end(LLMResult(generations=[generations[-1]]))
-
-            except Exception as e:
-                raise ValueError(f"오류 발생: {str(e)}")
-        return LLMResult(generations=generations)
+                except Exception as e:
+                    print(f"\n!!! Error during generation: {str(e)}")
+                    print("Full error details:")
+                    import traceback
+                    traceback.print_exc()
+                    raise ValueError(f"오류 발생: {str(e)}")
+            
+            print("\n=== Generation Complete ===")
+            print(f"Total generations created: {len(generations)}")
+            return LLMResult(generations=generations)
 
     @property
     def _llm_type(self) -> str:
