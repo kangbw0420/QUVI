@@ -156,7 +156,7 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
             f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
             # + load_prompt("prompts/schema.json")[selected_table]
-            + database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'][selected_table]
+            + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
         )
 
         print(f"6. schema_prompt === > {schema_prompt}")
