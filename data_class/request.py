@@ -17,7 +17,7 @@ class Output(BaseModel):
 
 class PostgreToVectorData(BaseModel):
     collection_name: str
-    item_id: str
+    item_id: str = "0"
     text: str
     type: str = "C"
     del_yn: str = "N"
