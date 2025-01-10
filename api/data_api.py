@@ -1,4 +1,3 @@
-'''
 from fastapi import APIRouter, HTTPException
 from database.database_service import DatabaseService
 from data_class.request import PostgreToVectorData, PromptInput
@@ -106,4 +105,3 @@ def get_all_prompt():
 #         return {"data": result}
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
-'''

@@ -18,11 +18,14 @@ class TraceManager:
         try:
             trace_id = str(uuid.uuid4())
             
-            password = quote_plus(str(Config.DB_PASSWORD))
-            db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
+            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
+            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
             engine = create_engine(db_url)
 
             with engine.begin() as connection:
+                # 사용하려는 스키마 지정
+                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
+
                 command = text("""
                     INSERT INTO trace (
                         id,
@@ -60,11 +63,14 @@ class TraceManager:
             bool: 성공 여부
         """
         try:
-            password = quote_plus(str(Config.DB_PASSWORD))
-            db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
+            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
+            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
             engine = create_engine(db_url)
 
             with engine.begin() as connection:
+                # 사용하려는 스키마 지정
+                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
+
                 command = text("""
                     UPDATE trace 
                     SET trace_status = 'error'
