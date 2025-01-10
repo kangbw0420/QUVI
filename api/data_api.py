@@ -1,13 +1,16 @@
+from typing import List
+
 from fastapi import APIRouter, HTTPException
-from database.database_service import DatabaseService
+
 from data_class.request import PostgreToVectorData, PromptInput
+from database.database_service import DatabaseService
 
 data_api = APIRouter(tags=["data"])
 data_service = DatabaseService()
 
 
 @data_api.post("/fewshot/add")
-def add_few_shot(datas: list[PostgreToVectorData]):
+def add_few_shot(datas: List[PostgreToVectorData]):
     """
     새 벡터 데이터를 추가하고 임베딩 시스템에 업데이트합니다.
     """
