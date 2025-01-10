@@ -10,13 +10,13 @@ data_service = DatabaseService()
 
 
 @data_api.post("/fewshot/add")
-def add_few_shot(datas: List[PostgreToVectorData]):
+def add_few_shot(data: PostgreToVectorData):
     """
     새 벡터 데이터를 추가하고 임베딩 시스템에 업데이트합니다.
     """
     try:
-        print(f">>>>>>>> {datas}")
-        success = data_service.add_few_shot(datas)
+        print(f">>>>>>>> {data}")
+        success = data_service.add_few_shot(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to insert vector data")
         return {"message": "Few-shot data added successfully"}
