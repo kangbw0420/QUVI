@@ -315,7 +315,10 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
         few_shot_prompt.append(("ai", example["output"]))
 
     # query_result_stats vs query_result
-    # human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
+    human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
+        query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
+    )
+    # human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
     #     query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     # )
     human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(

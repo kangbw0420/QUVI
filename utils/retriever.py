@@ -48,10 +48,7 @@ class FewShotRetriever:
                     f"{self.base_url}/query",
                     json=request_payload
                 )
-                
-                print(f"Response status: {response.status_code}")
-                print(f"Response content preview: {response.text[:500]}...")
-                
+                                
                 response.raise_for_status()
                 data = response.json()
                 
@@ -69,7 +66,6 @@ class FewShotRetriever:
                                 "metadata": meta
                             })
                         
-                        print(f"\nFormatted {len(formatted_results)} results")
                         return formatted_results
                 
                 print("Warning: Unexpected response format")
@@ -104,16 +100,11 @@ class FewShotRetriever:
                             "input": question,
                             "output": answer
                         }
-                        few_shots.append(few_shot)
-                        print(f"\nProcessed few-shot example:")
-                        print(f"Question: {few_shot['input']}")
-                        print(f"answer: {few_shot['output']}")
-            
+                        few_shots.append(few_shot)            
             return few_shots
                 
         except Exception as e:
             print(f"Error formatting few-shots: {str(e)}")
-            print(f"Input results structure: {results}")
             return []
 
     async def get_few_shots(self, query_text: str, task_type: str, collection_name: Optional[str] = None) -> List[Dict]:

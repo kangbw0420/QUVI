@@ -1,60 +1,24 @@
-import uuid
-import json
 from sqlalchemy import create_engine, text
 from urllib.parse import quote_plus
-from typing import Optional, Dict, Any
+import json
+from typing import Dict, Any, Optional
+from decimal import Decimal
 from utils.config import Config
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
 
 class StateManager:
     @staticmethod
-    def create_state(chain_id: str, user_question: str) -> str:
+    def update_state(chain_id: str, updates: Dict[str, Any]) -> bool:
         """
-        초기 상태 생성
-        Returns:
-            str: 생성된 state_id
-        """
-        try:
-            state_id = str(uuid.uuid4())
-            
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
-                command = text("""
-                    INSERT INTO state (
-                        id,
-                        chain_id,
-                        user_question
-                    ) VALUES (
-                        :state_id,
-                        :chain_id,
-                        :user_question
-                    )
-                """)
-                
-                connection.execute(command, {
-                    'state_id': state_id,
-                    'chain_id': chain_id,
-                    'user_question': user_question
-                })
-
-            return state_id
-
-        except Exception as e:
-            print(f"Error in create_state: {str(e)}")
-            raise
-
-    @staticmethod
-    def update_state(state_id: str, updates: Dict[str, Any]) -> bool:
-        """
-        상태 업데이트
+        chain_id에 대한 새로운 state를 생성
         Args:
-            state_id: 업데이트할 state의 ID
-            updates: 업데이트할 필드와 값들의 딕셔너리
+            chain_id: 체인 ID
+            updates: 업데이트된 필드와 값들의 딕셔너리
         Returns:
             bool: 성공 여부
         """
@@ -63,30 +27,38 @@ class StateManager:
             db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
             engine = create_engine(db_url)
 
-            # JSON 데이터 직렬화
-            for key, value in updates.items():
-                if isinstance(value, (dict, list)):
-                    updates[key] = json.dumps(value, ensure_ascii=False)
-
-            # 동적 UPDATE 쿼리 생성
-            set_clauses = []
-            params = {'state_id': state_id}
-            
-            for key, value in updates.items():
-                set_clauses.append(f"{key} = :{key}")
-                params[key] = value
-
-            update_query = text(f"""
-                UPDATE state 
-                SET {', '.join(set_clauses)}
-                WHERE id = :state_id
-            """)
-
             with engine.begin() as connection:
-                # 사용하려는 스키마 지정
                 connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
+                
+                # 현재 state의 모든 필드 값을 가져옴
+                current_state = StateManager.get_latest_state(connection, chain_id)
+                if current_state:
+                    # 이전 상태에 새로운 업데이트를 적용
+                    new_state = {**current_state, **updates}
+                else:
+                    new_state = updates
 
-                connection.execute(update_query, params)
+                # JSON 필드 처리
+                params = {'chain_id': chain_id}
+                for key, value in new_state.items():
+                    if key in ['query_result_stats', 'query_result'] and value is not None:
+                        params[key] = json.dumps(value, ensure_ascii=False, cls=DecimalEncoder)
+                    else:
+                        params[key] = value
+
+                # 새로운 state row 생성
+                fields = list(params.keys())
+                placeholders = [f":{field}" for field in fields]
+                
+                insert_query = f"""
+                    INSERT INTO state (
+                        {', '.join(fields)}
+                    ) VALUES (
+                        {', '.join(placeholders)}
+                    )
+                """
+                
+                connection.execute(text(insert_query), params)
 
             return True
 
@@ -95,37 +67,36 @@ class StateManager:
             raise
 
     @staticmethod
-    def get_state(state_id: str) -> Optional[Dict[str, Any]]:
+    def get_latest_state(connection, chain_id: str) -> Optional[Dict[str, Any]]:
         """
-        현재 상태 조회
+        특정 chain_id의 가장 최근 state 정보를 조회
         """
-        try:
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
+        query = """
+            SELECT * FROM state 
+            WHERE chain_id = :chain_id 
+            ORDER BY id DESC 
+            LIMIT 1
+        """
+        
+        result = connection.execute(
+            text(query), 
+            {'chain_id': chain_id}
+        ).fetchone()
+        
+        if result is None:
+            return None
 
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
+        state_dict = dict(result._mapping)
 
-                command = text("""
-                    SELECT * FROM state WHERE id = :state_id
-                """)
-                
-                result = connection.execute(command, {'state_id': state_id}).fetchone()
-                
-                if result:
-                    state_dict = dict(result)
-                    # JSON 문자열을 파이썬 객체로 변환
-                    for key, value in state_dict.items():
-                        if isinstance(value, str):
-                            try:
-                                state_dict[key] = json.loads(value)
-                            except json.JSONDecodeError:
-                                pass  # 일반 문자열인 경우 그대로 유지
-                    return state_dict
-                return None
+        # JSON 필드 파싱
+        for key in ['query_result_stats', 'query_result']:
+            if state_dict.get(key):
+                try:
+                    state_dict[key] = json.loads(state_dict[key])
+                except json.JSONDecodeError:
+                    print(f"Warning: Could not parse JSON for {key}")
 
-        except Exception as e:
-            print(f"Error in get_state: {str(e)}")
-            raise
+        # id 필드 제거 (새로운 row 생성 시 사용하지 않음)
+        state_dict.pop('id', None)
+        
+        return state_dict

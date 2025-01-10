@@ -22,7 +22,7 @@ class ChainManager:
             with engine.begin() as connection:
                 # 사용하려는 스키마 지정
                 connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
+                
                 # Parameterized query for security
                 command = text("""
                     INSERT INTO chain (
@@ -43,7 +43,7 @@ class ChainManager:
                     'session_id': session_id,
                     'chain_question': user_question
                 })
-
+                
             return chain_id
 
         except Exception as e:
