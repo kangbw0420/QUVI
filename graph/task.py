@@ -34,6 +34,7 @@ async def select_table(user_question: str, last_data: str = "") -> str:
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
     system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')
+    print(f"1. system promtpt === > {system_prompt}")
     # system_prompt = load_prompt("prompts/select_table/system.prompt")
     # 추가) system_prompt = postgresql에서 get_prompt(node=select_table, prompt_name=system)
 
@@ -81,6 +82,7 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
     print(f"Processing question: {user_question}")
     # system_prompt_old = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
     system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system').format(today=today)
+    print(f"2. system promtpt === > {system_prompt}")
 
     # 추가) system_prompt = postgresql에서 get_prompt(node=analyze_user_question, prompt_name=system).format(today=today)
 
@@ -91,6 +93,8 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
         + database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[selected_table]
         # 추가) + postgresql에서 get_prompt(node=analyze_user_question, prompt_name=selected_table)
     )
+
+    print(f"3. schema_prompt === > {schema_prompt}")
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
     
@@ -139,20 +143,23 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
             prompt_file = f"prompts/create_query/{selected_table}.prompt"
             # system_prompt = load_prompt(prompt_file).format(today=today)
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table).format(today=today)
+            print(f"4. system_prompt === > {system_prompt}")
             
         except FileNotFoundError as e:
             # system_prompt = load_prompt("prompts/create_query/system.prompt").format(
             #     today=today
             # )
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system').format(today=today)
+            print(f"5. system_prompt === > {system_prompt}")
 
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
             # + load_prompt("prompts/schema.json")[selected_table]
             + database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[selected_table]
-
         )
+
+        print(f"6. schema_prompt === > {schema_prompt}")
 
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
@@ -299,6 +306,8 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
 
     # system_prompt = load_prompt("prompts/sql_response/system.prompt")
     system_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='system')
+    print(f"7. system_prompt === > {system_prompt}")
+    print(f"system promtpt === > {system_prompt}")
     few_shots = load_prompt("prompts/sql_response/fewshots.json")
     few_shot_prompt = []
     for example in few_shots:
@@ -312,6 +321,9 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
     human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
         query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
+
+    print(f"8. human_prompt === > {human_prompt}")
+
 
     prompt = ChatPromptTemplate.from_messages(
         [
