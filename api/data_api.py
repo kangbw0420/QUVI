@@ -65,7 +65,7 @@ def getAll_postgre_few_shot():
 
 
 # PostgreSQL에서 Few-shot 데이터 조회
-@data_api.post("/get/postgresql")
+@data_api.post("/fewshot/get")
 def get_postgre_few_shot(data: PostgreToVectorData):
     """
     PostgreSQL에서 Few-shot 데이터를 조회합니다.

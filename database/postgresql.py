@@ -97,7 +97,7 @@ def insert_prompt(node_nm: str, prompt_nm: str, prompt: str):
 def getAll_vector_data():
     return query_execute(
         "SELECT * FROM vector_data WHERE del_yn = 'N'",
-        use_prompt_db=True
+        params=(), use_prompt_db=True
     )
 
 
