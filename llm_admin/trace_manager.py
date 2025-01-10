@@ -5,13 +5,12 @@ from utils.config import Config
 
 class TraceManager:
     @staticmethod
-    def create_trace(chain_id: str, node_type: str, status: str = 'completed') -> str:
+    def create_trace(chain_id: str, node_type: str) -> str:
         """
-        노드 실행 완료 시 trace 기록 생성
+        노드 실행 시작 시 trace 기록 생성
         Args:
             chain_id: 연관된 체인 ID
             node_type: 노드 타입 (table_selector, question_analyzer 등)
-            status: 실행 상태 ('completed' 또는 'error')
         Returns:
             str: 생성된 trace_id
         """
@@ -36,15 +35,14 @@ class TraceManager:
                         :trace_id,
                         :chain_id,
                         :node_type,
-                        :status
+                        'active'
                     )
                 """)
                 
                 connection.execute(command, {
                     'trace_id': trace_id,
                     'chain_id': chain_id,
-                    'node_type': node_type,
-                    'status': status
+                    'node_type': node_type
                 })
 
             return trace_id
@@ -54,9 +52,9 @@ class TraceManager:
             raise
 
     @staticmethod
-    def mark_trace_error(trace_id: str) -> bool:
+    def complete_trace(trace_id: str) -> bool:
         """
-        trace 상태를 error로 변경
+        노드 실행 완료 시 trace 상태 업데이트
         Args:
             trace_id: 대상 trace ID
         Returns:
@@ -73,7 +71,45 @@ class TraceManager:
 
                 command = text("""
                     UPDATE trace 
-                    SET trace_status = 'error'
+                    SET 
+                        trace_end = CURRENT_TIMESTAMP,
+                        trace_status = 'completed'
+                    WHERE id = :trace_id
+                """)
+                
+                connection.execute(command, {
+                    'trace_id': trace_id
+                })
+
+            return True
+
+        except Exception as e:
+            print(f"Error in complete_trace: {str(e)}")
+            raise
+
+    @staticmethod
+    def mark_trace_error(trace_id: str) -> bool:
+        """
+        trace 상태를 error로 변경하고 종료 시간 기록
+        Args:
+            trace_id: 대상 trace ID
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
+            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
+            engine = create_engine(db_url)
+
+            with engine.begin() as connection:
+                # 사용하려는 스키마 지정
+                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
+
+                command = text("""
+                    UPDATE trace 
+                    SET 
+                        trace_end = CURRENT_TIMESTAMP,
+                        trace_status = 'error'
                     WHERE id = :trace_id
                 """)
                 

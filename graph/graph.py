@@ -19,8 +19,9 @@ class TrackedStateGraph(StateGraph):
     def add_node(self, key: str, action):
         """노드 추가 시 실행 추적 래퍼를 추가"""
         async def tracked_action(state: GraphState):
+            trace_id = None
             try:
-                # 노드 실행 시작 시 trace 생성
+                # 노드 실행 시작 시 trace 생성 및 active 상태로 기록
                 trace_id = TraceManager.create_trace(state["chain_id"], key)
                 
                 # action이 코루틴 함수(async def)인지 확인
@@ -31,11 +32,16 @@ class TrackedStateGraph(StateGraph):
                     # 동기 함수는 직접 실행
                     result = action(state)
                 
+                # 노드 실행 완료 시 trace completed로 변경
+                if trace_id:
+                    TraceManager.complete_trace(trace_id)
+                    
                 return result
                 
             except Exception as e:
                 # 에러 발생 시 trace를 error로 마크
-                TraceManager.mark_trace_error(trace_id)
+                if trace_id:
+                    TraceManager.mark_trace_error(trace_id)
                 raise e
                 
         return super().add_node(key, tracked_action)
