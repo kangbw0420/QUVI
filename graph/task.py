@@ -1,19 +1,20 @@
+import json
 import re
 from typing import Union, Sequence, Dict, Any
+
 from dotenv import load_dotenv
-
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from sqlalchemy import create_engine, text
-from sqlalchemy.sql.expression import Executable
 from sqlalchemy.engine import Result
+from sqlalchemy.sql.expression import Executable
 
-from .utils import load_prompt
-from llm_models.models import llama_70b_llm, llama_8b_llm, qwen_llm
+from database.database_service import DatabaseService
+from llm_models.models import llama_70b_llm, qwen_llm
 from utils.config import Config
 from utils.retriever import retriever
-from database.database_service import DatabaseService
+from .utils import load_prompt
 
 load_dotenv()
 database_service = DatabaseService()
@@ -83,14 +84,13 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
     # system_prompt_old = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
     system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
     print(f"2. system promtpt === > {system_prompt}")
-
     # 추가) system_prompt = postgresql에서 get_prompt(node=analyze_user_question, prompt_name=system).format(today=today)
 
     schema_prompt = (
         f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
         # + load_prompt("prompts/schema.json")[selected_table]
-        + database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'][selected_table]
+        + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
         # 추가) + postgresql에서 get_prompt(node=analyze_user_question, prompt_name=selected_table)
     )
 
