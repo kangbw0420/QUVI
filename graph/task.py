@@ -33,7 +33,7 @@ async def select_table(user_question: str, last_data: str = "") -> str:
     2) 퓨 샷
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
-    system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')
+    system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
     print(f"1. system promtpt === > {system_prompt}")
     # system_prompt = load_prompt("prompts/select_table/system.prompt")
     # 추가) system_prompt = postgresql에서 get_prompt(node=select_table, prompt_name=system)
@@ -81,7 +81,7 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
     print("\n=== Analyze User Question Started ===")
     print(f"Processing question: {user_question}")
     # system_prompt_old = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
-    system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system').format(today=today)
+    system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
     print(f"2. system promtpt === > {system_prompt}")
 
     # 추가) system_prompt = postgresql에서 get_prompt(node=analyze_user_question, prompt_name=system).format(today=today)
@@ -90,7 +90,7 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
         f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
         # + load_prompt("prompts/schema.json")[selected_table]
-        + database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[selected_table]
+        + database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'][selected_table]
         # 추가) + postgresql에서 get_prompt(node=analyze_user_question, prompt_name=selected_table)
     )
 
@@ -142,21 +142,21 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
         try:
             prompt_file = f"prompts/create_query/{selected_table}.prompt"
             # system_prompt = load_prompt(prompt_file).format(today=today)
-            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table).format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
             print(f"4. system_prompt === > {system_prompt}")
             
         except FileNotFoundError as e:
             # system_prompt = load_prompt("prompts/create_query/system.prompt").format(
             #     today=today
             # )
-            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system').format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
             print(f"5. system_prompt === > {system_prompt}")
 
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
             # + load_prompt("prompts/schema.json")[selected_table]
-            + database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[selected_table]
+            + database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'][selected_table]
         )
 
         print(f"6. schema_prompt === > {schema_prompt}")
@@ -305,7 +305,7 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
     output_parser = StrOutputParser()
 
     # system_prompt = load_prompt("prompts/sql_response/system.prompt")
-    system_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='system')
+    system_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='system')[0]['prompt']
     print(f"7. system_prompt === > {system_prompt}")
     print(f"system promtpt === > {system_prompt}")
     few_shots = load_prompt("prompts/sql_response/fewshots.json")
