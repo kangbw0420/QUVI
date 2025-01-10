@@ -93,6 +93,14 @@ def insert_prompt(node_nm: str, prompt_nm: str, prompt: str):
     return query_execute(query, params=(node_nm, prompt_nm, prompt, node_nm, prompt_nm), use_prompt_db=True)
 
 
+# 벡터 전체 데이터를 가져오는 함수
+def getAll_vector_data():
+    return query_execute(
+        "SELECT * FROM vector_data WHERE del_yn = 'N'",
+        use_prompt_db=True
+    )
+
+
 # 벡터 데이터를 가져오는 함수
 def get_vector_data(data: PostgreToVectorData):
     if data.type == 'C' and data.collection_name is not None:

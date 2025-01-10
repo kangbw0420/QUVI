@@ -39,9 +39,12 @@ class DatabaseService:
         )
 
     @staticmethod
+    def getAll_postgre_few_shot():
+        return getAll_vector_data()
+
+    @staticmethod
     def get_postgre_few_shot(data: PostgreToVectorData):
         return get_vector_data(data)
-
 
     @staticmethod
     def delete_few_shot(data : PostgreToVectorData):
