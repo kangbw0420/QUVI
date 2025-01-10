@@ -1,4 +1,4 @@
-from database.postgresql import execute_query, get_all_prompt, get_prompt, insert_prompt, get_vector_data, insert_vector_data, update_vector_data
+from database.postgresql import execute_query, get_all_prompt, get_prompt, insert_prompt, getAll_vector_data, get_vector_data, insert_vector_data, update_vector_data
 from database.vector_db import EmbeddingAPIClient
 from data_class.request import PostgreToVectorData, VectorDataQuery
 
