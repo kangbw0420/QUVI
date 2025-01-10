@@ -4,42 +4,58 @@ from fastapi import APIRouter, HTTPException
 from data_class.request import Input, Output
 
 from graph.graph import make_graph
-
-
 from utils.langfuse_handler import langfuse_handler
 from llm_admin.session_manager import check_session_id, make_session_id, save_record, extract_last_data
+from llm_admin.chain_manager import ChainManager
 
 api = APIRouter(tags=["api"])
 graph = make_graph()
-
+chain_manager = ChainManager()
 
 @api.post("/process")
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
+    chain_id = None
     try:
+        # 세션 확인 또는 생성
         if check_session_id(request.user_id, request.session_id):
-            last_data = extract_last_data(request.session_id)
+            session_id = request.session_id
+            last_data = extract_last_data(session_id)
+        else:
+            session_id = make_session_id(request.user_id)
+            last_data = None
 
+        # 체인 생성
+        chain_id = chain_manager.create_chain(session_id, request.user_question)
+
+        # 그래프 실행
+        if last_data:
             final_state = await graph.ainvoke(
-                {"user_question": request.user_question,
-                 "last_data": last_data
+                {
+                    "user_question": request.user_question,
+                    "last_data": last_data
                 },
                 config={"callbacks": [langfuse_handler]},
-                )
+            )
         else:
             final_state = await graph.ainvoke(
-                {"user_question": request.user_question,
+                {
+                    "user_question": request.user_question,
                 },
                 config={"callbacks": [langfuse_handler]},
-            )   
- 
+            )
+
+        # 결과 추출
         answer = final_state["final_answer"]
         raw_data = final_state["query_result"]
-        session_id = request.session_id if check_session_id(request.user_id, request.session_id) else make_session_id(request.user_id, request.session_id)
         analyzed_question = final_state["analyzed_question"]
         sql_query = final_state["sql_query"]
+
+        # 기존 레코드 저장
         save_record(session_id, analyzed_question, answer, sql_query)
 
+        # 체인 완료 기록
+        chain_manager.complete_chain(chain_id, answer)
 
         return Output(
             status=200,
@@ -56,5 +72,14 @@ async def process_input(request: Input) -> Output:
         )
         
     except Exception as e:
+        error_detail = str(e)
         print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Error processing input: {str(e)}")
+        
+        # 체인 오류 상태 기록
+        if chain_id:
+            try:
+                chain_manager.mark_chain_error(chain_id, error_detail)
+            except Exception as chain_error:
+                print(f"Error marking chain error: {str(chain_error)}")
+        
+        raise HTTPException(status_code=500, detail=f"Error processing input: {error_detail}")
