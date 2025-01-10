@@ -1,4 +1,4 @@
-from database.postgresql import execute_query, get_all_prompt, insert_prompt, get_vector_data, insert_vector_data, update_vector_data
+from database.postgresql import execute_query, get_all_prompt, get_prompt, insert_prompt, get_vector_data, insert_vector_data, update_vector_data
 from database.vector_db import EmbeddingAPIClient
 from data_class.request import PostgreToVectorData, VectorDataQuery
 
@@ -61,6 +61,6 @@ class DatabaseService:
     def get_all_prompt():
         return get_all_prompt()
 
-    # @staticmethod
-    # def get_prompt(prompt_nm: str):
-    #     return get_prompt(prompt_nm)
+    @staticmethod
+    def get_prompt(node_nm: str, prompt_nm: str):
+        return get_prompt(node_nm, prompt_nm)

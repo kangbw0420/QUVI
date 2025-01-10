@@ -78,10 +78,10 @@ def get_all_prompt():
     return query_execute(query, params=(), use_prompt_db=True)
 
 
-# # Prompt 데이터를 가져오는 함수
-# def get_prompt(prompt_nm: str):
-#     query = "SELECT * FROM prompt WHERE prompt_nm = %s AND version = (SELECT MAX(version) FROM prompt WHERE prompt_nm = %s)"
-#     return query_execute(query, params=(prompt_nm, prompt_nm), use_prompt_db=True)
+# Prompt 데이터를 가져오는 함수
+def get_prompt(node_nm: str, prompt_nm: str):
+    query = "SELECT * FROM prompt WHERE node_nm = %s AND prompt_nm = %s AND version = (SELECT MAX(version) FROM prompt WHERE node_nm = %s AND prompt_nm = %s)"
+    return query_execute(query, params=(node_nm, prompt_nm, node_nm, prompt_nm), use_prompt_db=True)
 
 
 # 새 Prompt 데이터를 삽입하는 함수
