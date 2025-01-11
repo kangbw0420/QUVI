@@ -49,12 +49,12 @@ class QnAManager:
                     )
                 """)
                 
-            connection.execute(command, {
-                'qna_id': qna_id,
-                'trace_id': trace_id,
-                'question': question_str,  # 변환된 문자열 사용
-                'model': model
-            })
+                connection.execute(command, {
+                    'qna_id': qna_id,
+                    'trace_id': trace_id,
+                    'question': question_str,  # 변환된 문자열 사용
+                    'model': model
+                })
 
             return qna_id
 
