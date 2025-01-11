@@ -27,7 +27,6 @@ class GraphState(TypedDict):
     last_data: list     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
     
 
-########################### 정의된 노드 ###########################
 async def table_selector(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택
     Returns:
