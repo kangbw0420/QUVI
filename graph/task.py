@@ -20,7 +20,7 @@ from llm_admin.qna_manager import QnAManager
 load_dotenv()
 database_service = DatabaseService()
 
-async def select_table(user_question: str, last_data: str = "") -> str:
+async def select_table(trace_id: str, user_question: str, last_data: str = "") -> str:
     """사용자의 질문으로부터 테이블을 선택
     Returns:
         str: 'aicfo_get_cabo_XXXX'의 테이블
@@ -58,13 +58,21 @@ async def select_table(user_question: str, last_data: str = "") -> str:
         ]
     )
 
+    qna_id = QnAManager.create_question(
+        trace_id=trace_id,
+        question=user_question,
+        model="llama_70b"
+    )
+
     select_table_chain = SELECT_TABLE_PROMPT | llama_70b_llm | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
+
+    QnAManager.record_answer(qna_id, selected_table)
 
     return selected_table
 
 
-async def analyze_user_question(user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
+async def analyze_user_question(trace_id: str, user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
@@ -108,13 +116,21 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
         ]
     )
 
+    qna_id = QnAManager.create_question(
+        trace_id=trace_id,
+        question=user_question,
+        model="llama_70b"
+    )
+
     analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
+
+    QnAManager.record_answer(qna_id, analyzed_question)
 
     return analyzed_question
 
 
-async def create_query(selected_table, analyzed_question: str, today: str) -> str:
+async def create_query(trace_id: str, selected_table, analyzed_question: str, today: str) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
         str: 생성된 SQL 쿼리문
@@ -171,9 +187,14 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
                 ("human", analyzed_question),
             ]
         )
-        chain = prompt | qwen_llm
 
-        # LLM 호출 및 출력 받기
+        qna_id = QnAManager.create_question(
+            trace_id=trace_id,
+            question=prompt,
+            model="qwen"
+        )
+
+        chain = prompt | qwen_llm
         output = chain.invoke(
             {"analyzed_question": analyzed_question}
         )  # LLM 응답 (AIMessage 객체)
@@ -188,6 +209,9 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
 
             else:
                 raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
+        
+        QnAManager.record_answer(qna_id, output)
+
         return sql_query.strip()
 
     except Exception as e:
@@ -278,7 +302,7 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         raise
 
 
-def sql_response(user_question, query_result_stats = None, query_result = None) -> str:
+def sql_response(trace_id: str, user_question, query_result_stats = None, query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -311,9 +335,18 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
             HumanMessage(content=human_prompt),
         ]
     )
-    chain = prompt | llama_70b_llm | output_parser
 
+    qna_id = QnAManager.create_question(
+        trace_id=trace_id,
+        question=prompt,
+        model="llama_70b"
+    )
+
+    chain = prompt | llama_70b_llm | output_parser
     output = chain.invoke({"user_question": user_question})
+
+    QnAManager.record_answer(qna_id, output)
+
     return output
 
 
