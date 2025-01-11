@@ -31,7 +31,6 @@ class CustomChatLLM(BaseLLM, BaseModel):
         # print("API Payload:", json.dumps(payload, indent=2))
         try:
             response = requests.post(self.api_url, json=payload)
-            print("API Response Status:", response.status_code)
             response.raise_for_status()
 
             response_data = response.json()

@@ -24,6 +24,9 @@ class TrackedStateGraph(StateGraph):
                 # 노드 실행 시작 시 trace 생성 및 active 상태로 기록
                 trace_id = TraceManager.create_trace(state["chain_id"], key)
                 
+                # state에 현재 trace_id 추가(qna 기록을 위해)
+                state["trace_id"] = trace_id
+
                 # action이 코루틴 함수(async def)인지 확인
                 if inspect.iscoroutinefunction(action):
                     # 비동기 함수는 await로 실행

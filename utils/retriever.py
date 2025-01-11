@@ -42,7 +42,7 @@ class FewShotRetriever:
                     'query_text': query_text,
                     'top_k': top_k
                 }
-                print("\nRequest payload:", json.dumps(request_payload, ensure_ascii=False, indent=2))
+                # print("\nRequest payload:", json.dumps(request_payload, ensure_ascii=False, indent=2))
                 
                 response = await client.post(
                     f"{self.base_url}/query",
@@ -72,7 +72,7 @@ class FewShotRetriever:
                 return []
                 
             except Exception as e:
-                print(f"Error in query_vector_store: {str(e)}")
+                # print(f"Error in query_vector_store: {str(e)}")
                 return []
 
     async def format_few_shots(self, results: List[Dict]) -> List[Dict]:
