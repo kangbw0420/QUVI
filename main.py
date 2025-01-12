@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from api.api import api
 from fastapi.middleware.cors import CORSMiddleware
 from api.data_api import data_api
+from api.llmadmin_api import llmadmin_api
 
 app = FastAPI()
 
@@ -18,6 +19,7 @@ app.add_middleware(
 
 app.include_router(api)
 app.include_router(data_api, prefix="/data")
+app.include_router(llmadmin_api, prefix="/llmadmin")
 
 if __name__ == "__main__": 
     # 이벤트 루프 생성
