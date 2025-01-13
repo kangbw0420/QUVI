@@ -90,7 +90,6 @@ async def question_analyzer(state: GraphState) -> GraphState:
 
     return state
 
-@observe()
 async def query_creator(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
     Returns:
@@ -116,7 +115,6 @@ async def query_creator(state: GraphState) -> GraphState:
     StateManager.update_state(chain_id, {"sql_query": sql_query})
     return state
 
-@observe()
 def result_executor(state: GraphState) -> GraphState:
     """SQL 쿼리를 실행하고 결과를 분석
     Returns:
@@ -156,7 +154,6 @@ def result_executor(state: GraphState) -> GraphState:
     
     return state
 
-@observe()
 def sql_respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성
     Returns:
