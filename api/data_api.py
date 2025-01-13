@@ -10,18 +10,16 @@ from database.database_service import DatabaseService
 data_api = APIRouter(tags=["data"])
 data_service = DatabaseService()
 
-class dataRequest(BaseModel):
-    collection_name: str
-    text: List[dict]
 
 @data_api.post("/fewshot/add")
-def add_few_shot(data: dataRequest):
+def add_few_shot(data: PostgreToVectorData):
     """
     새 벡터 데이터를 추가하고 임베딩 시스템에 업데이트합니다.
     """
     try:
-        for t in data.text:
-            success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name, text=json.dump(t)))
+        dataList = json.loads(data.text)
+        for dataText in dataList:
+            success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name, text=json.dumps(dataText, ensure_ascii=False)))
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to insert vector data")
         return {"message": "Few-shot data added successfully"}

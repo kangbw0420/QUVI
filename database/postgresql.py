@@ -141,6 +141,21 @@ def update_vector_data(data: PostgreToVectorData):
             return query_execute(update_query, params=(data.text, data.collection_name, data.item_id),
                                  use_prompt_db=True)
 
+# 벡터 데이터 삭제 처리 함수
+def delete_vector_data(data: PostgreToVectorData):
+    # 기존 데이터 가져오기
+    get_data = query_execute(
+        "SELECT * FROM vector_data WHERE document = %s AND del_yn = 'N'",
+        params=(data.collection_name,)
+        , use_prompt_db=True
+    )
+    if get_data:
+        update_query = """
+            UPDATE vector_data
+            SET del_yn = 'Y'
+            WHERE document = %s
+        """
+        return query_execute(update_query, params=(data.collection_name), use_prompt_db=True)
 
 # 쿼리를 실행하는 일반 함수
 def execute_query(query):
