@@ -1,6 +1,12 @@
-from database.postgresql import execute_query, get_all_prompt, get_prompt, insert_prompt, getAll_vector_data, get_vector_data, insert_vector_data, update_vector_data, delete_vector_data
-from database.vector_db import EmbeddingAPIClient
+import json
+import uuid
+
+from fastapi import HTTPException
+
 from data_class.request import PostgreToVectorData, VectorDataQuery
+from database.postgresql import get_all_prompt, get_prompt, insert_prompt, getAll_vector_data, get_vector_data, \
+    insert_vector_data, update_vector_data, delete_vector_data
+from database.vector_db import EmbeddingAPIClient
 
 # vector 연결
 vector_client = EmbeddingAPIClient()
@@ -8,14 +14,40 @@ vector_client = EmbeddingAPIClient()
 class DatabaseService:
     @staticmethod
     def add_few_shot(data : PostgreToVectorData):
-        success = insert_vector_data(data)
 
-        if success:
-            vector_client.add_embedding(
-                collection_name=data.collection_name,
-                item_id=data.item_id,
-                text=data.text
-            )
+        ids = []
+        documents = []  # question text for vectorization
+        metadatas = []  # metadata including SQL
+
+        dataList = json.loads(data.document)
+        for dataText in dataList:
+            # Generate unique ID
+            doc_id = str(uuid.uuid4())
+
+            # Add to lists
+            ids.append(doc_id)
+
+            question = dataText["question"]
+            documents.append(question)  # question text for vectorization
+
+            metadata = {
+                "id": doc_id,
+                "answer": dataText["answer"]  # SQL goes to metadata
+            }
+            metadatas.append(metadata)
+
+            success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name,
+                                                                    text=json.dumps(dataText, ensure_ascii=False)))
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to insert vector data")
+
+
+        vector_client.add_embedding(
+            collection_name=data.collection_name,
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas
+        )
 
         return success
 
@@ -26,7 +58,7 @@ class DatabaseService:
             vector_client.update_embedding(
                 collection_name=data.collection_name,
                 item_id=data.item_id,
-                text=data.text
+                document=data.document
             )
         return success
 
