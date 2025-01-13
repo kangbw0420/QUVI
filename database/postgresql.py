@@ -51,7 +51,6 @@ def query_execute(query, params=None, use_prompt_db=False):
 
         # 사용하려는 스키마 지정
         schema = Config.DB_SCHEMA_PROMPT if use_prompt_db else Config.DB_SCHEMA
-        print(f"schema : {schema}")
         cursor.execute("SET search_path TO '%s'" % schema)
 
         # 쿼리 실행
@@ -118,7 +117,7 @@ def get_vector_data(data: PostgreToVectorData):
 def insert_vector_data(data: PostgreToVectorData):
     query = "INSERT INTO vector_data (data, document) VALUES (%s, %s)"
 
-    return query_execute(query, params=(data.text, data.collection_name), use_prompt_db=True)
+    return query_execute(query, params=(data.document, data.collection_name), use_prompt_db=True)
 
 
 # 벡터 데이터 업데이트 함수
@@ -132,13 +131,13 @@ def update_vector_data(data: PostgreToVectorData):
     if get_data:
         get_data = get_data[0]  # 첫 번째 결과를 가져옴
         # 텍스트나 컬렉션명이 다를 경우 업데이트
-        if (get_data["data"] != data.text or get_data["document"] != data.collection_name):
+        if (get_data["data"] != data.document or get_data["document"] != data.collection_name):
             update_query = """
                 UPDATE vector_data
                 SET data = %s, document = %s, del_yn = 'Y'
                 WHERE idx = %s
             """
-            return query_execute(update_query, params=(data.text, data.collection_name, data.item_id),
+            return query_execute(update_query, params=(data.document, data.collection_name, data.item_id),
                                  use_prompt_db=True)
 
 # 벡터 데이터 삭제 처리 함수

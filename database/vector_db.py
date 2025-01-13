@@ -6,15 +6,16 @@ BASE_URL = Config.VECTOR_STORE_DOMAIN
 
 class EmbeddingAPIClient:
     @staticmethod
-    def add_embedding(collection_name: str, item_id: str, text: str):
+    def add_embedding(collection_name: str, ids: list[str], documents: list[str], metadatas: list[dict]):
         """
         서버에 임베딩 데이터를 추가하는 함수
         """
         url = f"{BASE_URL}/add"
         payload = {
             "collection_name": collection_name,
-            "id": item_id,
-            "text": text
+            "ids": ids,
+            "documents": documents,
+            "metadatas": metadatas,
         }
 
         try:

@@ -1,8 +1,6 @@
 import json
-from typing import List
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 from data_class.request import PostgreToVectorData, PromptInput
 from database.database_service import DatabaseService
@@ -17,11 +15,16 @@ def add_few_shot(data: PostgreToVectorData):
     새 벡터 데이터를 추가하고 임베딩 시스템에 업데이트합니다.
     """
     try:
-        dataList = json.loads(data.text)
+        success = data_service.add_few_shot(data)
+
+        dataList = json.loads(data.document)
         for dataText in dataList:
             success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name, text=json.dumps(dataText, ensure_ascii=False)))
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to insert vector data")
+
+            dataText['id'] = str(uuid.uuid4())
+
         return {"message": "Few-shot data added successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -38,7 +41,7 @@ def update_few_shot(data: PostgreToVectorData):
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete vector data")
 
-        dataList = json.loads(data.text)
+        dataList = json.loads(data.document)
         for dataText in dataList:
             success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name,
                                                                     text=json.dumps(dataText, ensure_ascii=False)))
