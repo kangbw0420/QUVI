@@ -62,7 +62,8 @@ def delete_few_shot(data: PostgreToVectorData):
     벡터 데이터를 삭제하고 임베딩 시스템에서 제거합니다.
     """
     try:
-        success = data_service.delete_few_shot(data)
+        # success = data_service.delete_few_shot(data)
+        success = data_service.multi_delete_few_shot(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete vector data")
         return {"message": "Few-shot data deleted successfully"}

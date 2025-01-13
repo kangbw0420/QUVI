@@ -85,22 +85,29 @@ class DatabaseService:
         return get_vector_data(data)
 
     @staticmethod
-    def delete_few_shot(data : PostgreToVectorData):
+    def multi_delete_few_shot(data : PostgreToVectorData):
         ids = []
 
         resultList = get_vector_data(data)
         for result in resultList:
-            print(f"::: result : {result["id"]}")
-
             # Add to lists
             ids.append(result["id"])
-            print(f"::: ids : {ids}")
 
+        success = delete_vector_data(data)
+        if success:
+            vector_client.multi_delete_embedding(
+                collection_name=data.collection_name,
+                ids=ids,
+            )
+        return success
+
+    @staticmethod
+    def delete_few_shot(data: PostgreToVectorData):
         success = delete_vector_data(data)
         if success:
             vector_client.delete_embedding(
                 collection_name=data.collection_name,
-                ids=ids,
+                item_id=data.item_id,
             )
         return success
 
