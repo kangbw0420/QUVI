@@ -26,7 +26,3 @@ class Config:
     API_URL = os.getenv("API_URL")
 
     VECTOR_STORE_DOMAIN = os.getenv("VECTOR_STORE_DOMAIN")
-
-    LANGFUSE_HOST = os.getenv("LANGFUSE_HOST")
-    LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
-    LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
