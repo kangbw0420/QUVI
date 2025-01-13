@@ -318,7 +318,7 @@ def sql_response(trace_id: str, user_question, query_result_stats = None, query_
     # human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
     #     query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     # )
-    human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
+    human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human')[0]['prompt'].format(
         query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
 

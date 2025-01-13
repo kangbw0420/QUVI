@@ -51,7 +51,6 @@ def query_execute(query, params=None, use_prompt_db=False):
 
         # 사용하려는 스키마 지정
         schema = Config.DB_SCHEMA_PROMPT if use_prompt_db else Config.DB_SCHEMA
-        print(f"schema : {schema}")
         cursor.execute("SET search_path TO '%s'" % schema)
 
         # 쿼리 실행
