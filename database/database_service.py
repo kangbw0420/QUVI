@@ -48,7 +48,6 @@ class DatabaseService:
 
     @staticmethod
     def delete_few_shot(data : PostgreToVectorData):
-        # success = update_vector_data(data)
         success = delete_vector_data(data)
         if success:
             vector_client.delete_embedding(

@@ -155,7 +155,7 @@ def delete_vector_data(data: PostgreToVectorData):
             SET del_yn = 'Y'
             WHERE document = %s
         """
-        return query_execute(update_query, params=(data.collection_name), use_prompt_db=True)
+        return query_execute(update_query, params=(data.collection_name,), use_prompt_db=True)
 
 # 쿼리를 실행하는 일반 함수
 def execute_query(query):
