@@ -13,6 +13,12 @@ def get_db_connection():
     engine = create_engine(db_url)
     return engine
 
+'''
+(향후 구현)
+/groups: 유저 그룹을 누르면 유저 목록이 나온다 -- 유저와 그룹(회사/권한) 리스트를 받아야 함
+/users/{group_id?}: 그룹별 유저 목록 -- 유저와 그룹(회사/권한) 매핑이 어떠한지 봐야 함
+'''
+
 @llmadmin_api.get("/users", response_model=List[str])
 async def get_users():
     """user_id 리스트를 user_id의 내림차순으로 가져온다"""
@@ -50,7 +56,7 @@ async def get_sessions(user_id: str):
 
 @llmadmin_api.get("/chains/{session_id}", response_model=List[Dict[str, Any]])
 async def get_chains(session_id: str):
-    """Get all chains for a specific session"""
+    """session_id에 해당하는 chain들을 모두 검색해 chain_start의 최신순으로 가져온다"""
     try:
         engine = get_db_connection()
         with engine.begin() as connection:
@@ -68,7 +74,7 @@ async def get_chains(session_id: str):
 
 @llmadmin_api.get("/traces/{chain_id}", response_model=Dict[str, Any])
 async def get_traces(chain_id: str):
-    """Get chain details and all traces for a specific chain"""
+    """chain_id에 해당하는 chain의 정보와 그 chain에 속한 trace 정보를 모두 가져온다"""
     try:
         engine = get_db_connection()
         with engine.begin() as connection:
@@ -102,7 +108,7 @@ async def get_traces(chain_id: str):
 
 @llmadmin_api.get("/qnas/{trace_id}", response_model=List[Dict[str, Any]])
 async def get_qnas(trace_id: str):
-    """Get all QnAs for a specific trace"""
+    """trace_id에 해당하는 qna들을 question_timestamp가 오래된 순으로 가져온다"""
     try:
         engine = get_db_connection()
         with engine.begin() as connection:
@@ -120,7 +126,7 @@ async def get_qnas(trace_id: str):
 
 @llmadmin_api.get("/states/{trace_id}", response_model=List[Dict[str, Any]])
 async def get_states(trace_id: str):
-    """Get all states for a specific trace"""
+    """trace_id에 해당하는 state들을 id의 오름차순으로 가져온다"""
     try:
         engine = get_db_connection()
         with engine.begin() as connection:
