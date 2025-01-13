@@ -28,28 +28,22 @@ class DatabaseService:
 
         dataList = json.loads(data.document)
         for dataText in dataList:
-            print(f"::: dataText : {dataText}")
-
             # Generate unique ID
             doc_id = str(uuid.uuid4())
 
             # Add to lists
             ids.append(doc_id)
-            print(f"::: ids : {ids}")
 
             question = dataText["question"]
             documents.append(question)  # question text for vectorization
-            print(f"::: documents : {documents}")
 
             metadata = {
                 "id": doc_id,
                 "answer": dataText["answer"]  # SQL goes to metadata
             }
             metadatas.append(metadata)
-            print(f"::: metadata : {metadatas}")
 
             success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name, id=doc_id, document=json.dumps(dataText, ensure_ascii=False)))
-            print(f"::: success : {success}")
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to insert vector data")
 
@@ -95,45 +89,20 @@ class DatabaseService:
         ids = []
 
         resultList = get_vector_data(data)
-        print(f"::: resultList : {resultList}")
-
         for result in resultList:
-            print(f"::: result : {result}")
-            print(f"::: result : {result.id}")
             print(f"::: result : {result["id"]}")
 
             # Add to lists
-            # ids.append(result["id"])
-            # print(f"::: ids : {ids}")
-            #
-            # question = dataText["question"]
-            # documents.append(question)  # question text for vectorization
-            # print(f"::: documents : {documents}")
-            #
-            # metadata = {
-            #     "id": doc_id,
-            #     "answer": dataText["answer"]  # SQL goes to metadata
-            # }
-            # metadatas.append(metadata)
-            # print(f"::: metadata : {metadatas}")
-            #
-            # success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name, id=doc_id,
-            #                                                  document=json.dumps(dataText, ensure_ascii=False)))
-            # print(f"::: success : {success}")
-            # if not success:
-            #     raise HTTPException(status_code=500, detail="Failed to insert vector data")
-            #
-            #
-            #
-            #
-            #
-        # success = delete_vector_data(data)
-        # if success:
-        #     vector_client.delete_embedding(
-        #         collection_name=data.collection_name,
-        #         item_id=data.item_id,
-        #     )
-        # return success
+            ids.append(result["id"])
+            print(f"::: ids : {ids}")
+
+        success = delete_vector_data(data)
+        if success:
+            vector_client.delete_embedding(
+                collection_name=data.collection_name,
+                ids=ids,
+            )
+        return success
 
     @staticmethod
     def add_prompt(node_nm: str, prompt_nm: str, prompt: str):

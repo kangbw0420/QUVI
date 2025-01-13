@@ -81,6 +81,24 @@ class EmbeddingAPIClient:
             print(f"[ERROR] Failed to query embedding: {e}")
 
     @staticmethod
+    def multi_delete_embedding(collection_name: str, ids: list[str]):
+        """
+        서버에서 ID 리스트의 데이터를 삭제하는 함수
+        """
+        url = f"{BASE_URL}/multiDelete"
+        payload = {
+            "collection_name": collection_name,
+            "ids": ids
+        }
+
+        try:
+            response = requests.delete(url, json=payload)
+            response.raise_for_status()
+            print(f"[SUCCESS] Embedding deleted: {response.json()}")
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Failed to delete embedding: {e}")
+
+    @staticmethod
     def delete_embedding(collection_name: str, item_id: str):
         """
         서버에서 특정 ID의 데이터를 삭제하는 함수
