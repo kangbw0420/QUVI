@@ -12,6 +12,13 @@ from database.vector_db import EmbeddingAPIClient
 vector_client = EmbeddingAPIClient()
 
 class DatabaseService:
+
+    @staticmethod
+    def test_get_few_shot(collection_name: str):
+        return vector_client.test_embedding(
+            collection_name=collection_name
+        )
+
     @staticmethod
     def add_few_shot(data : PostgreToVectorData):
 

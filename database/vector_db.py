@@ -6,6 +6,16 @@ BASE_URL = Config.VECTOR_STORE_DOMAIN
 
 class EmbeddingAPIClient:
     @staticmethod
+    def test_embedding(collection_name: str):
+        url = f"{BASE_URL}/get/all/{collection_name}"
+
+        try:
+            response = requests.get(url)
+            print(f"[SUCCESS] Embedding test: {response.json()}")
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Failed to test embedding: {e}")
+
+    @staticmethod
     def add_embedding(collection_name: str, ids: list[str], documents: list[str], metadatas: list[dict]):
         """
         서버에 임베딩 데이터를 추가하는 함수

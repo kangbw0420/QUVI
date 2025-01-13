@@ -9,6 +9,15 @@ data_api = APIRouter(tags=["data"])
 data_service = DatabaseService()
 
 
+@data_api.post("/fewshot/get/{collection_name}")
+def test_get_few_shot(collection_name: str):
+    try:
+        result = data_service.test_get_few_shot(collection_name)
+        return {"data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @data_api.post("/fewshot/add")
 def add_few_shot(data: PostgreToVectorData):
     """
