@@ -17,13 +17,13 @@ def add_few_shot(data: PostgreToVectorData):
     try:
         success = data_service.add_few_shot(data)
 
-        dataList = json.loads(data.document)
-        for dataText in dataList:
-            success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name, text=json.dumps(dataText, ensure_ascii=False)))
-            if not success:
-                raise HTTPException(status_code=500, detail="Failed to insert vector data")
-
-            dataText['id'] = str(uuid.uuid4())
+        # dataList = json.loads(data.document)
+        # for dataText in dataList:
+        #     success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name, text=json.dumps(dataText, ensure_ascii=False)))
+        #     if not success:
+        #         raise HTTPException(status_code=500, detail="Failed to insert vector data")
+        #
+        #     dataText['id'] = str(uuid.uuid4())
 
         return {"message": "Few-shot data added successfully"}
     except Exception as e:
