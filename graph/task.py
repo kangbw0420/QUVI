@@ -15,11 +15,12 @@ from llm_models.models import llama_70b_llm, qwen_llm
 from utils.config import Config
 from utils.retriever import retriever
 from .utils import load_prompt
+from llm_admin.qna_manager import QnAManager
 
 load_dotenv()
 database_service = DatabaseService()
 
-async def select_table(user_question: str, last_data: str = "") -> str:
+async def select_table(trace_id: str, user_question: str, last_data: str = "") -> str:
     """사용자의 질문으로부터 테이블을 선택
     Returns:
         str: 'aicfo_get_cabo_XXXX'의 테이블
@@ -35,9 +36,7 @@ async def select_table(user_question: str, last_data: str = "") -> str:
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
     system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
-    print(f"1. system promtpt === > {system_prompt}")
     # system_prompt = load_prompt("prompts/select_table/system.prompt")
-    # 추가) system_prompt = postgresql에서 get_prompt(node=select_table, prompt_name=system)
 
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
 
@@ -58,13 +57,21 @@ async def select_table(user_question: str, last_data: str = "") -> str:
         ]
     )
 
+    qna_id = QnAManager.create_question(
+        trace_id=trace_id,
+        question=user_question,
+        model="llama_70b"
+    )
+
     select_table_chain = SELECT_TABLE_PROMPT | llama_70b_llm | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
+
+    QnAManager.record_answer(qna_id, selected_table)
 
     return selected_table
 
 
-async def analyze_user_question(user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
+async def analyze_user_question(trace_id: str, user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
@@ -79,22 +86,15 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
     2) 퓨 샷
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
-    print("\n=== Analyze User Question Started ===")
-    print(f"Processing question: {user_question}")
-    # system_prompt_old = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
+    # system_prompt = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
     system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
-    print(f"2. system promtpt === > {system_prompt}")
-    # 추가) system_prompt = postgresql에서 get_prompt(node=analyze_user_question, prompt_name=system).format(today=today)
 
     schema_prompt = (
         f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
         # + load_prompt("prompts/schema.json")[selected_table]
         + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
-        # 추가) + postgresql에서 get_prompt(node=analyze_user_question, prompt_name=selected_table)
     )
-
-    print(f"3. schema_prompt === > {schema_prompt}")
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
     
@@ -115,14 +115,21 @@ async def analyze_user_question(user_question: str, selected_table: str, today: 
         ]
     )
 
+    qna_id = QnAManager.create_question(
+        trace_id=trace_id,
+        question=user_question,
+        model="llama_70b"
+    )
+
     analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
-    print(f"Final analyzed question: {analyzed_question}")
+    QnAManager.record_answer(qna_id, analyzed_question)
+
     return analyzed_question
 
 
-async def create_query(selected_table, analyzed_question: str, today: str) -> str:
+async def create_query(trace_id: str, selected_table, analyzed_question: str, today: str) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
         str: 생성된 SQL 쿼리문
@@ -143,14 +150,10 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
             prompt_file = f"prompts/create_query/{selected_table}.prompt"
             # system_prompt = load_prompt(prompt_file).format(today=today)
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
-            print(f"4. system_prompt === > {system_prompt}")
             
         except FileNotFoundError as e:
-            # system_prompt = load_prompt("prompts/create_query/system.prompt").format(
-            #     today=today
-            # )
+            # system_prompt = load_prompt("prompts/create_query/system.prompt").format(today=today)
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
-            print(f"5. system_prompt === > {system_prompt}")
 
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"
@@ -159,12 +162,10 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
             + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
         )
 
-        print(f"6. schema_prompt === > {schema_prompt}")
-
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
 
-        # # retriever를 사용하여 동적으로 few-shot 예제 가져오기
+        # retriever를 사용하여 동적으로 few-shot 예제 가져오기
         few_shots = await retriever.get_few_shots(
             query_text=analyzed_question,
             task_type="creator",
@@ -183,9 +184,14 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
                 ("human", analyzed_question),
             ]
         )
-        chain = prompt | qwen_llm
 
-        # LLM 호출 및 출력 받기
+        qna_id = QnAManager.create_question(
+            trace_id=trace_id,
+            question=prompt,
+            model="qwen"
+        )
+
+        chain = prompt | qwen_llm
         output = chain.invoke(
             {"analyzed_question": analyzed_question}
         )  # LLM 응답 (AIMessage 객체)
@@ -200,6 +206,9 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
 
             else:
                 raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
+        
+        QnAManager.record_answer(qna_id, output)
+
         return sql_query.strip()
 
     except Exception as e:
@@ -218,9 +227,6 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         TypeError: command가 문자열이나 Executable이 아닌 경우.
         Exception: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생시.
     """
-    print("\n=== Execute Query Started ===")
-    print(f"Query to execute: {command}")
-    print(f"Fetch mode: {fetch}")
 
     try:
         parameters = {}
@@ -234,7 +240,6 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
 
         engine = create_engine(db_url)
 
-        print("\n=== Executing Query ===")
         with engine.begin() as connection:
             # SQLAlchemy를 활용해 실행 가능한 쿼리 객체로 변경
             if isinstance(command, str):
@@ -256,10 +261,8 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
             )
 
             if cursor.returns_rows:
-                print("\n=== Processing Results ===")
                 if fetch == "all":
                     rows = cursor.fetchall()
-                    print(f"Retrieved {len(rows)} rows")
                     result = [x._asdict() for x in rows]
                 elif fetch == "one":
                     first_result = cursor.fetchone()
@@ -285,7 +288,6 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
                 return []
 
     except Exception as e:
-        print("\n=== Error in execute_query ===")
         print(f"Error type: {type(e)}")
         print(f"Error message: {str(e)}")
         import traceback
@@ -295,7 +297,7 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         raise
 
 
-def sql_response(user_question, query_result_stats = None, query_result = None) -> str:
+def sql_response(trace_id: str, user_question, query_result_stats = None, query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -306,8 +308,6 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
 
     # system_prompt = load_prompt("prompts/sql_response/system.prompt")
     system_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='system')[0]['prompt']
-    print(f"7. system_prompt === > {system_prompt}")
-    print(f"system promtpt === > {system_prompt}")
     few_shots = load_prompt("prompts/sql_response/fewshots.json")
     few_shot_prompt = []
     for example in few_shots:
@@ -315,18 +315,12 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
         few_shot_prompt.append(("ai", example["output"]))
 
     # query_result_stats vs query_result
-    human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
-        query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
-    )
-    # human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
+    # human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
     #     query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     # )
     human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
         query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
-
-    print(f"8. human_prompt === > {human_prompt}")
-
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -335,9 +329,18 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
             HumanMessage(content=human_prompt),
         ]
     )
-    chain = prompt | llama_70b_llm | output_parser
 
+    qna_id = QnAManager.create_question(
+        trace_id=trace_id,
+        question=prompt,
+        model="llama_70b"
+    )
+
+    chain = prompt | llama_70b_llm | output_parser
     output = chain.invoke({"user_question": user_question})
+
+    QnAManager.record_answer(qna_id, output)
+
     return output
 
 

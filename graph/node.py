@@ -14,6 +14,7 @@ from llm_admin.state_manager import StateManager
 
 class GraphState(TypedDict):
     chain_id: str
+    trace_id: str
     user_question: str  # 최초 사용자 질의
     analyzed_question: str  # analyzer를 통해 분석된 질의
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
@@ -25,7 +26,6 @@ class GraphState(TypedDict):
     last_data: list     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
     
 
-########################### 정의된 노드 ###########################
 async def table_selector(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택
     Returns:
@@ -34,7 +34,7 @@ async def table_selector(state: GraphState) -> GraphState:
         KeyError: state에 user_question이 없는 경우.
     """
     user_question = state["user_question"]
-    chain_id = state["chain_id"]
+    trace_id = state["trace_id"]
     
     # last_data 존재 검증은 try-except문으로 수행
     try:
@@ -46,12 +46,12 @@ async def table_selector(state: GraphState) -> GraphState:
                     f"\n- 이전 질문에 대한 답변\n{x[1]}\n"
             last_data += last_template
 
-        selected_table = await select_table(user_question, last_data)
+        selected_table = await select_table(trace_id, user_question, last_data)
     except KeyError:
-        selected_table = await select_table(user_question)
+        selected_table = await select_table(trace_id, user_question)
 
     state.update({"selected_table": selected_table})
-    StateManager.update_state(chain_id, {"selected_table": selected_table})
+    StateManager.update_state(trace_id, {"user_question": user_question, "selected_table": selected_table})
 
     return state
 
@@ -64,7 +64,7 @@ async def question_analyzer(state: GraphState) -> GraphState:
         KeyError: state에 user_question이 없는 경우.
     """
     today = datetime.now().strftime("%Y-%m-%d")
-    chain_id = state["chain_id"]
+    trace_id = state["trace_id"]
     # last_data 존재 검증은 try-except문으로 수행
     try:
         last_data = '\n*Context'
@@ -76,6 +76,7 @@ async def question_analyzer(state: GraphState) -> GraphState:
             last_data += last_template
         
         analyzed_question = await analyze_user_question(
+            trace_id,
             state["user_question"], 
             state["selected_table"], 
             last_data,
@@ -83,10 +84,10 @@ async def question_analyzer(state: GraphState) -> GraphState:
             )
 
     except KeyError:
-        analyzed_question = await analyze_user_question(state["user_question"], state["selected_table"], today)
+        analyzed_question = await analyze_user_question(trace_id, state["user_question"], state["selected_table"], today)
 
     state.update({"analyzed_question": analyzed_question})
-    StateManager.update_state(chain_id, {"analyzed_question": analyzed_question})
+    StateManager.update_state(trace_id, {"analyzed_question": analyzed_question})
 
     return state
 
@@ -98,21 +99,16 @@ async def query_creator(state: GraphState) -> GraphState:
         KeyError: state에 analyzed_question이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
-    chain_id = state["chain_id"]
+    trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     analyzed_question = state["analyzed_question"]
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await create_query(analyzed_question, today)
-    print(f"SQL query created: {sql_query}")
+    sql_query = await create_query(trace_id, selected_table, analyzed_question, today)
     # 상태 업데이트
-    state.update(
-        {
-            "sql_query": sql_query,
-        }
-    )
-    StateManager.update_state(chain_id, {"sql_query": sql_query})
+    state.update({"sql_query": sql_query,})
+    StateManager.update_state(trace_id, {"sql_query": sql_query})
     return state
 
 def result_executor(state: GraphState) -> GraphState:
@@ -122,7 +118,7 @@ def result_executor(state: GraphState) -> GraphState:
     Raises:
         ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
     """
-    chain_id = state["chain_id"]
+    trace_id = state["trace_id"]
     # SQL 쿼리 가져오기
     query = state.get("sql_query")
     if not query:
@@ -146,11 +142,9 @@ def result_executor(state: GraphState) -> GraphState:
             # 컬럼 필터 result
             result = columns_filter(result, state["selected_table"])
 
-
-
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": result})
-    StateManager.update_state(chain_id, {"query_result_stats": query_result_stats, "query_result": result})
+    StateManager.update_state(trace_id, {"query_result_stats": query_result_stats, "query_result": result})
     
     return state
 
@@ -161,7 +155,7 @@ def sql_respondent(state: GraphState) -> GraphState:
     Raises:
         KeyError: (user_question, query_result_stats)가 없는 경우.
     """
-    chain_id = state["chain_id"]
+    trace_id = state["trace_id"]
     user_question = state["user_question"]
     analyzed_question = state["analyzed_question"]
     query_result = state["query_result"]    # row가 5개 이하?
@@ -174,6 +168,7 @@ def sql_respondent(state: GraphState) -> GraphState:
         return state
     
     output = sql_response(
+        trace_id,
         user_question=user_question,
         query_result_stats=query_result_stats
     )
@@ -181,11 +176,13 @@ def sql_respondent(state: GraphState) -> GraphState:
 
     # if len(query_result) < 6:
     #     output = sql_response(
+            # trace_id, 
     #         user_question=user_question,
     #         query_result = query_result
     #     )
     # else:
     #     output = sql_response(
+            # trace_id, 
     #         user_question=user_question,
     #         query_result_stats=query_result_stats
     #     )
@@ -196,5 +193,5 @@ def sql_respondent(state: GraphState) -> GraphState:
     )
 
     state.update({"final_answer": final_answer})
-    StateManager.update_state(chain_id, {"final_answer": final_answer})
+    StateManager.update_state(trace_id, {"final_answer": final_answer})
     return state

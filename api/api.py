@@ -8,7 +8,6 @@ from sympy import im
 from utils.langfuse_handler import langfuse_handler
 from llm_admin.session_manager import check_session_id, make_session_id, save_record, extract_last_data, make_dev_session_id
 from llm_admin.chain_manager import ChainManager
-from llm_admin.state_manager import StateManager
 
 api = APIRouter(tags=["api"])
 graph = make_graph()
@@ -31,11 +30,6 @@ async def process_input(request: Input) -> Output:
         
         # 체인 생성
         chain_id = chain_manager.create_chain(session_id, request.user_question)
-        
-        # 초기 state를 DB에 기록
-        StateManager.update_state(chain_id, {
-            "user_question": request.user_question
-        })
 
         initial_state = {
             "chain_id": chain_id,

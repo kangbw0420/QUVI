@@ -5,13 +5,11 @@ from typing import Dict, Any, Optional
 from decimal import Decimal
 from utils.config import Config
 
-
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)
         return super().default(obj)
-
 
 class StateManager:
     @staticmethod
@@ -23,22 +21,22 @@ class StateManager:
 
             with engine.begin() as connection:
                 connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
+                
                 # 현재 trace의 직전 상태 조회
                 current_state = StateManager.get_latest_state(connection, trace_id)
 
                 if current_state:
                     # 현재 상태에서 updates에 있는 키를 제외한 값들만 유지
-                    preserved_state = {k: v for k, v in current_state.items()
-                                       if k not in updates.keys()
-                                       and v is not None
-                                       and k != 'trace_id'}
+                    preserved_state = {k: v for k, v in current_state.items() 
+                                    if k not in updates.keys() 
+                                    and v is not None 
+                                    and k != 'trace_id'} 
                     # 보존된 상태에 새로운 업데이트 추가
                     new_state = {**preserved_state, **updates}
 
                 else:
                     new_state = updates
-
+                    
                 def convert_decimal(obj):
                     if isinstance(obj, dict):
                         return {str(k): convert_decimal(v) for k, v in obj.items()}
@@ -56,11 +54,11 @@ class StateManager:
                         params[key] = json.dumps(converted_value, ensure_ascii=False)
                     else:
                         params[key] = value
-
+                
                 # 새로운 state row 생성
                 fields = list(params.keys())
                 placeholders = [f":{field}" for field in fields]
-
+                
                 insert_query = f"""
                     INSERT INTO state (
                         {', '.join(fields)}
@@ -68,7 +66,7 @@ class StateManager:
                         {', '.join(placeholders)}
                     )
                 """
-
+                
                 connection.execute(text(insert_query), params)
 
             return True
@@ -81,7 +79,7 @@ class StateManager:
     def get_latest_state(connection, trace_id: str) -> Optional[Dict[str, Any]]:
         """
         현재 trace의 chain_id를 기반으로 직전 trace의 상태를 조회
-        """
+        """ 
         query = """
             WITH current_chain AS (
                 SELECT chain_id
@@ -97,10 +95,10 @@ class StateManager:
             LIMIT 1;
         """
         result = connection.execute(
-            text(query),
+            text(query), 
             {'trace_id': trace_id}
         ).fetchone()
-
+        
         if result is None:
             print("No previous state found")
             return None

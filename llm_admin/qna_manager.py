@@ -1,18 +1,31 @@
 import uuid
+from typing import Any
 from sqlalchemy import create_engine, text
+from langchain_core.prompts import ChatPromptTemplate
 from urllib.parse import quote_plus
 from utils.config import Config
 
 class QnAManager:
     @staticmethod
-    def create_question(trace_id: str, question: str, model: str) -> str:
+    def create_question(trace_id: str, question: Any, model: str) -> str:
         """
         LLM에 질문을 보내는 시점에 QnA 레코드 생성
+        Args:
+            trace_id: 추적 ID
+            question: 질문 (ChatPromptTemplate 또는 str)
+            model: 모델명
         Returns:
             str: 생성된 qna_id
         """
         try:
             qna_id = str(uuid.uuid4())
+            
+            # ChatPromptTemplate인 경우 문자열로 변환
+            if isinstance(question, ChatPromptTemplate):
+                # 프롬프트의 내용만 추출하여 저장
+                question_str = str(question.messages)
+            else:
+                question_str = str(question)
             
             password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
             db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
@@ -39,7 +52,7 @@ class QnAManager:
                 connection.execute(command, {
                     'qna_id': qna_id,
                     'trace_id': trace_id,
-                    'question': question,
+                    'question': question_str,  # 변환된 문자열 사용
                     'model': model
                 })
 
