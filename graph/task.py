@@ -1,8 +1,8 @@
 import json
 import re
 from typing import Union, Sequence, Dict, Any
-
 from dotenv import load_dotenv
+
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -14,7 +14,6 @@ from database.database_service import DatabaseService
 from llm_models.models import llama_70b_llm, qwen_llm
 from utils.config import Config
 from utils.retriever import retriever
-from .utils import load_prompt
 from llm_admin.qna_manager import QnAManager
 
 load_dotenv()
@@ -29,21 +28,12 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     """
     output_parser = StrOutputParser()
 
-    """
-    프롬프트는 세 부분으로 구성됩니다.
-    1) 시스템 프롬프트
-    2) 퓨 샷
-    3) 사용자 프롬프트 (사용자의 질문만)        
-    """
     system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
-    # system_prompt = load_prompt("prompts/select_table/system.prompt")
-
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
 
     few_shots = await retriever.get_few_shots(
         query_text=user_question, task_type="selector", collection_name="shots_selector"
     )
-
     few_shot_prompt = []
     for example in few_shots:
         few_shot_prompt.append(("human", example["input"]))
@@ -80,19 +70,11 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     """
     output_parser = StrOutputParser()
 
-    """
-    프롬프트는 세 부분으로 구성됩니다.
-    1) 시스템 프롬프트
-    2) 퓨 샷
-    3) 사용자 프롬프트 (사용자의 질문만)        
-    """
-    # system_prompt = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
     system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
 
     schema_prompt = (
         f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
-        # + load_prompt("prompts/schema.json")[selected_table]
         + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
     )
 
@@ -101,7 +83,6 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     few_shots = await retriever.get_few_shots(
         query_text= user_question, task_type="analyzer", collection_name="shots_analyzer"
     )
-
     few_shot_prompt = []
     for example in few_shots:
         few_shot_prompt.append(("human", example["input"]))
@@ -138,40 +119,27 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
         TypeError: LLM 응답이 예상된 형식이 아닌 경우.
     """
     try:
-
-        """
-        프롬프트는 네 부분으로 구성됩니다.
-        1) 시스템 프롬프트
-        2) 스키마 프롬프트 (테이블의 칼럼명을 가져옵니다.)
-        3) 퓨 샷
-        4) 사용자 프롬프트 (오늘 날짜 및 분석된 질의)
-        """
         try:
-            prompt_file = f"prompts/create_query/{selected_table}.prompt"
-            # system_prompt = load_prompt(prompt_file).format(today=today)
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
             
         except FileNotFoundError as e:
-            # system_prompt = load_prompt("prompts/create_query/system.prompt").format(today=today)
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
 
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
-            # + load_prompt("prompts/schema.json")[selected_table]
+            # analyzer에서 사용했던 스키마 테이블 재사용 - node_nm/prompt_nm 변경??
             + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
         )
 
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
 
-        # retriever를 사용하여 동적으로 few-shot 예제 가져오기
         few_shots = await retriever.get_few_shots(
             query_text=analyzed_question,
             task_type="creator",
             collection_name=collection_name,
         )
-
         few_shot_prompt = []
         for example in few_shots:
             few_shot_prompt.append(("human", example["input"]))
@@ -227,7 +195,6 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         TypeError: command가 문자열이나 Executable이 아닌 경우.
         Exception: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생시.
     """
-
     try:
         parameters = {}
         execution_options = {}
@@ -297,7 +264,7 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         raise
 
 
-def sql_response(trace_id: str, user_question, query_result_stats = None, query_result = None) -> str:
+async def sql_response(trace_id: str, user_question, query_result_stats = None, query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -306,21 +273,21 @@ def sql_response(trace_id: str, user_question, query_result_stats = None, query_
     """
     output_parser = StrOutputParser()
 
-    # system_prompt = load_prompt("prompts/sql_response/system.prompt")
     system_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='system')[0]['prompt']
-    few_shots = load_prompt("prompts/sql_response/fewshots.json")
+    
+    # 통곗값이 있으면 통곗값을 쓰고, 아니면 결과 자체를 사용
+    human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human')[0]['prompt'].format(
+        query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
+    )
+
+    # 앞의 사례와 다르게 query_text가 human_prompt임에 유의
+    few_shots = await retriever.get_few_shots(
+        query_text=human_prompt, task_type="responser", collection_name="shots_responser"
+    )
     few_shot_prompt = []
     for example in few_shots:
         few_shot_prompt.append(("human", example["input"]))
         few_shot_prompt.append(("ai", example["output"]))
-
-    # query_result_stats vs query_result
-    # human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
-    #     query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
-    # )
-    human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human')[0]['prompt'].format(
-        query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
-    )
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -347,17 +314,13 @@ def sql_response(trace_id: str, user_question, query_result_stats = None, query_
 def columns_filter(query_result: list, selected_table_name:str):
     result = query_result
 
-    import json
-    with open("temp.json", 'r', encoding='utf-8') as f: # 테이블에 따른 컬럼리스트 (type: JSON)
+    with open("temp.json", 'r', encoding='utf-8') as f: # 테이블에 따른 컬럼리스트
         columns_list = json.load(f)
         
-    # node에서 query_result 의 element 존재유무를 검사했으니 
-    # row가 갖고 있는 column name 기준으로 '거래내역'과 '잔액'을 구분
-    # amt 잔액, trsc 거래내역
-    if selected_table_name == "trsc":   # '거래내역'
+    # node에서 query_result 의 element 존재유무를 검사했으니 column name 기준으로 '거래내역'과 '잔액'을 구분
+    if selected_table_name == "trsc":
         filtered_result = []    # 필터링한 결과를 출력할 변수
         # view_dv로 인텐트트 구분
-        # 모든 row가 갖고 있는 column name list는 같으므로
         if 'view_dv' in result[0]:
             intent = columns_list['trsc'][result[0]['view_dv']]
             for x in result:
@@ -369,20 +332,18 @@ def columns_filter(query_result: list, selected_table_name:str):
                 x = {k: v for k, v in x.items() if k in intent}
                 filtered_result.append(x)
         return filtered_result
-    elif selected_table_name == "amt": # '잔액'
-        filtered_result = []    # 필터링한 결과를 출력할 변수
-        # view_dv로 세부 항목 구분
-        # 모든 row가 갖고 있는 column name list는 같으므로
+    elif selected_table_name == "amt":
+        filtered_result = []
         if 'view_dv' in result[0]:
             intent = columns_list['amt'][result[0]['view_dv']]
             for x in result:
                 x = {k: v for k, v in x.items() if k in intent}
                 filtered_result.append(x)
-        else:   # view_dv가 없기 때문에 '전체'에 해당되는 column list만 출력
+        else:
             intent = columns_list['amt']['전체']
             for x in result:
                 x = {k: v for k, v in x.items() if k in intent}
                 filtered_result.append(x)
         return filtered_result
-    else:                       # 해당사항 없으므로 본래 resul값 출력 
+    else:  # 해당사항 없으므로 본래 resul값 출력 
         return result

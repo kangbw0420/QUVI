@@ -1,4 +1,3 @@
-import re
 import json
 import httpx
 from typing import List, Dict, Optional

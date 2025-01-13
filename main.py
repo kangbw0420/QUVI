@@ -35,7 +35,6 @@ if __name__ == "__main__":
         # 서버와 터미널 테스트 병렬 실행
         await asyncio.gather(
             server.serve(),  # FastAPI 서버 실행
-            # terminal_test()
         )
 
     try:

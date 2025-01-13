@@ -1,14 +1,9 @@
 import os
-
 from dotenv import load_dotenv
 
-
-# .env 파일의 환경 변수 로드
 load_dotenv()
 
-
 class Config:
-
     DB_HOST = os.getenv("DB_HOST")
     DB_PORT = os.getenv("DB_PORT")
     DB_DATABASE = os.getenv("DB_DATABASE")
@@ -24,5 +19,4 @@ class Config:
     DB_PASSWORD_PROMPT = os.getenv("DB_PASSWORD_PROMPT")
 
     API_URL = os.getenv("API_URL")
-
     VECTOR_STORE_DOMAIN = os.getenv("VECTOR_STORE_DOMAIN")

@@ -1,6 +1,3 @@
-import json
-import uuid
-
 from fastapi import APIRouter, HTTPException
 
 from data_class.request import PostgreToVectorData, PromptInput

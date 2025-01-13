@@ -1,14 +1,14 @@
 import requests
-from langchain.llms import BaseLLM
 from typing import List, Optional, Any, Dict
-from langchain_core.outputs import LLMResult, Generation
 from pydantic import Field, BaseModel
-from utils.config import Config
 from dotenv import load_dotenv
 
+from langchain_core.outputs import LLMResult, Generation
+from langchain.llms import BaseLLM
+
+from utils.config import Config
 
 load_dotenv()
-
 
 class CustomChatLLM(BaseLLM, BaseModel):
     api_url: str = Config.API_URL

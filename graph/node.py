@@ -174,7 +174,6 @@ def sql_respondent(state: GraphState) -> GraphState:
         query_result_stats=query_result_stats
     )
 
-
     # if len(query_result) < 6:
     #     output = sql_response(
             # trace_id, 
@@ -187,7 +186,6 @@ def sql_respondent(state: GraphState) -> GraphState:
     #         user_question=user_question,
     #         query_result_stats=query_result_stats
     #     )
-
 
     final_answer = (
         f'데이터 베이스에서 "{state["analyzed_question"]}"를 조회한 결과입니다.\n\n' + output

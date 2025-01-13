@@ -4,7 +4,6 @@ from fastapi import APIRouter, HTTPException
 from data_class.request import Input, Output
 
 from graph.graph import make_graph
-from sympy import im
 from llm_admin.session_manager import check_session_id, make_session_id, save_record, extract_last_data, make_dev_session_id
 from llm_admin.chain_manager import ChainManager
 

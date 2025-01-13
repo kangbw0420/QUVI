@@ -1,28 +1,6 @@
-from pathlib import Path
-import json
-from typing import Union, List, Dict, Any
 import pandas as pd
 from decimal import Decimal
-
-
-def load_prompt(prompt_path: str) -> Union[str, dict]:
-    """입력된 경로에 존재하는 프롬프트 파일을 로드합니다.
-    파일 확장자가 .json인 경우 JSON으로 파싱하여 반환하고,
-    그 외의 경우 문자열로 반환합니다.
-    Returns:
-        Union[str, dict]: JSON 파일인 경우 파싱된 딕셔너리, 그 외의 경우 문자열.
-    Raises:
-        FileNotFoundError: 프롬프트 파일이 존재하지 않는 경우.
-        json.JSONDecodeError: JSON 파일 파싱에 실패한 경우.
-        UnicodeDecodeError: 파일 인코딩이 잘못된 경우.
-    """
-    file_path = Path(prompt_path)
-
-    with open(file_path, "r", encoding="utf-8") as f:
-        if file_path.suffix.lower() == ".json":
-            return json.load(f)
-        return f.read()
-
+from typing import List, Dict, Any
 
 def analyze_data(data: List[Dict]) -> Dict[str, Dict[str, Any]]:
     """데이터프레임의 각 컬럼 타입을 자동으로 감지하여 분석합니다.
