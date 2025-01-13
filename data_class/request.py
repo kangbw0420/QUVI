@@ -16,11 +16,11 @@ class Output(BaseModel):
 
 
 class PostgreToVectorData(BaseModel):
-    id: str = "0"
     collection_name: str
+    id: str = "0"
     document: str = ""
-    type: str = "C"
     del_yn: str = "N"
+    type: str = "C"
 
 
 class VectorDataQuery(BaseModel):

@@ -10,6 +10,15 @@ data_api = APIRouter(tags=["data"])
 data_service = DatabaseService()
 
 
+@data_api.post("/fewshot/get/{collection_name}")
+def test_get_few_shot(collection_name: str):
+    try:
+        result = data_service.test_get_few_shot(collection_name)
+        return {"data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @data_api.post("/fewshot/add")
 def add_few_shot(data: PostgreToVectorData):
     """
@@ -18,13 +27,13 @@ def add_few_shot(data: PostgreToVectorData):
     try:
         success = data_service.add_few_shot(data)
 
-        dataList = json.loads(data.document)
-        for dataText in dataList:
-            success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name, text=json.dumps(dataText, ensure_ascii=False)))
-            if not success:
-                raise HTTPException(status_code=500, detail="Failed to insert vector data")
-
-            dataText['id'] = str(uuid.uuid4())
+        # dataList = json.loads(data.document)
+        # for dataText in dataList:
+        #     success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name, text=json.dumps(dataText, ensure_ascii=False)))
+        #     if not success:
+        #         raise HTTPException(status_code=500, detail="Failed to insert vector data")
+        #
+        #     dataText['id'] = str(uuid.uuid4())
 
         return {"message": "Few-shot data added successfully"}
     except Exception as e:

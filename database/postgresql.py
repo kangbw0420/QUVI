@@ -71,27 +71,6 @@ def query_execute(query, params=None, use_prompt_db=False):
             pool.putconn(connection)
 
 
-# 전체 Prompt 데이터 리스트를 가져오는 함수
-def get_all_prompt():
-    query = "SELECT * FROM (SELECT DISTINCT ON (node_nm, prompt_nm) * FROM prompt ORDER BY node_nm, prompt_nm, version DESC) AS innerQuery ORDER BY created_at DESC"
-    return query_execute(query, params=(), use_prompt_db=True)
-
-
-# Prompt 데이터를 가져오는 함수
-def get_prompt(node_nm: str, prompt_nm: str):
-    query = "SELECT * FROM prompt WHERE node_nm = %s AND prompt_nm = %s AND version = (SELECT MAX(version) FROM prompt WHERE node_nm = %s AND prompt_nm = %s)"
-    return query_execute(query, params=(node_nm, prompt_nm, node_nm, prompt_nm), use_prompt_db=True)
-
-
-# 새 Prompt 데이터를 삽입하는 함수
-def insert_prompt(node_nm: str, prompt_nm: str, prompt: str):
-    query = """
-        INSERT INTO prompt (node_nm, prompt_nm, prompt, version) 
-        VALUES (%s, %s, %s, (SELECT COALESCE(MAX(version), 0) FROM prompt WHERE node_nm = %s AND prompt_nm = %s) + 0.1)
-    """
-    return query_execute(query, params=(node_nm, prompt_nm, prompt, node_nm, prompt_nm), use_prompt_db=True)
-
-
 # 벡터 전체 데이터를 가져오는 함수
 def getAll_vector_data():
     return query_execute(
@@ -115,9 +94,9 @@ def get_vector_data(data: PostgreToVectorData):
 
 # 새 벡터 데이터를 삽입하는 함수
 def insert_vector_data(data: PostgreToVectorData):
-    query = "INSERT INTO vector_data (data, document) VALUES (%s, %s)"
+    query = "INSERT INTO vector_data (id, collection_name, document) VALUES (%s, %s, %s)"
 
-    return query_execute(query, params=(data.document, data.collection_name), use_prompt_db=True)
+    return query_execute(query, params=(data.id, data.collection_name, data.document), use_prompt_db=True)
 
 
 # 벡터 데이터 업데이트 함수
@@ -155,6 +134,29 @@ def delete_vector_data(data: PostgreToVectorData):
             WHERE document = %s
         """
         return query_execute(update_query, params=(data.collection_name,), use_prompt_db=True)
+
+
+# 전체 Prompt 데이터 리스트를 가져오는 함수
+def get_all_prompt():
+    query = "SELECT * FROM (SELECT DISTINCT ON (node_nm, prompt_nm) * FROM prompt ORDER BY node_nm, prompt_nm, version DESC) AS innerQuery ORDER BY created_at DESC"
+    return query_execute(query, params=(), use_prompt_db=True)
+
+
+# Prompt 데이터를 가져오는 함수
+def get_prompt(node_nm: str, prompt_nm: str):
+    query = "SELECT * FROM prompt WHERE node_nm = %s AND prompt_nm = %s AND version = (SELECT MAX(version) FROM prompt WHERE node_nm = %s AND prompt_nm = %s)"
+    return query_execute(query, params=(node_nm, prompt_nm, node_nm, prompt_nm), use_prompt_db=True)
+
+
+# 새 Prompt 데이터를 삽입하는 함수
+def insert_prompt(node_nm: str, prompt_nm: str, prompt: str):
+    query = """
+        INSERT INTO prompt (node_nm, prompt_nm, prompt, version) 
+        VALUES (%s, %s, %s, (SELECT COALESCE(MAX(version), 0) FROM prompt WHERE node_nm = %s AND prompt_nm = %s) + 0.1)
+    """
+    return query_execute(query, params=(node_nm, prompt_nm, prompt, node_nm, prompt_nm), use_prompt_db=True)
+
+
 
 # 쿼리를 실행하는 일반 함수
 def execute_query(query):

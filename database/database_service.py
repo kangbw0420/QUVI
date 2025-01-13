@@ -12,6 +12,13 @@ from database.vector_db import EmbeddingAPIClient
 vector_client = EmbeddingAPIClient()
 
 class DatabaseService:
+
+    @staticmethod
+    def test_get_few_shot(collection_name: str):
+        return vector_client.test_embedding(
+            collection_name=collection_name
+        )
+
     @staticmethod
     def add_few_shot(data : PostgreToVectorData):
 
@@ -21,26 +28,30 @@ class DatabaseService:
 
         dataList = json.loads(data.document)
         for dataText in dataList:
+            print(f"::: dataText : {dataText}")
+
             # Generate unique ID
             doc_id = str(uuid.uuid4())
 
             # Add to lists
             ids.append(doc_id)
+            print(f"::: ids : {ids}")
 
             question = dataText["question"]
             documents.append(question)  # question text for vectorization
+            print(f"::: documents : {documents}")
 
             metadata = {
                 "id": doc_id,
                 "answer": dataText["answer"]  # SQL goes to metadata
             }
             metadatas.append(metadata)
+            print(f"::: metadata : {metadatas}")
 
-            success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name,
-                                                                    text=json.dumps(dataText, ensure_ascii=False)))
+            success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name, id=doc_id, document=json.dumps(dataText, ensure_ascii=False)))
+            print(f"::: success : {success}")
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to insert vector data")
-
 
         vector_client.add_embedding(
             collection_name=data.collection_name,
@@ -48,6 +59,7 @@ class DatabaseService:
             documents=documents,
             metadatas=metadatas
         )
+        print("Successfully inserted vector data")
 
         return success
 
