@@ -12,6 +12,7 @@ class EmbeddingAPIClient:
         try:
             response = requests.get(url)
             print(f"[SUCCESS] Embedding test: {response.json()}")
+            return response.json()
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to test embedding: {e}")
 
@@ -25,7 +26,7 @@ class EmbeddingAPIClient:
             "collection_name": collection_name,
             "ids": ids,
             "documents": documents,
-            "metadatas": metadatas,
+            "metadatas": metadatas
         }
 
         try:
