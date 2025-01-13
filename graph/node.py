@@ -16,6 +16,7 @@ class GraphState(TypedDict):
     chain_id: str
     trace_id: str
     user_question: str  # 최초 사용자 질의
+    selected_table: str  # 사용자 질의에 대한 선택된 테이블
     analyzed_question: str  # analyzer를 통해 분석된 질의
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
     query_result_stats: (

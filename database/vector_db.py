@@ -7,7 +7,7 @@ BASE_URL = Config.VECTOR_STORE_DOMAIN
 class EmbeddingAPIClient:
     @staticmethod
     def test_embedding(collection_name: str):
-        url = f"{BASE_URL}/get/all/{collection_name}"
+        url = f"{BASE_URL}/test/{collection_name}"
 
         try:
             response = requests.get(url)

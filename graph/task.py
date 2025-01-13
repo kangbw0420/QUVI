@@ -97,7 +97,7 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     )
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
-    
+
     few_shots = await retriever.get_few_shots(
         query_text= user_question, task_type="analyzer", collection_name="shots_analyzer"
     )

@@ -10,7 +10,7 @@ data_api = APIRouter(tags=["data"])
 data_service = DatabaseService()
 
 
-@data_api.get("/fewshot/get/{collection_name}")
+@data_api.get("/fewshot/test/{collection_name}")
 def test_get_few_shot(collection_name: str):
     try:
         result = data_service.test_get_few_shot(collection_name)
