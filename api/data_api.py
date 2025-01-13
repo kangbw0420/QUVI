@@ -39,7 +39,8 @@ def update_few_shot(data: PostgreToVectorData):
     벡터 데이터를 업데이트하고 임베딩 시스템을 수정합니다.
     """
     try:
-        success = data_service.delete_few_shot(data)
+        # success = data_service.delete_few_shot(data)
+        success = data_service.multi_delete_few_shot(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete vector data")
 
