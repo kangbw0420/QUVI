@@ -44,12 +44,7 @@ def update_few_shot(data: PostgreToVectorData):
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete vector data")
 
-        dataList = json.loads(data.document)
-        for dataText in dataList:
-            success = data_service.add_few_shot(PostgreToVectorData(collection_name=data.collection_name,
-                                                                    text=json.dumps(dataText, ensure_ascii=False)))
-            if not success:
-                raise HTTPException(status_code=500, detail="Failed to insert vector data")
+        success = data_service.add_few_shot(data)
 
         return {"message": "Few-shot data updated successfully"}
     except Exception as e:
