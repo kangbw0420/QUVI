@@ -82,11 +82,14 @@ def getAll_vector_data():
 # 벡터 데이터를 가져오는 함수
 def get_vector_data(data: PostgreToVectorData):
     if data.type == 'C' and data.collection_name is not None:
-        return query_execute( "SELECT * FROM vector_data WHERE document = %s AND del_yn = 'N'", params=(data.collection_name,), use_prompt_db=True )
-    elif data.type == 'I' and data.item_id is not None:
         return query_execute(
-            "SELECT * FROM vector_data WHERE idx = %s AND del_yn = 'N'",
-            params=(data.item_id,), use_prompt_db=True
+            "SELECT * FROM vector_data WHERE collection_name = %s AND del_yn = 'N'",
+            params=(data.collection_name,), use_prompt_db=True
+        )
+    elif data.type == 'I' and data.id is not None:
+        return query_execute(
+            "SELECT * FROM vector_data WHERE id = %s AND del_yn = 'N'",
+            params=(data.id,), use_prompt_db=True
         )
     else:
         raise ValueError("Invalid vector data type or missing parameter")
@@ -123,7 +126,7 @@ def update_vector_data(data: PostgreToVectorData):
 def delete_vector_data(data: PostgreToVectorData):
     # 기존 데이터 가져오기
     get_data = query_execute(
-        "SELECT * FROM vector_data WHERE document = %s AND del_yn = 'N'",
+        "SELECT * FROM vector_data WHERE collection_name = %s AND del_yn = 'N'",
         params=(data.collection_name,)
         , use_prompt_db=True
     )
@@ -131,7 +134,7 @@ def delete_vector_data(data: PostgreToVectorData):
         update_query = """
             UPDATE vector_data
             SET del_yn = 'Y'
-            WHERE document = %s
+            WHERE collection_name = %s
         """
         return query_execute(update_query, params=(data.collection_name,), use_prompt_db=True)
 
