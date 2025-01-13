@@ -282,7 +282,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
 
     # 앞의 사례와 다르게 query_text가 human_prompt임에 유의
     few_shots = await retriever.get_few_shots(
-        query_text=human_prompt, task_type="responser", collection_name="shots_responser"
+        query_text=human_prompt, task_type="respondent", collection_name="shots_respondent"
     )
     few_shot_prompt = []
     for example in few_shots:
