@@ -15,7 +15,7 @@ def get_db_connection():
 
 @llmadmin_api.get("/users", response_model=List[str])
 async def get_users():
-    """Get list of user IDs ordered by latest session"""
+    """user_id 리스트를 user_id의 내림차순으로 가져온다"""
     try:
         engine = get_db_connection()
         with engine.begin() as connection:
@@ -32,7 +32,7 @@ async def get_users():
 
 @llmadmin_api.get("/sessions/{user_id}", response_model=List[Dict[str, Any]])
 async def get_sessions(user_id: str):
-    """Get all sessions for a specific user"""
+    """user_id에 해당하는 session을 모두 검색해 session_start의 최신순으로 가져온다"""
     try:
         engine = get_db_connection()
         with engine.begin() as connection:
@@ -44,7 +44,7 @@ async def get_sessions(user_id: str):
                 ORDER BY session_start DESC
             """
             result = connection.execute(text(query), {"user_id": user_id})
-            return [dict(row) for row in result]
+            return [dict(row._mapping) for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -62,7 +62,7 @@ async def get_chains(session_id: str):
                 ORDER BY chain_start DESC
             """
             result = connection.execute(text(query), {"session_id": session_id})
-            return [dict(row) for row in result]
+            return [dict(row._mapping) for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -94,8 +94,8 @@ async def get_traces(chain_id: str):
             trace_result = connection.execute(text(trace_query), {"chain_id": chain_id})
             
             return {
-                "chain": dict(chain_result),
-                "traces": [dict(row) for row in trace_result]
+                "chain": dict(chain_result._mapping),
+                "traces": [dict(row._mapping) for row in trace_result]
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -114,7 +114,7 @@ async def get_qnas(trace_id: str):
                 ORDER BY question_timestamp ASC
             """
             result = connection.execute(text(query), {"trace_id": trace_id})
-            return [dict(row) for row in result]
+            return [dict(row._mapping) for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -133,6 +133,6 @@ async def get_states(trace_id: str):
                 ORDER BY id ASC
             """
             result = connection.execute(text(query), {"trace_id": trace_id})
-            return [dict(row) for row in result]
+            return [dict(row._mapping) for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

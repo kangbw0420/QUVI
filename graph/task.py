@@ -35,8 +35,8 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     2) 퓨 샷
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
-    # system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
-    system_prompt = load_prompt("prompts/select_table/system.prompt")
+    system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
+    # system_prompt = load_prompt("prompts/select_table/system.prompt")
 
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
 
@@ -86,14 +86,14 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     2) 퓨 샷
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
-    system_prompt = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
-    # system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
+    # system_prompt = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
+    system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
 
     schema_prompt = (
         f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
-        + load_prompt("prompts/schema.json")[selected_table]
-        # + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
+        # + load_prompt("prompts/schema.json")[selected_table]
+        + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
     )
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
@@ -148,18 +148,18 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
         """
         try:
             prompt_file = f"prompts/create_query/{selected_table}.prompt"
-            system_prompt = load_prompt(prompt_file).format(today=today)
-            # system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
+            # system_prompt = load_prompt(prompt_file).format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
             
         except FileNotFoundError as e:
-            system_prompt = load_prompt("prompts/create_query/system.prompt").format(today=today)
-            # system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
+            # system_prompt = load_prompt("prompts/create_query/system.prompt").format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
 
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
-            + load_prompt("prompts/schema.json")[selected_table]
-            # + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
+            # + load_prompt("prompts/schema.json")[selected_table]
+            + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
         )
 
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
@@ -315,12 +315,12 @@ def sql_response(trace_id: str, user_question, query_result_stats = None, query_
         few_shot_prompt.append(("ai", example["output"]))
 
     # query_result_stats vs query_result
-    human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
-        query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
-    )
-    # human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
+    # human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
     #     query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     # )
+    human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
+        query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
+    )
 
     prompt = ChatPromptTemplate.from_messages(
         [
