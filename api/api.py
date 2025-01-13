@@ -1,40 +1,71 @@
-import uuid
+import traceback
 
-from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 from data_class.request import Input, Output
 
 from graph.graph import make_graph
+from sympy import im
 from utils.langfuse_handler import langfuse_handler
+from llm_admin.session_manager import check_session_id, make_session_id, save_record, extract_last_data, make_dev_session_id
+from llm_admin.chain_manager import ChainManager
+from llm_admin.state_manager import StateManager
 
 api = APIRouter(tags=["api"])
 graph = make_graph()
-
+chain_manager = ChainManager()
 
 @api.post("/process")
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
+    chain_id = None
     try:
+        # 세션 확인/생성을 가장 먼저 수행
+        session_id = (
+            request.session_id if check_session_id(request.user_id, request.session_id)
+            else make_dev_session_id(request.user_id, request.session_id) if request.session_id == "DEV_SESSION_ID"
+            else make_session_id(request.user_id)
+        )
+        
+        # last_data 조회
+        last_data = extract_last_data(session_id) if check_session_id(request.user_id, session_id) else None
+        
+        # 체인 생성
+        chain_id = chain_manager.create_chain(session_id, request.user_question)
+        
+        # 초기 state를 DB에 기록
+        StateManager.update_state(chain_id, {
+            "user_question": request.user_question
+        })
+
+        initial_state = {
+            "chain_id": chain_id,
+            "user_question": request.user_question,
+            "last_data": last_data if last_data else []
+        }
+        
+        # 그래프 실행
         final_state = await graph.ainvoke(
-            {"user_question": request.user_question,
-             "last_question": request.last_question,
-             "last_answer": request.last_answer,
-             "last_sql_query": request.last_sql_query,
-            },
+            initial_state,
             config={"callbacks": [langfuse_handler]},
         )
-
-        # 본문 {"result": {"answer": string, "table": []}, "raw_data": [], "SQL": ""}
+        
+        # 결과 추출
         answer = final_state["final_answer"]
         raw_data = final_state["query_result"]
-
         analyzed_question = final_state["analyzed_question"]
         sql_query = final_state["sql_query"]
-
+        
+        # 기존 레코드 저장
+        save_record(session_id, analyzed_question, answer, sql_query)
+        
+        # 체인 완료 기록
+        chain_manager.complete_chain(chain_id, answer)
+        
         return Output(
             status=200,
             success=True,
             retCd=200,
+            session_id=session_id,
             message="질답 성공",
             body={
                 "answer": answer,
@@ -43,6 +74,16 @@ async def process_input(request: Input) -> Output:
                 "sql_query": sql_query
             }
         )
-    
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing input: {str(e)}")
+        error_detail = str(e)
+        print(traceback.format_exc())
+        
+        # 체인 오류 상태 기록
+        if chain_id:
+            try:
+                chain_manager.mark_chain_error(chain_id, error_detail)
+            except Exception as chain_error:
+                print(f"Error marking chain error: {str(chain_error)}")
+        
+        raise HTTPException(status_code=500, detail=f"Error processing input: {error_detail}")

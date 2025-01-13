@@ -55,27 +55,22 @@ class CustomChatLLM(BaseLLM, BaseModel):
             raise ValueError(f"API response error: {str(e)}")
 
     def _generate(
-        self, prompts: List[str], stop: Optional[List[str]] = None
-    ) -> LLMResult:
-        generations = []
-        for prompt in prompts:
-            try:
-                # 콜백 핸들러에게 LLM 시작을 알림
-                if self.callbacks:
-                    for callback in self.callbacks:
-                        callback.on_llm_start({"name": self.model}, [prompt])
+            self, prompts: List[str], stop: Optional[List[str]] = None
+        ) -> LLMResult:
+            
+            generations = []
+            for i, prompt in enumerate(prompts, 1):
+                try:
+                    response = self._call(prompt, stop)
 
-                response = self._call(prompt, stop)
-                generations.append([Generation(text=response)])
+                    generations.append([Generation(text=response)])
 
-                # 콜백 핸들러에게 LLM 종료를 알림
-                if self.callbacks:
-                    for callback in self.callbacks:
-                        callback.on_llm_end(LLMResult(generations=[generations[-1]]))
-
-            except Exception as e:
-                raise ValueError(f"오류 발생: {str(e)}")
-        return LLMResult(generations=generations)
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    raise ValueError(f"오류 발생: {str(e)}")
+            
+            return LLMResult(generations=generations)
 
     @property
     def _llm_type(self) -> str:

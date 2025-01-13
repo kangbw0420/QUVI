@@ -1,6 +1,8 @@
 from click import option
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from llm_admin.trace_manager import TraceManager
+import inspect
 
 from .node import (
     GraphState,
@@ -11,10 +13,38 @@ from .node import (
     result_executor,
 )
 
+class TrackedStateGraph(StateGraph):
+    """노드 실행을 추적하는 StateGraph의 확장 클래스"""
+    
+    def add_node(self, key: str, action):
+        """노드 추가 시 실행 추적 래퍼를 추가"""
+        async def tracked_action(state: GraphState):
+            try:
+                # 노드 실행 시작 시 trace 생성
+                trace_id = TraceManager.create_trace(state["chain_id"], key)
+                
+                # action이 코루틴 함수(async def)인지 확인
+                if inspect.iscoroutinefunction(action):
+                    # 비동기 함수는 await로 실행
+                    result = await action(state)
+                else:
+                    # 동기 함수는 직접 실행
+                    result = action(state)
+                
+                return result
+                
+            except Exception as e:
+                # 에러 발생 시 trace를 error로 마크
+                TraceManager.mark_trace_error(trace_id)
+                raise e
+                
+        return super().add_node(key, tracked_action)
 
 def make_graph() -> CompiledStateGraph:
+    """StateGraph 생성 및 설정"""
     try:
-        workflow = StateGraph(GraphState)
+        # TrackedStateGraph 사용
+        workflow = TrackedStateGraph(GraphState)
 
         # 노드 추가
         workflow.add_node("table_selector", table_selector)
@@ -23,7 +53,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("result_executor", result_executor)
         workflow.add_node("sql_respondent", sql_respondent)
 
-        # 엣지
+        # 엣지 추가
         workflow.add_edge("table_selector", "question_analyzer")
         workflow.add_edge("question_analyzer", "query_creator")
         workflow.add_edge("query_creator", "result_executor")
@@ -36,6 +66,7 @@ def make_graph() -> CompiledStateGraph:
         # 그래프 컴파일
         app = workflow.compile()
         return app
+        
     except Exception as e:
         print(f"Error in make_graph: {str(e)}")
         raise

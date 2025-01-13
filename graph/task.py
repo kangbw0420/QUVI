@@ -1,20 +1,23 @@
-from json import load
-import re, os
+import json
+import re
 from typing import Union, Sequence, Dict, Any
+
 from dotenv import load_dotenv
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from sqlalchemy import create_engine, text
-from sqlalchemy.sql.expression import Executable
 from sqlalchemy.engine import Result
-from .utils import load_prompt
-from llm_models.models import llama_70b_llm, llama_8b_llm, qwen_llm
+from sqlalchemy.sql.expression import Executable
+
+from database.database_service import DatabaseService
+from llm_models.models import llama_70b_llm, qwen_llm
 from utils.config import Config
-from prompts.retriever import retriever
+from utils.retriever import retriever
+from .utils import load_prompt
 
 load_dotenv()
-
+database_service = DatabaseService()
 
 async def select_table(user_question: str, last_data: str = "") -> str:
     """사용자의 질문으로부터 테이블을 선택
@@ -31,8 +34,13 @@ async def select_table(user_question: str, last_data: str = "") -> str:
     2) 퓨 샷
     3) 사용자 프롬프트 (사용자의 질문만)        
     """
-    system_prompt = load_prompt("prompts/select_table/system.prompt")
+    system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
+    print(f"1. system promtpt === > {system_prompt}")
+    # system_prompt = load_prompt("prompts/select_table/system.prompt")
+    # 추가) system_prompt = postgresql에서 get_prompt(node=select_table, prompt_name=system)
+
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
+
     few_shots = await retriever.get_few_shots(
         query_text=user_question, task_type="selector", collection_name="shots_selector"
     )
@@ -50,13 +58,13 @@ async def select_table(user_question: str, last_data: str = "") -> str:
         ]
     )
 
-    select_table_chain = SELECT_TABLE_PROMPT | qwen_llm | output_parser
+    select_table_chain = SELECT_TABLE_PROMPT | llama_70b_llm | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
 
     return selected_table
 
 
-async def analyze_user_question(user_question: str, selected_table: str, last_data: str = "", last_question:str = "") -> str:
+async def analyze_user_question(user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
@@ -73,13 +81,20 @@ async def analyze_user_question(user_question: str, selected_table: str, last_da
     """
     print("\n=== Analyze User Question Started ===")
     print(f"Processing question: {user_question}")
-    system_prompt = load_prompt("prompts/analyze_user_question/system.prompt")
+    # system_prompt_old = load_prompt("prompts/analyze_user_question/system.prompt").format(today=today)
+    system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
+    print(f"2. system promtpt === > {system_prompt}")
+    # 추가) system_prompt = postgresql에서 get_prompt(node=analyze_user_question, prompt_name=system).format(today=today)
 
     schema_prompt = (
-        f"테이블: {selected_table}\n"
+        f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
-        + load_prompt("prompts/schema.json")[selected_table]
+        # + load_prompt("prompts/schema.json")[selected_table]
+        + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
+        # 추가) + postgresql에서 get_prompt(node=analyze_user_question, prompt_name=selected_table)
     )
+
+    print(f"3. schema_prompt === > {schema_prompt}")
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
     
@@ -99,12 +114,8 @@ async def analyze_user_question(user_question: str, selected_table: str, last_da
             ("human", "{user_question}\nAI:"),
         ]
     )
-    # with open("analyzer_prompt.txt", 'a+', encoding="utf-8") as f:
-    #     f.write(f"user_question: {user_question}")
-    #     f.write(f"\nSystemPrompt: {contents}")
-    #     f.write(f"\nFew_Shots: {few_shot_prompt}")
-    #     f.write(f"human: {user_question}\nAI:\n")
-    analyze_chain = ANALYZE_PROMPT | qwen_llm | output_parser
+
+    analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
     print(f"Final analyzed question: {analyzed_question}")
@@ -130,41 +141,45 @@ async def create_query(selected_table, analyzed_question: str, today: str) -> st
         """
         try:
             prompt_file = f"prompts/create_query/{selected_table}.prompt"
-            print(f"Attempting to load prompt from: {prompt_file}")      
-            system_prompt = load_prompt(prompt_file).format(today=today)
-            print("Successfully loaded custom prompt")
+            # system_prompt = load_prompt(prompt_file).format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
+            print(f"4. system_prompt === > {system_prompt}")
             
         except FileNotFoundError as e:
-            system_prompt = load_prompt("prompts/create_query/system.prompt").format(
-                today=today
-            )
+            # system_prompt = load_prompt("prompts/create_query/system.prompt").format(
+            #     today=today
+            # )
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
+            print(f"5. system_prompt === > {system_prompt}")
 
         schema_prompt = (
-            f"테이블: {selected_table}\n"
+            f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
-            + load_prompt("prompts/schema.json")[selected_table]
+            # + load_prompt("prompts/schema.json")[selected_table]
+            + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
         )
 
-        # # Extract year from table_name (e.g., "2011" from "aicfo_get_cabo_2011")
-        # back_number = re.search(r"\d{4}$", selected_table).group()
-        # collection_name = f"shots_{back_number}"
+        print(f"6. schema_prompt === > {schema_prompt}")
+
+        # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
+        collection_name = f"shots_{selected_table}"
 
         # # retriever를 사용하여 동적으로 few-shot 예제 가져오기
-        # few_shots = await retriever.get_few_shots(
-        #     query_text=analyzed_question,
-        #     task_type="creator",
-        #     collection_name=collection_name,
-        # )
+        few_shots = await retriever.get_few_shots(
+            query_text=analyzed_question,
+            task_type="creator",
+            collection_name=collection_name,
+        )
 
-        # few_shot_prompt = []
-        # for example in few_shots:
-        #     few_shot_prompt.append(("human", example["input"]))
-        #     few_shot_prompt.append(("ai", example["output"]))
+        few_shot_prompt = []
+        for example in few_shots:
+            few_shot_prompt.append(("human", example["input"]))
+            few_shot_prompt.append(("ai", example["output"]))
 
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=system_prompt + schema_prompt),
-                # *few_shot_prompt,
+                *few_shot_prompt,
                 ("human", analyzed_question),
             ]
         )
@@ -208,11 +223,8 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
     print(f"Fetch mode: {fetch}")
 
     try:
-        print("\n=== Setting up DB Connection ===")
         parameters = {}
         execution_options = {}
-        # db_path = os.getenv("DB_HOST")
-        # print(f"Database path: {db_path}")
 
         # URL encode the password to handle special characters
         from urllib.parse import quote_plus
@@ -224,13 +236,18 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
 
         print("\n=== Executing Query ===")
         with engine.begin() as connection:
+            # SQLAlchemy를 활용해 실행 가능한 쿼리 객체로 변경
             if isinstance(command, str):
-                print("Converting string command to SQLAlchemy text...")
                 command = text(command)
             elif isinstance(command, Executable):
-                print("Command is already SQLAlchemy executable")
+                pass
             else:
                 raise TypeError(f"Query expression has unknown type: {type(command)}")
+            
+            # # (production) 사용하려는 스키마 지정
+            # schemaQuery = f"SET search_path TO {Config.DB_SCHEMA}"
+            # print(f"::::::::::::::: schemaQuery : {schemaQuery}")
+            # connection.execute(text(schemaQuery))
 
             cursor = connection.execute(
                 command,
@@ -287,7 +304,10 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
     """
     output_parser = StrOutputParser()
 
-    system_prompt = load_prompt("prompts/sql_response/system.prompt")
+    # system_prompt = load_prompt("prompts/sql_response/system.prompt")
+    system_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='system')[0]['prompt']
+    print(f"7. system_prompt === > {system_prompt}")
+    print(f"system promtpt === > {system_prompt}")
     few_shots = load_prompt("prompts/sql_response/fewshots.json")
     few_shot_prompt = []
     for example in few_shots:
@@ -298,6 +318,15 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
     human_prompt = load_prompt("prompts/sql_response/human.prompt").format(
         query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
+    # human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
+    #     query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
+    # )
+    human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human').format(
+        query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
+    )
+
+    print(f"8. human_prompt === > {human_prompt}")
+
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -306,7 +335,51 @@ def sql_response(user_question, query_result_stats = None, query_result = None) 
             HumanMessage(content=human_prompt),
         ]
     )
-    chain = prompt | qwen_llm | output_parser
+    chain = prompt | llama_70b_llm | output_parser
 
     output = chain.invoke({"user_question": user_question})
     return output
+
+
+def columns_filter(query_result: list, selected_table_name:str):
+    result = query_result
+
+    import json
+    with open("temp.json", 'r', encoding='utf-8') as f: # 테이블에 따른 컬럼리스트 (type: JSON)
+        columns_list = json.load(f)
+        
+    # node에서 query_result 의 element 존재유무를 검사했으니 
+    # row가 갖고 있는 column name 기준으로 '거래내역'과 '잔액'을 구분
+    # amt 잔액, trsc 거래내역
+    if selected_table_name == "trsc":   # '거래내역'
+        filtered_result = []    # 필터링한 결과를 출력할 변수
+        # view_dv로 인텐트트 구분
+        # 모든 row가 갖고 있는 column name list는 같으므로
+        if 'view_dv' in result[0]:
+            intent = columns_list['trsc'][result[0]['view_dv']]
+            for x in result:
+                x = {k: v for k, v in x.items() if k in intent}
+                filtered_result.append(x)
+        else:   # view_dv가 없기 때문에 '전체'에 해당되는 column list만 출력
+            intent = columns_list['trsc']['전체']
+            for x in result:
+                x = {k: v for k, v in x.items() if k in intent}
+                filtered_result.append(x)
+        return filtered_result
+    elif selected_table_name == "amt": # '잔액'
+        filtered_result = []    # 필터링한 결과를 출력할 변수
+        # view_dv로 세부 항목 구분
+        # 모든 row가 갖고 있는 column name list는 같으므로
+        if 'view_dv' in result[0]:
+            intent = columns_list['amt'][result[0]['view_dv']]
+            for x in result:
+                x = {k: v for k, v in x.items() if k in intent}
+                filtered_result.append(x)
+        else:   # view_dv가 없기 때문에 '전체'에 해당되는 column list만 출력
+            intent = columns_list['amt']['전체']
+            for x in result:
+                x = {k: v for k, v in x.items() if k in intent}
+                filtered_result.append(x)
+        return filtered_result
+    else:                       # 해당사항 없으므로 본래 resul값 출력 
+        return result

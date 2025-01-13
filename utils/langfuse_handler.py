@@ -1,8 +1,4 @@
 from langfuse.callback import CallbackHandler
-from langfuse import Langfuse
-from datetime import datetime
-import uuid
-from typing import Dict, Any, List, Union
 from utils.config import Config
 
 # 환경변수에서 설정 가져오기
