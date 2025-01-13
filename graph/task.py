@@ -59,7 +59,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
 
     qna_id = QnAManager.create_question(
         trace_id=trace_id,
-        question=SELECT_TABLE_PROMPT,
+        question=user_question,
         model="llama_70b"
     )
 
@@ -117,7 +117,7 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
 
     qna_id = QnAManager.create_question(
         trace_id=trace_id,
-        question=ANALYZE_PROMPT,
+        question=user_question,
         model="llama_70b"
     )
 
