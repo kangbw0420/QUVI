@@ -41,8 +41,7 @@ class DatabaseService:
             metadatas.append(metadata)
             print(f"::: metadata : {metadatas}")
 
-            success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name,
-                                                                    text=json.dumps(dataText, ensure_ascii=False)))
+            success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name, id=doc_id, document=json.dumps(dataText, ensure_ascii=False)))
             print(f"::: success : {success}")
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to insert vector data")
