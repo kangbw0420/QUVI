@@ -13,7 +13,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 class StateManager:
 
-    def update_state(self, trace_id: str, updates: Dict[str, Any]) -> bool:
+    def update_state(trace_id: str, updates: Dict[str, Any]) -> bool:
         try:
             password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
             db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
@@ -21,22 +21,22 @@ class StateManager:
 
             with engine.begin() as connection:
                 connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-                
+
                 # 현재 trace의 직전 상태 조회
                 current_state = StateManager.get_latest_state(connection, trace_id)
 
                 if current_state:
                     # 현재 상태에서 updates에 있는 키를 제외한 값들만 유지
-                    preserved_state = {k: v for k, v in current_state.items() 
-                                    if k not in updates.keys() 
-                                    and v is not None 
-                                    and k != 'trace_id'} 
+                    preserved_state = {k: v for k, v in current_state.items()
+                                    if k not in updates.keys()
+                                    and v is not None
+                                    and k != 'trace_id'}
                     # 보존된 상태에 새로운 업데이트 추가
                     new_state = {**preserved_state, **updates}
 
                 else:
                     new_state = updates
-                    
+
                 def convert_decimal(obj):
                     if isinstance(obj, dict):
                         return {str(k): convert_decimal(v) for k, v in obj.items()}
@@ -54,11 +54,11 @@ class StateManager:
                         params[key] = json.dumps(converted_value, ensure_ascii=False)
                     else:
                         params[key] = value
-                
+
                 # 새로운 state row 생성
                 fields = list(params.keys())
                 placeholders = [f":{field}" for field in fields]
-                
+
                 insert_query = f"""
                     INSERT INTO state (
                         {', '.join(fields)}
@@ -66,7 +66,7 @@ class StateManager:
                         {', '.join(placeholders)}
                     )
                 """
-                
+
                 connection.execute(text(insert_query), params)
 
             return True
@@ -75,7 +75,7 @@ class StateManager:
             print(f"\nError in update_state: {str(e)}")
             raise
 
-    def get_latest_state(self, connection, trace_id: str) -> Optional[Dict[str, Any]]:
+    def get_latest_state(connection, trace_id: str) -> Optional[Dict[str, Any]]:
         """
         현재 trace의 chain_id를 기반으로 직전 trace의 상태를 조회
         """ 

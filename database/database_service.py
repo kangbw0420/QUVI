@@ -13,12 +13,12 @@ vector_client = EmbeddingAPIClient()
 
 class DatabaseService:
 
-    def test_get_few_shot(self, collection_name: str):
+    def test_get_few_shot(collection_name: str):
         return vector_client.test_embedding(
             collection_name=collection_name
         )
 
-    def add_few_shot(self, data : PostgreToVectorData):
+    def add_few_shot(data : PostgreToVectorData):
         ids = []
         documents = []  # question text for vectorization
         metadatas = []  # metadata including SQL
@@ -54,7 +54,7 @@ class DatabaseService:
 
         return success
 
-    def update_few_shot(self, data : PostgreToVectorData):
+    def update_few_shot(data : PostgreToVectorData):
         success = update_vector_data(data)
         if success:
             vector_client.update_embedding(
@@ -64,7 +64,7 @@ class DatabaseService:
             )
         return success
 
-    def get_vector_few_shot(self, data : VectorDataQuery):
+    def get_vector_few_shot(data : VectorDataQuery):
         return vector_client.query_embedding(
             collection_name=data.collection_name,
             query_text = data.query_text,
@@ -74,10 +74,10 @@ class DatabaseService:
     def getAll_postgre_few_shot(self):
         return getAll_vector_data()
 
-    def get_postgre_few_shot(self, data: PostgreToVectorData):
+    def get_postgre_few_shot(data: PostgreToVectorData):
         return get_vector_data(data)
 
-    def multi_delete_few_shot(self, data : PostgreToVectorData):
+    def multi_delete_few_shot(data : PostgreToVectorData):
         ids = []
 
         resultList = get_vector_data(data)
@@ -93,7 +93,7 @@ class DatabaseService:
             )
         return success
 
-    def delete_few_shot(self, data: PostgreToVectorData):
+    def delete_few_shot(data: PostgreToVectorData):
         success = delete_vector_data(data)
         if success:
             vector_client.delete_embedding(
@@ -102,11 +102,11 @@ class DatabaseService:
             )
         return success
 
-    def add_prompt(self, node_nm: str, prompt_nm: str, prompt: str):
+    def add_prompt(node_nm: str, prompt_nm: str, prompt: str):
         return insert_prompt(node_nm, prompt_nm, prompt)
 
     def get_all_prompt(self):
         return get_all_prompt()
 
-    def get_prompt(self, node_nm: str, prompt_nm: str):
+    def get_prompt(node_nm: str, prompt_nm: str):
         return get_prompt(node_nm, prompt_nm)

@@ -6,7 +6,7 @@ BASE_URL = Config.VECTOR_STORE_DOMAIN
 
 class EmbeddingAPIClient:
 
-    def test_embedding(self, collection_name: str):
+    def test_embedding(collection_name: str):
         url = f"{BASE_URL}/get/all/{collection_name}"
 
         try:
@@ -16,7 +16,7 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to test embedding: {e}")
 
-    def add_embedding(self, collection_name: str, ids: list[str], documents: list[str], metadatas: list[dict]):
+    def add_embedding(collection_name: str, ids: list[str], documents: list[str], metadatas: list[dict]):
         """
         서버에 임베딩 데이터를 추가하는 함수
         """
@@ -35,7 +35,7 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to add embedding: {e}")
 
-    def update_embedding(self, collection_name: str, item_id: str, text: str):
+    def update_embedding(collection_name: str, item_id: str, text: str):
         """
         서버에 기존 데이터를 업데이트하는 함수
         """
@@ -53,7 +53,7 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to update embedding: {e}")
 
-    def query_embedding(self, collection_name: str, query_text: str, top_k: int = 5):
+    def query_embedding(collection_name: str, query_text: str, top_k: int = 5):
         """
         서버에서 텍스트를 검색하는 함수
         """
@@ -77,7 +77,7 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to query embedding: {e}")
 
-    def multi_delete_embedding(self, collection_name: str, ids: list[str]):
+    def multi_delete_embedding(collection_name: str, ids: list[str]):
         """
         서버에서 ID 리스트의 데이터를 삭제하는 함수
         """
@@ -94,7 +94,7 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to delete embedding: {e}")
 
-    def delete_embedding(self, collection_name: str, item_id: str):
+    def delete_embedding(collection_name: str, item_id: str):
         """
         서버에서 특정 ID의 데이터를 삭제하는 함수
         """

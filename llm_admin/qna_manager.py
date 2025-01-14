@@ -7,7 +7,7 @@ from utils.config import Config
 
 class QnAManager:
 
-    def create_question(self, trace_id: str, question: Any, model: str) -> str:
+    def create_question(trace_id: str, question: Any, model: str) -> str:
         """
         LLM에 질문을 보내는 시점에 QnA 레코드 생성
         Args:
@@ -62,7 +62,7 @@ class QnAManager:
             print(f"Error in create_question: {str(e)}")
             raise
 
-    def record_answer(self, qna_id: str, answer: str) -> bool:
+    def record_answer(qna_id: str, answer: str) -> bool:
         """
         LLM 응답을 받은 시점에 답변 기록
         Returns:

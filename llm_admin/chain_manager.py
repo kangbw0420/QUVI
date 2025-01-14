@@ -5,7 +5,7 @@ from utils.config import Config
 
 class ChainManager:
 
-    def create_chain(self, session_id: str, user_question: str) -> str:
+    def create_chain(session_id: str, user_question: str) -> str:
         """
         새로운 체인을 생성하고 초기 상태를 기록
         Returns:
@@ -49,7 +49,7 @@ class ChainManager:
             print(f"Error in create_chain: {str(e)}")
             raise
 
-    def complete_chain(self, chain_id: str, final_answer: str) -> bool:
+    def complete_chain(chain_id: str, final_answer: str) -> bool:
         """
         체인 완료 시 답변과 종료 시간을 기록
         Returns:
@@ -84,7 +84,7 @@ class ChainManager:
             print(f"Error in complete_chain: {str(e)}")
             raise
 
-    def mark_chain_error(self, chain_id: str, error_message: str) -> bool:
+    def mark_chain_error(chain_id: str, error_message: str) -> bool:
         """
         체인 실행 중 오류 발생 시 상태를 error로 변경
         Returns:
