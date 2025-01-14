@@ -88,3 +88,4 @@ class CustomChatLLM(BaseLLM, BaseModel):
 llama_70b_llm = CustomChatLLM(model="planner", temperature=0.01, max_tokens=3000)
 qwen_llm = CustomChatLLM(model="nl2sql", temperature=0.01, max_tokens=1000)
 llama_8b_llm = CustomChatLLM(model="solver", temperature=0.01, max_tokens=500)
+qwen_llm_7b = CustomChatLLM(model="selector", temperature=0.01, max_tokens=500)

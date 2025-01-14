@@ -11,7 +11,7 @@ from sqlalchemy.engine import Result
 from sqlalchemy.sql.expression import Executable
 
 from database.database_service import DatabaseService
-from llm_models.models import llama_70b_llm, qwen_llm
+from llm_models.models import llama_70b_llm, qwen_llm, qwen_llm_7b
 from utils.config import Config
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
@@ -53,7 +53,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
         model="llama_70b"
     )
 
-    select_table_chain = SELECT_TABLE_PROMPT | llama_70b_llm | output_parser
+    select_table_chain = SELECT_TABLE_PROMPT | qwen_llm_7b | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
 
     QnAManager.record_answer(qna_id, selected_table)
