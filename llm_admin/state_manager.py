@@ -13,7 +13,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 class StateManager:
 
-    def update_state(trace_id: str, updates: Dict[str, Any]) -> bool:
+    def update_state(self, trace_id: str, updates: Dict[str, Any]) -> bool:
         try:
             password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
             db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
@@ -75,7 +75,7 @@ class StateManager:
             print(f"\nError in update_state: {str(e)}")
             raise
 
-    def get_latest_state(connection, trace_id: str) -> Optional[Dict[str, Any]]:
+    def get_latest_state(self, connection, trace_id: str) -> Optional[Dict[str, Any]]:
         """
         현재 trace의 chain_id를 기반으로 직전 trace의 상태를 조회
         """ 
