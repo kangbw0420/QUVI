@@ -142,5 +142,5 @@ class DatabaseService:
     def get_all_prompt():
         return get_all_prompt()
 
-    def get_prompt(node_nm: str, prompt_nm: str):
+    def get_prompt(self, node_nm: str, prompt_nm: str):
         return get_prompt(node_nm, prompt_nm)
