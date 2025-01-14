@@ -9,7 +9,6 @@ from llm_admin.chain_manager import ChainManager
 
 api = APIRouter(tags=["api"])
 graph = make_graph()
-chain_manager = ChainManager()
 
 @api.post("/process")
 async def process_input(request: Input) -> Output:
@@ -27,7 +26,7 @@ async def process_input(request: Input) -> Output:
         last_data = extract_last_data(session_id) if check_session_id(request.user_id, session_id) else None
         
         # 체인 생성
-        chain_id = chain_manager.create_chain(session_id, request.user_question)
+        chain_id = ChainManager.create_chain(session_id, request.user_question)
 
         initial_state = {
             "chain_id": chain_id,
@@ -50,7 +49,7 @@ async def process_input(request: Input) -> Output:
         save_record(session_id, analyzed_question, answer, sql_query)
         
         # 체인 완료 기록
-        chain_manager.complete_chain(chain_id, answer)
+        ChainManager.complete_chain(chain_id, answer)
         
         return Output(
             status=200,
@@ -72,7 +71,7 @@ async def process_input(request: Input) -> Output:
         # 체인 오류 상태 기록
         if chain_id:
             try:
-                chain_manager.mark_chain_error(chain_id, error_detail)
+                ChainManager.mark_chain_error(chain_id, error_detail)
             except Exception as chain_error:
                 print(f"Error marking chain error: {str(chain_error)}")
         

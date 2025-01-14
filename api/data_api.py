@@ -4,14 +4,26 @@ from data_class.request import PostgreToVectorData, PromptInput
 from database.database_service import DatabaseService
 
 data_api = APIRouter(tags=["data"])
-data_service = DatabaseService()
 
 
 @data_api.get("/test/{collection_name}")
 def test_get_few_shot(collection_name: str):
     try:
-        result = data_service.test_get_few_shot(collection_name)
+        result = DatabaseService.test_get_few_shot(collection_name)
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@data_api.post("/fewshot/addList")
+def add_list_few_shot(data: PostgreToVectorData):
+    """
+    새 벡터 데이터를 추가하고 임베딩 시스템에 업데이트합니다.
+    """
+    try:
+        success = DatabaseService.add_list_few_shot(data)
+
+        return {"message": "Few-shot data list added successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -22,7 +34,7 @@ def add_few_shot(data: PostgreToVectorData):
     새 벡터 데이터를 추가하고 임베딩 시스템에 업데이트합니다.
     """
     try:
-        success = data_service.add_few_shot(data)
+        success = DatabaseService.add_few_shot(data)
 
         return {"message": "Few-shot data added successfully"}
     except Exception as e:
@@ -36,12 +48,12 @@ def update_few_shot(data: PostgreToVectorData):
     벡터 데이터를 업데이트하고 임베딩 시스템을 수정합니다.
     """
     try:
-        # success = data_service.delete_few_shot(data)
-        success = data_service.multi_delete_few_shot(data)
+        # success = DatabaseService.delete_few_shot(data)
+        success = DatabaseService.multi_delete_few_shot(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete vector data")
 
-        success = data_service.add_few_shot(data)
+        success = DatabaseService.add_few_shot(data)
 
         return {"message": "Few-shot data updated successfully"}
     except Exception as e:
@@ -55,8 +67,8 @@ def delete_few_shot(data: PostgreToVectorData):
     벡터 데이터를 삭제하고 임베딩 시스템에서 제거합니다.
     """
     try:
-        # success = data_service.delete_few_shot(data)
-        success = data_service.multi_delete_few_shot(data)
+        # success = DatabaseService.delete_few_shot(data)
+        success = DatabaseService.multi_delete_few_shot(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete vector data")
         return {"message": "Few-shot data deleted successfully"}
@@ -71,7 +83,7 @@ def getAll_postgre_few_shot():
     PostgreSQL에서 Few-shot 데이터를 전체 조회합니다.
     """
     try:
-        result = data_service.getAll_postgre_few_shot()
+        result = DatabaseService.getAll_postgre_few_shot()
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -84,7 +96,7 @@ def get_postgre_few_shot(data: PostgreToVectorData):
     PostgreSQL에서 Few-shot 데이터를 조회합니다.
     """
     try:
-        result = data_service.get_postgre_few_shot(data)
+        result = DatabaseService.get_postgre_few_shot(data)
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -97,7 +109,7 @@ def add_prompt(prompt: PromptInput):
     새 Prompt를 추가합니다.
     """
     try:
-        success = data_service.add_prompt(prompt.node_nm, prompt.prompt_nm, prompt.prompt)
+        success = DatabaseService.add_prompt(prompt.node_nm, prompt.prompt_nm, prompt.prompt)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to insert prompt data")
         return {"message": "Prompt added successfully"}
@@ -112,7 +124,7 @@ def get_all_prompt():
     전체 Prompt 데이터 리스트를 조회합니다.
     """
     try:
-        result = data_service.get_all_prompt()
+        result = DatabaseService.get_all_prompt()
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -126,7 +138,7 @@ def get_all_prompt():
 #     지정된 이름의 Prompt 데이터를 조회합니다.
 #     """
 #     try:
-#         result = data_service.get_prompt(prompt_nm)
+#         result = DatabaseService.get_prompt(prompt_nm)
 #         if not result:
 #             raise HTTPException(status_code=404, detail="Prompt not found")
 #         return {"data": result}
