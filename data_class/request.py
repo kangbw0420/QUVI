@@ -10,7 +10,6 @@ class Output(BaseModel):
     status: int# 200
     success: bool# True
     retCd: int # 200 
-    session_id: str # 해당 그래프의 세션id
     message: str# 질답 성공
     body: dict # 본문
 

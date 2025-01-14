@@ -56,13 +56,12 @@ async def process_input(request: Input) -> Output:
             status=200,
             success=True,
             retCd=200,
-            session_id=session_id,
             message="질답 성공",
             body={
                 "answer": answer,
                 "raw_data": raw_data,
-                "analyzed_question": analyzed_question,
-                "sql_query": sql_query
+                "session_id": session_id,
+                "sql_query": sql_query # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }
         )
         
