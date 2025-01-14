@@ -5,7 +5,7 @@ from utils.config import Config
 BASE_URL = Config.VECTOR_STORE_DOMAIN
 
 class EmbeddingAPIClient:
-    @staticmethod
+
     def test_embedding(collection_name: str):
         url = f"{BASE_URL}/get/all/{collection_name}"
 
@@ -16,7 +16,6 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to test embedding: {e}")
 
-    @staticmethod
     def add_embedding(collection_name: str, ids: list[str], documents: list[str], metadatas: list[dict]):
         """
         서버에 임베딩 데이터를 추가하는 함수
@@ -36,7 +35,6 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to add embedding: {e}")
 
-    @staticmethod
     def update_embedding(collection_name: str, item_id: str, text: str):
         """
         서버에 기존 데이터를 업데이트하는 함수
@@ -55,7 +53,6 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to update embedding: {e}")
 
-    @staticmethod
     def query_embedding(collection_name: str, query_text: str, top_k: int = 5):
         """
         서버에서 텍스트를 검색하는 함수
@@ -80,7 +77,6 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to query embedding: {e}")
 
-    @staticmethod
     def multi_delete_embedding(collection_name: str, ids: list[str]):
         """
         서버에서 ID 리스트의 데이터를 삭제하는 함수
@@ -98,7 +94,6 @@ class EmbeddingAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to delete embedding: {e}")
 
-    @staticmethod
     def delete_embedding(collection_name: str, item_id: str):
         """
         서버에서 특정 ID의 데이터를 삭제하는 함수

@@ -13,15 +13,12 @@ vector_client = EmbeddingAPIClient()
 
 class DatabaseService:
 
-    @staticmethod
     def test_get_few_shot(collection_name: str):
         return vector_client.test_embedding(
             collection_name=collection_name
         )
 
-    @staticmethod
     def add_few_shot(data : PostgreToVectorData):
-
         ids = []
         documents = []  # question text for vectorization
         metadatas = []  # metadata including SQL
@@ -57,7 +54,6 @@ class DatabaseService:
 
         return success
 
-    @staticmethod
     def update_few_shot(data : PostgreToVectorData):
         success = update_vector_data(data)
         if success:
@@ -68,7 +64,6 @@ class DatabaseService:
             )
         return success
 
-    @staticmethod
     def get_vector_few_shot(data : VectorDataQuery):
         return vector_client.query_embedding(
             collection_name=data.collection_name,
@@ -76,15 +71,12 @@ class DatabaseService:
             top_k = data.top_k # 조회할 건수 기본 1건
         )
 
-    @staticmethod
     def getAll_postgre_few_shot():
         return getAll_vector_data()
 
-    @staticmethod
     def get_postgre_few_shot(data: PostgreToVectorData):
         return get_vector_data(data)
 
-    @staticmethod
     def multi_delete_few_shot(data : PostgreToVectorData):
         ids = []
 
@@ -101,7 +93,6 @@ class DatabaseService:
             )
         return success
 
-    @staticmethod
     def delete_few_shot(data: PostgreToVectorData):
         success = delete_vector_data(data)
         if success:
@@ -111,14 +102,11 @@ class DatabaseService:
             )
         return success
 
-    @staticmethod
     def add_prompt(node_nm: str, prompt_nm: str, prompt: str):
         return insert_prompt(node_nm, prompt_nm, prompt)
 
-    @staticmethod
     def get_all_prompt():
         return get_all_prompt()
 
-    @staticmethod
     def get_prompt(node_nm: str, prompt_nm: str):
         return get_prompt(node_nm, prompt_nm)

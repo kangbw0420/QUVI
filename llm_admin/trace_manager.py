@@ -4,7 +4,7 @@ from urllib.parse import quote_plus
 from utils.config import Config
 
 class TraceManager:
-    @staticmethod
+
     def create_trace(chain_id: str, node_type: str) -> str:
         """
         노드 실행 시작 시 trace 기록 생성
@@ -51,7 +51,6 @@ class TraceManager:
             print(f"Error in create_trace: {str(e)}")
             raise
 
-    @staticmethod
     def complete_trace(trace_id: str) -> bool:
         """
         노드 실행 완료 시 trace 상태 업데이트
@@ -87,7 +86,6 @@ class TraceManager:
             print(f"Error in complete_trace: {str(e)}")
             raise
 
-    @staticmethod
     def mark_trace_error(trace_id: str) -> bool:
         """
         trace 상태를 error로 변경하고 종료 시간 기록

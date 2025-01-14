@@ -6,7 +6,7 @@ from urllib.parse import quote_plus
 from utils.config import Config
 
 class QnAManager:
-    @staticmethod
+
     def create_question(trace_id: str, question: Any, model: str) -> str:
         """
         LLM에 질문을 보내는 시점에 QnA 레코드 생성
@@ -62,7 +62,6 @@ class QnAManager:
             print(f"Error in create_question: {str(e)}")
             raise
 
-    @staticmethod
     def record_answer(qna_id: str, answer: str) -> bool:
         """
         LLM 응답을 받은 시점에 답변 기록

@@ -12,7 +12,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super().default(obj)
 
 class StateManager:
-    @staticmethod
+
     def update_state(trace_id: str, updates: Dict[str, Any]) -> bool:
         try:
             password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
@@ -75,7 +75,6 @@ class StateManager:
             print(f"\nError in update_state: {str(e)}")
             raise
 
-    @staticmethod
     def get_latest_state(connection, trace_id: str) -> Optional[Dict[str, Any]]:
         """
         현재 trace의 chain_id를 기반으로 직전 trace의 상태를 조회
