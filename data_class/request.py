@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 class Input(BaseModel):
     user_question: str
-    user_id: str = 'default_user'
+    user_id: str = 'daquv03'
     session_id: str = 'default_session'
  
 class Output(BaseModel):
