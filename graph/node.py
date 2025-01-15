@@ -187,9 +187,7 @@ def sql_respondent(state: GraphState) -> GraphState:
     #         query_result_stats=query_result_stats
     #     )
 
-    final_answer = (
-        f'데이터 베이스에서 "{state["analyzed_question"]}"를 조회한 결과입니다.\n\n' + str(output)
-    )
+    final_answer = (str(output))
 
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})

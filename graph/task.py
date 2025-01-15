@@ -2,6 +2,7 @@ import json
 import re
 from typing import Union, Sequence, Dict, Any
 from dotenv import load_dotenv
+from datetime import datetime
 
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
@@ -17,6 +18,17 @@ from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 
 load_dotenv()
+database_service = DatabaseService()
+
+WEEKDAYS = {
+    0: '월',
+    1: '화',
+    2: '수',
+    3: '목',
+    4: '금',
+    5: '토',
+    6: '일'
+}
 
 async def select_table(trace_id: str, user_question: str, last_data: str = "") -> str:
     """사용자의 질문으로부터 테이블을 선택
@@ -27,7 +39,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     """
     output_parser = StrOutputParser()
 
-    system_prompt = DatabaseService.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
+    system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
 
     few_shots = await retriever.get_few_shots(
@@ -69,12 +81,12 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     """
     output_parser = StrOutputParser()
 
-    system_prompt = DatabaseService.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
+    system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
 
     schema_prompt = (
         f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
-        + json.loads(DatabaseService.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
+        + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
     )
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
@@ -119,16 +131,16 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
     """
     try:
         try:
-            system_prompt = DatabaseService.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
             
         except FileNotFoundError as e:
-            system_prompt = DatabaseService.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
 
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
             # analyzer에서 사용했던 스키마 테이블 재사용 - node_nm/prompt_nm 변경??
-            + json.loads(DatabaseService.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
+            + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
         )
 
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
@@ -144,11 +156,15 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
             few_shot_prompt.append(("human", example["input"]))
             few_shot_prompt.append(("ai", example["output"]))
 
+        today_date = datetime.strptime(today, "%Y-%m-%d")
+        formatted_today = today_date.strftime("%Y%m%d")
+        weekday = WEEKDAYS[today_date.weekday()]
+
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=system_prompt + schema_prompt),
                 *few_shot_prompt,
-                ("human", analyzed_question),
+                ("human", f"오늘: {formatted_today} {weekday}요일. {analyzed_question}"),
             ]
         )
 
@@ -272,10 +288,10 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     """
     output_parser = StrOutputParser()
 
-    system_prompt = DatabaseService.get_prompt(node_nm='sql_response', prompt_nm='system')[0]['prompt']
+    system_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='system')[0]['prompt']
     
     # 통곗값이 있으면 통곗값을 쓰고, 아니면 결과 자체를 사용
-    human_prompt = DatabaseService.get_prompt(node_nm='sql_response', prompt_nm='human')[0]['prompt'].format(
+    human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human')[0]['prompt'].format(
         query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
 

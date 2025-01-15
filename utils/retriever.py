@@ -25,7 +25,7 @@ class FewShotRetriever:
         """
         return collection_name
 
-    async def query_vector_store(self, query_text: str, collection_name: str, top_k: int = 9) -> List[Dict]:
+    async def query_vector_store(self, query_text: str, collection_name: str, top_k: int = 6) -> List[Dict]:
         """벡터 스토어에 쿼리를 보내 유사한 예제들을 검색합니다.
         Returns:
             List[Dict]: 검색된 문서와 메타데이터를 포함하는 결과 리스트.
