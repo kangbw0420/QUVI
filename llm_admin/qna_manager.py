@@ -6,8 +6,42 @@ from urllib.parse import quote_plus
 from utils.config import Config
 
 class QnAManager:
+    def format_message_str(self, msg_str: str) -> str:
+        messages = []
+        # 각 메시지를 분리
+        parts = msg_str.strip('[]').split('), ')
+        
+        for part in parts:
+            # 비어있는 template이나 content는 건너뛰기
+            if "template=''" in part or 'content=\'\'' in part or 'template=""' in part:
+                continue
+                
+            # Role 추출 
+            if 'SystemMessage' in part:
+                role = 'system'
+                content_start = part.find("content='") + 9
+                content_end = part.find("'", content_start)
+                content = part[content_start:content_end]
+            elif 'HumanMessagePromptTemplate' in part:
+                role = 'user'
+                content_start = part.find("template='") + 10
+                content_end = part.rfind("'")
+                content = part[content_start:content_end]
+            elif 'AIMessagePromptTemplate' in part:
+                role = 'assistant'
+                content_start = part.find('template="') + 10
+                content_end = part.rfind('"')
+                content = part[content_start:content_end]
+            else:
+                continue
+                
+            # 내용이 있는 경우만 추가
+            if content.strip():
+                messages.append(f"{role}\n{content}")
+        
+        return "\n\n".join(messages)
 
-    def create_question(trace_id: str, question: Any, model: str) -> str:
+    def create_question(self, trace_id: str, question: Any, model: str) -> str:
         """
         LLM에 질문을 보내는 시점에 QnA 레코드 생성
         Args:
@@ -22,8 +56,7 @@ class QnAManager:
             
             # ChatPromptTemplate인 경우 문자열로 변환
             if isinstance(question, ChatPromptTemplate):
-                # 프롬프트의 내용만 추출하여 저장
-                question_str = str(question.messages)
+                question_str = self.format_message_str(str(question.messages))
             else:
                 question_str = str(question)
             
@@ -62,7 +95,7 @@ class QnAManager:
             print(f"Error in create_question: {str(e)}")
             raise
 
-    def record_answer(qna_id: str, answer: str) -> bool:
+    def record_answer(self, qna_id: str, answer: str) -> bool:
         """
         LLM 응답을 받은 시점에 답변 기록
         Returns:
