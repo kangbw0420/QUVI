@@ -18,6 +18,10 @@ COLUMN_MAPPINGS = {
     'return_rate': '수익률',
     'tot_asset_amt': '총자산',
     'deposit_amt': '예수금',
+    'note1': '적요',
+    'avf_load_date': '평균 대출 금리',
+    'note_bal': '항목 잔액',
+    'calc_bal': '항목 비중',
 
     # 거래(trsc) 테이블 관련 컬럼
     'in_cnt': '입금 건수',
@@ -30,7 +34,9 @@ COLUMN_MAPPINGS = {
     'trsc_amt': '거래금액',
     'trsc_bal': '잔액',
     'loan_rate': '이율',
-    'loan_trsc_amt': '거래원금'
+    'loan_trsc_amt': '거래원금',
+    'total_trsc_bal': '순수익',
+    'trsc_month': '거래월'
 }
 
 def analyze_data(data: List[Dict], selected_table: str) -> str:
@@ -54,43 +60,54 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
         if isinstance(df[col].iloc[0] if len(df) > 0 else None, Decimal):
             df[col] = df[col].astype(float)
     
-    if selected_table == 'amt':
-        target_columns = ['cntrct_amt', 'real_amt', 'acct_bal_amt', 'return_rate', 'tot_asset_amt', 'deposit_amt', 
-                         'tot_Frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt', 'return_rate',
-                         'TOT_all_acct_amt', 'total_acct_bal_amt']
-        existing_columns = [col for col in target_columns if col in df.columns]
-        
-        for col in existing_columns:
-            korean_col = COLUMN_MAPPINGS.get(col, col)  # 매핑된 한글명이 없으면 원래 컬럼명 사용
-            stats = {
-                "합계": float(df[col].sum()),
-                "평균": float(df[col].mean()),
-                "개수": int(df[col].count())
-            }
-            result_parts.append(
-                f"{korean_col}에 대한 통계:\n"
-                f"- 합계: {stats['합계']:,.2f}\n"
-                f"- 평균: {stats['평균']:,.2f}\n"
-                f"- 데이터 수: {stats['개수']:,}개"
-            )
+    # 통계를 계산할 숫자형 컬럼들
+    num_columns = {
+        'amt': ['cntrct_amt', 'real_amt', 'acct_bal_amt', 'return_rate', 'tot_asset_amt', 'deposit_amt', 
+                'tot_Frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt',
+                'TOT_all_acct_amt', 'total_acct_bal_amt'],
+        'trsc': ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'trsc_amt', 'trsc_bal', 
+                'loan_trsc_amt', 'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing']
+    }
+    
+    # 상위 10개 값을 보여줄 컬럼들
+    scope_columns = {
+        'amt': ['note1', 'avf_load_date', 'note_bal', 'calc_bal'],
+        'trsc': ['note1', 'total_trsc_bal', 'trsc_month']
+    }
+    
+    if selected_table in ['amt', 'trsc']:
+        # 숫자형 컬럼 처리
+        for col in df.columns:
+            if col in num_columns[selected_table]:
+                korean_col = COLUMN_MAPPINGS.get(col, col)
+                try:
+                    stats = {
+                        "합계": float(df[col].sum()),
+                        "평균": float(df[col].mean()),
+                        "개수": int(df[col].count())
+                    }
+                    result_str = (
+                        f"{korean_col}에 대한 통계:\n"
+                        f"- 합계: {stats['합계']:,.2f}\n"
+                        f"- 평균: {stats['평균']:,.2f}\n"
+                        f"- 데이터 수: {stats['개수']:,}개"
+                    )
+                    result_parts.append(result_str)
+                except (TypeError, ValueError) as e:
+                    print(f"Warning: Could not calculate statistics for column {col}: {str(e)}")
             
-    elif selected_table == 'trsc':
-        target_columns = ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'tot_trsc_bal', 'trsc_amt', 'trsc_bal', 'loan_trsc_amt',
-                         'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing']
-        existing_columns = [col for col in target_columns if col in df.columns]
-        
-        for col in existing_columns:
-            korean_col = COLUMN_MAPPINGS.get(col, col)  # 매핑된 한글명이 없으면 원래 컬럼명 사용
-            stats = {
-                "합계": float(df[col].sum()),
-                "평균": float(df[col].mean()),
-                "개수": int(df[col].count())
-            }
-            result_parts.append(
-                f"{korean_col}에 대한 통계:\n"
-                f"- 합계: {stats['합계']:,.2f}\n"
-                f"- 평균: {stats['평균']:,.2f}\n"
-                f"- 데이터 수: {stats['개수']:,}개"
-            )
+            # scope 컬럼 처리
+            elif col in scope_columns[selected_table] and len(df) > 0:
+                korean_col = COLUMN_MAPPINGS.get(col, col)
+                values = df[col].head(10).tolist()
+                # 숫자인 경우에만 포맷팅
+                try:
+                    formatted_values = [f"{float(v):,.2f}" if isinstance(v, (int, float, Decimal)) else str(v) 
+                                     for v in values]
+                except (TypeError, ValueError):
+                    formatted_values = [str(v) for v in values]
+                
+                result_str = f"{korean_col}의 주요 값 리스트: {formatted_values}"
+                result_parts.append(result_str)
     
     return result_parts
