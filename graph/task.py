@@ -12,7 +12,7 @@ from sqlalchemy.engine import Result
 from sqlalchemy.sql.expression import Executable
 
 from database.database_service import DatabaseService
-from llm_models.models import llama_70b_llm, qwen_llm, qwen_llm_7b
+from llm_models.models import llama_70b_llm, qwen_llm, qwen_llm_7b, llama_8b_llm
 from utils.config import Config
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
@@ -55,7 +55,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
         [
             SystemMessage(content=contents),
             *few_shot_prompt,
-            ("human", "{user_question}\nAI:"),
+            ("human", user_question)
         ]
     )
 
@@ -107,7 +107,7 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
         [
             SystemMessage(content=contents),
             *few_shot_prompt,
-            ("human", "{user_question}\nAI:"),
+            ("human", user_question)
         ]
     )
 
@@ -319,7 +319,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
         [
             SystemMessage(content=system_prompt),
             *few_shot_prompt,
-            HumanMessage(content=human_prompt),
+            ("human", human_prompt)
         ]
     )
 
@@ -327,11 +327,11 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=prompt,
-        model="llama_70b"
+        model="llama_8b"
     )
 
-    chain = prompt | llama_70b_llm | output_parser
-    output = chain.invoke({"user_question": user_question})
+    chain = prompt | llama_8b_llm | output_parser
+    output = chain.invoke({"human_prompt": user_question})
 
     print("=" * 40 + "respondent(A)" + "=" * 40)
     print(output)

@@ -24,7 +24,9 @@ COLUMN_MAPPINGS = {
     'cnt': '거래 건수',
     'trsc_cnt': '거래 건수',
     'total_incoming_amount': '입금총액',
+    'total_incoming': '입금총액',
     'total_outgoing_amount': '출금총액',
+    'total_outgoing': '출금총액',
     'trsc_amt': '거래금액',
     'trsc_bal': '잔액',
     'loan_rate': '이율',
@@ -53,9 +55,9 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
             df[col] = df[col].astype(float)
     
     if selected_table == 'amt':
-        target_columns = ['cntrct_amt', 'curr_amt', 'valu_gain_loss', 'return_rate', 'tot_asset_amt', 'deposit_amt', 
-                         'tot_Frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt', 
-                         'TOT_all_acct_amt', 'total_acct_bal_amt', 'in_cnt']
+        target_columns = ['cntrct_amt', 'real_amt', 'acct_bal_amt', 'return_rate', 'tot_asset_amt', 'deposit_amt', 
+                         'tot_Frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt', 'return_rate',
+                         'TOT_all_acct_amt', 'total_acct_bal_amt']
         existing_columns = [col for col in target_columns if col in df.columns]
         
         for col in existing_columns:
@@ -73,8 +75,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
             )
             
     elif selected_table == 'trsc':
-        target_columns = ['curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'tot_trsc_bal', 
-                         'total_incoming_amount', 'total_outgoing_amount']
+        target_columns = ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'tot_trsc_bal', 'trsc_amt', 'trsc_bal', 'loan_trsc_amt',
+                         'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing']
         existing_columns = [col for col in target_columns if col in df.columns]
         
         for col in existing_columns:
