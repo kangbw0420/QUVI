@@ -12,10 +12,6 @@ class QnAManager:
         parts = msg_str.strip('[]').split('), ')
         
         for part in parts:
-            # 비어있는 template이나 content는 건너뛰기
-            if "template=''" in part or 'content=\'\'' in part or 'template=""' in part:
-                continue
-                
             # Role 추출 
             if 'SystemMessage' in part:
                 role = 'system'

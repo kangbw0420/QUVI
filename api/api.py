@@ -60,7 +60,8 @@ async def process_input(request: Input) -> Output:
                 "answer": answer,
                 "raw_data": raw_data,
                 "session_id": session_id,
-                "sql_query": sql_query # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
+                "sql_query": sql_query, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
+                "analyzed_question": analyzed_question # 프로덕션 제거거
             }
         )
         

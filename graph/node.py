@@ -149,7 +149,7 @@ def result_executor(state: GraphState) -> GraphState:
     
     return state
 
-def sql_respondent(state: GraphState) -> GraphState:
+async def sql_respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성
     Returns:
         GraphState: final_answer가 추가된 상태.
@@ -168,7 +168,7 @@ def sql_respondent(state: GraphState) -> GraphState:
         state.update({"final_answer": final_answer})
         return state
     
-    output = sql_response(
+    output = await sql_response(
         trace_id,
         user_question=user_question,
         query_result_stats=query_result_stats
