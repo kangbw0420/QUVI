@@ -79,9 +79,9 @@ async def question_analyzer(state: GraphState) -> GraphState:
         analyzed_question = await analyze_user_question(
             trace_id,
             state["user_question"], 
-            state["selected_table"], 
-            last_data,
-            today
+            state["selected_table"],
+            today,
+            last_data
             )
 
     except KeyError:
