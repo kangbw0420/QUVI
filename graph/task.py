@@ -153,8 +153,14 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
 
+        today_date = datetime.strptime(today, "%Y-%m-%d")
+        formatted_today = today_date.strftime("%Y%m%d")
+        weekday = WEEKDAYS[today_date.weekday()]
+
+        formatted_analyzed_question = f"오늘: {formatted_today} {weekday}요일. {analyzed_question}"
+
         few_shots = await retriever.get_few_shots(
-            query_text=analyzed_question,
+            query_text=formatted_analyzed_question,
             task_type="creator",
             collection_name=collection_name,
         )
@@ -163,15 +169,11 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
             few_shot_prompt.append(("human", example["input"]))
             few_shot_prompt.append(("ai", example["output"]))
 
-        today_date = datetime.strptime(today, "%Y-%m-%d")
-        formatted_today = today_date.strftime("%Y%m%d")
-        weekday = WEEKDAYS[today_date.weekday()]
-
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=system_prompt + schema_prompt),
                 *few_shot_prompt,
-                ("human", f"오늘: {formatted_today} {weekday}요일. {analyzed_question}"),
+                ("human", formatted_analyzed_question),
             ]
         )
 
