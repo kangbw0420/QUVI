@@ -24,6 +24,7 @@ COLUMN_MAPPINGS = {
     'calc_bal': '항목 비중',
     'avg_interest_rate': '평균 대출 이자율',
     'avg_intr_rate': '평균 대출 금리',
+    'net_balance': '순수익',
 
     # 거래(trsc) 테이블 관련 컬럼
     'in_cnt': '입금 건수',
@@ -66,7 +67,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
     num_columns = {
         'amt': ['cntrct_amt', 'real_amt', 'acct_bal_amt', 'return_rate', 'tot_asset_amt', 'deposit_amt', 
                 'tot_frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt',
-                'tot_all_acct_amt', 'total_acct_bal_amt', 'avg_interest_rate', 'avg_intr_rate'],
+                'tot_all_acct_amt', 'total_acct_bal_amt', 'avg_interest_rate', 'avg_intr_rate',
+                'net_balance'],
         'trsc': ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'trsc_amt', 'trsc_bal', 
                 'loan_trsc_amt', 'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing']
     }
