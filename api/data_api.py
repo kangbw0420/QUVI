@@ -144,3 +144,16 @@ def get_all_prompt():
 #         return {"data": result}
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Prompt 데이터 삭제
+@data_api.delete("/prompt/delete")
+def delete_prompt():
+    """
+    Prompt 데이터를 삭제합니다.
+    """
+    try:
+        result = DatabaseService.delete_prompt()
+        return {"message": "Prompt data deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -160,6 +160,15 @@ def insert_prompt(node_nm: str, prompt_nm: str, prompt: str):
     return query_execute(query, params=(node_nm, prompt_nm, prompt, node_nm, prompt_nm), use_prompt_db=True)
 
 
+# 새 Prompt 데이터를 삭제하는 함수
+def delete_prompt(node_nm: str, prompt_nm: str):
+    query = """
+        UPDATE prompt
+        SET del_yn = 'Y' 
+        WHERE node_nm = %s AND prompt_nm = %s
+    """
+    return query_execute(query, params=(node_nm, prompt_nm), use_prompt_db=True)
+
 
 # 쿼리를 실행하는 일반 함수
 def execute_query(query):
