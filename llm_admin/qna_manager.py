@@ -25,8 +25,19 @@ class QnAManager:
                 content = part[content_start:content_end]
             elif 'AIMessagePromptTemplate' in part:
                 role = 'assistant'
-                content_start = part.find('template="') + 10
-                content_end = part.rfind('"')
+                # 작은따옴표와 큰따옴표 모두 체크
+                template_start_single = part.find("template='")
+                template_start_double = part.find('template="')
+                
+                if template_start_single != -1:
+                    content_start = template_start_single + 10
+                    content_end = part.find("'", content_start)
+                elif template_start_double != -1:
+                    content_start = template_start_double + 10
+                    content_end = part.find('"', content_start)
+                else:
+                    continue
+                    
                 content = part[content_start:content_end]
             else:
                 continue
@@ -56,6 +67,7 @@ class QnAManager:
             else:
                 question_str = str(question)
             
+            print(question_str)
             password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
             db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
             engine = create_engine(db_url)

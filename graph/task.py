@@ -59,6 +59,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
         ]
     )
 
+    print("=" * 40 + "selector(Q)" + "=" * 40)
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=SELECT_TABLE_PROMPT,
@@ -68,6 +69,8 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     select_table_chain = SELECT_TABLE_PROMPT | qwen_llm_7b | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
 
+    print("=" * 40 + "selector(A)" + "=" * 40)
+    print(selected_table)
     qna_manager.record_answer(qna_id, selected_table)
 
     return selected_table
@@ -108,6 +111,7 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
         ]
     )
 
+    print("=" * 40 + "analyzer(Q)" + "=" * 40)
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=ANALYZE_PROMPT,
@@ -117,6 +121,8 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
     analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
+    print("=" * 40 + "analyzer(A)" + "=" * 40)
+    print(analyzed_question)
     qna_manager.record_answer(qna_id, analyzed_question)
 
     return analyzed_question
@@ -169,6 +175,7 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
             ]
         )
 
+        print("=" * 40 + "nl2sql(Q)" + "=" * 40)
         qna_id = qna_manager.create_question(
             trace_id=trace_id,
             question=prompt,
@@ -191,6 +198,7 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
             else:
                 raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
         
+        print("=" * 40 + "nl2sql(A)" + "=" * 40)
         qna_manager.record_answer(qna_id, output)
 
         return sql_query.strip()
@@ -313,6 +321,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
         ]
     )
 
+    print("=" * 40 + "respondent(Q)" + "=" * 40)
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=prompt,
@@ -322,6 +331,8 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     chain = prompt | llama_70b_llm | output_parser
     output = chain.invoke({"user_question": user_question})
 
+    print("=" * 40 + "respondent(A)" + "=" * 40)
+    print(output)
     qna_manager.record_answer(qna_id, output)
 
     return output
