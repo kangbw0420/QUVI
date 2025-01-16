@@ -1,18 +1,18 @@
 {
     "amt": 
         {
-            "전체": ["com_nm", "reg_dt", "bank_nm", "acct_no", "curr_cd", "acct_bal_amt", "acct_bal_won", "acct_nick_nm", "acct_bal_upd_dtm", "acct_dv"],
-            "수시": ["com_nm", "reg_dt", "bank_nm", "acct_no", "curr_cd", "acct_bal_amt", "acct_bal_won", "acct_nick_nm", "acct_bal_upd_dtm", "acct_dv", "real_amt"],
-            "예적금": ["com_nm", "reg_dt", "bank_nm", "acct_no", "curr_cd", "acct_bal_amt", "acct_bal_won", "acct_nick_nm", "acct_bal_upd_dtm", "acct_dv", "open_dt", "due_dt"],
-            "대출": ["com_nm", "reg_dt", "bank_nm", "acct_no", "curr_cd", "acct_bal_amt", "acct_bal_won", "acct_nick_nm", "acct_bal_upd_dtm", "acct_dv", "open_dt", "due_dt"],
-            "증권": []
+            "전체": [],
+            "수시": ["mnth_pay_amt","mnth_pay_dt","stock_nm","bal_qunt","prchs_price","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","return_rate","deposit_foreign","tot_asset_amt","deposit_amt"],
+            "예적금": ["real_amt","cntrct_amt","acct_dv","stock_nm","bal_qunt","prchs_price","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","return_rate","deposit_foreign","tot_asset_amt","deposit_amt"],
+            "대출": ["real_amt","cntrct_amt","acct_dv","stock_nm","bal_qunt","prchs_price","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","return_rate","deposit_foreign","tot_asset_amt","deposit_amt"],
+            "증권": ["real_amt","intr_rate","acct_dv","mnth_pay_amt","mnth_pay_dt","stock_nm","bal_qunt","prchs_price","prchs_amt","curr_amt","valu_gain_loss","appr_amt","purchase_amt_foreign","evaluation_amt_foreign"]
         },
     "trsc":
         {
-            "전체": ["seq_no", "com_nm", "trsc_dt", "trsc_tm", "in_out_dv", "bank_nm", "acct_no", "trsc_amt", "trsc_bal", "note1", "curr_cd"],
-            "수시": ["seq_no", "com_nm", "trsc_dt", "trsc_tm", "in_out_dv", "bank_nm", "acct_no", "trsc_amt", "trsc_bal", "note1", "curr_cd"],
-            "예적금": ["seq_no", "com_nm", "trsc_dt", "trsc_tm", "in_out_dv", "bank_nm", "acct_no", "trsc_amt", "trsc_bal", "note1", "curr_cd"],
-            "대출": ["seq_no", "com_nm", "trsc_dt", "trsc_tm", "in_out_dv", "bank_nm", "acct_no", "trsc_amt", "trsc_bal", "note1", "curr_cd", "loan_trsc_amt", "loan_rate"],
-            "증권": []
+            "전체": [],
+            "수시": ["acct_dv","acct_nick_nm","loan_trsc_amt","loan_rate","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
+            "예적금": ["acct_dv","acct_nick_nm","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
+            "대출": ["acct_dv","acct_nick_nm","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
+            "증권": ["acct_dv","acct_nick_nm","loan_trsc_amt","loan_rate"]
         }
 }
