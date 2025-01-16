@@ -5,11 +5,11 @@ from typing import List, Dict, Any
 # 영문 컬럼명에 대한 한글 매핑
 COLUMN_MAPPINGS = {
     # 금액(amt) 테이블 관련 컬럼
-    'tot_Frequent_acct_amt': '수시입출계좌 인출가능 잔액',
+    'tot_frequent_acct_amt': '수시입출계좌 인출가능 잔액',
     'tot_saving_acct_amt': '예적금 잔액 합계',
     'tot_loan_acct_amt': '대출 잔액 합계',
     'tot_stock_acct_amt': '증권 잔액 합계',
-    'TOT_all_acct_amt': '전체 잔액 합계',
+    'tot_all_acct_amt': '전체 잔액 합계',
     'total_acct_bal_amt': '총 합계 잔액',
     'acct_bal_amt': '잔고',
     'intr_rate': '이자율',
@@ -22,6 +22,8 @@ COLUMN_MAPPINGS = {
     'avf_load_date': '평균 대출 금리',
     'note_bal': '항목 잔액',
     'calc_bal': '항목 비중',
+    'avg_interest_rate': '평균 대출 이자율',
+    'avg_intr_rate': '평균 대출 금리',
 
     # 거래(trsc) 테이블 관련 컬럼
     'in_cnt': '입금 건수',
@@ -63,8 +65,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
     # 통계를 계산할 숫자형 컬럼들
     num_columns = {
         'amt': ['cntrct_amt', 'real_amt', 'acct_bal_amt', 'return_rate', 'tot_asset_amt', 'deposit_amt', 
-                'tot_Frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt',
-                'TOT_all_acct_amt', 'total_acct_bal_amt'],
+                'tot_frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt',
+                'tot_all_acct_amt', 'total_acct_bal_amt', 'avg_interest_rate', 'avg_intr_rate'],
         'trsc': ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'trsc_amt', 'trsc_bal', 
                 'loan_trsc_amt', 'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing']
     }
@@ -82,8 +84,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
                 korean_col = COLUMN_MAPPINGS.get(col, col)
                 try:
                     stats = {
-                        "합계": float(df[col].sum()),
-                        "평균": float(df[col].mean()),
+                        "합계": int(df[col].sum()),
+                        "평균": int(df[col].mean()),
                         "개수": int(df[col].count())
                     }
                     result_str = (
