@@ -37,7 +37,7 @@ async def get_users():
                 ORDER BY user_id DESC
             """
             result = await connection.execute(text(query))
-            return [row[0] for row in await result.fetchall()]
+            return [row[0] for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -46,7 +46,7 @@ async def get_sessions(user_id: str):
     """user_id에 해당하는 session을 모두 검색해 session_start의 최신순으로 가져온다"""
     try:
         engine = await get_db_connection()
-        with engine.begin() as connection:
+        async with engine.begin() as connection:
             await connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
             query = """
                 SELECT session_start, session_end, session_status, session_id
