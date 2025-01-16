@@ -15,41 +15,40 @@ class DatabaseService:
             collection_name=collection_name
         )
 
-    def add_list_few_shot(data : PostgreToVectorData):
-        ids = []
-        documents = []  # question text for vectorization
-        metadatas = []  # metadata including SQL
 
-        dataList = json.loads(data.document)
-        for dataText in dataList:
-            # Generate unique ID
-            doc_id = str(uuid.uuid4())
+    def get_prompt(self, node_nm: str, prompt_nm: str):
+        return get_prompt(node_nm, prompt_nm)
 
-            # Add to lists
-            ids.append(doc_id)
 
-            question = dataText["question"]
-            documents.append(question)  # question text for vectorization
+    def get_all_prompt():
+        return get_all_prompt()
 
-            metadata = {
-                "id": doc_id,
-                "answer": dataText["answer"]  # SQL goes to metadata
-            }
-            metadatas.append(metadata)
 
-            success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name, id=doc_id, document=json.dumps(dataText, ensure_ascii=False)))
-            if not success:
-                raise HTTPException(status_code=500, detail="Failed to insert vector data")
+    def add_prompt(node_nm: str, prompt_nm: str, prompt: str):
+        return insert_prompt(node_nm, prompt_nm, prompt)
 
-        EmbeddingAPIClient.add_embedding(
+
+    def delete_prompt(node_nm: str, prompt_nm: str):
+        return delete_prompt(node_nm, prompt_nm)
+
+
+
+
+    def get_postgre_few_shot(data: PostgreToVectorData):
+        return get_vector_data(data)
+
+
+    def getAll_postgre_few_shot():
+        return getAll_vector_data()
+
+
+    def get_vector_few_shot(data : VectorDataQuery):
+        return EmbeddingAPIClient.query_embedding(
             collection_name=data.collection_name,
-            ids=ids,
-            documents=documents,
-            metadatas=metadatas
+            query_text = data.query_text,
+            top_k = data.top_k # 조회할 건수 기본 1건
         )
-        print("Successfully inserted vector data")
 
-        return success
 
     def add_few_shot(data : PostgreToVectorData):
         ids = []
@@ -87,6 +86,44 @@ class DatabaseService:
 
         return success
 
+
+    def add_list_few_shot(data : PostgreToVectorData):
+        ids = []
+        documents = []  # question text for vectorization
+        metadatas = []  # metadata including SQL
+
+        dataList = json.loads(data.document)
+        for dataText in dataList:
+            # Generate unique ID
+            doc_id = str(uuid.uuid4())
+
+            # Add to lists
+            ids.append(doc_id)
+
+            question = dataText["question"]
+            documents.append(question)  # question text for vectorization
+
+            metadata = {
+                "id": doc_id,
+                "answer": dataText["answer"]  # SQL goes to metadata
+            }
+            metadatas.append(metadata)
+
+            success = insert_vector_data(PostgreToVectorData(collection_name=data.collection_name, id=doc_id, document=json.dumps(dataText, ensure_ascii=False)))
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to insert vector data")
+
+        EmbeddingAPIClient.add_embedding(
+            collection_name=data.collection_name,
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas
+        )
+        print("Successfully inserted vector data")
+
+        return success
+
+
     def update_few_shot(data : PostgreToVectorData):
         success = update_vector_data(data)
         if success:
@@ -97,18 +134,16 @@ class DatabaseService:
             )
         return success
 
-    def get_vector_few_shot(data : VectorDataQuery):
-        return EmbeddingAPIClient.query_embedding(
-            collection_name=data.collection_name,
-            query_text = data.query_text,
-            top_k = data.top_k # 조회할 건수 기본 1건
-        )
 
-    def getAll_postgre_few_shot():
-        return getAll_vector_data()
+    def delete_few_shot(data: PostgreToVectorData):
+        success = delete_vector_data(data)
+        if success:
+            EmbeddingAPIClient.delete_embedding(
+                collection_name=data.collection_name,
+                item_id=data.item_id,
+            )
+        return success
 
-    def get_postgre_few_shot(data: PostgreToVectorData):
-        return get_vector_data(data)
 
     def multi_delete_few_shot(data : PostgreToVectorData):
         ids = []
@@ -125,24 +160,3 @@ class DatabaseService:
                 ids=ids,
             )
         return success
-
-    def delete_few_shot(data: PostgreToVectorData):
-        success = delete_vector_data(data)
-        if success:
-            EmbeddingAPIClient.delete_embedding(
-                collection_name=data.collection_name,
-                item_id=data.item_id,
-            )
-        return success
-
-    def add_prompt(node_nm: str, prompt_nm: str, prompt: str):
-        return insert_prompt(node_nm, prompt_nm, prompt)
-
-    def get_all_prompt():
-        return get_all_prompt()
-
-    def get_prompt(self, node_nm: str, prompt_nm: str):
-        return get_prompt(node_nm, prompt_nm)
-
-    def delete_prompt(node_nm: str, prompt_nm: str):
-        return delete_prompt(node_nm, prompt_nm)
