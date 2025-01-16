@@ -128,20 +128,20 @@ def result_executor(state: GraphState) -> GraphState:
     # DB 쿼리 실행
     result = execute_query(query)
 
-    
+    select_table = state["selected_table"]
     # 결과가 None인 경우 빈 리스트로 초기화
     if result is None:
         result = {"columns": [], "rows": []}
         # 통계값 추출
-        query_result_stats = analyze_data(result)
+        query_result_stats = analyze_data(result, select_table)
     else:
         if len(result)==0:
-            query_result_stats = analyze_data(result)
+            query_result_stats = analyze_data(result, select_table)
         else:
             # 통계값 추출
-            query_result_stats = analyze_data(result)
+            query_result_stats = analyze_data(result, select_table)
             # 컬럼 필터 result
-            result = columns_filter(result, state["selected_table"])
+            result = columns_filter(result, select_table)
 
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": result})
@@ -163,7 +163,7 @@ async def sql_respondent(state: GraphState) -> GraphState:
     query_result_stats = state.get("query_result_stats", [])
 
     # 결과가 없는 경우 처리
-    if query_result_stats == {"숫자형 칼럼": {}, "범주형 칼럼": {}}:
+    if query_result_stats == []:
         final_answer = f'죄송합니다. 요청주신 내용에 따라 데이터베이스에서 다음 내용을 검색했지만 데이터가 없었습니다.: {analyzed_question}'
         state.update({"final_answer": final_answer})
         return state

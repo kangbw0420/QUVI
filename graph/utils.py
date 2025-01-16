@@ -2,45 +2,59 @@ import pandas as pd
 from decimal import Decimal
 from typing import List, Dict, Any
 
-def analyze_data(data: List[Dict]) -> Dict[str, Dict[str, Any]]:
+def analyze_data(data: List[Dict], selected_table: str) -> str:
     """데이터프레임의 각 컬럼 타입을 자동으로 감지하여 분석합니다.
-    숫자형 컬럼은 sum과 mean을,
-    비숫자형 컬럼은 count를 계산합니다.
+    Args:
+        data: 분석할 데이터
+        selected_table: 테이블 유형 ('amt' 또는 'trsc')
     Returns:
-        Dict[str, Dict[str, Any]]: 분석 결과를 담은 딕셔너리.
-            - numeric_columns: 숫자형 컬럼의 sum, mean, count, min, max 값
-            - categorical_columns: 비숫자형 컬럼의 값별 count, unique_count, total_count 정보
-    Raises:
-        TypeError: data가 리스트가 아니거나 각 항목이 딕셔너리가 아닌 경우.
-        ValueError: 데이터가 비어있거나 필수 컬럼이 없는 경우.
+        str: 분석 결과를 담은 문자열
     """
     # DataFrame 생성
     df = pd.DataFrame(data)
-
+    
+    if len(df) == 0:
+        return "데이터가 없습니다."
+        
+    result_parts = []
+    
     # Decimal 타입을 float로 변환
     for col in df.columns:
-        if isinstance(df[col].iloc[0], Decimal):
+        if isinstance(df[col].iloc[0] if len(df) > 0 else None, Decimal):
             df[col] = df[col].astype(float)
-
-    result = {"숫자형 칼럼": {}, "범주형 칼럼": {}}
-
-    for col in df.columns:
-        # 숫자형 컬럼 확인 (float이나 int)
-        if pd.api.types.is_numeric_dtype(df[col]):
-            result["숫자형 칼럼"][col] = {
+    
+    if selected_table == 'amt':
+        target_columns = ['cntrct_amt', 'curr_amt', 'valu_gain_loss', 'return_rate', 'tot_asset_amt', 'deposit_amt', 'tot_Frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt', 'TOT_all_acct_amt', 'total_acct_bal_amt', 'in_cnt']
+        existing_columns = [col for col in target_columns if col in df.columns]
+        
+        for col in existing_columns:
+            stats = {
                 "합계": float(df[col].sum()),
                 "평균": float(df[col].mean()),
-                "개수": int(df[col].count()),
-                "최소값": float(df[col].min()),
-                "최댓값": float(df[col].max()),
+                "개수": int(df[col].count())
             }
-        else:
-            # 비숫자형 컬럼
-            value_counts = df[col].value_counts()
-            result["범주형 칼럼"][col] = {
-                "범주 별 개수": value_counts.to_dict(),
-                "범주 수": len(value_counts),
-                "전체 개수": int(value_counts.sum()),
+            result_parts.append(
+                f"{col}에 대한 통계:\n"
+                f"- 합계: {stats['합계']:,.2f}\n"
+                f"- 평균: {stats['평균']:,.2f}\n"
+                f"- 데이터 수: {stats['개수']:,}개"
+            )
+            
+    elif selected_table == 'trsc':
+        target_columns = ['curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'tot_trsc_bal', 'total_incoming_amount', 'total_outgoing_amount']
+        existing_columns = [col for col in target_columns if col in df.columns]
+        
+        for col in existing_columns:
+            stats = {
+                "합계": float(df[col].sum()),
+                "평균": float(df[col].mean()),
+                "개수": int(df[col].count())
             }
-
-    return result
+            result_parts.append(
+                f"{col}에 대한 통계:\n"
+                f"- 합계: {stats['합계']:,.2f}\n"
+                f"- 평균: {stats['평균']:,.2f}\n"
+                f"- 데이터 수: {stats['개수']:,}개"
+            )
+    
+    return result_parts
