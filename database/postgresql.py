@@ -39,6 +39,15 @@ def connect_postgresql_pool():
         )
 
 
+# PostgreSQL 연결 풀 초기화
+connect_postgresql_pool()
+
+
+# 쿼리를 실행하는 일반 함수
+def execute_query(query):
+    return query_execute(query)
+
+
 # 일반 쿼리 실행 함수
 def query_execute(query, params=None, use_prompt_db=False):
     connection = None
@@ -71,45 +80,169 @@ def query_execute(query, params=None, use_prompt_db=False):
             pool.putconn(connection)
 
 
-# 벡터 전체 데이터를 가져오는 함수
-def getAll_vector_data():
+
+
+# Prompt 데이터를 가져오는 함수
+def get_prompt(node_nm: str, prompt_nm: str):
+    query = """
+        SELECT *
+        FROM prompt
+        WHERE node_nm = %s
+        AND prompt_nm = %s
+        AND version = (
+            SELECT MAX(version)
+            FROM prompt
+            WHERE node_nm = %s
+            AND prompt_nm = %s
+        )
+        AND del_yn = 'N'
+    """
     return query_execute(
-        "SELECT * FROM vector_data WHERE del_yn = 'N'",
-        params=(), use_prompt_db=True
+        query,
+        params=(node_nm, prompt_nm, node_nm, prompt_nm),
+        use_prompt_db=True
     )
+
+
+# 전체 Prompt 데이터 리스트를 가져오는 함수
+def get_all_prompt():
+    query = """
+        SELECT *
+        FROM (
+            SELECT DISTINCT ON (node_nm, prompt_nm) *
+            FROM prompt
+            WHERE del_yn = 'N'
+            ORDER BY node_nm, prompt_nm, version DESC
+        ) AS innerQuery
+        ORDER BY created_at DESC
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
+# 새 Prompt 데이터를 삽입하는 함수
+def insert_prompt(node_nm: str, prompt_nm: str, prompt: str):
+    query = """
+        INSERT INTO prompt (
+            node_nm,
+            prompt_nm,
+            prompt,
+            version
+        ) 
+        VALUES (
+            %s,
+            %s,
+            %s,
+            (SELECT COALESCE(MAX(version), 0) FROM prompt WHERE node_nm = %s AND prompt_nm = %s) + 0.1
+        )
+    """
+    return query_execute(
+        query,
+        params=(node_nm, prompt_nm, prompt, node_nm, prompt_nm),
+        use_prompt_db=True
+    )
+
+
+# 새 Prompt 데이터를 삭제하는 함수
+def delete_prompt(node_nm: str, prompt_nm: str):
+    query = """
+        UPDATE prompt
+        SET del_yn = 'Y' 
+        WHERE node_nm = %s
+        AND prompt_nm = %s
+    """
+    return query_execute(
+        query,
+        params=(node_nm, prompt_nm),
+        use_prompt_db=True
+    )
+
+
 
 
 # 벡터 데이터를 가져오는 함수
 def get_vector_data(data: PostgreToVectorData):
     if data.type == 'C' and data.collection_name is not None:
+        query = """
+            SELECT *
+            FROM vector_data
+            WHERE collection_name = %s
+            AND del_yn = 'N'
+        """
         return query_execute(
-            "SELECT * FROM vector_data WHERE collection_name = %s AND del_yn = 'N'",
-            params=(data.collection_name,), use_prompt_db=True
+            query,
+            params=(data.collection_name,),
+            use_prompt_db=True
         )
     elif data.type == 'I' and data.id is not None:
+        query = """
+            SELECT *
+            FROM vector_data
+            WHERE id = %s
+            AND del_yn = 'N'
+        """
         return query_execute(
-            "SELECT * FROM vector_data WHERE id = %s AND del_yn = 'N'",
-            params=(data.id,), use_prompt_db=True
+            query,
+            params=(data.id,),
+            use_prompt_db=True
         )
     else:
         raise ValueError("Invalid vector data type or missing parameter")
 
 
+# 벡터 전체 데이터를 가져오는 함수
+def getAll_vector_data():
+    query = """
+        SELECT *
+        FROM vector_data
+        WHERE del_yn = 'N'
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
 # 새 벡터 데이터를 삽입하는 함수
 def insert_vector_data(data: PostgreToVectorData):
-    query = "INSERT INTO vector_data (id, collection_name, document) VALUES (%s, %s, %s)"
-
-    return query_execute(query, params=(data.id, data.collection_name, data.document), use_prompt_db=True)
+    query = """
+        INSERT INTO vector_data (
+            id,
+            collection_name,
+            document
+        )
+        VALUES (
+            %s,
+            %s,
+            %s
+        )
+    """
+    return query_execute(
+        query,
+        params=(data.id, data.collection_name, data.document),
+        use_prompt_db=True
+    )
 
 
 # 벡터 데이터 업데이트 함수
 def update_vector_data(data: PostgreToVectorData):
     # 기존 데이터 가져오기
+    select_query = """
+        SELECT *
+        FROM vector_data
+        WHERE idx = %s
+        AND del_yn = 'N'
+    """
     get_data = query_execute(
-        "SELECT * FROM vector_data WHERE idx = %s AND del_yn = 'N'",
-        params=(data.item_id,)
-        , use_prompt_db=True
+        select_query,
+        params=(data.item_id,),
+        use_prompt_db=True
     )
+
     if get_data:
         get_data = get_data[0]  # 첫 번째 결과를 가져옴
         # 텍스트나 컬렉션명이 다를 경우 업데이트
@@ -119,52 +252,36 @@ def update_vector_data(data: PostgreToVectorData):
                 SET data = %s, document = %s, del_yn = 'Y'
                 WHERE idx = %s
             """
-            return query_execute(update_query, params=(data.document, data.collection_name, data.item_id),
-                                 use_prompt_db=True)
+            return query_execute(
+                update_query,
+                params=(data.document, data.collection_name, data.item_id),
+                use_prompt_db=True
+            )
+
 
 # 벡터 데이터 삭제 처리 함수
 def delete_vector_data(data: PostgreToVectorData):
     # 기존 데이터 가져오기
+    select_query = """
+        SELECT *
+        FROM vector_data
+        WHERE collection_name = %s
+        AND del_yn = 'N'
+    """
     get_data = query_execute(
-        "SELECT * FROM vector_data WHERE collection_name = %s AND del_yn = 'N'",
-        params=(data.collection_name,)
-        , use_prompt_db=True
+        select_query,
+        params=(data.collection_name,),
+        use_prompt_db=True
     )
+
     if get_data:
         update_query = """
             UPDATE vector_data
             SET del_yn = 'Y'
             WHERE collection_name = %s
         """
-        return query_execute(update_query, params=(data.collection_name,), use_prompt_db=True)
-
-
-# 전체 Prompt 데이터 리스트를 가져오는 함수
-def get_all_prompt():
-    query = "SELECT * FROM (SELECT DISTINCT ON (node_nm, prompt_nm) * FROM prompt ORDER BY node_nm, prompt_nm, version DESC) AS innerQuery ORDER BY created_at DESC"
-    return query_execute(query, params=(), use_prompt_db=True)
-
-
-# Prompt 데이터를 가져오는 함수
-def get_prompt(node_nm: str, prompt_nm: str):
-    query = "SELECT * FROM prompt WHERE node_nm = %s AND prompt_nm = %s AND version = (SELECT MAX(version) FROM prompt WHERE node_nm = %s AND prompt_nm = %s)"
-    return query_execute(query, params=(node_nm, prompt_nm, node_nm, prompt_nm), use_prompt_db=True)
-
-
-# 새 Prompt 데이터를 삽입하는 함수
-def insert_prompt(node_nm: str, prompt_nm: str, prompt: str):
-    query = """
-        INSERT INTO prompt (node_nm, prompt_nm, prompt, version) 
-        VALUES (%s, %s, %s, (SELECT COALESCE(MAX(version), 0) FROM prompt WHERE node_nm = %s AND prompt_nm = %s) + 0.1)
-    """
-    return query_execute(query, params=(node_nm, prompt_nm, prompt, node_nm, prompt_nm), use_prompt_db=True)
-
-
-
-# 쿼리를 실행하는 일반 함수
-def execute_query(query):
-    return query_execute(query)
-
-
-# PostgreSQL 연결 풀 초기화
-connect_postgresql_pool()
+        return query_execute(
+            update_query,
+            params=(data.collection_name,),
+            use_prompt_db=True
+        )
