@@ -330,7 +330,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
         model="llama_8b"
     )
 
-    chain = prompt | llama_8b_llm | output_parser
+    chain = prompt | llama_70b_llm | output_parser
     output = chain.invoke({"human_prompt": user_question})
 
     print("=" * 40 + "respondent(A)" + "=" * 40)
