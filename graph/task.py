@@ -349,27 +349,27 @@ def columns_filter(query_result: list, selected_table_name:str):
         filtered_result = []    # 필터링한 결과를 출력할 변수
         # view_dv로 인텐트트 구분
         if 'view_dv' in result[0]:
-            intent = columns_list['trsc'][result[0]['view_dv']]
+            columns_to_remove = columns_list['trsc'][result[0]['view_dv']]
             for x in result:
-                x = {k: v for k, v in x.items() if k in intent}
+                x = {k: v for k, v in x.items() if k not in columns_to_remove}
                 filtered_result.append(x)
         else:   # view_dv가 없기 때문에 '전체'에 해당되는 column list만 출력
-            intent = columns_list['trsc']['전체']
+            columns_to_remove = columns_list['trsc']['전체']
             for x in result:
-                x = {k: v for k, v in x.items() if k in intent}
+                x = {k: v for k, v in x.items() if k not in columns_to_remove}
                 filtered_result.append(x)
         return filtered_result
     elif selected_table_name == "amt":
         filtered_result = []
         if 'view_dv' in result[0]:
-            intent = columns_list['amt'][result[0]['view_dv']]
+            columns_to_remove = columns_list['amt'][result[0]['view_dv']]
             for x in result:
-                x = {k: v for k, v in x.items() if k in intent}
+                x = {k: v for k, v in x.items() if k not in columns_to_remove}
                 filtered_result.append(x)
         else:
-            intent = columns_list['amt']['전체']
+            columns_to_remove = columns_list['amt']['전체']
             for x in result:
-                x = {k: v for k, v in x.items() if k in intent}
+                x = {k: v for k, v in x.items() if k not in columns_to_remove}
                 filtered_result.append(x)
         return filtered_result
     else:  # 해당사항 없으므로 본래 resul값 출력 
