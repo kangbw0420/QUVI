@@ -22,6 +22,7 @@ def parse_arguments():
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind")
     parser.add_argument("--reload", action="store_true", help="Enable reload")
+    parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
     return parser.parse_args()
 
 app = FastAPI()
@@ -46,10 +47,11 @@ app.include_router(llmadmin_api, prefix="/llmadmin")
 
 
 if __name__ == "__main__":
-    # 이벤트 루프 생성
-    # loop = asyncio.new_event_loop()
-    # asyncio.set_event_loop(loop) # 명시적으로 이벤트 루프 설정
     '''
+    # 이벤트 루프 생성
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop) # 명시적으로 이벤트 루프 설정
+
     async def main():
         # FastAPI 서버 실행
         config = uvicorn.Config(
@@ -60,21 +62,20 @@ if __name__ == "__main__":
         await asyncio.gather(
             server.serve(),  # FastAPI 서버 실행
         )
+
+    try:
+        loop.run_until_complete(main())  # 루프 실행
+    except KeyboardInterrupt:
+        print("\nShutting down...")
     '''
 
     args = parse_arguments()
 
-    config = uvicorn.Config(
+    uvicorn.run(
         "main:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
+        workers=args.workers,
         log_level="info"
     )
-
-    try:
-        # loop.run_until_complete(main()) # 루프 실행
-        server = uvicorn.Server(config)
-        server.run()
-    except KeyboardInterrupt:
-        print("\nShutting down...")
