@@ -106,7 +106,7 @@ class FewShotRetriever:
             print(f"Error formatting few-shots: {str(e)}")
             return []
 
-    async def get_few_shots(self, query_text: str, task_type: str, collection_name: Optional[str] = None) -> List[Dict]:
+    async def get_few_shots(self, query_text: str, task_type: str, collection_name: Optional[str] = None, top_k: int=6) -> List[Dict]:
         """주어진 쿼리에 대한 few-shot 예제들을 검색합니다.
         
         Returns:
@@ -120,7 +120,7 @@ class FewShotRetriever:
         if not collection_name:
             raise ValueError(f"Invalid task type: {task_type}")
 
-        results = await self.query_vector_store(query_text, collection_name)
+        results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
         few_shots = await self.format_few_shots(results)
         
         return few_shots
