@@ -255,7 +255,7 @@ def delete_vector_data(title: str):
     """
     get_data = query_execute(
         select_query,
-        params=(title),
+        params=(title,),
         use_prompt_db=True
     )
 
@@ -267,6 +267,6 @@ def delete_vector_data(title: str):
         """
         return query_execute(
             update_query,
-            params=(title),
+            params=(title,),
             use_prompt_db=True
         )

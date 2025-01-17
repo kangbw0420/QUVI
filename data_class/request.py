@@ -32,3 +32,7 @@ class PromptInput(BaseModel):
     node_nm: str
     prompt_nm: str
     prompt: str = ""
+
+class FewshotInput(BaseModel):
+    title: str = ""
+    shots: str = ""

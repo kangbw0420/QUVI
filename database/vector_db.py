@@ -1,5 +1,7 @@
-import requests
 import json
+
+import requests
+
 from utils.config import Config
 
 BASE_URL = Config.VECTOR_STORE_DOMAIN
@@ -20,8 +22,9 @@ class EmbeddingAPIClient:
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()
+            results = response.json()
             print(f"[SUCCESS] Query results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
-            return response.json()
+            return results
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to query embedding: {e}")
 
@@ -35,8 +38,9 @@ class EmbeddingAPIClient:
         try:
             response = requests.get(url)
             response.raise_for_status()
+            results = response.json()
             print(f"[SUCCESS] Get Title List Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
-            return response.json()
+            return results
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to Get Title List embedding: {e}")
 
@@ -50,8 +54,9 @@ class EmbeddingAPIClient:
         try:
             response = requests.get(url)
             response.raise_for_status()
+            results = response.json()
             print(f"[SUCCESS] Get Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
-            return response.json()
+            return results
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to test embedding: {e}")
 
@@ -63,10 +68,11 @@ class EmbeddingAPIClient:
         url = f"{BASE_URL}/get/all"
 
         try:
-            response = requests.post(url)
+            response = requests.get(url)
             response.raise_for_status()
-            print(f"[SUCCESS] Get All Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
-            return response.json()
+            results = response.json()
+            # print(f"[SUCCESS] Get All Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
+            return results["collections"]
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to getAll embedding: {e}")
 

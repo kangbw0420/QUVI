@@ -150,7 +150,7 @@ class DatabaseService:
     #     return success
 
 
-    def multi_delete_few_shot(title : str):
+    def multi_delete_few_shot(title: str):
         ids = []
 
         resultList = get_vector_data(title)
@@ -160,8 +160,11 @@ class DatabaseService:
 
         success = delete_vector_data(title)
         if success:
+            print(f"Successfully deleted postgreSQL data")
+
             EmbeddingAPIClient.multi_delete_embedding(
                 collection_name=title,
                 ids=ids,
             )
+
         return success

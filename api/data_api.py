@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from data_class.request import PostgreToVectorData, VectorDataQuery, PromptInput
+from data_class.request import PostgreToVectorData, VectorDataQuery, PromptInput, FewshotInput
 from database.database_service import DatabaseService
 
 data_api = APIRouter(tags=["data"])
@@ -111,7 +111,6 @@ def getAll_few_shot():
     Few-shot 전체 데이터를 조회합니다.
     """
     try:
-        # result = DatabaseService.getAll_postgre_few_shot()
         result = DatabaseService.getAll_vector_few_shot()
         return {"data": result}
     except Exception as e:
@@ -133,13 +132,13 @@ def getAll_postgre_few_shot():
 
 # Few-shot 데이터 추가
 @data_api.post("/fewshot/add")
-def add_few_shot(title: str, shots: list[str]):
+def add_few_shot(data: FewshotInput):
     """
     새 벡터 데이터를 추가하고 임베딩 시스템에 업데이트합니다.
     """
     try:
-        # success = DatabaseService.add_few_shot(title, shots)
-        success = DatabaseService.add_few_shot2(title, shots)
+        success = DatabaseService.add_few_shot(data.title, data.shots)
+        # success = DatabaseService.add_few_shot2(data.title, data.shots)
         return {"message": "Few-shot data added successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -164,15 +163,15 @@ def add_few_shot(title: str, shots: list[str]):
 #         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Few-shot 데이터 삭제
+# Few-sho   t 데이터 삭제
 @data_api.delete("/fewshot/delete")
-def delete_few_shot(title: str):
+def delete_few_shot(data: FewshotInput):
     """
     벡터 데이터를 삭제하고 임베딩 시스템에서 제거합니다.
     """
     try:
-        # success = DatabaseService.delete_few_shot(title)
-        success = DatabaseService.multi_delete_few_shot(title)
+        # success = DatabaseService.delete_few_shot(data.title)
+        success = DatabaseService.multi_delete_few_shot(data.title)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete vector data")
         return {"message": "Few-shot data deleted successfully"}
