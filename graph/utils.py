@@ -22,9 +22,20 @@ COLUMN_MAPPINGS = {
     'avf_load_date': '평균 대출 금리',
     'note_bal': '항목 잔액',
     'calc_bal': '항목 비중',
-    'avg_interest_rate': '평균 대출 이자율',
-    'avg_intr_rate': '평균 대출 금리',
     'net_balance': '순수익',
+    'avg_intr_rate': '평균대출금리',
+    'avg_interest_rate': '평균대출금리',
+    'total_research_fee': '연구비',
+    'total_research_amount': '연구비',
+    'research_exepense_ratio': '연구비 비중',
+    'percentage_research_expense': '연구비 비중',
+    'percentage_research_expenses': '연구비 비중',
+    'research_expense_amount': '연구비금액',
+    'total_research_expense': '연구비',
+    'total_withdrawal_amount': '출금액 합계',
+
+    'note1': '적요',
+    'bank_nm': '은행명',
 
     # 거래(trsc) 테이블 관련 컬럼
     'in_cnt': '입금 건수',
@@ -52,6 +63,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
     """
     # DataFrame 생성
     df = pd.DataFrame(data)
+    print("$" * 80)
+    print(df.columns)
     
     if len(df) == 0:
         return "데이터가 없습니다."
@@ -67,16 +80,17 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
     num_columns = {
         'amt': ['cntrct_amt', 'real_amt', 'acct_bal_amt', 'return_rate', 'tot_asset_amt', 'deposit_amt', 
                 'tot_frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt',
-                'tot_all_acct_amt', 'total_acct_bal_amt', 'avg_interest_rate', 'avg_intr_rate',
-                'net_balance'],
-        'trsc': ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'trsc_amt', 'trsc_bal', 
-                'loan_trsc_amt', 'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing']
+                'tot_all_acct_amt', 'total_acct_bal_amt', 'avg_interest_rate',
+                'avg_intr_rate'],
+        'trsc': ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'trsc_amt', 'trsc_bal', 'net_balance', 
+                'loan_trsc_amt', 'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing',
+                'percentage_research_expense', 'percentage_research_expenses', 'research_expense_amount']
     }
     
     # 상위 10개 값을 보여줄 컬럼들
     scope_columns = {
-        'amt': ['note1', 'avf_load_date', 'note_bal', 'calc_bal'],
-        'trsc': ['note1', 'total_trsc_bal', 'trsc_month']
+        'amt': ['note1', 'avf_load_date', 'note_bal', 'calc_bal', 'bank_nm'],
+        'trsc': ['note1', 'total_trsc_bal', 'trsc_month', 'bank_nm']
     }
     
     if selected_table in ['amt', 'trsc']:
@@ -86,8 +100,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
                 korean_col = COLUMN_MAPPINGS.get(col, col)
                 try:
                     stats = {
-                        "합계": int(df[col].sum()),
-                        "평균": int(df[col].mean()),
+                        "합계": float(df[col].sum()),
+                        "평균": float(df[col].mean()),
                         "개수": int(df[col].count())
                     }
                     result_str = (

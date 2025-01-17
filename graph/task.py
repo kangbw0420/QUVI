@@ -63,7 +63,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=SELECT_TABLE_PROMPT,
-        model="llama_70b"
+        model="qwen_7b"
     )
 
     select_table_chain = SELECT_TABLE_PROMPT | qwen_llm_7b | output_parser
@@ -157,7 +157,7 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
         formatted_today = today_date.strftime("%Y%m%d")
         weekday = WEEKDAYS[today_date.weekday()]
 
-        formatted_analyzed_question = f"오늘: {formatted_today} {weekday}요일. {analyzed_question}"
+        formatted_analyzed_question = f"{analyzed_question}, 오늘: {formatted_today} {weekday}요일."
 
         few_shots = await retriever.get_few_shots(
             query_text=formatted_analyzed_question,
@@ -186,7 +186,7 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
 
         chain = prompt | qwen_llm
         output = chain.invoke(
-            {"analyzed_question": analyzed_question}
+            {"analyzed_question": formatted_analyzed_question}
         )  # LLM 응답 (AIMessage 객체)
         # 출력에서 SQL 쿼리 추출
         match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
@@ -201,6 +201,7 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
                 raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
         
         print("=" * 40 + "nl2sql(A)" + "=" * 40)
+        print(output)
         qna_manager.record_answer(qna_id, output)
 
         return sql_query.strip()
@@ -327,7 +328,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=prompt,
-        model="llama_8b"
+        model="llama_70b"
     )
 
     chain = prompt | llama_70b_llm | output_parser

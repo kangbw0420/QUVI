@@ -1,18 +1,18 @@
 {
     "amt": 
         {
-            "전체": ["view_dv","reg_dt","acct_bal_won","open_dt","due_dt","trmn_yn","trmn_dt","mnth_pay_amt","mnth_pay_dt","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv"],
-            "수시": ["view_dv","reg_dt","open_dt","due_dt","acct_bal_won","trmn_yn","trmn_dt","acct_bal_won","cntrct_amt","intr_rate","mnth_pay_amt","mnth_pay_dt","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv"],
-            "예적금": ["view_dv","reg_dt","open_dt","due_dt","acct_bal_won","trmn_yn","trmn_dt","acct_bal_won","cntrct_amt","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv","real_amt","acct_dv","stock_nm","bal_qunt","prchs_price","return_rate","deposit_foreign","tot_asset_amt","deposit_amt"],
-            "대출": ["view_dv","reg_dt","open_dt","due_dt","acct_bal_won","trmn_yn","trmn_dt","mnth_pay_amt","mnth_pay_dt","acct_bal_won","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv","real_amt","acct_dv","stock_nm","bal_qunt","prchs_price","return_rate","deposit_foreign","tot_asset_amt","deposit_amt"],
-            "증권": ["view_dv","reg_dt","intr_rate","open_dt","due_dt","acct_bal_won","trmn_yn","trmn_dt","mnth_pay_amt","mnth_pay_dt","acct_bal_won","prchs_amt","curr_amt","valu_gain_loss","appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv","real_amt","acct_dv","stock_nm","bal_qunt","prchs_price"]
+            "전체": ["open_dt","due_dt","trmn_yn","trmn_dt","mnth_pay_amt","mnth_pay_dt","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv"],
+            "수시": ["open_dt","due_dt","trmn_yn","trmn_dt","acct_bal_won","cntrct_amt","intr_rate","mnth_pay_amt","mnth_pay_dt","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv"],
+            "예적금": ["open_dt","due_dt","trmn_yn","trmn_dt","acct_bal_won","cntrct_amt","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv","real_amt","acct_dv","stock_nm","bal_qunt","prchs_price","return_rate","deposit_foreign","tot_asset_amt","deposit_amt"],
+            "대출": ["open_dt","due_dt","trmn_yn","trmn_dt","mnth_pay_amt","mnth_pay_dt","acct_bal_won","prchs_amt","tot_prchs_amt","curr_amt","valu_gain_loss","appr_amt","tot_appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv","real_amt","acct_dv","stock_nm","bal_qunt","prchs_price","return_rate","deposit_foreign","tot_asset_amt","deposit_amt"],
+            "증권": ["intr_rate","open_dt","due_dt","trmn_yn","trmn_dt","mnth_pay_amt","mnth_pay_dt","acct_bal_won","prchs_amt","curr_amt","valu_gain_loss","appr_amt","purchase_amt_foreign","evaluation_amt_foreign","view_dv","real_amt","acct_dv","stock_nm","bal_qunt","prchs_price"]
         },
     "trsc":
         {
-            "전체": ["view_dv"],
-            "수시": ["view_dv","acct_dv","acct_nick_nm","loan_trsc_amt","loan_rate","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
-            "예적금": ["view_dv","acct_dv","acct_nick_nm","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
-            "대출": ["view_dv","acct_dv","acct_nick_nm","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
-            "증권": ["view_dv","acct_dv","acct_nick_nm","loan_trsc_amt","loan_rate"]
+            "전체": [],
+            "수시": ["acct_dv","acct_nick_nm","loan_trsc_amt","loan_rate","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
+            "예적금": ["acct_dv","acct_nick_nm","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
+            "대출": ["acct_dv","acct_nick_nm","stock_nm","item_qunt","fee_amt","pres_qunt","pres_amt"],
+            "증권": ["acct_dv","acct_nick_nm","loan_trsc_amt","loan_rate"]
         }
 }
