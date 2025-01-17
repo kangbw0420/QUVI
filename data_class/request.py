@@ -5,7 +5,8 @@ class Input(BaseModel):
     user_question: str
     user_id: str = 'daquv03'
     session_id: str = 'default_session'
- 
+
+
 class Output(BaseModel):
     status: int# 200
     success: bool# True
@@ -15,17 +16,16 @@ class Output(BaseModel):
 
 
 class PostgreToVectorData(BaseModel):
-    collection_name: str
-    id: str = "0"
-    document: str = ""
+    title: str = ""
+    shot: str = ""
+    id: str = ""
     del_yn: str = "N"
-    type: str = "C"
 
 
 class VectorDataQuery(BaseModel):
     collection_name: str
     query_text: str
-    top_k: str
+    top_k: int = 1
 
 
 class PromptInput(BaseModel):

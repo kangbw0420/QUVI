@@ -164,33 +164,18 @@ def delete_prompt(node_nm: str, prompt_nm: str):
 
 
 # 벡터 데이터를 가져오는 함수
-def get_vector_data(data: PostgreToVectorData):
-    if data.type == 'C' and data.collection_name is not None:
-        query = """
-            SELECT *
-            FROM vector_data
-            WHERE collection_name = %s
-            AND del_yn = 'N'
-        """
-        return query_execute(
-            query,
-            params=(data.collection_name,),
-            use_prompt_db=True
-        )
-    elif data.type == 'I' and data.id is not None:
-        query = """
-            SELECT *
-            FROM vector_data
-            WHERE id = %s
-            AND del_yn = 'N'
-        """
-        return query_execute(
-            query,
-            params=(data.id,),
-            use_prompt_db=True
-        )
-    else:
-        raise ValueError("Invalid vector data type or missing parameter")
+def get_vector_data(title: str):
+    query = """
+        SELECT *
+        FROM vector_data
+        WHERE title = %s
+        AND del_yn = 'N'
+    """
+    return query_execute(
+        query,
+        params=(title,),
+        use_prompt_db=True
+    )
 
 
 # 벡터 전체 데이터를 가져오는 함수
@@ -211,9 +196,9 @@ def getAll_vector_data():
 def insert_vector_data(data: PostgreToVectorData):
     query = """
         INSERT INTO vector_data (
-            id,
-            collection_name,
-            document
+            title,
+            shot,
+            id
         )
         VALUES (
             %s,
@@ -223,7 +208,7 @@ def insert_vector_data(data: PostgreToVectorData):
     """
     return query_execute(
         query,
-        params=(data.id, data.collection_name, data.document),
+        params=(data.title, data.shot, data.id),
         use_prompt_db=True
     )
 
@@ -260,17 +245,17 @@ def update_vector_data(data: PostgreToVectorData):
 
 
 # 벡터 데이터 삭제 처리 함수
-def delete_vector_data(data: PostgreToVectorData):
+def delete_vector_data(title: str):
     # 기존 데이터 가져오기
     select_query = """
         SELECT *
         FROM vector_data
-        WHERE collection_name = %s
+        WHERE title = %s
         AND del_yn = 'N'
     """
     get_data = query_execute(
         select_query,
-        params=(data.collection_name,),
+        params=(title),
         use_prompt_db=True
     )
 
@@ -278,10 +263,10 @@ def delete_vector_data(data: PostgreToVectorData):
         update_query = """
             UPDATE vector_data
             SET del_yn = 'Y'
-            WHERE collection_name = %s
+            WHERE title = %s
         """
         return query_execute(
             update_query,
-            params=(data.collection_name,),
+            params=(title),
             use_prompt_db=True
         )
