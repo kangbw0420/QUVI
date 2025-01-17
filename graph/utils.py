@@ -100,8 +100,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
                 korean_col = COLUMN_MAPPINGS.get(col, col)
                 try:
                     stats = {
-                        "합계": float(df[col].sum()),
-                        "평균": float(df[col].mean()),
+                        "합계": int(df[col].sum()),
+                        "평균": int(df[col].mean()),
                         "개수": int(df[col].count())
                     }
                     result_str = (
