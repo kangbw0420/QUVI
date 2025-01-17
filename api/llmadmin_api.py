@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.ext.asyncio import AsyncSession
 from urllib.parse import quote_plus
 import asyncpg
+from datetime import datetime
 
 from utils.config import Config
 from typing import List, Dict, Any
@@ -146,5 +146,42 @@ async def get_states(trace_id: str):
             """
             result = await connection.execute(text(query), {"trace_id": trace_id})
             return [dict(row._mapping) for row in result]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@llmadmin_api.get("/dailytokens/{date}", response_model=List[Dict[str, str]])
+async def get_daily_tokens(date: str):
+    """Get all QnA pairs for a specific date from the qna table
+    
+    Args:
+        date (str): Date in YYYY-MM-DD format
+    
+    Returns:
+        List[Dict[str, str]]: List of question-answer pairs for the given date
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Please use YYYY-MM-DD"
+            )
+
+        engine = await get_db_connection()
+        async with engine.begin() as connection:
+            await connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
+            
+            query = """
+                SELECT question, answer
+                FROM qna
+                WHERE DATE(answer_timestamp) = :date
+                ORDER BY answer_timestamp ASC
+            """
+            
+            result = await connection.execute(text(query), {"date": date})
+            return [dict(row._mapping) for row in result]
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
