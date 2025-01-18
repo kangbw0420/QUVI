@@ -44,7 +44,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
 
     few_shots = await retriever.get_few_shots(
-        query_text=user_question, task_type="selector", collection_name="shots_selector", top_k=6
+        query_text=user_question, collection_name="shots_selector", top_k=6
     )
     few_shot_prompt = []
     for example in few_shots:
@@ -96,7 +96,7 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
 
     few_shots = await retriever.get_few_shots(
-        query_text= user_question, task_type="analyzer", collection_name="shots_analyzer", top_k=6
+        query_text= user_question, collection_name="shots_analyzer", top_k=6
     )
     few_shot_prompt = []
     for example in few_shots:
@@ -162,7 +162,6 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
 
         few_shots = await retriever.get_few_shots(
             query_text=user_question,
-            task_type="creator",
             collection_name=collection_name,
             top_k=6
         )
@@ -312,7 +311,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
 
     # 앞의 사례와 다르게 query_text가 human_prompt임에 유의
     few_shots = await retriever.get_few_shots(
-        query_text=human_prompt, task_type="respondent", collection_name="shots_respondent", top_k=6
+        query_text=human_prompt, collection_name="shots_respondent", top_k=6
     )
     few_shot_prompt = []
     for example in few_shots:
