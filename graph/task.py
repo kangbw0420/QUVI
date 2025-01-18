@@ -154,7 +154,7 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
 
-        few_shots = await retriever.get_few_shots_with_date(
+        few_shots = await retriever.get_few_shots(
             query_text=user_question,
             collection_name=collection_name,
             top_k=6
