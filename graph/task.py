@@ -154,13 +154,7 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
 
-        today_date = datetime.strptime(today, "%Y-%m-%d")
-        formatted_today = today_date.strftime("%Y%m%d")
-        weekday = WEEKDAYS[today_date.weekday()]
-
-        formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
-
-        few_shots = await retriever.get_few_shots(
+        few_shots = await retriever.get_few_shots_with_date(
             query_text=user_question,
             collection_name=collection_name,
             top_k=6
@@ -168,12 +162,23 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         few_shot_prompt = []
         for example in few_shots:
             few_shot_prompt.append(("human", example["input"]))
-            few_shot_prompt.append(("ai", example["output"]))
+            # AI 응답에 date 정보를 포함 (date 키가 있는 경우)
+            if "date" in example:
+                ai_response = f'{example["output"]}, 오늘: {example["date"]}.'
+            else:
+                ai_response = example["output"]
+            few_shot_prompt.append(("ai", ai_response))
+
+        today_date = datetime.strptime(today, "%Y-%m-%d")
+        formatted_today = today_date.strftime("%Y%m%d")
+        weekday = WEEKDAYS[today_date.weekday()]
+
+        formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
 
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=system_prompt + schema_prompt),
-#                *few_shot_prompt,
+                *few_shot_prompt,
                 ("human", formatted_question),
             ]
         )

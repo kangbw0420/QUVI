@@ -80,12 +80,20 @@ class FewShotRetriever:
                     # Find corresponding metadata with SQL
                     metadata = result.get("metadata", {})
                     answer = metadata.get("answer", "")
+                    
                     if question and answer:
                         few_shot = {
                             "input": question,
                             "output": answer
                         }
+                        
+                        # If metadata has date key, include it in few_shot
+                        if "date" in metadata:
+                            date = metadata.get("date", "")
+                            few_shot["date"] = date
+                            
                         few_shots.append(few_shot)            
+                
             return few_shots
                 
         except Exception as e:
@@ -94,7 +102,6 @@ class FewShotRetriever:
 
     async def get_few_shots(self, query_text: str, collection_name: Optional[str] = None, top_k: int=6) -> List[Dict]:
         """주어진 쿼리에 대한 few-shot 예제들을 검색합니다.
-        
         Returns:
             List[Dict]: 검색된 few-shot 예제 리스트.
             빈 리스트는 예제를 찾지 못했거나 처리 중 오류가 발생한 경우를 의미.
