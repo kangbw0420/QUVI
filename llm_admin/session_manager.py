@@ -102,15 +102,12 @@ def save_record(session_id:str, analyzed_question:str, answer:str, sql_query:str
         # 사용하려는 스키마 지정
         connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
 
-        # length관련 코드는 DB의 ID값이 auto가 되면 SQL에서 id를 제외하고 정리할 것
         command2 = f"SELECT * FROM record;"
         cursor = connection.execute(text(command2))
-        length = len(cursor.fetchall())
-        command = text("INSERT INTO record (id, session_id, last_analyzed_question, last_answer, last_sql_query) VALUES (:id, :session_id, :question, :answer, :query)")
+        command = text("INSERT INTO record (session_id, last_analyzed_question, last_answer, last_sql_query) VALUES (:session_id, :question, :answer, :query)")
         
         # sql_query에 한글이 있을 경우 SQLAlchemy가 자동으로 적절한 이스케이프 처리를 하도록 params로 저장장
         params = {
-            "id": length+4,
             "session_id": session_id,
             "question": analyzed_question,
             "answer": answer,
