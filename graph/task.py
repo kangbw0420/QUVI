@@ -161,13 +161,12 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         )
         few_shot_prompt = []
         for example in few_shots:
-            few_shot_prompt.append(("human", example["input"]))
-            # AI 응답에 date 정보를 포함 (date 키가 있는 경우)
             if "date" in example:
-                ai_response = f'{example["output"]}, 오늘: {example["date"]}.'
+                human_with_date = f'{example["input"]}, 오늘: {example["date"]}.'
             else:
-                ai_response = example["output"]
-            few_shot_prompt.append(("ai", ai_response))
+                human_with_date = example["input"]
+            few_shot_prompt.append(("human", human_with_date))
+            few_shot_prompt.append(("ai", example["output"]))
 
         today_date = datetime.strptime(today, "%Y-%m-%d")
         formatted_today = today_date.strftime("%Y%m%d")
