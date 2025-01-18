@@ -10,20 +10,6 @@ load_dotenv()
 class FewShotRetriever:
     def __init__(self):
         self.base_url = Config.VECTOR_STORE_DOMAIN
-        self.collections = {
-            "analyzer": "question_analyzer",
-            "executor": "result_executor",
-            "respondent": "sql_respondent"
-        }
-
-    async def get_collection_name(self, task_type: str, collection_name: Optional[str] = None) -> str:
-        """작업 유형과 collection_name을 기반으로 적절한 컬렉션 이름을 결정합니다.
-        Returns:
-            str: 사용할 컬렉션 이름.
-        Raises:
-            ValueError: task_type이 유효하지 않은 경우.
-        """
-        return collection_name
 
     async def query_vector_store(self, query_text: str, collection_name: str, top_k: int = 6) -> List[Dict]:
         """벡터 스토어에 쿼리를 보내 유사한 예제들을 검색합니다.
@@ -106,20 +92,15 @@ class FewShotRetriever:
             print(f"Error formatting few-shots: {str(e)}")
             return []
 
-    async def get_few_shots(self, query_text: str, task_type: str, collection_name: Optional[str] = None, top_k: int=6) -> List[Dict]:
+    async def get_few_shots(self, query_text: str, collection_name: Optional[str] = None, top_k: int=6) -> List[Dict]:
         """주어진 쿼리에 대한 few-shot 예제들을 검색합니다.
         
         Returns:
             List[Dict]: 검색된 few-shot 예제 리스트.
             빈 리스트는 예제를 찾지 못했거나 처리 중 오류가 발생한 경우를 의미.
         Raises:
-            ValueError: task_type이 유효하지 않거나 컬렉션을 찾을 수 없는 경우.
             httpx.RequestError: 벡터 스토어 API 통신 중 오류 발생시.
         """
-        collection_name = await self.get_collection_name(task_type, collection_name)
-        if not collection_name:
-            raise ValueError(f"Invalid task type: {task_type}")
-
         results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
         few_shots = await self.format_few_shots(results)
         

@@ -102,11 +102,11 @@ async def query_creator(state: GraphState) -> GraphState:
     """
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
-    analyzed_question = state["analyzed_question"]
+    user_question = state["user_question"]
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await create_query(trace_id, selected_table, analyzed_question, today)
+    sql_query = await create_query(trace_id, selected_table, user_question, today)
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})

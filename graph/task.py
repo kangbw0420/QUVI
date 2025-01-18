@@ -118,9 +118,10 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
         model="llama_70b"
     )
 
-    analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
-    analyzed_question = analyze_chain.invoke({"user_question": user_question})
+#    analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
+#    analyzed_question = analyze_chain.invoke({"user_question": user_question})
 
+    analyzed_question = "잠만보 귀여워"
     print("=" * 40 + "analyzer(A)" + "=" * 40)
     print(analyzed_question)
     qna_manager.record_answer(qna_id, analyzed_question)
@@ -128,7 +129,7 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     return analyzed_question
 
 
-async def create_query(trace_id: str, selected_table, analyzed_question: str, today: str) -> str:
+async def create_query(trace_id: str, selected_table, user_question: str, today: str) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
         str: 생성된 SQL 쿼리문
@@ -157,10 +158,10 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
         formatted_today = today_date.strftime("%Y%m%d")
         weekday = WEEKDAYS[today_date.weekday()]
 
-        formatted_analyzed_question = f"{analyzed_question}, 오늘: {formatted_today} {weekday}요일."
+        formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
 
         few_shots = await retriever.get_few_shots(
-            query_text=formatted_analyzed_question,
+            query_text=user_question,
             task_type="creator",
             collection_name=collection_name,
             top_k=6
@@ -173,8 +174,8 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=system_prompt + schema_prompt),
-                *few_shot_prompt,
-                ("human", formatted_analyzed_question),
+#                *few_shot_prompt,
+                ("human", formatted_question),
             ]
         )
 
@@ -187,8 +188,9 @@ async def create_query(trace_id: str, selected_table, analyzed_question: str, to
 
         chain = prompt | qwen_llm
         output = chain.invoke(
-            {"analyzed_question": formatted_analyzed_question}
+            {"user_question": formatted_question}
         )  # LLM 응답 (AIMessage 객체)
+
         # 출력에서 SQL 쿼리 추출
         match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
         if match:
