@@ -8,7 +8,7 @@ from .task import (
     columns_filter
 )
 from datetime import datetime
-from .utils import analyze_data
+from .utils import analyze_data, add_order_by
 from llm_admin.state_manager import StateManager
 
 
@@ -121,9 +121,12 @@ def result_executor(state: GraphState) -> GraphState:
     """
     trace_id = state["trace_id"]
     # SQL 쿼리 가져오기
-    query = state.get("sql_query")
-    if not query:
+    raw_query = state.get("sql_query")
+    if not raw_query:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
+    
+    select_table = state.get("selected_table")
+    query = add_order_by(raw_query, select_table)
 
     # DB 쿼리 실행
     result = execute_query(query)

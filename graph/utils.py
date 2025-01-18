@@ -129,3 +129,48 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
                 result_parts.append(result_str)
     
     return result_parts
+
+def add_order_by(query: str, selected_table: str) -> str:
+    """SQL 쿼리에 ORDER BY 절을 추가하는 함수
+
+    Args:
+        query (str): 원본 SQL 쿼리
+        selected_table (str): 선택된 테이블 ('amt' 또는 'trsc')
+
+    Returns:
+        str: ORDER BY 절이 추가된 SQL 쿼리
+
+    Note:
+        - SELECT * 쿼리에만 ORDER BY 절을 추가
+        - 이미 ORDER BY가 있는 경우 원본 쿼리를 그대로 반환
+    """
+    # 쿼리가 None이거나 빈 문자열인 경우 처리
+    if not query:
+        return query
+
+    # SELECT * 쿼리인지 확인 (8번째 문자가 '*'인지 체크)
+    if len(query) <= 8 or query[7] != '*':
+        return query
+
+    # 이미 ORDER BY가 있는지 확인
+    if "ORDER BY" in query.upper():
+        return query
+
+    # 테이블별 기본 정렬 기준 설정
+    default_order = {
+        'amt': 'ORDER BY com_nm DESC, curr_cd DESC, reg_dt DESC, acct_bal_amt DESC',  # 계좌구분 오름차순
+        'trsc': 'ORDER BY com_nm DESC, curr_cd DESC, trsc_dt DESC, trsc_tm DESC, seq_no DESC;'  # 거래일시 내림차순
+    }
+
+    # 세미콜론 위치 찾기
+    semicolon_pos = query.find(';')
+    
+    if semicolon_pos != -1:
+        # 세미콜론이 있는 경우
+        base_query = query[:semicolon_pos]
+        order_clause = default_order.get(selected_table, '')
+        return f"{base_query} {order_clause};"
+    else:
+        # 세미콜론이 없는 경우
+        order_clause = default_order.get(selected_table, '')
+        return f"{query} {order_clause}"
