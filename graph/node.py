@@ -96,7 +96,7 @@ async def query_creator(state: GraphState) -> GraphState:
     Returns:
         GraphState: sql_query가 추가된 상태.
     Raises:
-        KeyError: state에 analyzed_question이 없는 경우.
+        KeyError: state에 필요한 값이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
     trace_id = state["trace_id"]

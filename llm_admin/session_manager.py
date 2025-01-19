@@ -90,7 +90,7 @@ def make_dev_session_id(user_id: str, session_id:str) -> str:
             
     return session_id
 
-def save_record(session_id:str, analyzed_question:str, answer:str, sql_query:str) -> bool:
+def save_record(session_id:str, user_question:str, answer:str, sql_query:str) -> bool:
     # session_id가 개발용인지 검증
     if session_id =="DEV_SESSION_ID":
         return 0
@@ -104,12 +104,12 @@ def save_record(session_id:str, analyzed_question:str, answer:str, sql_query:str
 
         command2 = f"SELECT * FROM record;"
         cursor = connection.execute(text(command2))
-        command = text("INSERT INTO record (session_id, last_analyzed_question, last_answer, last_sql_query) VALUES (:session_id, :question, :answer, :query)")
+        command = text("INSERT INTO record (session_id, last_question, last_answer, last_sql_query) VALUES (:session_id, :question, :answer, :query)")
         
         # sql_query에 한글이 있을 경우 SQLAlchemy가 자동으로 적절한 이스케이프 처리를 하도록 params로 저장장
         params = {
             "session_id": session_id,
-            "question": analyzed_question,
+            "question": user_question,
             "answer": answer,
             "query": sql_query
         }
@@ -121,7 +121,7 @@ def extract_last_data(session_id:str) -> list:
 
     # 최대 3개의 row
     result = []
-    command = f"SELECT last_analyzed_question, last_answer, last_sql_query FROM record WHERE session_id = '{session_id}' ORDER BY record_time DESC LIMIT 3;"
+    command = f"SELECT last_question, last_answer, last_sql_query FROM record WHERE session_id = '{session_id}' ORDER BY record_time DESC LIMIT 3;"
 
     from urllib.parse import quote_plus
     password = quote_plus(str(Config.DB_PASSWORD_PROMPT))

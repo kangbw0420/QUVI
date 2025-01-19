@@ -42,11 +42,11 @@ async def process_input(request: Input) -> Output:
         # 결과 추출
         answer = final_state["final_answer"]
         raw_data = final_state["query_result"]
-        analyzed_question = final_state["analyzed_question"]
+        user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
         
         # 기존 레코드 저장
-        save_record(session_id, analyzed_question, answer, sql_query)
+        save_record(session_id, user_question, answer, sql_query)
         
         # 체인 완료 기록
         ChainManager.complete_chain(chain_id, answer)
@@ -61,7 +61,6 @@ async def process_input(request: Input) -> Output:
                 "raw_data": raw_data,
                 "session_id": session_id,
                 "sql_query": sql_query, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
-                "analyzed_question": analyzed_question # 프로덕션 제거거
             }
         )
         
