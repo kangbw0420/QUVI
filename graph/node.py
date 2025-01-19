@@ -16,7 +16,7 @@ class GraphState(TypedDict):
     trace_id: str
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
-    analyzed_question: str  # analyzer를 통해 분석된 질의
+#    analyzed_question: str  # analyzer를 통해 분석된 질의
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
     query_result_stats: (
         str  # sql_query 실행 결과에 따른 데이터의 통계값 (final_answer 생성에 사용)
@@ -55,7 +55,7 @@ async def table_selector(state: GraphState) -> GraphState:
 
     return state
 
-
+'''
 async def question_analyzer(state: GraphState) -> GraphState:
     """사용자 질문을 분석하여 간소화(개떡같은 질문을 찰떡같은 질문으로)
     Returns:
@@ -90,6 +90,7 @@ async def question_analyzer(state: GraphState) -> GraphState:
     StateManager.update_state(trace_id, {"analyzed_question": analyzed_question})
 
     return state
+'''
 
 async def query_creator(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)

@@ -51,7 +51,8 @@ COLUMN_MAPPINGS = {
     'loan_rate': '이율',
     'loan_trsc_amt': '거래원금',
     'total_trsc_bal': '순수익',
-    'trsc_month': '거래월'
+    'trsc_month': '거래월',
+    'tot_profit': '순이익'
 }
 
 def analyze_data(data: List[Dict], selected_table: str) -> str:
@@ -85,7 +86,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
                 'avg_intr_rate'],
         'trsc': ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'trsc_amt', 'trsc_bal', 'net_balance', 
                 'loan_trsc_amt', 'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing',
-                'percentage_research_expense', 'percentage_research_expenses', 'research_expense_amount']
+                'percentage_research_expense', 'percentage_research_expenses', 'research_expense_amount',
+                'tot_profit']
     }
     
     # 상위 10개 값을 보여줄 컬럼들

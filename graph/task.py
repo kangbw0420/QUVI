@@ -75,7 +75,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
 
     return selected_table
 
-
+'''
 async def analyze_user_question(trace_id: str, user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
@@ -127,7 +127,7 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
     qna_manager.record_answer(qna_id, analyzed_question)
 
     return analyzed_question
-
+'''
 
 async def create_query(trace_id: str, selected_table, user_question: str, today: str) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
