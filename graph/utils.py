@@ -52,8 +52,8 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
     }
 
     # 'select *'의 쿼리인지를 확인한다 (각각의 테이블은 칼럼이 35개, 18개인데, view_dt가 빠지는 걸 감안, 1개 적은 개수로 필터링한다.)
-    if (selected_table == "amt" & len(df.columns) >= 34) | (
-        selected_table == "trsc" & len(df.columns) >= 17
+    if (selected_table == "amt" and len(df.columns) >= 34) | (
+        selected_table == "trsc" and len(df.columns) >= 17
     ):
         # 'select *'인 경우, 정해진 칼럼들에 대해서만 통계값을 준다.
         for col in df.columns:
