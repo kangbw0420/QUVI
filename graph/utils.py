@@ -149,6 +149,9 @@ def add_order_by(query: str, selected_table: str) -> str:
     if "ORDER BY" in query.upper():
         return query
 
+    # 우선 세미콜론 제거
+    query = query.strip(';')
+
     # 테이블별 기본 정렬 기준 설정
     default_order = {
         'amt': 'ORDER BY com_nm DESC, curr_cd DESC, reg_dt DESC, acct_bal_amt DESC',  # 계좌구분 오름차순
