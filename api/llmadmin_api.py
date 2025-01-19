@@ -138,7 +138,7 @@ async def get_states(trace_id: str):
         async with engine.begin() as connection:
             await connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
             query = """
-                SELECT id, user_question, selected_table, analyzed_question, 
+                SELECT id, user_question, selected_table, analyzed_date, 
                        sql_query, query_result_stats, query_result, final_answer
                 FROM state 
                 WHERE trace_id = :trace_id

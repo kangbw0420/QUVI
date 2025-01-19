@@ -75,8 +75,8 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
 
     return selected_table
 
-'''
-async def analyze_user_question(trace_id: str, user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
+
+async def analyze_date(trace_id: str, user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
     """사용자의 질문을 분석하여 표준화된 형식으로 변환
     Returns:
         str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
@@ -118,16 +118,17 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
         model="llama_70b"
     )
 
-#    analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
-#    analyzed_question = analyze_chain.invoke({"user_question": user_question})
+    analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
+    analyzed_date = analyze_chain.invoke({"user_question": user_question})
+    print(analyzed_date)
 
-    analyzed_question = "잠만보 귀여워"
+    analyzed_date = (250119, 250119)
     print("=" * 40 + "analyzer(A)" + "=" * 40)
-    print(analyzed_question)
-    qna_manager.record_answer(qna_id, analyzed_question)
+    print(analyzed_date)
+    qna_manager.record_answer(qna_id, analyzed_date)
 
-    return analyzed_question
-'''
+    return analyzed_date
+
 
 async def create_query(trace_id: str, selected_table, user_question: str, today: str) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성

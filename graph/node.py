@@ -1,10 +1,10 @@
-from typing import TypedDict
+from typing import TypedDict, Tuple
 from .task import (
-    analyze_user_question,
+    select_table,
+    analyze_date,
     create_query,
     sql_response,
-    execute_query,
-    select_table,
+    execute_query
 )
 from datetime import datetime
 from .utils import analyze_data, add_order_by, columns_filter
@@ -16,7 +16,7 @@ class GraphState(TypedDict):
     trace_id: str
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
-#    analyzed_question: str  # analyzer를 통해 분석된 질의
+    analyzed_date: Tuple[str, str]  # 날짜 범위
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
     query_result_stats: (
         str  # sql_query 실행 결과에 따른 데이터의 통계값 (final_answer 생성에 사용)
@@ -55,11 +55,11 @@ async def table_selector(state: GraphState) -> GraphState:
 
     return state
 
-'''
-async def question_analyzer(state: GraphState) -> GraphState:
-    """사용자 질문을 분석하여 간소화(개떡같은 질문을 찰떡같은 질문으로)
+
+async def date_analyzer(state: GraphState) -> GraphState:
+    """사용자 질문을 분석하여 날짜 범위 지정
     Returns:
-        GraphState: analyzed_question이 추가된 상태.
+        GraphState: analyzed_date가 추가된 state
     Raises:
         KeyError: state에 user_question이 없는 경우.
     """
@@ -75,7 +75,7 @@ async def question_analyzer(state: GraphState) -> GraphState:
                     # f"\n**이전 질문에 대한 답변\n- {x[1]}"
             last_data += last_template
         
-        analyzed_question = await analyze_user_question(
+        analyzed_date = await analyze_date(
             trace_id,
             state["user_question"], 
             state["selected_table"],
@@ -84,13 +84,13 @@ async def question_analyzer(state: GraphState) -> GraphState:
             )
 
     except KeyError:
-        analyzed_question = await analyze_user_question(trace_id, state["user_question"], state["selected_table"], today)
+        analyzed_date = await analyze_date(trace_id, state["user_question"], state["selected_table"], today)
 
-    state.update({"analyzed_question": analyzed_question})
-    StateManager.update_state(trace_id, {"analyzed_question": analyzed_question})
+    state.update({"analyzed_date": analyzed_date})
+    StateManager.update_state(trace_id, {"analyzed_date": analyzed_date})
 
     return state
-'''
+
 
 async def query_creator(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)

@@ -10,7 +10,7 @@ class TraceManager:
         노드 실행 시작 시 trace 기록 생성
         Args:
             chain_id: 연관된 체인 ID
-            node_type: 노드 타입 (table_selector, question_analyzer 등)
+            node_type: 노드 타입
         Returns:
             str: 생성된 trace_id
         """
