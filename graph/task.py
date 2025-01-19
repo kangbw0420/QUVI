@@ -4,7 +4,7 @@ from typing import Union, Sequence, Dict, Any
 from dotenv import load_dotenv
 from datetime import datetime
 
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from sqlalchemy import create_engine, text
@@ -44,7 +44,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     contents = system_prompt + last_data if len(last_data)>1 else system_prompt
 
     few_shots = await retriever.get_few_shots(
-        query_text=user_question, collection_name="shots_selector", top_k=6
+        query_text=user_question, collection_name="shots_selector", top_k=5
     )
     few_shot_prompt = []
     for example in few_shots:
@@ -95,18 +95,18 @@ async def analyze_user_question(trace_id: str, user_question: str, selected_tabl
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
 
-    few_shots = await retriever.get_few_shots(
-        query_text= user_question, collection_name="shots_analyzer", top_k=6
-    )
-    few_shot_prompt = []
-    for example in few_shots:
-        few_shot_prompt.append(("human", example["input"]))
-        few_shot_prompt.append(("ai", example["output"]))
+#    few_shots = await retriever.get_few_shots(
+#        query_text= user_question, collection_name="shots_analyzer", top_k=6
+#    )
+#    few_shot_prompt = []
+#    for example in few_shots:
+#        few_shot_prompt.append(("human", example["input"]))
+#        few_shot_prompt.append(("ai", example["output"]))
 
     ANALYZE_PROMPT = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=contents),
-            *few_shot_prompt,
+#            *few_shot_prompt,
             ("human", user_question)
         ]
     )
@@ -157,7 +157,7 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         few_shots = await retriever.get_few_shots(
             query_text=user_question,
             collection_name=collection_name,
-            top_k=6
+            top_k=3
         )
         few_shot_prompt = []
         for example in few_shots:
@@ -315,7 +315,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
 
     # 앞의 사례와 다르게 query_text가 human_prompt임에 유의
     few_shots = await retriever.get_few_shots(
-        query_text=human_prompt, collection_name="shots_respondent", top_k=6
+        query_text=human_prompt, collection_name="shots_respondent", top_k=3
     )
     few_shot_prompt = []
     for example in few_shots:
@@ -345,41 +345,3 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     qna_manager.record_answer(qna_id, output)
 
     return output
-
-
-def columns_filter(query_result: list, selected_table_name:str):
-    result = query_result
-
-    with open("temp.json", 'r', encoding='utf-8') as f: # 테이블에 따른 컬럼리스트
-        columns_list = json.load(f)
-        
-    # node에서 query_result 의 element 존재유무를 검사했으니 column name 기준으로 '거래내역'과 '잔액'을 구분
-    if selected_table_name == "trsc":
-        filtered_result = []    # 필터링한 결과를 출력할 변수
-        # view_dv로 인텐트트 구분
-        if 'view_dv' in result[0]:
-            columns_to_remove = columns_list['trsc'][result[0]['view_dv']]
-            for x in result:
-                x = {k: v for k, v in x.items() if k not in columns_to_remove}
-                filtered_result.append(x)
-        else:   # view_dv가 없기 때문에 '전체'에 해당되는 column list만 출력
-            columns_to_remove = columns_list['trsc']['전체']
-            for x in result:
-                x = {k: v for k, v in x.items() if k not in columns_to_remove}
-                filtered_result.append(x)
-        return filtered_result
-    elif selected_table_name == "amt":
-        filtered_result = []
-        if 'view_dv' in result[0]:
-            columns_to_remove = columns_list['amt'][result[0]['view_dv']]
-            for x in result:
-                x = {k: v for k, v in x.items() if k not in columns_to_remove}
-                filtered_result.append(x)
-        else:
-            columns_to_remove = columns_list['amt']['전체']
-            for x in result:
-                x = {k: v for k, v in x.items() if k not in columns_to_remove}
-                filtered_result.append(x)
-        return filtered_result
-    else:  # 해당사항 없으므로 본래 resul값 출력 
-        return result

@@ -1,14 +1,13 @@
-from typing import TypedDict, Dict, Any
+from typing import TypedDict
 from .task import (
     analyze_user_question,
     create_query,
     sql_response,
     execute_query,
     select_table,
-    columns_filter
 )
 from datetime import datetime
-from .utils import analyze_data, add_order_by
+from .utils import analyze_data, add_order_by, columns_filter
 from llm_admin.state_manager import StateManager
 
 
@@ -121,12 +120,17 @@ def result_executor(state: GraphState) -> GraphState:
     """
     trace_id = state["trace_id"]
     # SQL 쿼리 가져오기
+
     raw_query = state.get("sql_query")
+    print("####")
+    print(raw_query)
     if not raw_query:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
     
     select_table = state.get("selected_table")
     query = add_order_by(raw_query, select_table)
+    print("####")
+    print(query)
 
     # DB 쿼리 실행
     result = execute_query(query)
@@ -161,13 +165,13 @@ async def sql_respondent(state: GraphState) -> GraphState:
     """
     trace_id = state["trace_id"]
     user_question = state["user_question"]
-    analyzed_question = state["analyzed_question"]
-    query_result = state["query_result"]    # row가 5개 이하?
+    sql_query = state["sql_query"]
+    # query_result = state["query_result"]    # row가 5개 이하?
     query_result_stats = state.get("query_result_stats", [])
 
     # 결과가 없는 경우 처리
     if query_result_stats == []:
-        final_answer = f'죄송합니다. 요청주신 내용에 따라 데이터베이스에서 다음 내용을 검색했지만 데이터가 없었습니다.: {analyzed_question}'
+        final_answer = f'죄송합니다. 요청주신 내용에 따라 데이터베이스에서 다음 내용을 검색했지만 데이터가 없었습니다. \n {sql_query}'
         state.update({"final_answer": final_answer})
         return state
     
