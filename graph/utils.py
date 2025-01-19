@@ -133,19 +133,9 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
 
 def add_order_by(query: str, selected_table: str) -> str:
     """SQL 쿼리에 ORDER BY 절을 추가하는 함수
-
-    Args:
-        query (str): 원본 SQL 쿼리
-        selected_table (str): 선택된 테이블 ('amt' 또는 'trsc')
-
     Returns:
         str: ORDER BY 절이 추가된 SQL 쿼리
-
-    Note:
-        - SELECT * 쿼리에만 ORDER BY 절을 추가
-        - 이미 ORDER BY가 있는 경우 원본 쿼리를 그대로 반환
     """
-    # 쿼리가 None이거나 빈 문자열인 경우 처리
     if not query:
         return query
 
@@ -160,21 +150,35 @@ def add_order_by(query: str, selected_table: str) -> str:
     # 테이블별 기본 정렬 기준 설정
     default_order = {
         'amt': 'ORDER BY com_nm DESC, curr_cd DESC, reg_dt DESC, acct_bal_amt DESC',  # 계좌구분 오름차순
-        'trsc': 'ORDER BY com_nm DESC, curr_cd DESC, trsc_dt DESC, trsc_tm DESC, seq_no DESC;'  # 거래일시 내림차순
+        'trsc': 'ORDER BY com_nm DESC, curr_cd DESC, trsc_dt DESC, trsc_tm DESC, seq_no DESC'  # 거래일시 내림차순
     }
 
-    # 세미콜론 위치 찾기
-    semicolon_pos = query.find(';')
+    order_clause = default_order.get(selected_table, '')
     
-    if semicolon_pos != -1:
-        # 세미콜론이 있는 경우
-        base_query = query[:semicolon_pos]
-        order_clause = default_order.get(selected_table, '')
-        return f"{base_query} {order_clause};"
+    # LIMIT, UNION 위치 찾기 (대소문자 구분 없이)
+    query_upper = query.upper()
+    limit_pos = query_upper.find("LIMIT ")
+    union_pos = query_upper.find("UNION ")
+    
+    # ORDER BY를 삽입할 위치 결정
+    if limit_pos != -1 and union_pos != -1:
+        # LIMIT와 UNION이 모두 있는 경우 앞쪽에 있는 것 기준
+        insert_pos = min(limit_pos, union_pos)
+    elif limit_pos != -1:
+        # LIMIT만 있는 경우
+        insert_pos = limit_pos
+    elif union_pos != -1:
+        # UNION만 있는 경우
+        insert_pos = union_pos
     else:
-        # 세미콜론이 없는 경우
-        order_clause = default_order.get(selected_table, '')
-        return f"{query} {order_clause}"
+        # 아무 것도 없는 경우
+        insert_pos = len(query)
+    
+    # 쿼리 조립
+    result = query[:insert_pos].rstrip() + " " + order_clause + " " + query[insert_pos:].lstrip()
+    
+    # 마지막에 세미콜론 추가
+    return result + ";"
     
 def columns_filter(query_result: list, selected_table_name:str):
     result = query_result
