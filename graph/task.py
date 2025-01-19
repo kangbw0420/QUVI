@@ -90,7 +90,7 @@ async def analyze_date(trace_id: str, user_question: str, selected_table: str, t
     schema_prompt = (
         f"테이블: aicfo_get_all_{selected_table}\n"
         + "칼럼명:\n"
-        + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
+        + json.loads(database_service.get_prompt(node_nm='schema', prompt_nm='schema')[0]['prompt'])[selected_table]
     )
 
     contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
@@ -148,8 +148,7 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"
             + "칼럼명:\n"
-            # analyzer에서 사용했던 스키마 테이블 재사용 - node_nm/prompt_nm 변경??
-            + json.loads(database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='selected_table')[0]['prompt'])[selected_table]
+            + json.loads(database_service.get_prompt(node_nm='schema', prompt_nm='schema')[0]['prompt'])[selected_table]
         )
 
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
