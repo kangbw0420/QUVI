@@ -34,6 +34,7 @@ COLUMN_MAPPINGS = {
     'research_expense_amount': '연구비금액',
     'total_research_expense': '연구비',
     'total_withdrawal_amount': '출금액 합계',
+    'total_balance': '총 잔액',
 
     'note1': '적요',
     'bank_nm': '은행명',
@@ -83,7 +84,7 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
         'amt': ['cntrct_amt', 'real_amt', 'acct_bal_amt', 'return_rate', 'tot_asset_amt', 'deposit_amt', 
                 'tot_frequent_acct_amt', 'tot_saving_acct_amt', 'tot_loan_acct_amt', 'tot_stock_acct_amt',
                 'tot_all_acct_amt', 'total_acct_bal_amt', 'avg_interest_rate',
-                'avg_intr_rate'],
+                'avg_intr_rate', 'total_balance'],
         'trsc': ['in_cnt', 'curr_amt', 'real_amt', 'loan_rate', 'cnt', 'trsc_cnt', 'trsc_amt', 'trsc_bal', 'net_balance', 
                 'loan_trsc_amt', 'total_incoming_amount', 'total_outgoing_amount', 'total_incoming', 'total_outgoing',
                 'percentage_research_expense', 'percentage_research_expenses', 'research_expense_amount',
