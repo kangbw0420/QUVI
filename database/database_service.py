@@ -78,6 +78,10 @@ class DatabaseService:
                 "id": doc_id,
                 "answer": shot["answer"]  # SQL goes to metadata
             }
+
+            if "date" in shot:
+                metadata["date"] = shot["date"]
+
             metadatas.append(metadata)
 
             success = insert_vector_data(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
