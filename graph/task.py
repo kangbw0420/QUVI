@@ -120,9 +120,10 @@ async def analyze_date(trace_id: str, user_question: str, selected_table: str, t
 
     analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
     analyzed_date = analyze_chain.invoke({"user_question": user_question})
-    print(analyzed_date)
 
+    print(analyzed_date)
     analyzed_date = (250119, 250119)
+    
     print("=" * 40 + "analyzer(A)" + "=" * 40)
     print(analyzed_date)
     qna_manager.record_answer(qna_id, analyzed_date)
