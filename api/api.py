@@ -22,7 +22,7 @@ async def process_input(request: Input) -> Output:
             else make_session_id(request.user_id)
         )
 
-        user_info = [request.user_id, request.use_intt_id]
+        user_info = (request.user_id, request.use_intt_id)
         
         # last_data 조회
         last_data = extract_last_data(session_id) if check_session_id(request.user_id, session_id) else None

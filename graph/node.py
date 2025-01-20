@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TypedDict, List
+from typing import TypedDict, Tuple, List
 
 from .task import (
     select_table,
@@ -19,7 +19,7 @@ from llm_admin.state_manager import StateManager
 class GraphState(TypedDict):
     chain_id: str
     trace_id: str
-    user_info: List[str]
+    user_info: Tuple[str, str]
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
