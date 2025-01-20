@@ -24,7 +24,7 @@ class GraphState(TypedDict):
     query_result: dict  # sql_query 실행 결과 데이터 (데이터프레임 형식)
     final_answer: str  # 최종 답변
     last_data: list     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
-    
+
 
 async def table_selector(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택
@@ -168,7 +168,6 @@ async def sql_respondent(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     sql_query = state["sql_query"]
-    # query_result = state["query_result"]    # row가 5개 이하?
     query_result_stats = state.get("query_result_stats", [])
 
     # 결과가 없는 경우 처리
@@ -182,19 +181,6 @@ async def sql_respondent(state: GraphState) -> GraphState:
         user_question=user_question,
         query_result_stats=query_result_stats
     )
-
-    # if len(query_result) < 6:
-    #     output = sql_response(
-            # trace_id, 
-    #         user_question=user_question,
-    #         query_result = query_result
-    #     )
-    # else:
-    #     output = sql_response(
-            # trace_id, 
-    #         user_question=user_question,
-    #         query_result_stats=query_result_stats
-    #     )
 
     final_answer = (str(output))
 

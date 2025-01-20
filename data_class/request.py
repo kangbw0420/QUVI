@@ -5,7 +5,7 @@ class Input(BaseModel):
     user_question: str
     user_id: str = 'daquv03'
     session_id: str = 'default_session'
-
+    use_intt_id: str
 
 class Output(BaseModel):
     status: int# 200

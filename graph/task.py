@@ -67,8 +67,8 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
         model="qwen_7b"
     )
 
-    select_table_chain = SELECT_TABLE_PROMPT | qwen_llm_7b | output_parser
-    selected_table = select_table_chain.invoke({"user_question": user_question})
+    chain = SELECT_TABLE_PROMPT | qwen_llm_7b | output_parser
+    selected_table = chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "selector(A)" + "=" * 40)
     print(selected_table)
@@ -90,8 +90,7 @@ async def analyze_date(trace_id: str, user_question: str, selected_table: str, t
         node_nm='analyze_user_question', 
         prompt_nm=selected_table
     )[0]['prompt'].format(
-        today=today, 
-        user_question=user_question
+        today=today
     )
 
     contents = system_prompt + last_data if len(last_data) > 1 else system_prompt
@@ -131,8 +130,8 @@ async def analyze_date(trace_id: str, user_question: str, selected_table: str, t
         model="llama_70b"
     )
 
-    analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
-    analyzed_date_raw = analyze_chain.invoke({"user_question": user_question})
+    chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
+    analyzed_date_raw = chain.invoke({"user_question": user_question})
 
     print(analyzed_date_raw)
     # analyzed_date = ast.literal_eval
@@ -222,6 +221,7 @@ async def create_query(trace_id: str, selected_table: str, user_question: str, a
 
 
 def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict[str, Any]], Result]:  # type: ignore
+# def execute_query(command: Union[str, Executable], analyzed_date: Tuple[str, str] fetch="all") -> Union[Sequence[Dict[str, Any]], Result]:
     """SQL 쿼리를 실행하고 결과를 반환합니다.
     Returns:
         Union[Sequence[Dict[str, Any]], Result]: 쿼리 실행 결과.
@@ -302,7 +302,7 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         raise
 
 
-async def sql_response(trace_id: str, user_question, query_result_stats = None, query_result = None) -> str:
+async def sql_response(trace_id: str, user_question: str, query_result_stats = None, query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -343,6 +343,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     )
 
     chain = prompt | llama_70b_llm | output_parser
+    # ??? 이거 다른 파라미터로 invoke 되는지 테스트
     output = chain.invoke({"human_prompt": user_question})
 
     print("=" * 40 + "respondent(A)" + "=" * 40)

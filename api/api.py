@@ -31,6 +31,7 @@ async def process_input(request: Input) -> Output:
         initial_state = {
             "chain_id": chain_id,
             "user_question": request.user_question,
+            # 이용 기관 코드도 여기로 내려가야할듯..? state에 넣어야 하나. request.이용기관 코드
             "last_data": last_data if last_data else []
         }
         
