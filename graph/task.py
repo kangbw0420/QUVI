@@ -1,6 +1,7 @@
 import json
 import re
-from typing import Union, Sequence, Dict, Any
+import ast
+from typing import Union, Sequence, Dict, Any, Tuple
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -77,37 +78,49 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
 
 
 async def analyze_date(trace_id: str, user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
-    """사용자의 질문을 분석하여 표준화된 형식으로 변환
+    """사용자의 질문을 분석하여 날짜 범위를 반환
     Returns:
-        str: 'aicfo_get_cabo_XXXX[질문내용]' 형식으로 변환된 질문
+        str: 날짜 범위 튜플
     Raises:
         ValueError: 질문이 분석 가능한 형식이 아닌 경우.
     """
     output_parser = StrOutputParser()
 
-    system_prompt = database_service.get_prompt(node_nm='analyze_user_question', prompt_nm='system')[0]['prompt'].format(today=today)
-
-    schema_prompt = (
-        f"테이블: aicfo_get_all_{selected_table}\n"
-        + "칼럼명:\n"
-        + json.loads(database_service.get_prompt(node_nm='schema', prompt_nm='schema')[0]['prompt'])[selected_table]
+    system_prompt = database_service.get_prompt(
+        node_nm='analyze_user_question', 
+        prompt_nm=selected_table
+    )[0]['prompt'].format(
+        today=today, 
+        user_question=user_question
     )
 
-    contents = system_prompt + schema_prompt + last_data if len(last_data) > 1 else system_prompt + schema_prompt
+    contents = system_prompt + last_data if len(last_data) > 1 else system_prompt
 
-#    few_shots = await retriever.get_few_shots(
-#        query_text= user_question, collection_name="shots_analyzer", top_k=6
-#    )
-#    few_shot_prompt = []
-#    for example in few_shots:
-#        few_shot_prompt.append(("human", example["input"]))
-#        few_shot_prompt.append(("ai", example["output"]))
+    # few_shots = await retriever.get_few_shots(
+    #     query_text= user_question,
+    #     collection_name="shots_analyzer",
+    #     top_k=6
+    # )
+    # few_shot_prompt = []
+    # for example in few_shots:
+    #     if "date" in example:
+    #         input_with_date = f'{example["input"]}, 오늘: {example["date"]}.'
+    #     else:
+    #         input_with_date = example["input"]
+    #     few_shot_prompt.append(("human", input_with_date))
+    #     few_shot_prompt.append(("ai", example["output"]))
+
+    today_date = datetime.strptime(today, "%Y-%m-%d")
+    formatted_today = today_date.strftime("%Y%m%d")
+    weekday = WEEKDAYS[today_date.weekday()]
+
+    formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
 
     ANALYZE_PROMPT = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=contents),
-#            *few_shot_prompt,
-            ("human", user_question)
+            # *few_shot_prompt,
+            ("human", formatted_question)
         ]
     )
 
@@ -119,10 +132,11 @@ async def analyze_date(trace_id: str, user_question: str, selected_table: str, t
     )
 
     analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
-    analyzed_date = analyze_chain.invoke({"user_question": user_question})
+    analyzed_date_raw = analyze_chain.invoke({"user_question": user_question})
 
-    print(analyzed_date)
-    analyzed_date = (250119, 250119)
+    print(analyzed_date_raw)
+    # analyzed_date = ast.literal_eval
+    analyzed_date = (250120, 250120)
     
     print("=" * 40 + "analyzer(A)" + "=" * 40)
     print(analyzed_date)
@@ -131,7 +145,7 @@ async def analyze_date(trace_id: str, user_question: str, selected_table: str, t
     return analyzed_date
 
 
-async def create_query(trace_id: str, selected_table, user_question: str, today: str) -> str:
+async def create_query(trace_id: str, selected_table: str, user_question: str, analyzed_date: Tuple[str, str], today: str) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
         str: 생성된 SQL 쿼리문
@@ -141,10 +155,10 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
     """
     try:
         try:
-            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today, analyzed_date=analyzed_date)
             
         except FileNotFoundError as e:
-            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today, analyzed_date=analyzed_date)
 
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"
@@ -162,24 +176,14 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         )
         few_shot_prompt = []
         for example in few_shots:
-            if "date" in example:
-                human_with_date = f'{example["input"]}, 오늘: {example["date"]}.'
-            else:
-                human_with_date = example["input"]
-            few_shot_prompt.append(("human", human_with_date))
+            few_shot_prompt.append(("human", example["input"]))
             few_shot_prompt.append(("ai", example["output"]))
-
-        today_date = datetime.strptime(today, "%Y-%m-%d")
-        formatted_today = today_date.strftime("%Y%m%d")
-        weekday = WEEKDAYS[today_date.weekday()]
-
-        formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
 
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=system_prompt + schema_prompt),
                 *few_shot_prompt,
-                ("human", formatted_question),
+                ("human", user_question),
             ]
         )
 
@@ -192,7 +196,7 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
 
         chain = prompt | qwen_llm
         output = chain.invoke(
-            {"user_question": formatted_question}
+            {"user_question": user_question}
         )  # LLM 응답 (AIMessage 객체)
 
         # 출력에서 SQL 쿼리 추출

@@ -101,12 +101,13 @@ async def query_creator(state: GraphState) -> GraphState:
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
     trace_id = state["trace_id"]
-    selected_table = state["selected_table"]
     user_question = state["user_question"]
+    selected_table = state["selected_table"]
+    analyzed_date = state["analyzed_date"]
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await create_query(trace_id, selected_table, user_question, today)
+    sql_query = await create_query(trace_id, selected_table, user_question, analyzed_date, today)
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
