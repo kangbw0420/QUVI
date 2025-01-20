@@ -104,8 +104,8 @@ def result_executor(state: GraphState) -> GraphState:
 
     view_date = extract_view_date(raw_query, selected_table)
     query = add_view_table(query_ordered, selected_table, user_info, view_date)
-    
-    print(query_ordered)
+    print(view_date)
+    print(query)
     print("#" * 20)
 
     # DB 쿼리 실행
