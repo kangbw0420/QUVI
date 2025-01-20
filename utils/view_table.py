@@ -1,23 +1,5 @@
-from typing import List, Tuple, Optional
+from typing import Tuple
 import re
-
-def extract_com_nm(query: str) -> Optional[str]:
-    """
-    SQL 쿼리에서 회사명(com_nm)을 추출합니다.
-    
-    Args:
-        query (str): 분석할 SQL 쿼리문
-            예: "SELECT * FROM aicfo_get_all_amt WHERE com_nm = '삼성전자' AND view_dv = '대출'"
-    
-    Returns:
-        Optional[str]: 추출된 회사명. 쿼리에서 회사명을 찾을 수 없는 경우 None을 반환
-    
-    Examples:
-        >>> query = "SELECT * FROM table WHERE com_nm = '삼성전자'"
-        >>> extract_com_nm(query)
-        '삼성전자'
-    """
-    pass
 
 def extract_view_date(query: str) -> Tuple[str, str]:
     """
@@ -40,20 +22,15 @@ def extract_view_date(query: str) -> Tuple[str, str]:
     """
     pass
 
-def add_view_table(query: str, user_info: Tuple[str, str], com_nm: Optional[str], view_date: Tuple[str, str]) -> str:
+def add_view_table(query: str, user_info: Tuple[str, str], view_date: Tuple[str, str]) -> str:
     """
     SQL 쿼리를 뷰 테이블 구조에 맞게 변환합니다.
-    
     Args:
         query (str): 변환할 원본 SQL 쿼리문
         user_info (Tuple[str, str]): (user_id, use_intt_id) 형식의 사용자 정보
-        com_nm (Optional[str]): 회사명. None인 경우 전체 회사 조회
         view_date (Tuple[str, str]): (시작일, 종료일) 형식의 조회 기간
-    
     Returns:
         str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문
-            예: "SELECT * FROM aicfo_get_all_amt('user123', 'intt456', '삼성전자', '20250101', '20250131') 
-                WHERE view_dv = '대출' AND reg_dt = '20250120'"
     """
     # FROM 절과 테이블명만 찾습니다
     from_pattern = r'FROM\s+(\w+)'
@@ -71,11 +48,8 @@ def add_view_table(query: str, user_info: Tuple[str, str], com_nm: Optional[str]
     # user_info에서 값을 가져옵니다
     user_id, use_intt_id = user_info
     
-    # 회사명이 None이면 'null'로 처리
-    company = "null" if com_nm is None else f"'{com_nm}'"
-    
     # 뷰 테이블 함수 호출 형식으로 변환
-    view_table_part = f"{table_name}('{user_id}', '{use_intt_id}', {company}, '{view_date[0]}', '{view_date[1]}')"
+    view_table_part = f"{table_name}('{user_id}', '{use_intt_id}', '{view_date[0]}', '{view_date[1]}')"
     
     # 최종 쿼리 조립 - FROM 이후의 모든 절을 그대로 유지
     final_query = f"{before_from} FROM {view_table_part} {after_from}"
