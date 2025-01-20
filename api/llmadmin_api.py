@@ -162,7 +162,7 @@ async def get_daily_tokens(date: str):
     try:
         # Validate date format
         try:
-            datetime.strptime(date, "%Y-%m-%d")
+            parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
         except ValueError:
             raise HTTPException(
                 status_code=400, 
@@ -176,11 +176,11 @@ async def get_daily_tokens(date: str):
             query = """
                 SELECT question, answer
                 FROM qna
-                WHERE DATE(answer_timestamp) = :date
+                WHERE answer_timestamp::date = :date
                 ORDER BY answer_timestamp ASC
             """
             
-            result = await connection.execute(text(query), {"date": date})
+            result = await connection.execute(text(query), {"date": parsed_date})
             return [dict(row._mapping) for row in result]
             
     except Exception as e:
