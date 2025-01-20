@@ -21,6 +21,8 @@ async def process_input(request: Input) -> Output:
             else make_dev_session_id(request.user_id, request.session_id) if request.session_id == "DEV_SESSION_ID"
             else make_session_id(request.user_id)
         )
+
+        use_intt_id = request.use_intt_id
         
         # last_data 조회
         last_data = extract_last_data(session_id) if check_session_id(request.user_id, session_id) else None
@@ -30,8 +32,8 @@ async def process_input(request: Input) -> Output:
 
         initial_state = {
             "chain_id": chain_id,
+            "use_intt_id": use_intt_id,
             "user_question": request.user_question,
-            # 이용 기관 코드도 여기로 내려가야할듯..? state에 넣어야 하나. request.이용기관 코드
             "last_data": last_data if last_data else []
         }
         

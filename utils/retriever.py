@@ -109,6 +109,7 @@ class FewShotRetriever:
             httpx.RequestError: 벡터 스토어 API 통신 중 오류 발생시.
         """
         results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
+        print(results)
         few_shots = await self.format_few_shots(results)
         
         return few_shots

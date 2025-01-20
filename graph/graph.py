@@ -7,7 +7,6 @@ from llm_admin.trace_manager import TraceManager
 from .node import (
     GraphState,
     table_selector,
-    date_analyzer,
     query_creator,
     sql_respondent,
     result_executor,
@@ -57,14 +56,12 @@ def make_graph() -> CompiledStateGraph:
 
         # 노드 추가
         workflow.add_node("table_selector", table_selector)
-        workflow.add_node("date_analyzer", date_analyzer)
         workflow.add_node("query_creator", query_creator)
         workflow.add_node("result_executor", result_executor)
         workflow.add_node("sql_respondent", sql_respondent)
 
         # 엣지 추가
-        workflow.add_edge("table_selector", "date_analyzer")
-        workflow.add_edge("date_analyzer", "query_creator")
+        workflow.add_edge("table_selector", "query_creator")
         workflow.add_edge("query_creator", "result_executor")
         workflow.add_edge("result_executor", "sql_respondent")
         workflow.add_edge("sql_respondent", END)

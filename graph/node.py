@@ -1,7 +1,6 @@
 from typing import TypedDict, Tuple
 from .task import (
     select_table,
-    analyze_date,
     create_query,
     sql_response,
     execute_query
@@ -14,9 +13,9 @@ from llm_admin.state_manager import StateManager
 class GraphState(TypedDict):
     chain_id: str
     trace_id: str
+    use_intt_id: str
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
-    analyzed_date: Tuple[str, str]  # 날짜 범위
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
     query_result_stats: (
         str  # sql_query 실행 결과에 따른 데이터의 통계값 (final_answer 생성에 사용)
@@ -24,7 +23,7 @@ class GraphState(TypedDict):
     query_result: dict  # sql_query 실행 결과 데이터 (데이터프레임 형식)
     final_answer: str  # 최종 답변
     last_data: list     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
-
+    
 
 async def table_selector(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택
@@ -56,42 +55,6 @@ async def table_selector(state: GraphState) -> GraphState:
     return state
 
 
-async def date_analyzer(state: GraphState) -> GraphState:
-    """사용자 질문을 분석하여 날짜 범위 지정
-    Returns:
-        GraphState: analyzed_date가 추가된 state
-    Raises:
-        KeyError: state에 user_question이 없는 경우.
-    """
-    today = datetime.now().strftime("%Y-%m-%d")
-    trace_id = state["trace_id"]
-    # last_data 존재 검증은 try-except문으로 수행
-    try:
-        last_data = '\n*Context'
-        
-        for x in state['last_data']:
-            last_template = f"\n**이전 질문\n- {x[0]}"#+\
-                    # f"\n**이전 질문에 대한 SQL쿼리\n- {x[2]}"+\
-                    # f"\n**이전 질문에 대한 답변\n- {x[1]}"
-            last_data += last_template
-        
-        analyzed_date = await analyze_date(
-            trace_id,
-            state["user_question"], 
-            state["selected_table"],
-            today,
-            last_data
-            )
-
-    except KeyError:
-        analyzed_date = await analyze_date(trace_id, state["user_question"], state["selected_table"], today)
-
-    state.update({"analyzed_date": analyzed_date})
-    StateManager.update_state(trace_id, {"analyzed_date": analyzed_date})
-
-    return state
-
-
 async def query_creator(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
     Returns:
@@ -101,13 +64,12 @@ async def query_creator(state: GraphState) -> GraphState:
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
     trace_id = state["trace_id"]
-    user_question = state["user_question"]
     selected_table = state["selected_table"]
-    analyzed_date = state["analyzed_date"]
+    user_question = state["user_question"]
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await create_query(trace_id, selected_table, user_question, analyzed_date, today)
+    sql_query = await create_query(trace_id, selected_table, user_question, today)
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
@@ -124,33 +86,37 @@ def result_executor(state: GraphState) -> GraphState:
     # SQL 쿼리 가져오기
 
     raw_query = state.get("sql_query")
-    print("####")
+    print("#" * 20)
     print(raw_query)
     if not raw_query:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
-    
-    select_table = state.get("selected_table")
-    query = add_order_by(raw_query, select_table)
-    print("####")
-    print(query)
+
+    use_intt_id = state.get("use_intt_id")
+    print(use_intt_id)    
+    selected_table = state.get("selected_table")
+    query_ordered = add_order_by(raw_query, select_table)
+
+    # view_date = extract_view_date(raw_query)
+    # query = add_view_table(query_ordered, use_intt_id)
+    print(query_ordered)
+    print("#" * 20)
 
     # DB 쿼리 실행
-    result = execute_query(query)
+    result = execute_query(query_ordered)
 
-    select_table = state["selected_table"]
     # 결과가 None인 경우 빈 리스트로 초기화
     if result is None:
         result = {"columns": [], "rows": []}
         # 통계값 추출
-        query_result_stats = analyze_data(result, select_table)
+        query_result_stats = analyze_data(result, selected_table)
     else:
         if len(result)==0:
-            query_result_stats = analyze_data(result, select_table)
+            query_result_stats = analyze_data(result, selected_table)
         else:
             # 통계값 추출
-            query_result_stats = analyze_data(result, select_table)
+            query_result_stats = analyze_data(result, selected_table)
             # 컬럼 필터 result
-            result = columns_filter(result, select_table)
+            result = columns_filter(result, selected_table)
 
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": result})
@@ -168,6 +134,7 @@ async def sql_respondent(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     sql_query = state["sql_query"]
+    # query_result = state["query_result"]    # row가 5개 이하?
     query_result_stats = state.get("query_result_stats", [])
 
     # 결과가 없는 경우 처리

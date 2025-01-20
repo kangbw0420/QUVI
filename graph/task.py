@@ -1,7 +1,6 @@
 import json
 import re
-import ast
-from typing import Union, Sequence, Dict, Any, Tuple
+from typing import Union, Sequence, Dict, Any
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -76,64 +75,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
 
     return selected_table
 
-
-async def analyze_date(trace_id: str, user_question: str, selected_table: str, today: str, last_data: str = "") -> str:
-    """사용자의 질문을 분석하여 날짜 범위를 반환
-    Returns:
-        str: 날짜 범위 튜플
-    Raises:
-        ValueError: 질문이 분석 가능한 형식이 아닌 경우.
-    """
-    output_parser = StrOutputParser()
-
-    system_prompt = database_service.get_prompt(
-        node_nm='analyze_user_question', 
-        prompt_nm=selected_table
-    )[0]['prompt'].format(
-        today=today, 
-        user_question=user_question
-    )
-
-    contents = system_prompt + last_data if len(last_data) > 1 else system_prompt
-
-    few_shots = await retriever.get_few_shots(
-        query_text= user_question, collection_name="shots_analyzer", top_k=6
-    )
-    few_shot_prompt = []
-    for example in few_shots:
-        few_shot_prompt.append(("human", example["input"]))
-        few_shot_prompt.append(("ai", example["output"]))
-
-    ANALYZE_PROMPT = ChatPromptTemplate.from_messages(
-        [
-            SystemMessage(content=contents),
-            *few_shot_prompt,
-            ("human", user_question)
-        ]
-    )
-
-    print("=" * 40 + "analyzer(Q)" + "=" * 40)
-    qna_id = qna_manager.create_question(
-        trace_id=trace_id,
-        question=ANALYZE_PROMPT,
-        model="llama_70b"
-    )
-
-    analyze_chain = ANALYZE_PROMPT | llama_70b_llm | output_parser
-    analyzed_date_raw = analyze_chain.invoke({"user_question": user_question})
-
-    print(analyzed_date_raw)
-    # analyzed_date = ast.literal_eval
-    analyzed_date = (250120, 250120)
-    
-    print("=" * 40 + "analyzer(A)" + "=" * 40)
-    print(analyzed_date)
-    qna_manager.record_answer(qna_id, analyzed_date)
-
-    return analyzed_date
-
-
-async def create_query(trace_id: str, selected_table: str, user_question: str, analyzed_date: Tuple[str, str], today: str) -> str:
+async def create_query(trace_id: str, selected_table, user_question: str, today: str) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
         str: 생성된 SQL 쿼리문
@@ -143,10 +85,10 @@ async def create_query(trace_id: str, selected_table: str, user_question: str, a
     """
     try:
         try:
-            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today, analyzed_date=analyzed_date)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
             
         except FileNotFoundError as e:
-            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today, analyzed_date=analyzed_date)
+            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
 
         schema_prompt = (
             f"테이블: aicfo_get_all_{selected_table}\n"

@@ -7,6 +7,7 @@ class Input(BaseModel):
     session_id: str = 'default_session'
     use_intt_id: str
 
+
 class Output(BaseModel):
     status: int# 200
     success: bool# True
