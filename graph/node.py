@@ -6,14 +6,13 @@ from .task import (
     create_query,
     sql_response,
     execute_query,
-    # extract_view_date,
-    # add_view_table
 )
 from utils.utils import (
     analyze_data,
     add_order_by,
     columns_filter
 )
+# from utils.view_table import extract_view_date, add_view_table
 from llm_admin.state_manager import StateManager
 
 
