@@ -12,7 +12,7 @@ from sqlalchemy.engine import Result
 from sqlalchemy.sql.expression import Executable
 
 from database.database_service import DatabaseService
-from llm_models.models import llama_70b_llm, qwen_llm, qwen_llm_7b, llama_8b_llm
+from graph.models import llama_70b_llm, qwen_llm, qwen_llm_7b, llama_8b_llm
 from utils.config import Config
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager

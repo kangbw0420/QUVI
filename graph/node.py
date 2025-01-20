@@ -1,19 +1,26 @@
-from typing import TypedDict, Tuple
+from datetime import datetime
+from typing import TypedDict, List
+
 from .task import (
     select_table,
     create_query,
     sql_response,
-    execute_query
+    execute_query,
+    # extract_view_date,
+    # add_view_table
 )
-from datetime import datetime
-from .utils import analyze_data, add_order_by, columns_filter
+from utils.utils import (
+    analyze_data,
+    add_order_by,
+    columns_filter
+)
 from llm_admin.state_manager import StateManager
 
 
 class GraphState(TypedDict):
     chain_id: str
     trace_id: str
-    use_intt_id: str
+    user_info: List[str]
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
@@ -22,7 +29,7 @@ class GraphState(TypedDict):
     )
     query_result: dict  # sql_query 실행 결과 데이터 (데이터프레임 형식)
     final_answer: str  # 최종 답변
-    last_data: list     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
+    last_data: List[str]     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
     
 
 async def table_selector(state: GraphState) -> GraphState:
@@ -91,13 +98,13 @@ def result_executor(state: GraphState) -> GraphState:
     if not raw_query:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
 
-    use_intt_id = state.get("use_intt_id")
-    print(use_intt_id)    
+    user_info = state.get("user_info")
+    print(user_info)    
     selected_table = state.get("selected_table")
     query_ordered = add_order_by(raw_query, select_table)
 
     # view_date = extract_view_date(raw_query)
-    # query = add_view_table(query_ordered, use_intt_id)
+    # query = add_view_table(query_ordered, user_info, view_date)
     print(query_ordered)
     print("#" * 20)
 
@@ -134,7 +141,6 @@ async def sql_respondent(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     sql_query = state["sql_query"]
-    # query_result = state["query_result"]    # row가 5개 이하?
     query_result_stats = state.get("query_result_stats", [])
 
     # 결과가 없는 경우 처리

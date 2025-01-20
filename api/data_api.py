@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from data_class.request import PostgreToVectorData, VectorDataQuery, PromptInput, FewshotInput
+from api.dto import PostgreToVectorData, VectorDataQuery, PromptInput, FewshotInput
 from database.database_service import DatabaseService
 
 data_api = APIRouter(tags=["data"])

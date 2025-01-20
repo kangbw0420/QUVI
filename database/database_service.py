@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import HTTPException
 
-from data_class.request import PostgreToVectorData, VectorDataQuery
+from api.dto import PostgreToVectorData, VectorDataQuery
 from database.postgresql import get_prompt, get_all_prompt, insert_prompt, delete_prompt, get_vector_data, getAll_vector_data, insert_vector_data, update_vector_data, delete_vector_data
 from database.vector_db import EmbeddingAPIClient
 

@@ -1,7 +1,7 @@
 import traceback
 
 from fastapi import APIRouter, HTTPException
-from data_class.request import Input, Output
+from api.dto import Input, Output
 
 from graph.graph import make_graph
 from llm_admin.session_manager import check_session_id, make_session_id, save_record, extract_last_data, make_dev_session_id
@@ -22,7 +22,7 @@ async def process_input(request: Input) -> Output:
             else make_session_id(request.user_id)
         )
 
-        use_intt_id = request.use_intt_id
+        user_info = [request.user_id, request.use_intt_id]
         
         # last_data 조회
         last_data = extract_last_data(session_id) if check_session_id(request.user_id, session_id) else None
@@ -32,7 +32,7 @@ async def process_input(request: Input) -> Output:
 
         initial_state = {
             "chain_id": chain_id,
-            "use_intt_id": use_intt_id,
+            "user_info": user_info,
             "user_question": request.user_question,
             "last_data": last_data if last_data else []
         }

@@ -1,7 +1,8 @@
 import psycopg2.pool
 from psycopg2.extras import RealDictCursor
+
 from utils.config import Config
-from data_class.request import PostgreToVectorData
+from api.dto import PostgreToVectorData
 
 
 # PostgreSQL 클래스 정의
