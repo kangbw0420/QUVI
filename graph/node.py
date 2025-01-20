@@ -12,7 +12,7 @@ from utils.utils import (
     add_order_by,
     columns_filter
 )
-# from utils.view_table import extract_view_date, add_view_table
+from utils.view_table import extract_view_date, add_view_table
 from llm_admin.state_manager import StateManager
 
 
@@ -102,8 +102,9 @@ def result_executor(state: GraphState) -> GraphState:
     selected_table = state.get("selected_table")
     query_ordered = add_order_by(raw_query, select_table)
 
-    # view_date = extract_view_date(raw_query)
-    # query = add_view_table(query_ordered, user_info, view_date)
+    view_date = extract_view_date(raw_query, selected_table)
+    query = add_view_table(query_ordered, selected_table, user_info, view_date)
+    
     print(query_ordered)
     print("#" * 20)
 
