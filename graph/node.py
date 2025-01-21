@@ -13,6 +13,7 @@ from utils.utils import (
 )
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
+from utils.check_com import check_com_nm
 from llm_admin.state_manager import StateManager
 
 
@@ -98,7 +99,7 @@ def result_executor(state: GraphState) -> GraphState:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
 
     user_info = state.get("user_info")
-    print(user_info)    
+    print(user_info)
     selected_table = state.get("selected_table")
     query_ordered = add_order_by(raw_query, selected_table)
 
@@ -114,18 +115,17 @@ def result_executor(state: GraphState) -> GraphState:
         print(f"Error in view table processing: {str(e)}")
         result = execute_query(query_ordered)
 
-    # 결과가 None인 경우 빈 리스트로 초기화
+    # 회사 이름과 통화 기준으로 필터링 후 통계값 처리
+    result = check_com_nm(result)
     if result is None:
         result = {"columns": [], "rows": []}
-        # 통계값 추출
         query_result_stats = analyze_data(result, selected_table)
     else:
         if len(result)==0:
             query_result_stats = analyze_data(result, selected_table)
         else:
-            # 통계값 추출
             query_result_stats = analyze_data(result, selected_table)
-            # 컬럼 필터 result
+            # 컬럼 필터
             result = columns_filter(result, selected_table)
 
     # 상태 업데이트
