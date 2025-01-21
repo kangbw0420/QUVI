@@ -118,7 +118,7 @@ def analyze_data(data: List[Dict], selected_table: str) -> str:
         )
     return result_parts
 
-
+'''
 def add_order_by(query: str, selected_table: str) -> str:
     """SQL 쿼리에 ORDER BY 절을 추가하는 함수
     Returns:
@@ -176,7 +176,7 @@ def add_order_by(query: str, selected_table: str) -> str:
 
     # 마지막에 세미콜론 추가
     return result + ";"
-
+'''
 
 def columns_filter(query_result: list, selected_table_name: str):
     result = query_result

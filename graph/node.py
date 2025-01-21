@@ -9,10 +9,10 @@ from .task import (
 )
 from utils.utils import (
     analyze_data,
-    add_order_by,
     columns_filter
 )
 from utils.view_table import extract_view_date, add_view_table
+from utils.orderby import add_order_by
 from llm_admin.state_manager import StateManager
 
 
@@ -100,16 +100,19 @@ def result_executor(state: GraphState) -> GraphState:
     user_info = state.get("user_info")
     print(user_info)    
     selected_table = state.get("selected_table")
-    query_ordered = add_order_by(raw_query, select_table)
+    query_ordered = add_order_by(raw_query, selected_table)
 
-    view_date = extract_view_date(raw_query, selected_table)
-    query = add_view_table(query_ordered, selected_table, user_info, view_date)
-    print(view_date)
-    print(query)
-    print("#" * 20)
-
-    # DB 쿼리 실행
-    result = execute_query(query_ordered)
+    try:
+        view_date = extract_view_date(raw_query, selected_table)
+        query = add_view_table(query_ordered, selected_table, user_info, view_date)
+        print(view_date)
+        print(query)
+        print("#" * 20)
+        
+        result = execute_query(query)
+    except Exception as e:
+        print(f"Error in view table processing: {str(e)}")
+        result = execute_query(query_ordered)
 
     # 결과가 None인 경우 빈 리스트로 초기화
     if result is None:
