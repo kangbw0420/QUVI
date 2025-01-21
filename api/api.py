@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from api.dto import Input, Output
 
 from graph.graph import make_graph
-from llm_admin.session_manager import check_session_id, make_session_id, save_record, extract_last_data, make_dev_session_id
+from llm_admin.session_manager import check_session_id, make_session_id, save_record, extract_last_data
 from llm_admin.chain_manager import ChainManager
 
 api = APIRouter(tags=["api"])
@@ -18,7 +18,6 @@ async def process_input(request: Input) -> Output:
         # 세션 확인/생성을 가장 먼저 수행
         session_id = (
             request.session_id if check_session_id(request.user_id, request.session_id)
-            else make_dev_session_id(request.user_id, request.session_id) if request.session_id == "DEV_SESSION_ID"
             else make_session_id(request.user_id)
         )
 

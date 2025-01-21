@@ -1,7 +1,10 @@
 import uuid
+
 from sqlalchemy import create_engine, text
 from urllib.parse import quote_plus
+
 from utils.config import Config
+from database.postgresql import query_execute
 
 class TraceManager:
 
@@ -17,34 +20,26 @@ class TraceManager:
         try:
             trace_id = str(uuid.uuid4())
             
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
-                command = text("""
-                    INSERT INTO trace (
-                        id,
-                        chain_id,
-                        node_type,
-                        trace_status
-                    ) VALUES (
-                        :trace_id,
-                        :chain_id,
-                        :node_type,
-                        'active'
-                    )
-                """)
-                
-                connection.execute(command, {
-                    'trace_id': trace_id,
-                    'chain_id': chain_id,
-                    'node_type': node_type
-                })
-
+            query = """
+                INSERT INTO trace (
+                    id,
+                    chain_id,
+                    node_type,
+                    trace_status
+                ) VALUES (
+                    %(trace_id)s,
+                    %(chain_id)s,
+                    %(node_type)s,
+                    'active'
+                )
+            """
+            params = {
+                'trace_id': trace_id,
+                'chain_id': chain_id,
+                'node_type': node_type
+            }
+            
+            query_execute(query, params, use_prompt_db=True)
             return trace_id
 
         except Exception as e:
@@ -60,27 +55,15 @@ class TraceManager:
             bool: 성공 여부
         """
         try:
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
-                command = text("""
-                    UPDATE trace 
-                    SET 
-                        trace_end = CURRENT_TIMESTAMP,
-                        trace_status = 'completed'
-                    WHERE id = :trace_id
-                """)
-                
-                connection.execute(command, {
-                    'trace_id': trace_id
-                })
-
-            return True
+            query = """
+                UPDATE trace 
+                SET 
+                    trace_end = CURRENT_TIMESTAMP,
+                    trace_status = 'completed'
+                WHERE id = %(trace_id)s
+            """
+            
+            return query_execute(query, {'trace_id': trace_id}, use_prompt_db=True)
 
         except Exception as e:
             print(f"Error in complete_trace: {str(e)}")

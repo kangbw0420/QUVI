@@ -1,9 +1,12 @@
 import uuid
 from typing import Any
+
 from sqlalchemy import create_engine, text
 from langchain_core.prompts import ChatPromptTemplate
 from urllib.parse import quote_plus
+
 from utils.config import Config
+from database.postgresql import query_execute
 
 class QnAManager:
     def format_message_str(self, msg_str: str) -> str:

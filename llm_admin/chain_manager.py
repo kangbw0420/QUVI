@@ -1,7 +1,9 @@
 import uuid
 from sqlalchemy import create_engine, text
 from urllib.parse import quote_plus
+
 from utils.config import Config
+from database.postgresql import query_execute
 
 class ChainManager:
 
@@ -14,35 +16,26 @@ class ChainManager:
         try:
             chain_id = str(uuid.uuid4())
             
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-                
-                # Parameterized query for security
-                command = text("""
-                    INSERT INTO chain (
-                        id, 
-                        session_id, 
-                        chain_question, 
-                        chain_status
-                    ) VALUES (
-                        :chain_id, 
-                        :session_id, 
-                        :chain_question, 
-                        'active'
-                    )
-                """)
-                
-                connection.execute(command, {
-                    'chain_id': chain_id,
-                    'session_id': session_id,
-                    'chain_question': user_question
-                })
-                
+            query = """
+                INSERT INTO chain (
+                    id, 
+                    session_id, 
+                    chain_question, 
+                    chain_status
+                ) VALUES (
+                    %(chain_id)s, 
+                    %(session_id)s, 
+                    %(chain_question)s, 
+                    'active'
+                )
+            """
+            params = {
+                'chain_id': chain_id,
+                'session_id': session_id,
+                'chain_question': user_question
+            }
+            
+            query_execute(query, params, use_prompt_db=True)
             return chain_id
 
         except Exception as e:
@@ -56,29 +49,20 @@ class ChainManager:
             bool: 성공 여부
         """
         try:
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
-                command = text("""
-                    UPDATE chain 
-                    SET 
-                        chain_answer = :answer,
-                        chain_end = CURRENT_TIMESTAMP,
-                        chain_status = 'completed'
-                    WHERE id = :chain_id
-                """)
-                
-                connection.execute(command, {
-                    'answer': final_answer,
-                    'chain_id': chain_id
-                })
-
-            return True
+            query = """
+                UPDATE chain 
+                SET 
+                    chain_answer = %(answer)s,
+                    chain_end = CURRENT_TIMESTAMP,
+                    chain_status = 'completed'
+                WHERE id = %(chain_id)s
+            """
+            params = {
+                'answer': final_answer,
+                'chain_id': chain_id
+            }
+            
+            return query_execute(query, params, use_prompt_db=True)
 
         except Exception as e:
             print(f"Error in complete_chain: {str(e)}")

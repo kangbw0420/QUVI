@@ -1,9 +1,12 @@
-from sqlalchemy import create_engine, text
-from urllib.parse import quote_plus
 import json
 from typing import Dict, Any, Optional
 from decimal import Decimal
+
+from sqlalchemy import create_engine, text
+from urllib.parse import quote_plus
+
 from utils.config import Config
+from database.postgresql import query_execute
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
