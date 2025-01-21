@@ -7,11 +7,9 @@ from .task import (
     sql_response,
     execute_query,
 )
-from utils.stats import calculate_stats
-from utils.filter import columns_filter
+from utils.stats import calculate_stats, columns_filter
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
-from utils.check_com import check_com_nm
 from llm_admin.state_manager import StateManager
 
 
@@ -113,8 +111,7 @@ def result_executor(state: GraphState) -> GraphState:
         print(f"Error in view table processing: {str(e)}")
         result = execute_query(query_ordered)
 
-    # 회사 이름과 통화 기준으로 필터링 후 통계값 처리
-    result = check_com_nm(result)
+    # 통화 기준으로 필터링 후 통계값 처리
     if result is None:
         result = {"columns": [], "rows": []}
         query_result_stats = calculate_stats(result, selected_table)
