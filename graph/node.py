@@ -7,10 +7,8 @@ from .task import (
     sql_response,
     execute_query,
 )
-from utils.utils import (
-    analyze_data,
-    columns_filter
-)
+from utils.stats import calculate_stats
+from utils.filter import columns_filter
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
 from utils.check_com import check_com_nm
@@ -119,12 +117,12 @@ def result_executor(state: GraphState) -> GraphState:
     result = check_com_nm(result)
     if result is None:
         result = {"columns": [], "rows": []}
-        query_result_stats = analyze_data(result, selected_table)
+        query_result_stats = calculate_stats(result, selected_table)
     else:
         if len(result)==0:
-            query_result_stats = analyze_data(result, selected_table)
+            query_result_stats = calculate_stats(result, selected_table)
         else:
-            query_result_stats = analyze_data(result, selected_table)
+            query_result_stats = calculate_stats(result, selected_table)
             # 컬럼 필터
             result = columns_filter(result, selected_table)
 
