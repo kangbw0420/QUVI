@@ -41,7 +41,7 @@ def calculate_stats(data: Union[List[Dict], Dict[str, List[Dict]]], selected_tab
             ### 1. column 전처리 ###
             for col in df.columns:
                 # Decimal 타입을 float로 변환 / currency_column이 있는 경우
-                if isinstance(df[col].dropna().iloc[0], Decimal):
+                if len(df[col].dropna()) > 0 and isinstance(df[col].dropna().iloc[0], Decimal):
                     df[col] = df[col].astype(float)
                 # currency_column인지 확인
                 first_three_values = df[col].head(3).astype(str).tolist()
@@ -104,7 +104,7 @@ def calculate_stats(data: Union[List[Dict], Dict[str, List[Dict]]], selected_tab
         ### 1. column 전처리 ###
         for col in df.columns:
             # Decimal 타입을 float로 변환 / currency_column이 있는 경우
-            if isinstance(df[col].dropna().iloc[0], Decimal):
+            if len(df[col].dropna()) > 0 and isinstance(df[col].dropna().iloc[0], Decimal):
                 df[col] = df[col].astype(float)
 
             # currency_column인지 확인
