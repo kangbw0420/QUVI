@@ -1,194 +1,120 @@
-import unittest
+# python -m test.test_utils
+
+import pandas as pd
+from typing import Dict, List, Any
+from decimal import Decimal
+
 from utils.check_com import check_com_nm
-from utils.stats import analyze_data
+from utils.stats import calculate_stats
+from utils.filter import columns_filter
 
-class TestDataProcessing(unittest.TestCase):
-    def setUp(self):
-        # 테스트 데이터 설정
-        self.test_data = [
-            {
-                "view_dv": "입출금",
-                "com_nm": "삼성전자",
-                "bank_nm": "신한은행",
-                "acct_no": "123-456-789",
-                "curr_cd": "KRW",
-                "seq_no": "001",
-                "trsc_dt": "20250101",
-                "trsc_tm": "090000",
-                "in_out_dv": "출금",
-                "trsc_amt": 1000000,
-                "trsc_bal": 9000000,
-                "note1": "급여지급"
-            },
-            {
-                "view_dv": "입출금",
-                "com_nm": "삼성전자",
-                "bank_nm": "신한은행",
-                "acct_no": "123-456-789",
-                "curr_cd": "USD",
-                "seq_no": "002",
-                "trsc_dt": "20250101",
-                "trsc_tm": "100000",
-                "in_out_dv": "입금",
-                "trsc_amt": 5000,
-                "trsc_bal": 15000,
-                "note1": "해외송금"
-            },
-            {
-                "view_dv": "입출금",
-                "com_nm": "삼성전자",
-                "bank_nm": "우리은행",
-                "acct_no": "987-654-321",
-                "curr_cd": "KRW",
-                "seq_no": "003",
-                "trsc_dt": "20250101",
-                "trsc_tm": "110000",
-                "in_out_dv": "출금",
-                "trsc_amt": 2000000,
-                "trsc_bal": 7000000,
-                "note1": "물품구매"
-            },
-            {
-                "view_dv": "입출금",
-                "com_nm": "삼성전자",
-                "bank_nm": "우리은행",
-                "acct_no": "987-654-321",
-                "curr_cd": "KRW",
-                "seq_no": "004",
-                "trsc_dt": "20250101",
-                "trsc_tm": "120000",
-                "in_out_dv": "입금",
-                "trsc_amt": 3000000,
-                "trsc_bal": 10000000,
-                "note1": "매출입금"
-            },
-            {
-                "view_dv": "입출금",
-                "com_nm": "현대자동차",
-                "bank_nm": "국민은행",
-                "acct_no": "111-222-333",
-                "curr_cd": "KRW",
-                "seq_no": "001",
-                "trsc_dt": "20250101",
-                "trsc_tm": "090000",
-                "in_out_dv": "출금",
-                "trsc_amt": 500000,
-                "trsc_bal": 4500000,
-                "note1": "운영비"
-            },
-            {
-                "view_dv": "입출금",
-                "com_nm": "현대자동차",
-                "bank_nm": "국민은행",
-                "acct_no": "111-222-333",
-                "curr_cd": "EUR",
-                "seq_no": "002",
-                "trsc_dt": "20250101",
-                "trsc_tm": "100000",
-                "in_out_dv": "입금",
-                "trsc_amt": 3000,
-                "trsc_bal": 8000,
-                "note1": "수출대금"
-            },
-            {
-                "view_dv": "입출금",
-                "com_nm": "현대자동차",
-                "bank_nm": "하나은행",
-                "acct_no": "444-555-666",
-                "curr_cd": "KRW",
-                "seq_no": "003",
-                "trsc_dt": "20250101",
-                "trsc_tm": "110000",
-                "in_out_dv": "출금",
-                "trsc_amt": 1500000,
-                "trsc_bal": 3000000,
-                "note1": "임대료"
-            },
-            {
-                "view_dv": "입출금",
-                "com_nm": "현대자동차",
-                "bank_nm": "하나은행",
-                "acct_no": "444-555-666",
-                "curr_cd": "KRW",
-                "seq_no": "004",
-                "trsc_dt": "20250101",
-                "trsc_tm": "120000",
-                "in_out_dv": "입금",
-                "trsc_amt": 2000000,
-                "trsc_bal": 5000000,
-                "note1": "대금입금"
-            }
-        ]
+# Test datasets
+test_data = {
+    # AMT 테이블 테스트 케이스 1: 다중 회사, 다중 통화, 다중 view_dv
+    "amt_case1": [
+        {"com_nm": "삼성전자", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("1000000.00"), "view_dv": "전체"},
+        {"com_nm": "삼성전자", "curr_cd": "EUR", "reg_dt": "20240120", "acct_bal_amt": Decimal("850000.00"), "view_dv": "전체"},
+        {"com_nm": "삼성전자", "curr_cd": "JPY", "reg_dt": "20240120", "acct_bal_amt": Decimal("120000000.00"), "view_dv": "전체"},
+        {"com_nm": "LG전자", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("750000.00"), "view_dv": "대출"},
+        {"com_nm": "LG전자", "curr_cd": "CNY", "reg_dt": "20240120", "acct_bal_amt": Decimal("5000000.00"), "view_dv": "대출"},
+        {"com_nm": "SK하이닉스", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("1200000.00"), "view_dv": "예적금"},
+        {"com_nm": "SK하이닉스", "curr_cd": "EUR", "reg_dt": "20240120", "acct_bal_amt": Decimal("950000.00"), "view_dv": "예적금"}
+    ],
 
-    def test_check_com_nm_with_multiple_companies(self):
-        """여러 회사가 있는 경우 check_com_nm 테스트"""
-        result = check_com_nm(self.test_data)
-        
-        # 결과가 딕셔너리인지 확인
-        self.assertIsInstance(result, dict)
-        
-        # 예상되는 회사들이 키로 존재하는지 확인
-        self.assertIn("삼성전자", result)
-        self.assertIn("현대자동차", result)
-        
-        # 각 회사별 데이터 수 확인
-        self.assertEqual(len(result["삼성전자"]), 4)
-        self.assertEqual(len(result["현대자동차"]), 4)
-        
-        # 각 회사의 첫 번째 데이터가 올바른지 확인
-        self.assertEqual(result["삼성전자"][0]["bank_nm"], "신한은행")
-        self.assertEqual(result["현대자동차"][0]["bank_nm"], "국민은행")
+    # AMT 테이블 테스트 케이스 2: 시간대별 잔액 변동
+    "amt_case2": [
+        {"com_nm": "현대자동차", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("2000000.00"), "view_dv": "전체"},
+        {"com_nm": "현대자동차", "curr_cd": "EUR", "reg_dt": "20240120", "acct_bal_amt": Decimal("1500000.00"), "view_dv": "전체"},
+        {"com_nm": "기아", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("800000.00"), "view_dv": "대출"},
+        {"com_nm": "기아", "curr_cd": "JPY", "reg_dt": "20240120", "acct_bal_amt": Decimal("95000000.00"), "view_dv": "대출"},
+        {"com_nm": "포스코", "curr_cd": "CNY", "reg_dt": "20240120", "acct_bal_amt": Decimal("7000000.00"), "view_dv": "예적금"},
+        {"com_nm": "포스코", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("1100000.00"), "view_dv": "예적금"},
+        {"com_nm": "포스코", "curr_cd": "EUR", "reg_dt": "20240120", "acct_bal_amt": Decimal("900000.00"), "view_dv": "예적금"}
+    ],
 
-    def test_check_com_nm_with_single_company(self):
-        """단일 회사만 있는 경우 check_com_nm 테스트"""
-        # 삼성전자 데이터만 선택
-        single_company_data = [d for d in self.test_data if d["com_nm"] == "삼성전자"]
-        result = check_com_nm(single_company_data)
-        
-        # 결과가 리스트인지 확인
-        self.assertIsInstance(result, list)
-        
-        # 데이터 수 확인
-        self.assertEqual(len(result), 4)
-        
-        # 모든 데이터가 같은 회사인지 확인
-        self.assertTrue(all(d["com_nm"] == "삼성전자" for d in result))
+    # AMT 테이블 테스트 케이스 3: 대규모 금액과 소규모 금액 혼합
+    "amt_case3": [
+        {"com_nm": "삼성SDI", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("5000000.00"), "view_dv": "전체"},
+        {"com_nm": "삼성SDI", "curr_cd": "EUR", "reg_dt": "20240120", "acct_bal_amt": Decimal("4200000.00"), "view_dv": "전체"},
+        {"com_nm": "현대모비스", "curr_cd": "JPY", "reg_dt": "20240120", "acct_bal_amt": Decimal("250000000.00"), "view_dv": "대출"},
+        {"com_nm": "현대모비스", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("2300000.00"), "view_dv": "대출"},
+        {"com_nm": "SK이노베이션", "curr_cd": "CNY", "reg_dt": "20240120", "acct_bal_amt": Decimal("15000000.00"), "view_dv": "예적금"},
+        {"com_nm": "SK이노베이션", "curr_cd": "USD", "reg_dt": "20240120", "acct_bal_amt": Decimal("1800000.00"), "view_dv": "예적금"}
+    ],
 
-    def test_analyze_data_with_multiple_companies(self):
-        """회사별로 구조화된 데이터에 대한 analyze_data 테스트"""
-        # 먼저 데이터를 회사별로 구조화
-        structured_data = check_com_nm(self.test_data)
-        result = analyze_data(structured_data, "trsc")
-        
-        # 결과가 리스트인지 확인
-        self.assertIsInstance(result, list)
-        
-        # 각 회사별 분석 결과가 포함되어 있는지 확인
-        company_results = "\n".join(result)
-        self.assertIn("삼성전자", company_results)
-        self.assertIn("현대자동차", company_results)
-        
-        # 통화별 통계가 포함되어 있는지 확인
-        self.assertIn("KRW", company_results)
-        self.assertIn("USD", company_results)
-        self.assertIn("EUR", company_results)
+    # TRSC 테이블 테스트 케이스 1: 시간순 다중 거래
+    "trsc_case1": [
+        {"com_nm": "SK하이닉스", "curr_cd": "USD", "trsc_dt": "20240120", "trsc_tm": "093000", "trsc_amt": Decimal("500000.00"), "view_dv": "전체"},
+        {"com_nm": "SK하이닉스", "curr_cd": "EUR", "trsc_dt": "20240120", "trsc_tm": "093500", "trsc_amt": Decimal("450000.00"), "view_dv": "전체"},
+        {"com_nm": "LG화학", "curr_cd": "CNY", "trsc_dt": "20240120", "trsc_tm": "094000", "trsc_amt": Decimal("3000000.00"), "view_dv": "전체"},
+        {"com_nm": "LG화학", "curr_cd": "JPY", "trsc_dt": "20240120", "trsc_tm": "094500", "trsc_amt": Decimal("45000000.00"), "view_dv": "전체"},
+        {"com_nm": "포스코케미칼", "curr_cd": "USD", "trsc_dt": "20240120", "trsc_tm": "095000", "trsc_amt": Decimal("350000.00"), "view_dv": "전체"},
+        {"com_nm": "포스코케미칼", "curr_cd": "EUR", "trsc_dt": "20240120", "trsc_tm": "095500", "trsc_amt": Decimal("280000.00"), "view_dv": "전체"}
+    ],
 
-    def test_analyze_data_with_single_company(self):
-        """단일 회사 데이터에 대한 analyze_data 테스트"""
-        # 삼성전자 데이터만 선택
-        single_company_data = [d for d in self.test_data if d["com_nm"] == "삼성전자"]
-        result = analyze_data(single_company_data, "trsc")
-        
-        # 결과가 리스트인지 확인
-        self.assertIsInstance(result, list)
-        
-        # 결과를 문자열로 결합
-        result_str = "\n".join(result)
-        
-        # 필요한 정보가 포함되어 있는지 확인
-        self.assertIn("trsc_amt", result_str)
-        self.assertIn("KRW", result_str)
-        self.assertIn("USD", result_str)
+    # TRSC 테이블 테스트 케이스 2: 대규모/소규모 거래 혼합
+    "trsc_case2": [
+        {"com_nm": "현대중공업", "curr_cd": "USD", "trsc_dt": "20240120", "trsc_tm": "100000", "trsc_amt": Decimal("1500000.00"), "view_dv": "전체"},
+        {"com_nm": "현대중공업", "curr_cd": "EUR", "trsc_dt": "20240120", "trsc_tm": "100500", "trsc_amt": Decimal("1200000.00"), "view_dv": "전체"},
+        {"com_nm": "삼성바이오로직스", "curr_cd": "USD", "trsc_dt": "20240120", "trsc_tm": "101000", "trsc_amt": Decimal("2500000.00"), "view_dv": "전체"},
+        {"com_nm": "삼성바이오로직스", "curr_cd": "JPY", "trsc_dt": "20240120", "trsc_tm": "101500", "trsc_amt": Decimal("180000000.00"), "view_dv": "전체"},
+        {"com_nm": "LG에너지솔루션", "curr_cd": "CNY", "trsc_dt": "20240120", "trsc_tm": "102000", "trsc_amt": Decimal("8000000.00"), "view_dv": "전체"}
+    ],
 
-if __name__ == '__main__':
-    unittest.main()
+    # TRSC 테이블 테스트 케이스 3: 빈번한 거래
+    "trsc_case3": [
+        {"com_nm": "카카오", "curr_cd": "USD", "trsc_dt": "20240120", "trsc_tm": "103000", "trsc_amt": Decimal("300000.00"), "view_dv": "전체"},
+        {"com_nm": "카카오", "curr_cd": "JPY", "trsc_dt": "20240120", "trsc_tm": "103500", "trsc_amt": Decimal("25000000.00"), "view_dv": "전체"},
+        {"com_nm": "네이버", "curr_cd": "USD", "trsc_dt": "20240120", "trsc_tm": "104000", "trsc_amt": Decimal("450000.00"), "view_dv": "전체"},
+        {"com_nm": "네이버", "curr_cd": "EUR", "trsc_dt": "20240120", "trsc_tm": "104500", "trsc_amt": Decimal("380000.00"), "view_dv": "전체"},
+        {"com_nm": "넷마블", "curr_cd": "USD", "trsc_dt": "20240120", "trsc_tm": "105000", "trsc_amt": Decimal("150000.00"), "view_dv": "전체"},
+        {"com_nm": "넷마블", "curr_cd": "CNY", "trsc_dt": "20240120", "trsc_tm": "105500", "trsc_amt": Decimal("1000000.00"), "view_dv": "전체"}
+    ]
+}
+
+def process_and_print_results(case_name: str, data: List[Dict[str, Any]], table_type: str):
+    """Process a test case through the pipeline and print results"""
+    print(f"\n{'='*20} Processing {case_name} {'='*20}")
+    
+    print("\n### Original Data ###")
+    print(pd.DataFrame(data).to_string())
+    
+    print("\n## After check_com_nm ##")
+    com_nm_result = check_com_nm(data)
+    if isinstance(com_nm_result, dict):
+        for company, company_data in com_nm_result.items():
+            print(f"\n{company}:")
+            print(pd.DataFrame(company_data).to_string())
+    else:
+        print(pd.DataFrame(com_nm_result).to_string())
+    
+    print("\n#######  After calculate_stats  #######")
+    stats_result = calculate_stats(com_nm_result, table_type)
+    print("\n".join(stats_result) if isinstance(stats_result, list) else stats_result)
+    
+    print("\n## After columns_filter ##")
+    filtered_result = columns_filter(com_nm_result, table_type)
+    if isinstance(filtered_result, dict):
+        for company, company_data in filtered_result.items():
+            print(f"\n{company}:")
+            print(pd.DataFrame(company_data).to_string())
+    else:
+        print(pd.DataFrame(filtered_result).to_string())
+
+def run_tests():
+    """Run all test cases with user interaction"""
+    test_cases = [
+        ("amt_case1", "amt"),
+        ("amt_case2", "amt"),
+        ("amt_case3", "amt"),
+        ("trsc_case1", "trsc"),
+        ("trsc_case2", "trsc"),
+        ("trsc_case3", "trsc")
+    ]
+    
+    for case_name, table_type in test_cases:
+        input("\nPress Enter to see next test case...")
+        process_and_print_results(case_name, test_data[case_name], table_type)
+
+if __name__ == "__main__":
+    run_tests()
