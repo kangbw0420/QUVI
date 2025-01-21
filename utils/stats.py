@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 from decimal import Decimal
 from typing import List, Dict, Union
@@ -196,3 +197,40 @@ def calculate_stats(data: Union[List[Dict], Dict[str, List[Dict]]], selected_tab
                 result_parts.append(result_str)
                 
         return result_parts
+    
+def columns_filter(query_result: list, selected_table_name: str):
+    result = query_result
+
+    with open("temp.json", "r", encoding="utf-8") as f:  # 테이블에 따른 컬럼리스트
+        columns_list = json.load(f)
+
+    # node에서 query_result 의 element 존재유무를 검사했으니 column name 기준으로 '거래내역'과 '잔액'을 구분
+    if selected_table_name == "trsc":
+        filtered_result = []  # 필터링한 결과를 출력할 변수
+        # view_dv로 인텐트트 구분
+        if "view_dv" in result[0]:
+            columns_to_remove = columns_list["trsc"][result[0]["view_dv"]]
+            for x in result:
+                x = {k: v for k, v in x.items() if k not in columns_to_remove}
+                filtered_result.append(x)
+        else:  # view_dv가 없기 때문에 '전체'에 해당되는 column list만 출력
+            columns_to_remove = columns_list["trsc"]["전체"]
+            for x in result:
+                x = {k: v for k, v in x.items() if k not in columns_to_remove}
+                filtered_result.append(x)
+        return filtered_result
+    elif selected_table_name == "amt":
+        filtered_result = []
+        if "view_dv" in result[0]:
+            columns_to_remove = columns_list["amt"][result[0]["view_dv"]]
+            for x in result:
+                x = {k: v for k, v in x.items() if k not in columns_to_remove}
+                filtered_result.append(x)
+        else:
+            columns_to_remove = columns_list["amt"]["전체"]
+            for x in result:
+                x = {k: v for k, v in x.items() if k not in columns_to_remove}
+                filtered_result.append(x)
+        return filtered_result
+    else:  # 해당사항 없으므로 본래 resul값 출력
+        return result
