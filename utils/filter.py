@@ -3,8 +3,7 @@ from typing import Union, List, Dict, Any
 
 def columns_filter(query_result: Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]], 
                   selected_table_name: str) -> Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]:
-    """
-    쿼리 결과에서 테이블과 view_dv에 따라 필요한 컬럼만 필터링
+    """쿼리 결과에서 테이블과 view_dv에 따라 필요한 컬럼만 필터링
     
     Args:
         query_result: 쿼리 실행 결과 (리스트 또는 회사별로 구조화된 딕셔너리)

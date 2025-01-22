@@ -4,11 +4,7 @@ from sqlalchemy.engine import Result
 
 def check_com_nm(result: Union[Sequence[Dict[str, Any]], Result]) -> Union[Sequence[Dict[str, Any]], Dict[str, Sequence[Dict[str, Any]]]]:
     """
-    com_nm 컬럼의 존재 여부와 값의 다양성을 확인하여 결과를 적절히 구조화
-    
-    Args:
-        result: execute_query의 결과값
-        
+    com_nm 컬럼의 존재 여부와 값의 다양성을 확인하여 결과를 적절히 구조화   
     Returns:
         - com_nm 컬럼이 없는 경우: 원본 결과 그대로 반환
         - com_nm 값이 단일 값인 경우: 원본 결과 그대로 반환
