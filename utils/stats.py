@@ -34,7 +34,7 @@ def calculate_stats(data: Union[List[Dict], Dict[str, List[Dict]]], selected_tab
                 continue
                 
             result_parts = []
-            result_parts.append(f"\n{company} 회사의 분석 결과:")
+            result_parts.append(f"\n{company} 회사 분석 결과:")
             
             currency_column = None
                 

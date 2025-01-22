@@ -111,13 +111,16 @@ def add_order_by(query: str, selected_table: str) -> str:
         # 아무 것도 없는 경우
         insert_pos = len(query)
 
+    before_part = query[:insert_pos].rstrip(';').rstrip()
+    after_part = query[insert_pos:].lstrip().rstrip(';')
+
     # 쿼리 조립
     result = (
-        query[:insert_pos].rstrip()
+        before_part
         + " ORDER BY "
         + order_by_clause
-        + " "
-        + query[insert_pos:].lstrip()
+        + (" " if after_part else "")  # after_part가 있을 때만 공백 추가
+        + after_part
     )
 
     # 마지막에 세미콜론 추가
