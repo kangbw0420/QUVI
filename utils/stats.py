@@ -61,7 +61,7 @@ def calculate_stats(result: List[Dict[str, Any]], selected_table: str) -> List[s
             continue
             
         company_name = key.get('title', '')
-        result_header = f"\n{company_name} 회사 분석 결과:"
+        result_header = f"{company_name} 회사 분석 결과:\n"
             
         result_parts = [result_header]
         
