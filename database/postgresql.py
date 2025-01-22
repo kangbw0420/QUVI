@@ -1,8 +1,8 @@
 import psycopg2.pool
 from psycopg2.extras import RealDictCursor
 
-from utils.config import Config
 from api.dto import PostgreToVectorData
+from utils.config import Config
 
 
 # PostgreSQL 클래스 정의
@@ -165,7 +165,7 @@ def delete_prompt(node_nm: str, prompt_nm: str):
 
 
 # 벡터 데이터를 가져오는 함수
-def get_vector_data(title: str):
+def get_data_rdb(title: str):
     query = """
         SELECT *
         FROM vector_data
@@ -180,7 +180,7 @@ def get_vector_data(title: str):
 
 
 # 벡터 전체 데이터를 가져오는 함수
-def getAll_vector_data():
+def get_all_data_rdb():
     query = """
         SELECT *
         FROM vector_data
@@ -246,28 +246,14 @@ def update_vector_data(data: PostgreToVectorData):
 
 
 # 벡터 데이터 삭제 처리 함수
-def delete_vector_data(title: str):
-    # 기존 데이터 가져오기
-    select_query = """
-        SELECT *
-        FROM vector_data
+def delete_data_rdb(title: str):
+    update_query = """
+        UPDATE vector_data
+        SET del_yn = 'Y'
         WHERE title = %s
-        AND del_yn = 'N'
     """
-    get_data = query_execute(
-        select_query,
+    return query_execute(
+        update_query,
         params=(title,),
         use_prompt_db=True
     )
-
-    if get_data:
-        update_query = """
-            UPDATE vector_data
-            SET del_yn = 'Y'
-            WHERE title = %s
-        """
-        return query_execute(
-            update_query,
-            params=(title,),
-            use_prompt_db=True
-        )

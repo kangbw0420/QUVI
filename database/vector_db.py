@@ -1,5 +1,4 @@
 import json
-
 import requests
 
 from utils.config import Config
@@ -29,27 +28,12 @@ class EmbeddingAPIClient:
             print(f"[ERROR] Failed to query embedding: {e}")
 
 
-    def getTitleList_embedding():
-        """
-        서버에서 타이틀 리스트를 조회하는 함수
-        """
-        url = f"{BASE_URL}/getTitleList"
-
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            results = response.json()
-            print(f"[SUCCESS] Get Title List Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
-            return results
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to Get Title List embedding: {e}")
-
-
     def get_embedding(collection_name: str):
         """
         서버에서 데이터를 조회하는 함수
         """
-        url = f"{BASE_URL}/get/{collection_name}"
+        url = f"{BASE_URL}/get/all/{collection_name}"
+        # url = f"{BASE_URL}/get/{collection_name}"
 
         try:
             response = requests.get(url)
@@ -130,19 +114,19 @@ class EmbeddingAPIClient:
             print(f"[ERROR] Failed to delete embedding: {e}")
 
 
-    def multi_delete_embedding(collection_name: str, ids: list[str]):
+    def collection_delete_embedding(collection_name: str):
         """
         서버에서 ID 리스트의 데이터를 삭제하는 함수
         """
-        url = f"{BASE_URL}/multiDelete"
+        # url = f"{BASE_URL}/multiDelete"
+        url = f"{BASE_URL}/collectionDelete"
         payload = {
             "collection_name": collection_name,
-            "ids": ids
         }
 
         try:
             response = requests.delete(url, json=payload)
             response.raise_for_status()
-            print(f"[SUCCESS] Embedding multi deleted: {response.json()}")
+            print(f"[SUCCESS] Embedding collection deleted: {response.json()}")
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to multi delete embedding: {e}")
+            print(f"[ERROR] Failed to collection delete embedding: {e}")

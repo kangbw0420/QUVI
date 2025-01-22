@@ -1,10 +1,10 @@
 import json
 import uuid
-
 from fastapi import HTTPException
 
-from api.dto import PostgreToVectorData, VectorDataQuery
-from database.postgresql import get_prompt, get_all_prompt, insert_prompt, delete_prompt, get_vector_data, getAll_vector_data, insert_vector_data, update_vector_data, delete_vector_data
+from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest
+from database.postgresql import get_prompt, get_all_prompt, insert_prompt, delete_prompt, get_data_rdb, \
+    get_all_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb
 from database.vector_db import EmbeddingAPIClient
 
 
@@ -28,7 +28,7 @@ class DatabaseService:
 
 
 
-    def query_vector_few_shot(data: VectorDataQuery):
+    def query_fewshot_vector(data: VectorDataQuery):
         return EmbeddingAPIClient.query_embedding(
             collection_name = data.collection_name,
             query_text = data.query_text,
@@ -36,29 +36,25 @@ class DatabaseService:
         )
 
 
-    def get_postgre_few_shot(data: PostgreToVectorData):
-        return get_vector_data(data)
+    def get_fewshot_rdb(data: PostgreToVectorData):
+        return get_data_rdb(data)
 
 
-    def getAll_postgre_few_shot():
-        return getAll_vector_data()
+    def get_all_fewshot_rdb():
+        return get_all_data_rdb()
 
 
-    def getTitleList_vector_few_shot():
-        return EmbeddingAPIClient.getTitleList_embedding()
-
-
-    def get_vector_few_shot(title: str):
+    def get_fewshot_vector(title: str):
         return EmbeddingAPIClient.get_embedding(
             collection_name = title
         )
 
 
-    def getAll_vector_few_shot():
+    def get_all_fewshot_vector():
         return EmbeddingAPIClient.getAll_embedding()
 
 
-    def add_few_shot(title: str, content: str):
+    def add_fewshot(title: str, content: str):
         ids = []
         documents = []  # question text for vectorization
         metadatas = []  # metadata including SQL
@@ -87,6 +83,7 @@ class DatabaseService:
             success = insert_vector_data(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to insert vector data")
+        print("Successfully inserted rdb data")
 
         EmbeddingAPIClient.add_embedding(
             collection_name=title,
@@ -95,10 +92,11 @@ class DatabaseService:
             metadatas=metadatas
         )
         print("Successfully inserted vector data")
+
         return success
 
 
-    def add_few_shot2(title: str, shots: list[str]):
+    def addList_few_shot(title: str, shots: list[str]):
         ids = []
         documents = []  # question text for vectorization
         metadatas = []  # metadata including SQL
@@ -122,6 +120,7 @@ class DatabaseService:
             success = insert_vector_data(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to insert vector data")
+        print("Successfully inserted rdb data")
 
         EmbeddingAPIClient.add_embedding(
             collection_name=title,
@@ -130,6 +129,7 @@ class DatabaseService:
             metadatas=metadatas
         )
         print("Successfully inserted vector data")
+
         return success
 
 
@@ -154,21 +154,49 @@ class DatabaseService:
     #     return success
 
 
-    def multi_delete_few_shot(title: str):
-        ids = []
+    def collection_delete_fewshot(title: str):
+        success = delete_data_rdb(title)
+        print(f"Successfully deleted rdb data")
 
-        resultList = get_vector_data(title)
-        for result in resultList:
-            # Add to lists
-            ids.append(result["id"])
-
-        success = delete_vector_data(title)
-        if success:
-            print(f"Successfully deleted postgreSQL data")
-
-            EmbeddingAPIClient.multi_delete_embedding(
-                collection_name=title,
-                ids=ids,
-            )
+        EmbeddingAPIClient.collection_delete_embedding(
+            collection_name=title,
+        )
+        print(f"Successfully deleted vector data")
 
         return success
+
+
+    def restore_fewshot(data: PostgreToVectorData):
+
+        dataList = defaultdict(DocumentRequest)
+
+        log("data parsing start")
+        for dataText in data["data"]:
+            # print(f"dataText :::: {dataText}")
+            collection_name = dataText["title"]
+            id = dataText["id"]
+            document = dataText["shot"]["question"]
+            metadata = {
+                "id": id,
+                "answer": dataText["shot"]["answer"]
+            }
+
+            # 기존 DocumentRequest 객체 찾기
+            if dataList[collection_name].collection_name == "":  # 새로운 키에 대해 생성된 경우
+                # 새 DocumentRequest 객체 초기화
+                dataList[collection_name].collection_name = collection_name
+                print(f"New DocumentRequest create for collection_name : {collection_name}")
+
+            # DocumentRequest 객체에 데이터 추가
+            dataList[collection_name].ids.append(id)
+            dataList[collection_name].documents.append(document)
+            dataList[collection_name].metadatas.append(metadata)
+            # print(f"Data added to {collection_name}: id={id}, document={document}, metadata={metadata}")
+
+        EmbeddingAPIClient.add_embedding(
+            collection_name=title,
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas
+        )
+        print("Successfully restored vector data")

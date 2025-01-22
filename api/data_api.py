@@ -67,25 +67,12 @@ def delete_prompt(prompt: PromptInput):
 
 # Few-shot 데이터 검색
 @data_api.post("/fewshot/query")
-def query_few_shot(data: VectorDataQuery):
+def query_fewshot(data: VectorDataQuery):
     """
     Few-shot 데이터를 검색합니다.
     """
     try:
-        result = DatabaseService.query_vector_few_shot(data)
-        return {"data": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# Few-shot 전체 타이틀 조회
-@data_api.post("/fewshot/getTitleList")
-def get_title_list_few_shot():
-    """
-    Few-shot 에서 전체 타이틀 데이터를 조회합니다.
-    """
-    try:
-        result = DatabaseService.getTitleList_vector_few_shot()
+        result = DatabaseService.query_fewshot_vector(data)
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -93,12 +80,12 @@ def get_title_list_few_shot():
 
 # Few-shot 데이터 조회
 @data_api.post("/fewshot/get/{title}")
-def get_few_shot(title: str):
+def get_fewshot(title: str):
     """
     Few-shot 데이터를 조회합니다.
     """
     try:
-        result = DatabaseService.get_vector_few_shot(title)
+        result = DatabaseService.get_fewshot_vector(title)
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -106,12 +93,12 @@ def get_few_shot(title: str):
 
 # Few-shot 전체 데이터 조회
 @data_api.post("/fewshot/getAll")
-def getAll_few_shot():
+def getAll_fewshot():
     """
     Few-shot 전체 데이터를 조회합니다.
     """
     try:
-        result = DatabaseService.getAll_vector_few_shot()
+        result = DatabaseService.get_all_fewshot_vector()
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -119,61 +106,56 @@ def getAll_few_shot():
 
 # Few-shot 전체 데이터 조회
 @data_api.post("/fewshot/getAllPostgre")
-def getAll_postgre_few_shot():
+@data_api.post("/fewshot/getAllRDB")
+def getAllRDB_fewshot():
     """
-    PostgreSQL 에서 Few-shot 전체 데이터를 조회합니다.
+    RDB 에서 Few-shot 전체 데이터를 조회합니다.
     """
     try:
-        result = DatabaseService.getAll_postgre_few_shot()
-        return {result}
+        result = DatabaseService.get_all_fewshot_rdb()
+        return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # Few-shot 데이터 추가
 @data_api.post("/fewshot/add")
-def add_few_shot(data: FewshotInput):
+def add_fewshot(data: FewshotInput):
     """
     새 벡터 데이터를 추가하고 임베딩 시스템에 업데이트합니다.
     """
     try:
-        success = DatabaseService.add_few_shot(data.title, data.shots)
-        # success = DatabaseService.add_few_shot2(data.title, data.shots)
+        success = DatabaseService.add_fewshot(data.title, data.shots)
+        # success = DatabaseService.addList_fewshot(data.title, data.shots)
         return {"message": "Few-shot data added successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# # Few-shot 데이터 업데이트
-# @data_api.put("/fewshot/update")
-# def update_few_shot(data: PostgreToVectorData):
-#     """
-#     벡터 데이터를 업데이트하고 임베딩 시스템을 수정합니다.
-#     """
-#     try:
-#         # success = DatabaseService.delete_few_shot(data)
-#         success = DatabaseService.multi_delete_few_shot(data)
-#         if not success:
-#             raise HTTPException(status_code=500, detail="Failed to delete vector data")
-#
-#         success = DatabaseService.add_few_shot(data)
-#
-#         return {"message": "Few-shot data updated successfully"}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
-# Few-sho   t 데이터 삭제
+# Few-shot 데이터 전체 삭제
 @data_api.delete("/fewshot/delete")
-def delete_few_shot(data: FewshotInput):
+def delete_fewshot(data: FewshotInput):
     """
     벡터 데이터를 삭제하고 임베딩 시스템에서 제거합니다.
     """
     try:
-        # success = DatabaseService.delete_few_shot(data.title)
-        success = DatabaseService.multi_delete_few_shot(data.title)
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to delete vector data")
+        success = DatabaseService.collection_delete_fewshot(data.title)
         return {"message": "Few-shot data deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Few-shot 휘발데이터 복구
+@data_api.post("/fewshot/restore")
+def restore_fewshot():
+    """
+    벡터 DB 재기동 시 RDB 의 최신 데이터를 기반으로 벡터 데이터 복구
+    """
+    try:
+        result = DatabaseService.get_all_fewshot_rdb()
+
+        DatabaseService.restore_fewshot({"data": result})
+
+        return {"message": "Few-shot data restored successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

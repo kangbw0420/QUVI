@@ -37,3 +37,9 @@ class PromptInput(BaseModel):
 class FewshotInput(BaseModel):
     title: str = ""
     shots: str = ""
+
+class DocumentRequest(BaseModel):
+    collection_name: str = ""
+    ids: List[str] = []
+    documents: List[str] = []
+    metadatas: List[Dict[str, Any]] = []
