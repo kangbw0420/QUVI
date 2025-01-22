@@ -7,9 +7,10 @@ from .task import (
     sql_response,
     execute_query,
 )
+from utils.check_com import check_com_nm
+from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats
 from utils.view_table import extract_view_date, add_view_table
-from utils.filter import columns_filter
 from utils.orderby import add_order_by
 from llm_admin.state_manager import StateManager
 
@@ -113,21 +114,32 @@ def result_executor(state: GraphState) -> GraphState:
         print(f"Error in view table processing: {str(e)}")
         result = execute_query(query_ordered)
 
-    # 통화 기준으로 필터링 후 통계값 처리
-    if result is None:
-        result = {"columns": [], "rows": []}
-        query_result_stats = calculate_stats(result, selected_table)
-    else:
-        if len(result)==0:
-            query_result_stats = calculate_stats(result, selected_table)
-        else:
-            query_result_stats = calculate_stats(result, selected_table)
-            # 컬럼 필터
-            result = columns_filter(result, selected_table)
+    # 결과가 없는 경우 처리
+    if not result:
+        empty_result = []
+        empty_stats = ["데이터가 없습니다."]
+        state.update({
+            "query_result_stats": empty_stats,
+            "query_result": empty_result
+        })
+        StateManager.update_state(trace_id, {
+            "query_result_stats": empty_stats,
+            "query_result": empty_result
+        })
+        return state
+
+    # 1. 회사별 데이터 그룹화
+    grouped_by_company = check_com_nm(result)
+    
+    # 2. 통계 계산
+    query_result_stats = calculate_stats(grouped_by_company, selected_table)
+    
+    # 3. 계좌번호별 추가 그룹화 (필요한 경우)
+    final_result = check_acct_no(grouped_by_company, selected_table)
 
     # 상태 업데이트
-    state.update({"query_result_stats": query_result_stats, "query_result": result})
-    StateManager.update_state(trace_id, {"query_result_stats": query_result_stats, "query_result": result})
+    state.update({"query_result_stats": query_result_stats, "query_result": final_result})
+    StateManager.update_state(trace_id, {"query_result_stats": query_result_stats, "query_result": final_result})
     
     return state
 

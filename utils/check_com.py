@@ -1,42 +1,67 @@
-from typing import Union, Sequence, Dict, Any
+from typing import Union, Sequence, Dict, Any, List
 from sqlalchemy.engine import Result
 
-
-def check_com_nm(result: Union[Sequence[Dict[str, Any]], Result]) -> Union[Sequence[Dict[str, Any]], Dict[str, Sequence[Dict[str, Any]]]]:
+def check_com_nm(result: Union[Sequence[Dict[str, Any]], Result]) -> List[Dict[str, Any]]:
     """
-    com_nm 컬럼의 존재 여부와 값의 다양성을 확인하여 결과를 적절히 구조화   
+    데이터를 회사별로 그룹화하여 새로운 형식으로 반환
+    
+    Args:
+        result: SQL 쿼리 실행 결과 (Result 객체 또는 딕셔너리 시퀀스)
+        
     Returns:
-        - com_nm 컬럼이 없는 경우: 원본 결과 그대로 반환
-        - com_nm 값이 단일 값인 경우: 원본 결과 그대로 반환
-        - com_nm 값이 다수인 경우: com_nm을 키로 하는 딕셔너리로 구조화하여 반환
+        List[Dict[str, Any]]: 다음 형식의 리스트
+        [
+            {
+                'key': {
+                    'title': '회사명',  # 회사명이 없으면 빈 문자열('')
+                    'subtitle': '계좌번호'  # subtitle은 선택적(nullable)
+                },
+                'data': [{'col1': val1, ...}]  # com_nm 컬럼이 제거된 데이터
+            },
+            ...
+        ]
     """
-    # Result 객체인 경우 처리
+    # Result 객체인 경우 딕셔너리 리스트로 변환
     if isinstance(result, Result):
-        # Result 객체를 딕셔너리 리스트로 변환
         result = [dict(row._mapping) for row in result]
     
     # 빈 결과 처리
     if not result or len(result) == 0:
-        return result
+        return []
         
     # com_nm 컬럼 존재 여부 확인
     first_row = result[0]
-    if 'com_nm' not in first_row:
-        return result
-        
-    # com_nm 값들의 집합 생성
-    com_nm_set = {row['com_nm'] for row in result}
+    has_company = 'com_nm' in first_row
     
-    # 단일 회사인 경우
-    if len(com_nm_set) == 1:
-        return result
-        
-    # 다수 회사인 경우: 회사별로 구조화
-    structured_result = {}
+    if not has_company:
+        # com_nm 컬럼이 없는 경우 빈 문자열을 title로 사용
+        return [{
+            'key': {
+                'title': ''  # subtitle은 생략 (nullable)
+            },
+            'data': result
+        }]
+    
+    # 회사별로 데이터 그룹화
+    companies = {}
     for row in result:
         com_nm = row['com_nm']
-        if com_nm not in structured_result:
-            structured_result[com_nm] = []
-        structured_result[com_nm].append(row)
+        # com_nm을 제외한 새로운 딕셔너리 생성
+        data_without_com = {k: v for k, v in row.items() if k != 'com_nm'}
         
+        if com_nm not in companies:
+            companies[com_nm] = []
+        companies[com_nm].append(data_without_com)
+    
+    # 요구사항에 맞는 새로운 형식으로 변환
+    structured_result = [
+        {
+            'key': {
+                'title': com_nm if com_nm else ''  # 빈 문자열 대체
+            },
+            'data': company_data
+        }
+        for com_nm, company_data in companies.items()
+    ]
+    
     return structured_result
