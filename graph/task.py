@@ -258,20 +258,28 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
         query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
 
-    # 앞의 사례와 다르게 query_text가 human_prompt임에 유의
     few_shots = await retriever.get_few_shots(
-        query_text=human_prompt, collection_name="shots_respondent", top_k=3
+        query_text=user_question,
+        collection_name="shots_respondent",
+        top_k=3
     )
     few_shot_prompt = []
     for example in few_shots:
-        few_shot_prompt.append(("human", example["input"]))
+        if "stats" in example:
+            human_with_stats = f'참고할 데이터:\n{example["stats"]}\n\n사용자의 질문:\n{example["input"]}'
+        else:
+            human_with_stats = example["input"]
+        few_shot_prompt.append(("human", human_with_stats))
         few_shot_prompt.append(("ai", example["output"]))
+
+
+    formatted_question = f"참고할 데이터:\n{query_result_stats},\n\n사용자의 질문:\n{user_question}"
 
     prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=system_prompt),
             *few_shot_prompt,
-            ("human", human_prompt)
+            ("human", formatted_question),
         ]
     )
 
