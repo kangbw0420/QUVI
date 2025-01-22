@@ -1,5 +1,6 @@
 import json
 import uuid
+
 from fastapi import HTTPException
 
 from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest
@@ -167,11 +168,9 @@ class DatabaseService:
 
 
     def restore_fewshot(data: PostgreToVectorData):
+        dataList = {}
 
-        dataList = defaultdict(DocumentRequest)
-
-        log("data parsing start")
-        for dataText in data["data"]:
+        for dataText in data:
             # print(f"dataText :::: {dataText}")
             collection_name = dataText["title"]
             id = dataText["id"]
@@ -181,22 +180,23 @@ class DatabaseService:
                 "answer": dataText["shot"]["answer"]
             }
 
-            # 기존 DocumentRequest 객체 찾기
-            if dataList[collection_name].collection_name == "":  # 새로운 키에 대해 생성된 경우
-                # 새 DocumentRequest 객체 초기화
-                dataList[collection_name].collection_name = collection_name
-                print(f"New DocumentRequest create for collection_name : {collection_name}")
+            if collection_name not in dataList:
+                dataList[collection_name] = DocumentRequest()
 
             # DocumentRequest 객체에 데이터 추가
             dataList[collection_name].ids.append(id)
             dataList[collection_name].documents.append(document)
             dataList[collection_name].metadatas.append(metadata)
-            # print(f"Data added to {collection_name}: id={id}, document={document}, metadata={metadata}")
+            print(f"Data added to {collection_name}: id={id}, document={document}, metadata={metadata}")
 
-        EmbeddingAPIClient.add_embedding(
-            collection_name=title,
-            ids=ids,
-            documents=documents,
-            metadatas=metadatas
-        )
+        for collection in dataList:
+            data = dataList[collection]
+            print(f"{collection} ::::::::::::: {data}")
+            EmbeddingAPIClient.add_embedding(
+                collection_name=collection,
+                ids=data.ids,
+                documents=data.documents,
+                metadatas=data.metadatas
+            )
+
         print("Successfully restored vector data")

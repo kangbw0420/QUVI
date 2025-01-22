@@ -154,7 +154,7 @@ def restore_fewshot():
     try:
         result = DatabaseService.get_all_fewshot_rdb()
 
-        DatabaseService.restore_fewshot({"data": result})
+        DatabaseService.restore_fewshot(self, result)
 
         return {"message": "Few-shot data restored successfully"}
     except Exception as e:
