@@ -47,28 +47,6 @@ app.include_router(llmadmin_api, prefix="/llmadmin")
 
 
 if __name__ == "__main__":
-    '''
-    # 이벤트 루프 생성
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop) # 명시적으로 이벤트 루프 설정
-
-    async def main():
-        # FastAPI 서버 실행
-        config = uvicorn.Config(
-            "main:app", host="0.0.0.0", port=8000, reload=True
-        )  # 개발 단계에서는 reload 꺼야 함
-        server = uvicorn.Server(config)
-        # 서버와 터미널 테스트 병렬 실행
-        await asyncio.gather(
-            server.serve(),  # FastAPI 서버 실행
-        )
-
-    try:
-        loop.run_until_complete(main())  # 루프 실행
-    except KeyboardInterrupt:
-        print("\nShutting down...")
-    '''
-
     args = parse_arguments()
 
     uvicorn.run(
