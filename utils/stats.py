@@ -60,13 +60,8 @@ def calculate_stats(result: List[Dict[str, Any]], selected_table: str) -> List[s
         if not data:
             continue
             
-        # key가 리스트(회사명, 계좌번호)인 경우와 문자열(회사명)인 경우 처리
-        if isinstance(key, list):
-            company_name, account_no = key
-            result_header = f"\n{company_name} 회사의 계좌번호 {account_no} 분석 결과:"
-        else:
-            company_name = key
-            result_header = f"\n{company_name} 회사 분석 결과:"
+        company_name = key.get('title', '')
+        result_header = f"\n{company_name} 회사 분석 결과:"
             
         result_parts = [result_header]
         
