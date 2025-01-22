@@ -63,10 +63,10 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=SELECT_TABLE_PROMPT,
-        model="qwen_7b"
+        model="qwen_32b"
     )
 
-    select_table_chain = SELECT_TABLE_PROMPT | qwen_llm_7b | output_parser
+    select_table_chain = SELECT_TABLE_PROMPT | qwen_llm | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "selector(A)" + "=" * 40)
@@ -131,20 +131,20 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         qna_id = qna_manager.create_question(
             trace_id=trace_id,
             question=prompt,
-            model="qwen"
+            model="qwen_32b"
         )
 
         chain = prompt | qwen_llm
         output = chain.invoke(
             {"user_question": formatted_question}
-        )  # LLM 응답 (AIMessage 객체)
+        )
 
         # 출력에서 SQL 쿼리 추출
         match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
         if match:
             sql_query = match.group(1)
         else:
-            match = re.search(r"SELECT.*?;", output, re.DOTALL)
+            match = re.search(r"SELECT.*", output, re.DOTALL)
             if match:
                 sql_query = match.group(0)
 
@@ -279,10 +279,10 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=prompt,
-        model="llama_70b"
+        model="qwen_32b"
     )
 
-    chain = prompt | llama_70b_llm | output_parser
+    chain = prompt | qwen_llm | output_parser
     output = chain.invoke({"human_prompt": user_question})
 
     print("=" * 40 + "respondent(A)" + "=" * 40)
