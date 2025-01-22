@@ -107,7 +107,8 @@ def result_executor(state: GraphState) -> GraphState:
         print(query)
         print("#" * 20)
         
-        result = execute_query(query)
+#        result = execute_query(query)
+        result = execute_query(query_ordered)
     except Exception as e:
         print(f"Error in view table processing: {str(e)}")
         result = execute_query(query_ordered)
