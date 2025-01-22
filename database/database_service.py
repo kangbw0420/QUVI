@@ -78,6 +78,8 @@ class DatabaseService:
 
             if "date" in shot:
                 metadata["date"] = shot["date"]
+            if "stats" in shot:
+                metadata["stats"] = shot["stats"]
 
             metadatas.append(metadata)
 
