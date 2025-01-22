@@ -7,8 +7,9 @@ from .task import (
     sql_response,
     execute_query,
 )
-from utils.stats import calculate_stats, columns_filter
+from utils.stats import calculate_stats
 from utils.view_table import extract_view_date, add_view_table
+from utils.filter import columns_filter
 from utils.orderby import add_order_by
 from llm_admin.state_manager import StateManager
 
