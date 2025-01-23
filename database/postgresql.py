@@ -265,7 +265,7 @@ def delete_data_rdb(title: str):
 def get_all_mapping():
     query = """
         SELECT *
-        FROM title_replace
+        FROM title_mapping
     """
     return query_execute(
         query,
@@ -277,7 +277,7 @@ def get_all_mapping():
 # 컬럼명 관리 데이터 추가
 def insert_mapping(data: MappingRequest):
     query = """
-        INSERT INTO title_replace (
+        INSERT INTO title_mapping (
             original_title,
             replace_title,
             type,
@@ -300,7 +300,7 @@ def insert_mapping(data: MappingRequest):
 # 컬럼명 관리 데이터 수정
 def update_mapping(data: MappingRequest):
     query = """
-        UPDATE title_replace
+        UPDATE title_mapping
         SET
             original_title = %s,
             replace_title = %s,
@@ -320,7 +320,7 @@ def update_mapping(data: MappingRequest):
 def delete_mapping(idx: int):
     query = """
         DELETE
-        FROM title_replace
+        FROM title_mapping
         WHERE
             idx = %d
     """
