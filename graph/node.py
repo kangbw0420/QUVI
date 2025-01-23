@@ -97,20 +97,18 @@ def result_executor(state: GraphState) -> GraphState:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
 
     user_info = state.get("user_info")
-    print(user_info)
     selected_table = state.get("selected_table")
     query_ordered = add_order_by(raw_query, selected_table)
 
     try:
         view_date = extract_view_date(raw_query, selected_table)
         query = add_view_table(query_ordered, selected_table, user_info, view_date)
-        print(view_date)
-        print(query)
         print("#" * 20)
+        print(query)
+        result = execute_query(query)
         
-#        result = execute_query(query)
-        result = execute_query(query_ordered)
     except Exception as e:
+        print("@" * 40)
         print(f"Error in view table processing: {str(e)}")
         result = execute_query(query_ordered)
 

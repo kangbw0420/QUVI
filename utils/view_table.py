@@ -1,12 +1,11 @@
 from typing import Tuple
+from datetime import datetime, timedelta
 import re
 
 def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
     """뷰테이블에 사용될 날짜 튜플 추출
     Returns:
         Tuple[str, str]: (시작일, 종료일) 형식의 튜플
-            - 단일 날짜가 지정된 경우 해당 날짜를 시작일과 종료일 모두에 사용
-            - 날짜 형식은 'YYYYMMDD'
     Raises:
         ValueError: 날짜 형식이 올바르지 않거나 날짜를 찾을 수 없는 경우
     """
@@ -21,6 +20,32 @@ def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
         start_date = between_match.group(1)
         end_date = between_match.group(2)
         return (start_date, end_date)
+    
+    # 부등호를 사용한 날짜 범위 패턴
+    inequality_patterns = [
+        (f"{date_column}\\s*>=\\s*'(\\d{{8}})'", f"{date_column}\\s*<=\\s*'(\\d{{8}})'"),  # >= 및 <=
+        (f"{date_column}\\s*>\\s*'(\\d{{8}})'", f"{date_column}\\s*<\\s*'(\\d{{8}})'"),    # > 및 <
+    ]
+    
+    for start_pattern, end_pattern in inequality_patterns:
+        start_match = re.search(start_pattern, query, re.IGNORECASE)
+        end_match = re.search(end_pattern, query, re.IGNORECASE)
+        
+        if start_match and end_match:
+            start_date = start_match.group(1)
+            end_date = end_match.group(1)
+            return (start_date, end_date)
+        elif start_match:
+            # 시작일만 있는 경우 종료일을 현재 날짜로
+            start_date = start_match.group(1)
+            end_date = datetime.now().strftime("%Y%m%d")
+            return (start_date, end_date)
+        elif end_match:
+            # 종료일만 있는 경우 시작일을 가장 과거로
+            
+            end_date = end_match.group(1)
+            start_date = (datetime.now() - timedelta(days=7)).strftime("%Y%m%d")
+            return (start_date, end_date)
     
     # 단일 날짜가 있는 경우의 패턴
     single_date_pattern = f"{date_column}\\s*=\\s*'(\\d{{8}})'"
@@ -58,7 +83,7 @@ def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], 
     user_id, use_intt_id = user_info
     
     # 뷰 테이블 함수 호출 형식으로 변환
-    view_table_part = f"{table_name}({user_id}, {use_intt_id}, {view_date[0]}, {view_date[1]})"
+    view_table_part = f"{table_name}('{user_id}', '{use_intt_id}', '{view_date[0]}', '{view_date[1]}')"
     
     # 최종 쿼리 조립 - FROM 이후의 모든 절을 그대로 유지
     final_query = f"{before_from} FROM {view_table_part} {after_from}"
