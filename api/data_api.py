@@ -57,7 +57,7 @@ def delete_prompt(prompt: PromptInput):
     Prompt 데이터를 삭제합니다.
     """
     try:
-        result = DatabaseService.delete_prompt(prompt.node_nm, prompt.prompt_nm)
+        success = DatabaseService.delete_prompt(prompt.node_nm, prompt.prompt_nm)
         return {"message": "Prompt data deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

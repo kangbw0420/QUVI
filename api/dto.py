@@ -49,8 +49,9 @@ class DocumentRequest(BaseModel):
     metadatas: List[Dict[str, Any]] = []
 
 
-class TableRequest(BaseModel):
+class MappingRequest(BaseModel):
+    idx: int = 0
     original_title: str
     replace_title: str
     type: str = ""
-    sort: str = ""
+    align: str = ""

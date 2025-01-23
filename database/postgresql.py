@@ -1,7 +1,7 @@
 import psycopg2.pool
 from psycopg2.extras import RealDictCursor
 
-from api.dto import PostgreToVectorData
+from api.dto import PostgreToVectorData, MappingRequest
 from utils.config import Config
 
 
@@ -262,7 +262,7 @@ def delete_data_rdb(title: str):
 
 
 # 컬럼명 관리 데이터 전체 조회
-def get_all_table():
+def get_all_mapping():
     query = """
         SELECT *
         FROM title_replace
@@ -270,5 +270,62 @@ def get_all_table():
     return query_execute(
         query,
         params=(),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 추가
+def insert_mapping(data: MappingRequest):
+    query = """
+        INSERT INTO title_replace (
+            original_title,
+            replace_title,
+            type,
+            align
+        ) 
+        VALUES (
+            %s,
+            %s,
+            %s,
+            %s
+        )
+    """
+    return query_execute(
+        query,
+        params=(data.original_title, data.replace_title, data.type, data.align),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 수정
+def update_mapping(data: MappingRequest):
+    query = """
+        UPDATE title_replace
+        SET
+            original_title = %s,
+            replace_title = %s,
+            type = %s,
+            align = %s
+        WHERE
+            idx = %d
+    """
+    return query_execute(
+        query,
+        params=(data.original_title, data.replace_title, data.type, data.align, data.id),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 삭제
+def delete_mapping(idx: int):
+    query = """
+        DELETE
+        FROM title_replace
+        WHERE
+            idx = %d
+    """
+    return query_execute(
+        query,
+        params=(data.id),
         use_prompt_db=True
     )
