@@ -36,12 +36,21 @@ class PromptInput(BaseModel):
     prompt_nm: str
     prompt: str = ""
 
+
 class FewshotInput(BaseModel):
     title: str = ""
     shots: str = ""
+
 
 class DocumentRequest(BaseModel):
     collection_name: str = ""
     ids: List[str] = []
     documents: List[str] = []
     metadatas: List[Dict[str, Any]] = []
+
+
+class TableRequest(BaseModel):
+    original_title: str
+    replace_title: str
+    type: str = ""
+    sort: str = ""

@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.api import api
 from api.data_api import data_api
 from api.llmadmin_api import llmadmin_api
+from api.table_api import table_api
 
 
 logging.basicConfig(
@@ -44,6 +45,7 @@ app.add_middleware(
 app.include_router(api, prefix="")
 app.include_router(data_api, prefix="/data")
 app.include_router(llmadmin_api, prefix="/llmadmin")
+app.include_router(table_api, prefix="/table")
 
 
 if __name__ == "__main__":

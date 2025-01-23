@@ -4,12 +4,14 @@ import uuid
 from fastapi import HTTPException
 
 from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest
-from database.postgresql import get_prompt, get_all_prompt, insert_prompt, delete_prompt, get_data_rdb, \
-    get_all_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb
+from database.postgresql import get_all_prompt, get_prompt, insert_prompt, delete_prompt, get_all_data_rdb, \
+    get_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb, get_all_table
 from database.vector_db import EmbeddingAPIClient
 
 
 class DatabaseService:
+
+    #####  /prompt  #####
 
     def get_all_prompt():
         return get_all_prompt()
@@ -28,6 +30,8 @@ class DatabaseService:
 
 
 
+
+    #####  /fewshot  #####
 
     def query_fewshot_vector(data: VectorDataQuery):
         return EmbeddingAPIClient.query_embedding(
@@ -215,3 +219,11 @@ class DatabaseService:
             )
 
         print("Successfully restored vector data")
+
+
+
+
+    #####  /table  #####
+
+    def get_all_table():
+        return get_all_table()
