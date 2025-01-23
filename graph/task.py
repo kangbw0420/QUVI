@@ -90,12 +90,6 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         except FileNotFoundError as e:
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
 
-        schema_prompt = (
-            f"테이블: aicfo_get_all_{selected_table}\n"
-            + "칼럼명:\n"
-            + json.loads(database_service.get_prompt(node_nm='schema', prompt_nm='schema')[0]['prompt'])[selected_table]
-        )
-
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
 
@@ -121,7 +115,7 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
 
         prompt = ChatPromptTemplate.from_messages(
             [
-                SystemMessage(content=system_prompt + schema_prompt),
+                SystemMessage(content=system_prompt),
                 *few_shot_prompt,
                 ("human", formatted_question),
             ]
