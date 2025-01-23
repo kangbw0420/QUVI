@@ -83,7 +83,7 @@ def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], 
     user_id, use_intt_id = user_info
     
     # 뷰 테이블 함수 호출 형식으로 변환
-    view_table_part = f"{table_name}('{user_id}', '{use_intt_id}', '{view_date[0]}', '{view_date[1]}')"
+    view_table_part = f"{table_name}('{use_intt_id}', '{user_id}', '{view_date[0]}', '{view_date[1]}')"
     
     # 최종 쿼리 조립 - FROM 이후의 모든 절을 그대로 유지
     final_query = f"{before_from} FROM {view_table_part} {after_from}"
