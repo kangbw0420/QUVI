@@ -3,20 +3,23 @@ import uuid
 
 from fastapi import HTTPException
 
-from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest
-from database.postgresql import get_prompt, get_all_prompt, insert_prompt, delete_prompt, get_data_rdb, \
-    get_all_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb
+from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest
+from database.postgresql import get_all_prompt, get_prompt, insert_prompt, delete_prompt, get_all_data_rdb, \
+    get_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb, get_all_mapping, insert_mapping, \
+    update_mapping, delete_mapping
 from database.vector_db import EmbeddingAPIClient
 
 
 class DatabaseService:
 
-    def get_prompt(self, node_nm: str, prompt_nm: str):
-        return get_prompt(node_nm, prompt_nm)
-
+    #####  /prompt  #####
 
     def get_all_prompt():
         return get_all_prompt()
+
+
+    def get_prompt(self, node_nm: str, prompt_nm: str):
+        return get_prompt(node_nm, prompt_nm)
 
 
     def add_prompt(node_nm: str, prompt_nm: str, prompt: str):
@@ -29,6 +32,8 @@ class DatabaseService:
 
 
 
+    #####  /fewshot  #####
+
     def query_fewshot_vector(data: VectorDataQuery):
         return EmbeddingAPIClient.query_embedding(
             collection_name = data.collection_name,
@@ -37,22 +42,22 @@ class DatabaseService:
         )
 
 
+    def get_all_fewshot_rdb():
+        return get_all_data_rdb()
+
+
     def get_fewshot_rdb(data: PostgreToVectorData):
         return get_data_rdb(data)
 
 
-    def get_all_fewshot_rdb():
-        return get_all_data_rdb()
+    def get_all_fewshot_vector():
+        return EmbeddingAPIClient.getAll_embedding()
 
 
     def get_fewshot_vector(title: str):
         return EmbeddingAPIClient.get_embedding(
             collection_name = title
         )
-
-
-    def get_all_fewshot_vector():
-        return EmbeddingAPIClient.getAll_embedding()
 
 
     def add_fewshot(title: str, content: str):
@@ -69,18 +74,18 @@ class DatabaseService:
             ids.append(doc_id)
 
             question = shot["question"]
-            documents.append(question)  # question text for vectorization
+            # question text for vectorization
+            documents.append(question)
 
             metadata = {
                 "id": doc_id,
-                "answer": shot["answer"]  # SQL goes to metadata
+                "answer": shot["answer"]
             }
-
             if "date" in shot:
                 metadata["date"] = shot["date"]
             if "stats" in shot:
                 metadata["stats"] = shot["stats"]
-
+            # SQL goes to metadata
             metadatas.append(metadata)
 
             success = insert_vector_data(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
@@ -112,12 +117,18 @@ class DatabaseService:
             ids.append(doc_id)
 
             question = shot["question"]
-            documents.append(question)  # question text for vectorization
+            # question text for vectorization
+            documents.append(question)
 
             metadata = {
                 "id": doc_id,
-                "answer": shot["answer"]  # SQL goes to metadata
+                "answer": shot["answer"]
             }
+            if "date" in shot:
+                metadata["date"] = shot["date"]
+            if "stats" in shot:
+                metadata["stats"] = shot["stats"]
+            # SQL goes to metadata
             metadatas.append(metadata)
 
             success = insert_vector_data(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
@@ -147,16 +158,6 @@ class DatabaseService:
         return success
 
 
-    # def delete_few_shot(data: PostgreToVectorData):
-    #     success = delete_vector_data(data)
-    #     if success:
-    #         EmbeddingAPIClient.delete_embedding(
-    #             collection_name=data.collection_name,
-    #             item_id=data.item_id,
-    #         )
-    #     return success
-
-
     def collection_delete_fewshot(title: str):
         success = delete_data_rdb(title)
         print(f"Successfully deleted rdb data")
@@ -169,18 +170,35 @@ class DatabaseService:
         return success
 
 
+    # def delete_few_shot(data: PostgreToVectorData):
+    #     success = delete_data_rdb(data)
+    #     if success:
+    #         EmbeddingAPIClient.delete_embedding(
+    #             collection_name=data.collection_name,
+    #             item_id=data.item_id,
+    #         )
+    #     return success
+
+
     def restore_fewshot(data: PostgreToVectorData):
         dataList = {}
 
         for dataText in data:
             # print(f"dataText :::: {dataText}")
+
             collection_name = dataText["title"]
             id = dataText["id"]
-            document = dataText["shot"]["question"]
+            shot = dataText["shot"]
+            document = shot["question"]
             metadata = {
                 "id": id,
-                "answer": dataText["shot"]["answer"]
+                "answer": shot["answer"]
             }
+            if "date" in shot:
+                metadata["date"] = shot["date"]
+            if "stats" in shot:
+                metadata["stats"] = shot["stats"]
+
 
             if collection_name not in dataList:
                 dataList[collection_name] = DocumentRequest()
@@ -193,7 +211,7 @@ class DatabaseService:
 
         for collection in dataList:
             data = dataList[collection]
-            print(f"{collection} ::::::::::::: {data}")
+            # print(f"{collection} ::::::::::::: {data}")
             EmbeddingAPIClient.add_embedding(
                 collection_name=collection,
                 ids=data.ids,
@@ -202,3 +220,23 @@ class DatabaseService:
             )
 
         print("Successfully restored vector data")
+
+
+
+
+    #####  /table  #####
+
+    def get_all_mapping():
+        return get_all_mapping()
+
+
+    def insert_mapping(data: MappingRequest):
+        return insert_mapping(data)
+
+
+    def update_mapping(data: MappingRequest):
+        return update_mapping(data)
+
+
+    def delete_mapping(idx: int):
+        return delete_mapping(idx)

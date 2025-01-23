@@ -1,7 +1,7 @@
 import psycopg2.pool
 from psycopg2.extras import RealDictCursor
 
-from api.dto import PostgreToVectorData
+from api.dto import PostgreToVectorData, MappingRequest
 from utils.config import Config
 
 
@@ -83,6 +83,25 @@ def query_execute(query, params=None, use_prompt_db=False):
 
 
 
+# 전체 Prompt 데이터 리스트를 가져오는 함수
+def get_all_prompt():
+    query = """
+        SELECT *
+        FROM (
+            SELECT DISTINCT ON (node_nm, prompt_nm) *
+            FROM prompt
+            WHERE del_yn = 'N'
+            ORDER BY node_nm, prompt_nm, version DESC
+        ) AS innerQuery
+        ORDER BY created_at DESC
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
 # Prompt 데이터를 가져오는 함수
 def get_prompt(node_nm: str, prompt_nm: str):
     query = """
@@ -101,25 +120,6 @@ def get_prompt(node_nm: str, prompt_nm: str):
     return query_execute(
         query,
         params=(node_nm, prompt_nm, node_nm, prompt_nm),
-        use_prompt_db=True
-    )
-
-
-# 전체 Prompt 데이터 리스트를 가져오는 함수
-def get_all_prompt():
-    query = """
-        SELECT *
-        FROM (
-            SELECT DISTINCT ON (node_nm, prompt_nm) *
-            FROM prompt
-            WHERE del_yn = 'N'
-            ORDER BY node_nm, prompt_nm, version DESC
-        ) AS innerQuery
-        ORDER BY created_at DESC
-    """
-    return query_execute(
-        query,
-        params=(),
         use_prompt_db=True
     )
 
@@ -164,6 +164,20 @@ def delete_prompt(node_nm: str, prompt_nm: str):
 
 
 
+# 벡터 전체 데이터를 가져오는 함수
+def get_all_data_rdb():
+    query = """
+        SELECT *
+        FROM vector_data
+        WHERE del_yn = 'N'
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
 # 벡터 데이터를 가져오는 함수
 def get_data_rdb(title: str):
     query = """
@@ -175,20 +189,6 @@ def get_data_rdb(title: str):
     return query_execute(
         query,
         params=(title,),
-        use_prompt_db=True
-    )
-
-
-# 벡터 전체 데이터를 가져오는 함수
-def get_all_data_rdb():
-    query = """
-        SELECT *
-        FROM vector_data
-        WHERE del_yn = 'N'
-    """
-    return query_execute(
-        query,
-        params=(),
         use_prompt_db=True
     )
 
@@ -255,5 +255,77 @@ def delete_data_rdb(title: str):
     return query_execute(
         update_query,
         params=(title,),
+        use_prompt_db=True
+    )
+
+
+
+
+# 컬럼명 관리 데이터 전체 조회
+def get_all_mapping():
+    query = """
+        SELECT *
+        FROM title_mapping
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 추가
+def insert_mapping(data: MappingRequest):
+    query = """
+        INSERT INTO title_mapping (
+            original_title,
+            replace_title,
+            type,
+            align
+        ) 
+        VALUES (
+            %s,
+            %s,
+            %s,
+            %s
+        )
+    """
+    return query_execute(
+        query,
+        params=(data.original_title, data.replace_title, data.type, data.align),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 수정
+def update_mapping(data: MappingRequest):
+    query = """
+        UPDATE title_mapping
+        SET
+            original_title = %s,
+            replace_title = %s,
+            type = %s,
+            align = %s
+        WHERE
+            idx = %d
+    """
+    return query_execute(
+        query,
+        params=(data.original_title, data.replace_title, data.type, data.align, data.id),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 삭제
+def delete_mapping(idx: int):
+    query = """
+        DELETE
+        FROM title_mapping
+        WHERE
+            idx = %d
+    """
+    return query_execute(
+        query,
+        params=(data.id),
         use_prompt_db=True
     )

@@ -36,12 +36,22 @@ class PromptInput(BaseModel):
     prompt_nm: str
     prompt: str = ""
 
+
 class FewshotInput(BaseModel):
     title: str = ""
     shots: str = ""
+
 
 class DocumentRequest(BaseModel):
     collection_name: str = ""
     ids: List[str] = []
     documents: List[str] = []
     metadatas: List[Dict[str, Any]] = []
+
+
+class MappingRequest(BaseModel):
+    idx: int = 0
+    original_title: str
+    replace_title: str
+    type: str = ""
+    align: str = ""
