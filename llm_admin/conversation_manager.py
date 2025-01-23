@@ -10,14 +10,11 @@ from database.postgresql import query_execute
 
 load_dotenv()
 
-def check_session_id(user_id: str, session_id: str) -> bool :
-    # session_id가 개발용인지 검증
-    if session_id =="DEV_SESSION_ID":
-        return 0
-    # 일단 session_id만 검증
-    command = f"SELECT 1 FROM session WHERE session_id = '{session_id}';"
-    # session_status를 체크, active면 True, 그외(completed, error)면 False
-    command2 = f"SELECT session_status FROM session  WHERE session_id = '{session_id}';"
+def check_conversation_id(user_id: str, conversation_id: str) -> bool :
+    # conversation_id 검증
+    command = f"SELECT 1 FROM conversation WHERE conversation_id = '{conversation_id}';"
+    # conversation_status를 체크, active면 True, 그외(completed, error)면 False
+    command2 = f"SELECT conversation_status FROM conversation  WHERE conversation_id = '{conversation_id}';"
 
     from urllib.parse import quote_plus
     password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
@@ -38,31 +35,28 @@ def check_session_id(user_id: str, session_id: str) -> bool :
                     return 0
     return 0
 
-def make_session_id(user_id: str) -> str:
-    session_id = str(uuid.uuid4())
+def make_conversation_id(user_id: str) -> str:
+    conversation_id = str(uuid.uuid4())
     
     query = """
-        INSERT INTO session (user_id, session_id, session_status)
-        VALUES (%(user_id)s, %(session_id)s, 'active')
+        INSERT INTO conversation (user_id, conversation_id, conversation_status)
+        VALUES (%(user_id)s, %(conversation_id)s, 'active')
     """
     params = {
         'user_id': user_id,
-        'session_id': session_id
+        'conversation_id': conversation_id
     }
     
     query_execute(query, params, use_prompt_db=True)
-    return session_id
+    return conversation_id
 
-def save_record(session_id: str, user_question: str, answer: str, sql_query: str) -> bool:
-    if session_id == "DEV_SESSION_ID":
-        return False
-        
+def save_record(conversation_id: str, user_question: str, answer: str, sql_query: str) -> bool:        
     query = """
-        INSERT INTO record (session_id, last_question, last_answer, last_sql_query)
-        VALUES (%(session_id)s, %(question)s, %(answer)s, %(query)s)
+        INSERT INTO record (conversation_id, last_question, last_answer, last_sql_query)
+        VALUES (%(conversation_id)s, %(question)s, %(answer)s, %(query)s)
     """
     params = {
-        "session_id": session_id,
+        "conversation_id": conversation_id,
         "question": user_question,
         "answer": answer,
         "query": sql_query
@@ -70,14 +64,14 @@ def save_record(session_id: str, user_question: str, answer: str, sql_query: str
     
     return query_execute(query, params, use_prompt_db=True)
 
-def extract_last_data(session_id:str) -> list:
+def extract_last_data(conversation_id:str) -> list:
     # 최대 3개의 row
     query = """
         SELECT last_question, last_answer, last_sql_query 
         FROM record 
-        WHERE session_id = %(session_id)s 
+        WHERE conversation_id = %(conversation_id)s 
         ORDER BY record_time DESC 
         LIMIT 3
     """
     
-    return query_execute(query, {'session_id': session_id}, use_prompt_db=True)
+    return query_execute(query, {'conversation_id': conversation_id}, use_prompt_db=True)

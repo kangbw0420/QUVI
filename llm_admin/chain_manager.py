@@ -7,7 +7,7 @@ from database.postgresql import query_execute
 
 class ChainManager:
 
-    def create_chain(session_id: str, user_question: str) -> str:
+    def create_chain(conversation_id: str, user_question: str) -> str:
         """
         새로운 체인을 생성하고 초기 상태를 기록
         Returns:
@@ -19,19 +19,19 @@ class ChainManager:
             query = """
                 INSERT INTO chain (
                     id, 
-                    session_id, 
+                    conversation_id, 
                     chain_question, 
                     chain_status
                 ) VALUES (
                     %(chain_id)s, 
-                    %(session_id)s, 
+                    %(conversation_id)s, 
                     %(chain_question)s, 
                     'active'
                 )
             """
             params = {
                 'chain_id': chain_id,
-                'session_id': session_id,
+                'conversation_id': conversation_id,
                 'chain_question': user_question
             }
             

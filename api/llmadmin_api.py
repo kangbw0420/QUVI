@@ -33,7 +33,7 @@ async def get_users():
             await connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
             query = """
                 SELECT DISTINCT user_id 
-                FROM session 
+                FROM conversation 
                 ORDER BY user_id DESC
             """
             result = await connection.execute(text(query))
@@ -41,27 +41,27 @@ async def get_users():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@llmadmin_api.get("/sessions/{user_id}", response_model=List[Dict[str, Any]])
-async def get_sessions(user_id: str):
-    """user_id에 해당하는 session을 모두 검색해 session_start의 최신순으로 가져온다"""
+@llmadmin_api.get("/conversations/{user_id}", response_model=List[Dict[str, Any]])
+async def get_conversations(user_id: str):
+    """user_id에 해당하는 conversation을 모두 검색해 conversation_start의 최신순으로 가져온다"""
     try:
         engine = await get_db_connection()
         async with engine.begin() as connection:
             await connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
             query = """
-                SELECT session_start, session_end, session_status, session_id
-                FROM session 
+                SELECT conversation_start, conversation_end, conversation_status, conversation_id
+                FROM conversation 
                 WHERE user_id = :user_id
-                ORDER BY session_start DESC
+                ORDER BY conversation_start DESC
             """
             result = await connection.execute(text(query), {"user_id": user_id})
             return [dict(row._mapping) for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@llmadmin_api.get("/chains/{session_id}", response_model=List[Dict[str, Any]])
-async def get_chains(session_id: str):
-    """session_id에 해당하는 chain들을 모두 검색해 chain_start의 최신순으로 가져온다"""
+@llmadmin_api.get("/chains/{conversation_id}", response_model=List[Dict[str, Any]])
+async def get_chains(conversation_id: str):
+    """conversation_id에 해당하는 chain들을 모두 검색해 chain_start의 최신순으로 가져온다"""
     try:
         engine = await get_db_connection()
         async with engine.begin() as connection:
@@ -69,10 +69,10 @@ async def get_chains(session_id: str):
             query = """
                 SELECT chain_question, chain_start, chain_end, chain_status, id
                 FROM chain 
-                WHERE session_id = :session_id
+                WHERE conversation_id = :conversation_id
                 ORDER BY chain_start DESC
             """
-            result = await connection.execute(text(query), {"session_id": session_id})
+            result = await connection.execute(text(query), {"conversation_id": conversation_id})
             return [dict(row._mapping) for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
