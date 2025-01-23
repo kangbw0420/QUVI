@@ -180,6 +180,7 @@ class DatabaseService:
 
         for dataText in data:
             # print(f"dataText :::: {dataText}")
+
             collection_name = dataText["title"]
             id = dataText["id"]
             shot = dataText["shot"]
@@ -192,6 +193,7 @@ class DatabaseService:
                 metadata["date"] = shot["date"]
             if "stats" in shot:
                 metadata["stats"] = shot["stats"]
+
 
             if collection_name not in dataList:
                 dataList[collection_name] = DocumentRequest()
