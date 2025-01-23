@@ -6,6 +6,19 @@ from database.database_service import DatabaseService
 data_api = APIRouter(tags=["data"])
 
 
+# Prompt 데이터 전체 조회
+@data_api.get("/prompt/getAll")
+def get_all_prompt():
+    """
+    전체 Prompt 데이터 리스트를 조회합니다.
+    """
+    try:
+        result = DatabaseService.get_all_prompt()
+        return {"data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # 250109. KimGoon. 단건 조회는 안 쓸 듯.
 # # Prompt 데이터 조회
 # @data_api.get("/prompt/get/{prompt_nm}")
@@ -20,19 +33,6 @@ data_api = APIRouter(tags=["data"])
 #         return {"data": result}
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
-
-
-# Prompt 데이터 전체 조회
-@data_api.get("/prompt/getAll")
-def get_all_prompt():
-    """
-    전체 Prompt 데이터 리스트를 조회합니다.
-    """
-    try:
-        result = DatabaseService.get_all_prompt()
-        return {"data": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Prompt 데이터 추가
@@ -78,19 +78,6 @@ def query_fewshot(data: VectorDataQuery):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Few-shot 데이터 조회
-@data_api.post("/fewshot/get/{title}")
-def get_fewshot(title: str):
-    """
-    Few-shot 데이터를 조회합니다.
-    """
-    try:
-        result = DatabaseService.get_fewshot_vector(title)
-        return {"data": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # Few-shot 전체 데이터 조회
 @data_api.post("/fewshot/getAll")
 def getAll_fewshot():
@@ -104,8 +91,20 @@ def getAll_fewshot():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Few-shot 데이터 조회
+@data_api.get("/fewshot/get/{title}")
+def get_fewshot(title: str):
+    """
+    Few-shot 데이터를 조회합니다.
+    """
+    try:
+        result = DatabaseService.get_fewshot_vector(title)
+        return {"data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Few-shot 전체 데이터 조회
-@data_api.post("/fewshot/getAllPostgre")
 @data_api.post("/fewshot/getAllRDB")
 def getAllRDB_fewshot():
     """
@@ -153,9 +152,7 @@ def restore_fewshot():
     """
     try:
         result = DatabaseService.get_all_fewshot_rdb()
-
         DatabaseService.restore_fewshot(result)
-
         return {"message": "Few-shot data restored successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

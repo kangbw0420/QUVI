@@ -1,7 +1,9 @@
 import json
+
 import requests
 
 from utils.config import Config
+
 
 BASE_URL = Config.VECTOR_STORE_DOMAIN
 
@@ -21,8 +23,10 @@ class EmbeddingAPIClient:
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()
+
             results = response.json()
             print(f"[SUCCESS] Query results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
+
             return results
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to query embedding: {e}")
@@ -32,14 +36,15 @@ class EmbeddingAPIClient:
         """
         서버에서 데이터를 조회하는 함수
         """
-        url = f"{BASE_URL}/get/all/{collection_name}"
-        # url = f"{BASE_URL}/get/{collection_name}"
+        url = f"{BASE_URL}/get/{collection_name}"
 
         try:
             response = requests.get(url)
             response.raise_for_status()
+
             results = response.json()
             print(f"[SUCCESS] Get Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
+
             return results
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to test embedding: {e}")
@@ -54,8 +59,10 @@ class EmbeddingAPIClient:
         try:
             response = requests.get(url)
             response.raise_for_status()
+
             results = response.json()
             # print(f"[SUCCESS] Get All Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
+
             return results["collections"]
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to getAll embedding: {e}")
@@ -76,6 +83,7 @@ class EmbeddingAPIClient:
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()  # 오류 발생 시 예외 처리
+
             print(f"[SUCCESS] Embedding added: {response.json()}")
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to add embedding: {e}")
@@ -95,6 +103,7 @@ class EmbeddingAPIClient:
         try:
             response = requests.put(url, json=payload)
             response.raise_for_status()
+
             print(f"[SUCCESS] Embedding updated: {response.json()}")
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to update embedding: {e}")
@@ -109,6 +118,7 @@ class EmbeddingAPIClient:
         try:
             response = requests.delete(url)
             response.raise_for_status()
+
             print(f"[SUCCESS] Embedding deleted: {response.json()}")
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to delete embedding: {e}")
@@ -127,6 +137,7 @@ class EmbeddingAPIClient:
         try:
             response = requests.delete(url, json=payload)
             response.raise_for_status()
+
             print(f"[SUCCESS] Embedding collection deleted: {response.json()}")
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to collection delete embedding: {e}")
