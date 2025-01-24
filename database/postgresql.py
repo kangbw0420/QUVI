@@ -307,11 +307,11 @@ def update_mapping(data: MappingRequest):
             type = %s,
             align = %s
         WHERE
-            idx = %d
+            idx = %s
     """
     return query_execute(
         query,
-        params=(data.original_title, data.replace_title, data.type, data.align, data.id),
+        params=(data.original_title, data.replace_title, data.type, data.align, [data.idx]),
         use_prompt_db=True
     )
 
@@ -322,10 +322,10 @@ def delete_mapping(idx: int):
         DELETE
         FROM title_mapping
         WHERE
-            idx = %d
+            idx = %s
     """
     return query_execute(
         query,
-        params=(data.id),
+        params=([idx]),
         use_prompt_db=True
     )
