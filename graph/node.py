@@ -54,7 +54,21 @@ async def table_selector(state: GraphState) -> GraphState:
         selected_table = await select_table(trace_id, user_question)
 
     state.update({"selected_table": selected_table})
-    StateManager.update_state(trace_id, {"user_question": user_question, "selected_table": selected_table})
+
+    if selected_table == "api":
+        state.update({
+            "final_answer": "이 질문은 api로 굉장히 멋있는 답변을 제공드릴 예정입니다.",
+            "query_result": [],  # Empty list for raw_data
+            "sql_query": ""
+        })
+    
+    StateManager.update_state(trace_id, {
+        "user_question": user_question,
+        "selected_table": selected_table,
+        **({"final_answer": state["final_answer"], 
+            "query_result": state["query_result"],
+            "sql_query": state["sql_query"]} if selected_table == "api" else {})
+    })
 
     return state
 

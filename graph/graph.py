@@ -60,8 +60,16 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("result_executor", result_executor)
         workflow.add_node("sql_respondent", sql_respondent)
 
+        workflow.add_conditional_edges(
+            "table_selector",
+            lambda x: "END" if x["selected_table"] == "api" else "query_creator",
+            {
+                "query_creator": "query_creator",
+                "END": END
+            }
+        )
+
         # 엣지 추가
-        workflow.add_edge("table_selector", "query_creator")
         workflow.add_edge("query_creator", "result_executor")
         workflow.add_edge("result_executor", "sql_respondent")
         workflow.add_edge("sql_respondent", END)
