@@ -3,10 +3,10 @@ from typing import List
 
 # 컬럼에 따른 ORDER BY 규칙 정의
 COLUMN_ORDER_RULES = {
-    ('note1',): 'note1 DESC',
-    ('note1', 'note2'): 'note1 DESC, note2 DESC',
-    ('trsc_dt', 'trsc_tm'): 'trsc_dt DESC, trsc_tm DESC',
-    ('bank_nm',): 'bank_nm DESC',
+    ('com_nm', 'bank_nm', 'acct_dv', 'acct_no', 'acct_bal_amt', 'real_amt', 'acct_bal_upd_dtm'): 'com_nm DESC, acct_bal_amt DESC',
+    ('com_nm', 'bank_nm', 'acct_no', 'acct_bal_amt', 'real_amt', 'curr_cd', 'acct_dv', 'acct_nick_nm', 'acct_bal_upd_dtm'): 'com_nm DESC, curr_cd DESC, acct_bal_amt DESC',
+    ('com_nm', 'bank_nm', 'acct_no', 'trsc_dt', 'trsc_tm', 'note1', 'in_out_dv', 'trsc_amt', 'trsc_bal'): 'com_nm DESC, trsc_dt DESC, trsc_tm DESC',
+    ('com_nm', 'bank_nm', 'acct_no', 'trsc_dt', 'trsc_tm', 'note1', 'in_out_dv', 'trsc_amt', 'curr_cd', 'trsc_bal'): 'com_nm DESC, curr_cd DESC, trsc_dt DESC, trsc_tm DESC'
     # ... 추가 규칙들
 }
 
