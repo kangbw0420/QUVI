@@ -311,7 +311,7 @@ def update_mapping(data: MappingRequest):
     """
     return query_execute(
         query,
-        params=(data.original_title, data.replace_title, data.type, data.align, [data.idx]),
+        params=(data.original_title, data.replace_title, data.type, data.align, data.idx),
         use_prompt_db=True
     )
 
