@@ -49,8 +49,10 @@ async def get_conversations(user_id: str):
         async with engine.begin() as connection:
             await connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
             query = """
-                SELECT conversation_start, conversation_end, conversation_status, conversation_id
-                FROM conversation 
+                SELECT a.conversation_start, a.conversation_end, a.conversation_status, a.conversation_id, b.chain_question
+                FROM conversation AS a
+                LEFT JOIN chain AS b
+                ON (a.conversation_id = b.conversation_id)
                 WHERE user_id = :user_id
                 ORDER BY conversation_start DESC
             """
