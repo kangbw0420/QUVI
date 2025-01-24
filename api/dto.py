@@ -52,7 +52,7 @@ class DocumentRequest(BaseModel):
 
 class MappingRequest(BaseModel):
     idx: int = 0
-    original_title: str
-    replace_title: str
+    original_title: str = ""
+    replace_title: str = ""
     type: str = ""
     align: str = ""
