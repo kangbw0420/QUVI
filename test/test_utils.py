@@ -144,7 +144,7 @@ def process_test_case(test_case, table_type):
     print(com_result)
     
     print("\n3. calculate_stats 결과:")
-    stats_result = calculate_stats(com_result, table_type)
+    stats_result = calculate_stats(com_result)
     print(stats_result)
     
     print("\n4. check_acct_no 결과 (trsc 테이블만):")

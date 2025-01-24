@@ -130,7 +130,7 @@ def result_executor(state: GraphState) -> GraphState:
     grouped_by_company = check_com_nm(result)
     
     # 2. 통계 계산
-    query_result_stats = calculate_stats(grouped_by_company, selected_table)
+    query_result_stats = calculate_stats(grouped_by_company)
     
     # 3. 계좌번호별 추가 그룹화 (필요한 경우)
     final_result = check_acct_no(grouped_by_company, selected_table)

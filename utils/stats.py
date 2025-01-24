@@ -35,7 +35,7 @@ def convert_decimal_values(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = df[col].astype(float)
     return df
 
-def calculate_stats(result: List[Dict[str, Any]], selected_table: str) -> List[str]:
+def calculate_stats(result: List[Dict[str, Any]]) -> List[str]:
     """
     데이터를 분석하여 통계값 생성
     
