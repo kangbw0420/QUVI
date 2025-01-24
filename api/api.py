@@ -13,7 +13,18 @@ graph = make_graph()
 @api.post("/process")
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
+    print(type(request.company_id))
+    print(request.company_id)
     chain_id = None
+    if isinstance(request.company_id, str):
+        request.company_id = {
+            "main_com": [request.company_id],
+            "sub_com": ['쿠콘', '비즈플레이', '웹케시벡터', '웹케시하위', '위플렉스', '웹케시글로벌']
+        }
+    
+    print(type(request.company_id))
+    print(request.company_id)
+    
     try:
         # 세션 확인/생성을 가장 먼저 수행
         conversation_id = (
@@ -32,6 +43,7 @@ async def process_input(request: Input) -> Output:
         initial_state = {
             "chain_id": chain_id,
             "user_info": user_info,
+            "company_id": request.company_id,
             "user_question": request.user_question,
             "last_data": last_data if last_data else []
         }

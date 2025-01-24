@@ -10,7 +10,7 @@ def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
         ValueError: 날짜 형식이 올바르지 않거나 날짜를 찾을 수 없는 경우
     """
     # 테이블 타입에 따른 날짜 컬럼명 결정
-    date_column = 'reg_dt' if selected_table == 'amt' else 'trsc_dt'
+    date_column = 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
     
     # BETWEEN 구문이 있는 경우의 패턴
     between_pattern = f"{date_column}\\s+BETWEEN\\s+'(\\d{{8}})'\\s+AND\\s+'(\\d{{8}})'"

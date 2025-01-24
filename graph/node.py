@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TypedDict, Tuple, List
+from typing import TypedDict, Tuple, List, Dict
 
 from .task import (
     select_table,
@@ -19,12 +19,11 @@ class GraphState(TypedDict):
     chain_id: str
     trace_id: str
     user_info: Tuple[str, str]
+    company_id: Dict[str, List[str]]
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
-    query_result_stats: (
-        str  # sql_query 실행 결과에 따른 데이터의 통계값 (final_answer 생성에 사용)
-    )
+    query_result_stats: str  # sql_query 실행 결과에 따른 데이터의 통계값 (final_answer 생성에 사용)
     query_result: dict  # sql_query 실행 결과 데이터 (데이터프레임 형식)
     final_answer: str  # 최종 답변
     last_data: List[str]     # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
@@ -71,10 +70,12 @@ async def query_creator(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
+    main_com = state["company_id"]["main_com"][0]  # 첫 번째(유일한) main_com
+    sub_coms = state["company_id"]["sub_com"]      # sub_com 리스트
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await create_query(trace_id, selected_table, user_question, today)
+    sql_query = await create_query(trace_id, selected_table, user_question, main_com, sub_coms, today)
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})

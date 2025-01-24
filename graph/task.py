@@ -75,7 +75,14 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
 
     return selected_table
 
-async def create_query(trace_id: str, selected_table, user_question: str, today: str) -> str:
+async def create_query(
+    trace_id: str, 
+    selected_table: str, 
+    user_question: str,
+    main_com: str,
+    sub_coms: List[str],
+    today: str
+) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
         str: 생성된 SQL 쿼리문
@@ -84,8 +91,24 @@ async def create_query(trace_id: str, selected_table, user_question: str, today:
         TypeError: LLM 응답이 예상된 형식이 아닌 경우.
     """
     try:
+        sub_coms_quoted = [f"'{com}'" for com in sub_coms]
+        sub_coms_list = ", ".join(sub_coms_quoted)
+        
+        # IN 절을 위한 모든 회사 리스트 (main_com + sub_coms)
+        all_companies = [main_com] + sub_coms
+        all_coms_quoted = [f"'{com}'" for com in all_companies]
+        all_coms_list = ", ".join(all_coms_quoted)
+
         try:
-            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm=selected_table)[0]['prompt'].format(today=today)
+            system_prompt = database_service.get_prompt(
+                node_nm='create_query', 
+                prompt_nm=selected_table
+            )[0]['prompt'].format(
+                today=today,
+                main_com=main_com,
+                sub_coms=sub_coms_list,
+                all_coms=all_coms_list
+            )
             
         except FileNotFoundError as e:
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)

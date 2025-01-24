@@ -8,6 +8,7 @@ class Input(BaseModel):
     user_id: str = 'daquv03'
     session_id: str = 'default_session'
     use_intt_id: str
+    company_id: Any
 
 
 class Output(BaseModel):
