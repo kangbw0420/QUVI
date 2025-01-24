@@ -1,6 +1,5 @@
-import json
 import re
-from typing import Union, Sequence, Dict, Any
+from typing import Union, Sequence, Dict, List,Any
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -12,7 +11,7 @@ from sqlalchemy.engine import Result
 from sqlalchemy.sql.expression import Executable
 
 from database.database_service import DatabaseService
-from graph.models import llama_70b_llm, qwen_llm, qwen_llm_7b, llama_8b_llm
+from graph.models import qwen_llm, qwen_llm_7b
 from utils.config import Config
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
