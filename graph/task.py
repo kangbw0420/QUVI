@@ -35,9 +35,9 @@ async def check_history(trace_id: str, user_question: str, last_data: List[str])
     last_data_str = ''
     for x in last_data:
         last_template = "\n제공된 맥락"+\
-                f"\n- 이전 질문\n{x[0]}"+\
-                f"\n- 이전 질문에 대한 SQL쿼리\n{x[2]}"+\
-                f"\n- 이전 질문에 대한 답변\n{x[1]}\n"
+                f"\n- 이전 질문\n{x['last_question']}"+\
+                f"\n- 이전 질문에 대한 SQL쿼리\n{x['last_sql_query']}"+\
+                f"\n- 이전 질문에 대한 답변\n{x['last_answer']}\n"
         last_data_str += last_template
 
     system_prompt = database_service.get_prompt(
@@ -72,9 +72,9 @@ async def historical_analyze(trace_id: str, user_question: str, last_data: List[
     last_data_str = ''
     for x in last_data:
         last_template = "\n제공된 맥락"+\
-                f"\n- 이전 질문:\n{x[0]}"+\
-                f"\n- 이전 질문에 대한 SQL쿼리:\n{x[2]}"+\
-                f"\n- 이전 질문에 대한 답변:\n{x[1]}\n"
+                f"\n- 이전 질문\n{x['last_question']}"+\
+                f"\n- 이전 질문에 대한 SQL쿼리\n{x['last_sql_query']}"+\
+                f"\n- 이전 질문에 대한 답변\n{x['last_answer']}\n"
         last_data_str += last_template
 
     system_prompt = database_service.get_prompt(

@@ -30,7 +30,7 @@ class GraphState(TypedDict):
     query_result_stats: str  # sql_query 실행 결과에 따른 데이터의 통계값 (final_answer 생성에 사용)
     query_result: dict  # sql_query 실행 결과 데이터 (데이터프레임 형식)
     final_answer: str  # 최종 답변
-    last_data: List[str] # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
+    last_data: List[Dict[str, str]] # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
 
 async def checkpoint(state: GraphState) -> GraphState:
     """last_data 기반으로 질문을 검문하는 노드"""
