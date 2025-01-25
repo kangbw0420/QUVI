@@ -16,7 +16,6 @@ def check_conversation_id(user_id: str, conversation_id: str) -> bool :
     # conversation_status를 체크, active면 True, 그외(completed, error)면 False
     command2 = f"SELECT conversation_status FROM conversation  WHERE conversation_id = '{conversation_id}';"
 
-    from urllib.parse import quote_plus
     password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
     db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
     engine = create_engine(db_url)

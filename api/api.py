@@ -73,7 +73,7 @@ async def process_input(request: Input) -> Output:
             body={
                 "answer": answer,
                 "raw_data": raw_data,
-                "conversation_id": conversation_id,
+                "session_id": conversation_id,
                 "sql_query": sql_query, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }
         )

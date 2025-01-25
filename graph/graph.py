@@ -6,6 +6,8 @@ from llm_admin.trace_manager import TraceManager
 
 from .node import (
     GraphState,
+    checkpoint,
+    historian,
     table_selector,
     query_creator,
     sql_respondent,
@@ -37,9 +39,9 @@ class TrackedStateGraph(StateGraph):
                 # 노드 실행 완료 시 trace completed로 변경
                 if trace_id:
                     TraceManager.complete_trace(trace_id)
-                    
-                return result
                 
+                return result
+            
             except Exception as e:
                 # 에러 발생 시 trace를 error로 마크
                 if trace_id:
@@ -55,11 +57,30 @@ def make_graph() -> CompiledStateGraph:
         workflow = TrackedStateGraph(GraphState)
 
         # 노드 추가
+        workflow.add_node("checkpoint", checkpoint)
+        workflow.add_node("historian", historian)
         workflow.add_node("table_selector", table_selector)
         workflow.add_node("query_creator", query_creator)
         workflow.add_node("result_executor", result_executor)
         workflow.add_node("sql_respondent", sql_respondent)
 
+        # Entry point에서 checkpoint로 시작
+        workflow.set_entry_point("checkpoint")
+
+        # checkpoint에서 조건부 분기
+        workflow.add_conditional_edges(
+            "checkpoint",
+            lambda x: "historian" if x["history_check"] else "table_selector",
+            {
+                "historian": "historian",
+                "table_selector": "table_selector"
+            }
+        )
+
+        # historian은 항상 table_selector로
+        workflow.add_edge("historian", "table_selector")
+
+        # selector가 api를 토하면 끝남
         workflow.add_conditional_edges(
             "table_selector",
             lambda x: "END" if x["selected_table"] == "api" else "query_creator",
@@ -68,14 +89,9 @@ def make_graph() -> CompiledStateGraph:
                 "END": END
             }
         )
-
-        # 엣지 추가
         workflow.add_edge("query_creator", "result_executor")
         workflow.add_edge("result_executor", "sql_respondent")
         workflow.add_edge("sql_respondent", END)
-
-        # Entry point 설정
-        workflow.set_entry_point("table_selector")
 
         # 그래프 컴파일
         app = workflow.compile()

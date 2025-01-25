@@ -1,5 +1,6 @@
 import re
 from typing import Union, Sequence, Dict, List,Any
+from xmlrpc.client import boolean
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -11,7 +12,7 @@ from sqlalchemy.engine import Result
 from sqlalchemy.sql.expression import Executable
 
 from database.database_service import DatabaseService
-from graph.models import qwen_llm, qwen_llm_7b
+from graph.models import selector, qwen_llm
 from utils.config import Config
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
@@ -30,7 +31,81 @@ WEEKDAYS = {
     6: '일'
 }
 
-async def select_table(trace_id: str, user_question: str, last_data: str = "") -> str:
+async def check_history(trace_id: str, user_question: str, last_data: List[str]) -> boolean:
+    last_data_str = ''
+    for x in last_data:
+        last_template = "\n제공된 맥락"+\
+                f"\n- 이전 질문\n{x[0]}"+\
+                f"\n- 이전 질문에 대한 SQL쿼리\n{x[2]}"+\
+                f"\n- 이전 질문에 대한 답변\n{x[1]}\n"
+        last_data_str += last_template
+
+    system_prompt = database_service.get_prompt(
+        node_nm='create_query', prompt_nm='checkpoint'
+    )[0]['prompt'].format(last_data_str=last_data_str)
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessage(content=system_prompt),
+            ("human", user_question)
+        ]
+    )
+
+    print("=" * 40 + "Checkpoint(Q)" + "=" * 40)
+    qna_id = qna_manager.create_question(
+        trace_id=trace_id,
+        question=prompt,
+        model="qwen_14b"
+    )
+
+    checkpoint_chain = prompt | qwen_llm
+    history_check = checkpoint_chain.invoke({"user_question": user_question})
+
+    print("=" * 40 + "Checkpoint(A)" + "=" * 40)
+    print(history_check)
+    qna_manager.record_answer(qna_id, history_check)
+
+    return history_check
+
+
+async def historical_analyze(trace_id: str, user_question: str, last_data: List[str]) -> str:
+    last_data_str = ''
+    for x in last_data:
+        last_template = "\n제공된 맥락"+\
+                f"\n- 이전 질문:\n{x[0]}"+\
+                f"\n- 이전 질문에 대한 SQL쿼리:\n{x[2]}"+\
+                f"\n- 이전 질문에 대한 답변:\n{x[1]}\n"
+        last_data_str += last_template
+
+    system_prompt = database_service.get_prompt(
+        node_nm='create_query', prompt_nm='historian'
+    )[0]['prompt'].format(last_data_str=last_data_str)
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessage(content=system_prompt),
+            ("human", user_question)
+        ]
+    )
+
+    print("=" * 40 + "Historian(Q)" + "=" * 40)
+    qna_id = qna_manager.create_question(
+        trace_id=trace_id,
+        question=prompt,
+        model="qwen_14b"
+    )
+
+    checkpoint_chain = prompt | qwen_llm
+    history_check = checkpoint_chain.invoke({"user_question": user_question})
+
+    print("=" * 40 + "Historian(A)" + "=" * 40)
+    print(history_check)
+    qna_manager.record_answer(qna_id, history_check)
+
+    return history_check
+
+
+async def select_table(trace_id: str, user_question: str) -> str:
     """사용자의 질문으로부터 테이블을 선택
     Returns:
         str: 'aicfo_get_cabo_XXXX'의 테이블
@@ -40,7 +115,6 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     output_parser = StrOutputParser()
 
     system_prompt = database_service.get_prompt(node_nm='select_table', prompt_nm='system')[0]['prompt']
-    contents = system_prompt + last_data if len(last_data)>1 else system_prompt
 
     few_shots = await retriever.get_few_shots(
         query_text=user_question, collection_name="shots_selector", top_k=5
@@ -52,7 +126,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
 
     SELECT_TABLE_PROMPT = ChatPromptTemplate.from_messages(
         [
-            SystemMessage(content=contents),
+            SystemMessage(content=system_prompt),
             *few_shot_prompt,
             ("human", user_question)
         ]
@@ -62,7 +136,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=SELECT_TABLE_PROMPT,
-        model="qwen_32b"
+        model="qwen_14b"
     )
 
     select_table_chain = SELECT_TABLE_PROMPT | qwen_llm | output_parser
@@ -73,6 +147,7 @@ async def select_table(trace_id: str, user_question: str, last_data: str = "") -
     qna_manager.record_answer(qna_id, selected_table)
 
     return selected_table
+
 
 async def create_query(
     trace_id: str, 
@@ -108,7 +183,7 @@ async def create_query(
                 sub_coms=sub_coms_list,
                 all_coms=all_coms_list
             )
-            
+
         except FileNotFoundError as e:
             system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
 
@@ -147,7 +222,7 @@ async def create_query(
         qna_id = qna_manager.create_question(
             trace_id=trace_id,
             question=prompt,
-            model="qwen_32b"
+            model="qwen_14b"
         )
 
         chain = prompt | qwen_llm
@@ -303,7 +378,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=prompt,
-        model="qwen_32b"
+        model="qwen_14b"
     )
 
     chain = prompt | qwen_llm | output_parser
