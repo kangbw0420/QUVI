@@ -2,14 +2,12 @@ from datetime import datetime
 from typing import TypedDict, Tuple, List, Dict
 from xmlrpc.client import boolean
 
-from .task import (
-    check_history,
-    historical_analyze,
-    select_table,
-    create_query,
-    sql_response,
-    execute_query,
-)
+from graph.task.check_history import check_history
+from graph.task.historical_analyze import historical_analyze
+from graph.task.select_table import select_table
+from graph.task.create_query import create_query
+from graph.task.sql_response import sql_response
+from graph.task.execute_query import execute_query
 from utils.check_com import check_com_nm
 from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats

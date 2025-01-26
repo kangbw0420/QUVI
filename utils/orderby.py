@@ -74,10 +74,13 @@ def extract_columns(query: str) -> List[str]:
         
     # 컬럼들을 분리하고 정리
     columns = []
-    for col in columns_str.split(','):
-        # 별칭(AS) 처리
-        col = col.split(' AS ')[0].split(' as ')[0]
-        # 테이블명 제거 (table.column -> column)
+    # alias가 있을 경우 alias를 컬럼명으로 사용
+    column_pattern = re.compile(r'(?:.*?\s+AS\s+)?(["\w]+)(?:\s*,|$)', re.IGNORECASE)
+    
+    # 인식된 컬럼명을 정제
+    for match in column_pattern.finditer(columns_str):
+        col = match.group(1)
+        # 테이블 접두사 제거
         col = col.split('.')[-1]
         # 공백과 따옴표 제거
         col = col.strip().strip('"\'')
