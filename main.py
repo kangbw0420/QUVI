@@ -12,7 +12,7 @@ from api.mapping_api import mapping_api
 from utils.logger import setup_logger
 
 # 애플리케이션 루트 로거 설정
-logger = setup_logger('app')
+logger = setup_logger('main')
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="FastAPI Uvicorn Server")

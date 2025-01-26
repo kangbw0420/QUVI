@@ -6,8 +6,8 @@ from llm_admin.trace_manager import TraceManager
 
 from .node import (
     GraphState,
-    checkpoint,
-    historian,
+    yadon,
+    yadoran,
     table_selector,
     query_creator,
     sql_respondent,
@@ -57,28 +57,28 @@ def make_graph() -> CompiledStateGraph:
         workflow = TrackedStateGraph(GraphState)
 
         # 노드 추가
-        workflow.add_node("checkpoint", checkpoint)
-        workflow.add_node("historian", historian)
+        workflow.add_node("yadon", yadon)
+        workflow.add_node("yadoran", yadoran)
         workflow.add_node("table_selector", table_selector)
         workflow.add_node("query_creator", query_creator)
         workflow.add_node("result_executor", result_executor)
         workflow.add_node("sql_respondent", sql_respondent)
 
-        # Entry point에서 checkpoint로 시작
-        workflow.set_entry_point("checkpoint")
+        # Entry point에서 yadon으로 시작
+        workflow.set_entry_point("yadon")
 
-        # checkpoint에서 조건부 분기
+        # yadon에서 조건부 분기
         workflow.add_conditional_edges(
-            "checkpoint",
-            lambda x: "historian" if x["history_check"] else "table_selector",
+            "yadon",
+            lambda x: "yadoran" if x["yadoran"] else "table_selector",
             {
-                "historian": "historian",
+                "yadoran": "yadoran",
                 "table_selector": "table_selector"
             }
         )
 
-        # historian은 항상 table_selector로
-        workflow.add_edge("historian", "table_selector")
+        # yadoran은 항상 table_selector로
+        workflow.add_edge("yadoran", "table_selector")
 
         # selector가 api를 토하면 끝남
         workflow.add_conditional_edges(

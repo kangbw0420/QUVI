@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import TypedDict, Tuple, List, Dict
 from xmlrpc.client import boolean
 
-from graph.task.check_history import check_history
-from graph.task.historical_analyze import historical_analyze
+from graph.task.shellder import shellder
+from graph.task.yadoking import yadoking
 from graph.task.select_table import select_table
 from graph.task.create_query import create_query
 from graph.task.sql_response import sql_response
@@ -14,14 +14,16 @@ from utils.stats import calculate_stats
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
 from llm_admin.state_manager import StateManager
+from utils.logger import setup_logger
 
+logger = setup_logger('node')
 
 class GraphState(TypedDict):
     chain_id: str
     trace_id: str
     user_info: Tuple[str, str]
     company_id: Dict[str, List[str]]
-    history_check: boolean
+    shellder: boolean
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
     sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
@@ -30,29 +32,33 @@ class GraphState(TypedDict):
     final_answer: str  # 최종 답변
     last_data: List[Dict[str, str]] # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
 
-async def checkpoint(state: GraphState) -> GraphState:
+async def yadon(state: GraphState) -> GraphState:
     """last_data 기반으로 질문을 검문하는 노드"""
+    logger.info("yadon start")
     
     if state.get("last_data"):
         trace_id = state["trace_id"]
         user_question = state["user_question"]
         last_data = state["last_data"]
 
-        history_check = await check_history(trace_id, user_question, last_data)
-        state["history_check"] = history_check
+        shellder_check = await shellder(trace_id, user_question, last_data)
+        state["shellder"] = shellder_check
     else:
-        state["history_check"] = False
+        state["shellder"] = False
+    logger.info("yadon end")
     return state
 
-async def historian(state: GraphState) -> GraphState:
-    """history_check가 True일 때 질문을 재해석하는 노드"""
-    if state["history_check"]:
+async def yadoran(state: GraphState) -> GraphState:
+    """shellder가 True일 때 질문을 재해석하는 노드"""
+    logger.info("yadoran start")
+    if state["shellder"]:
         trace_id = state["trace_id"]
         user_question = state["user_question"]
         last_data = state["last_data"]
 
-        new_question = await historical_analyze(trace_id, user_question, last_data)
+        new_question = await yadoking(trace_id, user_question, last_data)
         state["user_question"] = new_question
+    logger.info("yadoran end")
     return state
 
 async def table_selector(state: GraphState) -> GraphState:
@@ -62,6 +68,7 @@ async def table_selector(state: GraphState) -> GraphState:
     Raises:
         KeyError: state에 user_question이 없는 경우.
     """
+    logger.info("table_selector start")
     user_question = state["user_question"]
     trace_id = state["trace_id"]
     
