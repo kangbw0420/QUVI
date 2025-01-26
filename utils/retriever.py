@@ -4,8 +4,12 @@ from typing import List, Dict, Optional
 from dotenv import load_dotenv
 
 from utils.config import Config
+from utils.logger import setup_logger
 
 load_dotenv()
+
+# 모듈별 로거 설정
+logger = setup_logger('retriever')
 
 class FewShotRetriever:
     def __init__(self):
@@ -27,7 +31,8 @@ class FewShotRetriever:
                     'query_text': query_text,
                     'top_k': top_k
                 }
-                print("\nRequest payload:", json.dumps(request_payload, ensure_ascii=False, indent=2))
+                logger.info(f"Starting vector store query for {collection_name}")
+                logger.debug(f"Request payload: {json.dumps(request_payload, ensure_ascii=False, indent=2)}")
                 
                 response = await client.post(
                     f"{self.base_url}/query",
@@ -36,6 +41,8 @@ class FewShotRetriever:
                                 
                 response.raise_for_status()
                 data = response.json()
+                
+                logger.info(f"Completed vector store query for {collection_name}")
                 
                 formatted_results = []
                 if isinstance(data, dict) and "results" in data:
@@ -53,11 +60,11 @@ class FewShotRetriever:
                         
                         return formatted_results
                 
-                print("Warning: Unexpected response format")
+                logger.warning("Unexpected response format")
                 return []
                 
             except Exception as e:
-                print(f"Error in query_vector_store: {str(e)}")
+                logger.error(f"Error in query_vector_store: {str(e)}")
                 return []
 
     async def format_few_shots(self, results: List[Dict]) -> List[Dict]:
@@ -97,7 +104,7 @@ class FewShotRetriever:
             return few_shots
                 
         except Exception as e:
-            print(f"Error formatting few-shots: {str(e)}")
+            logger.error(f"Error formatting few-shots: {str(e)}")
             return []
 
     async def get_few_shots(self, query_text: str, collection_name: Optional[str] = None, top_k: int=6) -> List[Dict]:
@@ -109,7 +116,7 @@ class FewShotRetriever:
             httpx.RequestError: 벡터 스토어 API 통신 중 오류 발생시.
         """
         results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
-        print(results)
+        logger.debug(f"Vector store results: {results}")
         few_shots = await self.format_few_shots(results)
         
         return few_shots

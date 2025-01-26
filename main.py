@@ -1,5 +1,4 @@
 import argparse
-import logging
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -9,14 +8,10 @@ from api.api import api
 from api.data_api import data_api
 from api.llmadmin_api import llmadmin_api
 from api.mapping_api import mapping_api
+from utils.logger import setup_logger
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+# 애플리케이션 루트 로거 설정
+logger = setup_logger('app')
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="FastAPI Uvicorn Server")
@@ -47,15 +42,20 @@ app.include_router(data_api, prefix="/data")
 app.include_router(llmadmin_api, prefix="/llmadmin")
 app.include_router(mapping_api, prefix="/mapping")
 
-
 if __name__ == "__main__":
     args = parse_arguments()
-
+    
+    # FastAPI의 내부 로깅을 우리의 로깅 설정과 통합
+    uvicorn_log_config = uvicorn.config.LOGGING_CONFIG
+    uvicorn_log_config["formatters"]["default"]["fmt"] = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+    uvicorn_log_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+    
     uvicorn.run(
         "main:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
         workers=args.workers,
-        log_level="info"
+        log_level="info",
+        log_config=uvicorn_log_config
     )
