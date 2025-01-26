@@ -28,7 +28,7 @@ def setup_logger(name: Optional[str] = None) -> logging.Logger:
     
     # 포매터 설정
     formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+        '%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - [%(process)d] - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     handler.setFormatter(formatter)

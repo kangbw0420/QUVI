@@ -1,4 +1,5 @@
 import argparse
+import time
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -25,8 +26,20 @@ app = FastAPI()
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    
+    # 요청 시작 로깅
+    logger.info(f"Request started - {request.client.host} - {request.method} {request.url.path}")
+    
     response = await call_next(request)
-    logger.info(f"{request.client.host} - {request.method} {request.url.path} - {response.status_code}")
+    
+    # 처리 시간 계산 및 요청 완료 로깅
+    process_time = (time.time() - start_time) * 1000
+    logger.info(
+        f"Request completed - {request.client.host} - {request.method} {request.url.path} - "
+        f"{response.status_code} - {process_time:.2f}ms"
+    )
+    
     return response
 
 app.add_middleware(

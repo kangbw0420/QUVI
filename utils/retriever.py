@@ -1,3 +1,4 @@
+import time
 import json
 import httpx
 from typing import List, Dict, Optional
@@ -31,13 +32,18 @@ class FewShotRetriever:
                     'query_text': query_text,
                     'top_k': top_k
                 }
+
+                start_time = time.time()
                 logger.info(f"Starting vector store query for {collection_name}")
                 logger.debug(f"Request payload: {json.dumps(request_payload, ensure_ascii=False, indent=2)}")
-                
+                                
                 response = await client.post(
                     f"{self.base_url}/query",
                     json=request_payload
                 )
+                                
+                process_time = (time.time() - start_time) * 1000
+                logger.info(f"Completed vector store query for {collection_name} - {process_time:.2f}ms")
                                 
                 response.raise_for_status()
                 data = response.json()
