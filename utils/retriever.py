@@ -48,8 +48,6 @@ class FewShotRetriever:
                 response.raise_for_status()
                 data = response.json()
                 
-                logger.info(f"Completed vector store query for {collection_name}")
-                
                 formatted_results = []
                 if isinstance(data, dict) and "results" in data:
                     results = data["results"]
