@@ -1,8 +1,4 @@
 import uuid
-from urllib.parse import quote_plus
-from utils.config import Config
-
-from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
 from database.postgresql import query_execute

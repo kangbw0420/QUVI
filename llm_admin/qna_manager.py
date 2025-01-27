@@ -7,6 +7,9 @@ from urllib.parse import quote_plus
 
 from utils.config import Config
 from database.postgresql import query_execute
+from utils.logger import setup_logger
+
+logger = setup_logger('qna')
 
 class QnAManager:
     def format_message_str(self, msg_str: str) -> str:
@@ -69,41 +72,34 @@ class QnAManager:
                 question_str = self.format_message_str(str(question.messages))
             else:
                 question_str = str(question)
+
+            logger.info(question_str)
+
+            query = """
+                INSERT INTO qna (
+                    id,
+                    trace_id,
+                    question,
+                    model
+                ) VALUES (
+                    %(qna_id)s,
+                    %(trace_id)s,
+                    %(question)s,
+                    %(model)s
+                )
+            """
+            params = {
+                'qna_id': qna_id,
+                'trace_id': trace_id,
+                'question': question_str,
+                'model': model
+            }
             
-            print(question_str)
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
-                command = text("""
-                    INSERT INTO qna (
-                        id,
-                        trace_id,
-                        question,
-                        model
-                    ) VALUES (
-                        :qna_id,
-                        :trace_id,
-                        :question,
-                        :model
-                    )
-                """)
-                
-                connection.execute(command, {
-                    'qna_id': qna_id,
-                    'trace_id': trace_id,
-                    'question': question_str,  # 변환된 문자열 사용
-                    'model': model
-                })
-
+            query_execute(query, params, use_prompt_db=True)
             return qna_id
 
         except Exception as e:
-            print(f"Error in create_question: {str(e)}")
+            logger.info(f"Error in create_question: {str(e)}")
             raise
 
     def record_answer(self, qna_id: str, answer: str) -> bool:
@@ -113,29 +109,20 @@ class QnAManager:
             bool: 성공 여부
         """
         try:
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
-                command = text("""
-                    UPDATE qna 
-                    SET 
-                        answer = :answer,
-                        answer_timestamp = CURRENT_TIMESTAMP
-                    WHERE id = :qna_id
-                """)
-                
-                connection.execute(command, {
-                    'qna_id': qna_id,
-                    'answer': answer
-                })
-
-            return True
+            query = """
+                UPDATE qna 
+                SET 
+                    answer = %(answer)s,
+                    answer_timestamp = CURRENT_TIMESTAMP
+                WHERE id = %(qna_id)s
+            """
+            params = {
+                'qna_id': qna_id,
+                'answer': answer
+            }
+            
+            return query_execute(query, params, use_prompt_db=True)
 
         except Exception as e:
-            print(f"Error in record_answer: {str(e)}")
+            logger.info(f"Error in record_answer: {str(e)}")
             raise
