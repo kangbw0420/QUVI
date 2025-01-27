@@ -1,16 +1,16 @@
+import traceback
+from urllib.parse import quote_plus
 from typing import Union, Sequence, Dict, Any
-from dotenv import load_dotenv
-
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Result
 from sqlalchemy.sql.expression import Executable
 
-from database.database_service import DatabaseService
 from utils.config import Config
 from llm_admin.qna_manager import QnAManager
+from utils.logger import setup_logger
 
-load_dotenv()
-database_service = DatabaseService()
+logger = setup_logger('execute_query')
+
 qna_manager = QnAManager()
 
 def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict[str, Any]], Result]:  # type: ignore
@@ -29,9 +29,8 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
         parameters = {}
         execution_options = {}
 
+        logger.info("setting node DB connection")
         # URL encode the password to handle special characters
-        from urllib.parse import quote_plus
-
         password = quote_plus(str(Config.DB_PASSWORD))
         db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
 
@@ -51,11 +50,13 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
             # print(f"::::::::::::::: schemaQuery : {schemaQuery}")
             # connection.execute(text(schemaQuery))
 
+            logger.info("execute_query start")
             cursor = connection.execute(
                 command,
                 parameters,
                 execution_options=execution_options,
             )
+            logger.info("execute_query end")
 
             if cursor.returns_rows:
                 if fetch == "all":
@@ -64,31 +65,30 @@ def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequenc
                 elif fetch == "one":
                     first_result = cursor.fetchone()
                     if first_result is None:
-                        print("No results found")
+                        logger.info("No results found")
                         result = []
                     else:
-                        print("Converting single row to dictionary")
+                        logger.info("Converting single row to dictionary")
                         result = [first_result._asdict()]
                 elif fetch == "cursor":
-                    print("Returning cursor directly")
+                    logger.info("Returning cursor directly")
                     return cursor
                 else:
-                    print(f"Invalid fetch mode: {fetch}")
+                    logger.info(f"Invalid fetch mode: {fetch}")
                     raise ValueError(
                         "Fetch parameter must be either 'one', 'all', or 'cursor'"
                     )
 
-                print(f"Returning {len(result)} results")
+                logger.info(f"Returning {len(result)} results")
                 return result
             else:
-                print("Query does not return any rows")
+                logger.info("Query does not return any rows")
                 return []
 
     except Exception as e:
-        print(f"Error type: {type(e)}")
-        print(f"Error message: {str(e)}")
-        import traceback
+        logger.info(f"Error type: {type(e)}")
+        logger.info(f"Error message: {str(e)}")
 
-        print("Full traceback:")
+        logger.info("Full traceback:")
         traceback.print_exc()
         raise

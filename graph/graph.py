@@ -67,7 +67,7 @@ def make_graph() -> CompiledStateGraph:
         # Entry point에서 yadon으로 시작
         workflow.set_entry_point("yadon")
 
-        # yadon에서 조건부 분기
+        # 쉘더가 야돈의 꼬리를 물면 야도란으로 진화
         workflow.add_conditional_edges(
             "yadon",
             lambda x: "END" if x["shellder"] == "no" else ("yadoran" if x["shellder"] else "table_selector"),

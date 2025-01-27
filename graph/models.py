@@ -1,4 +1,5 @@
 import requests
+import traceback
 from typing import List, Optional, Any, Dict
 from pydantic import Field, BaseModel
 from dotenv import load_dotenv
@@ -65,7 +66,6 @@ class CustomChatLLM(BaseLLM, BaseModel):
                     generations.append([Generation(text=response)])
 
                 except Exception as e:
-                    import traceback
                     traceback.print_exc()
                     raise ValueError(f"오류 발생: {str(e)}")
             

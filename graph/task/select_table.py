@@ -1,15 +1,12 @@
-from dotenv import load_dotenv
-
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
-from graph.models import selector, qwen_llm
+from graph.models import qwen_llm
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 
-load_dotenv()
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
