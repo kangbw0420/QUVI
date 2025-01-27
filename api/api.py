@@ -26,25 +26,26 @@ async def process_input(request: Input) -> Output:
         }
     
     logger.info(type(request.company_id))
-    logger.info(request.company_id)
+    logger.info(f"company_id: {request.company_id}")
     
     try:
+        logger.info("####################converation_id check start#####################")
         # 세션 확인/생성을 가장 먼저 수행
         conversation_id = (
             request.session_id if check_conversation_id(request.user_id, request.session_id)
             else make_conversation_id(request.user_id)
         )
-        logger.info(conversation_id)
+        logger.info(f"conversation_id: {conversation_id}")
 
         user_info = (request.user_id, request.use_intt_id)
         
         # last_data 조회
         last_data = extract_last_data(conversation_id) if check_conversation_id(request.user_id, conversation_id) else None
-        logger.info(last_data)
+        logger.info(f"last_data: {last_data}")
 
         # 체인 생성
         chain_id = ChainManager.create_chain(conversation_id, request.user_question)
-        logger.info(chain_id)
+        logger.info(f"chain_id: {chain_id}")
 
         initial_state = {
             "chain_id": chain_id,

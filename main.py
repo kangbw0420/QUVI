@@ -4,12 +4,14 @@ import time
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from api.api import api
 from api.data_api import data_api
 from api.llmadmin_api import llmadmin_api
 from api.mapping_api import mapping_api
 from utils.logger import setup_logger
+from database.postgresql import connect_postgresql_pool
 
 # 애플리케이션 루트 로거 설정
 logger = setup_logger('main')
@@ -22,7 +24,12 @@ def parse_arguments():
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
     return parser.parse_args()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    connect_postgresql_pool()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
