@@ -70,7 +70,7 @@ def make_graph() -> CompiledStateGraph:
         # yadon에서 조건부 분기
         workflow.add_conditional_edges(
             "yadon",
-            lambda x: "yadoran" if x["yadoran"] else "table_selector",
+            lambda x: "yadoran" if x["shellder"] else "table_selector",
             {
                 "yadoran": "yadoran",
                 "table_selector": "table_selector"
