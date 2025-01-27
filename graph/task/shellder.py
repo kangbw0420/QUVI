@@ -13,7 +13,7 @@ load_dotenv()
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-async def shellder(trace_id: str, user_question: str, last_data: List[str]) -> boolean:
+async def shellder(trace_id: str, user_question: str, last_data: List[str]) -> str:
     last_data_str = ''
     for x in last_data:
         last_template = "\n제공된 맥락"+\

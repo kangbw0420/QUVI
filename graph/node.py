@@ -41,10 +41,23 @@ async def yadon(state: GraphState) -> GraphState:
         user_question = state["user_question"]
         last_data = state["last_data"]
 
-        shellder_check = await shellder(trace_id, user_question, last_data)
-        state["shellder"] = shellder_check
+        shellder_result = await shellder(trace_id, user_question, last_data)
+        
+        # Handle the "no" case
+        if shellder_result == "no":
+            state.update({
+                "final_answer": "금융 데이터 조회와 관련이 없는 질문으로 판단됩니다.",
+                "query_result": [],
+                "sql_query": "",
+                "shellder": "no"
+            })
+        else:
+            # Convert string "1" to True, "0" to False
+            shellder_check = shellder_result == "1"
+            state["shellder"] = shellder_check
     else:
         state["shellder"] = False
+    
     logger.info("yadon end")
     return state
 
