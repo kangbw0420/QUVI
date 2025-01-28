@@ -102,11 +102,16 @@ class FewShotRetriever:
                         if "date" in metadata:
                             date = metadata.get("date", "")
                             few_shot["date"] = date
+                        
+                        # If metadata has stats key, include it in few_shot
+                        if "stats" in metadata:
+                            stats = metadata.get("stats", "")
+                            few_shot["stats"] = stats
                             
                         few_shots.append(few_shot)            
-                
-            return few_shots
-                
+                    
+                return few_shots
+                    
         except Exception as e:
             logger.error(f"Error formatting few-shots: {str(e)}")
             return []
