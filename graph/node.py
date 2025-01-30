@@ -93,7 +93,8 @@ async def table_selector(state: GraphState) -> GraphState:
         state.update({
             "final_answer": "이 질문은 api로 굉장히 멋있는 답변을 제공드릴 예정입니다.",
             "query_result": [],  # Empty list for raw_data
-            "sql_query": ""
+            "sql_query": "",
+            "query_result_stats": "" # temporary 
         })
     
     StateManager.update_state(trace_id, {
