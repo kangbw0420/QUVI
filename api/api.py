@@ -65,6 +65,11 @@ async def process_input(request: Input) -> Output:
         raw_data = final_state["query_result"]
         user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
+
+        # for shot making
+        query_result_stats = final_state["query_result_stats"]
+        stats_str = ''.join(query_result_stats) if isinstance(query_result_stats, list) else str(query_result_stats)
+        kabigon = f"{sql_query}\n\n\n{stats_str}"
         
         # 기존 레코드 저장
         save_record(conversation_id, user_question, answer, sql_query)
@@ -81,7 +86,7 @@ async def process_input(request: Input) -> Output:
                 "answer": answer,
                 "raw_data": raw_data,
                 "session_id": conversation_id,
-                "sql_query": sql_query, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
+                "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }
         )
         

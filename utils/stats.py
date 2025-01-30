@@ -84,6 +84,21 @@ def calculate_transaction_stats(df: pd.DataFrame, amount_col: str, currency_col:
     
     return stats
 
+def format_transaction_stats(stats: Dict[str, Any], col: str) -> str:
+    """거래 통계를 문자열로 포맷팅"""
+    result_str = f"- {col}의 통화별 통계:\n"
+    
+    for curr, curr_stats in stats.items():
+        result_str += f"  - {curr} 통화:\n"
+        for trans_type, type_stats in curr_stats.items():
+            result_str += (
+                f"    {trans_type}:\n"
+                f"      합계: {type_stats['sum']:,.2f}\n"
+                f"      데이터 수: {type_stats['count']:,}개\n"
+            )
+    
+    return result_str
+
 def calculate_stats(result: List[Dict[str, Any]]) -> List[str]:
     """
     데이터를 분석하여 통계값 생성
@@ -128,8 +143,14 @@ def calculate_stats(result: List[Dict[str, Any]]) -> List[str]:
                 continue
                 
             if pd.api.types.is_float_dtype(df[col]):
-                if currency_column:
-                    # amt 테이블의 통화별 통계
+                # 입출금 및 통화 모두 있는 경우
+                if currency_column and 'in_out_dv' in df.columns and col in ['trsc_amt']:
+                    trans_stats = calculate_transaction_stats(df, col, currency_column)
+                    result_str = format_transaction_stats(trans_stats, col)
+                    result_parts.append(result_str)
+                
+                # 통화만 있는 경우 (입출금 구분 없음)
+                elif currency_column and col not in ['trsc_amt']:
                     currency_stats = (
                         df.groupby(currency_column)[col]
                         .agg(["sum", "count"])
@@ -145,8 +166,8 @@ def calculate_stats(result: List[Dict[str, Any]]) -> List[str]:
                         )
                     result_parts.append(result_str)
                     
+                # 입출금만 있는 경우 (통화 구분 없음)
                 elif 'in_out_dv' in df.columns and col in ['trsc_amt']:
-                    # trsc 테이블의 입출금별 통계
                     trans_stats = calculate_transaction_stats(df, col)
                     result_str = f"- {col}의 입출금별 통계:\n"
                     
@@ -158,18 +179,18 @@ def calculate_stats(result: List[Dict[str, Any]]) -> List[str]:
                         )
                     result_parts.append(result_str)
                     
-                elif col != 'in_out_dv':  # 일반 숫자형 컬럼 통계
+                # 일반 숫자형 컬럼 통계
+                elif col not in ['trsc_amt']:
                     stats = {
                         "합계": df[col].sum(),
                         "개수": df[col].count()
                     }
-                    if col != 'trsc_amt':
-                        result_str = (
-                            f"- {col}에 대한 통계:\n"
-                            f"  합계: {stats['합계']:,}\n"
-                            f"  데이터 수: {stats['개수']:,}개\n"
-                        )
-                        result_parts.append(result_str)
+                    result_str = (
+                        f"- {col}에 대한 통계:\n"
+                        f"  합계: {stats['합계']:,}\n"
+                        f"  데이터 수: {stats['개수']:,}개\n"
+                    )
+                    result_parts.append(result_str)
                         
             elif col not in ['in_out_dv']:  # 숫자형이 아닌 컬럼의 상위 10개 값
                 values = df[col].head(10).tolist()
