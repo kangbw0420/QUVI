@@ -3,7 +3,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
-from graph.models import qwen_llm
+from graph.models import selector
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 
@@ -41,10 +41,10 @@ async def select_table(trace_id: str, user_question: str) -> str:
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=SELECT_TABLE_PROMPT,
-        model="qwen_14b"
+        model="qwen_selector"
     )
 
-    select_table_chain = SELECT_TABLE_PROMPT | qwen_llm | output_parser
+    select_table_chain = SELECT_TABLE_PROMPT | selector | output_parser
     selected_table = select_table_chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "selector(A)" + "=" * 40)

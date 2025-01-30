@@ -20,6 +20,7 @@ async def yadoking(trace_id: str, user_question: str, last_data: List[str]) -> s
     last_data_str = ''
     for x in last_data:
         last_template = "\n제공된 맥락"+\
+                f"\n- 이전 질문\n{x['last_question']}\n"+\
                 f"\n- 이전 질문에 대한 답변\n{x['last_answer']}\n"
         last_data_str += last_template
 

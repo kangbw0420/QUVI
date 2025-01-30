@@ -28,12 +28,12 @@ class QnAManager:
             if 'SystemMessage' in part:
                 role = 'system'
                 content_start = part.find("content='") + 9
-                content_end = part.find("'", content_start)
+                content_end = part.find("')", content_start)
                 content = part[content_start:content_end]
             elif 'HumanMessagePromptTemplate' in part:
                 role = 'user'
                 content_start = part.find("template='") + 10
-                content_end = part.rfind("'")
+                content_end = part.rfind("')")
                 content = part[content_start:content_end]
             elif 'AIMessagePromptTemplate' in part:
                 role = 'assistant'
@@ -43,10 +43,10 @@ class QnAManager:
                 
                 if template_start_single != -1:
                     content_start = template_start_single + 10
-                    content_end = part.find("'", content_start)
+                    content_end = part.find("')", content_start)
                 elif template_start_double != -1:
                     content_start = template_start_double + 10
-                    content_end = part.find('"', content_start)
+                    content_end = part.find('")', content_start)
                 else:
                     continue
                     
