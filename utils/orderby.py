@@ -49,7 +49,7 @@ KNOWN_COLUMNS = {
 }
 
 def has_order_by(query: str) -> bool:
-    """쿼리에 ORDER BY절이 있는지 확인"""
+    """SQL 쿼리에 ORDER BY절 존재 여부 확인. 주석은 제거하고 검사"""
     # 주석 제거 (-- 스타일과 /* */ 스타일 모두)
     query = re.sub(r'--.*$', '', query, flags=re.MULTILINE)
     query = re.sub(r'/\*.*?\*/', '', query, flags=re.DOTALL)
@@ -59,7 +59,7 @@ def has_order_by(query: str) -> bool:
     return bool(re.search(pattern, query, re.IGNORECASE))
 
 def extract_columns(query: str) -> List[str]:
-    """SELECT 절에서 컬럼들을 추출"""
+    """SELECT절에서 컬럼명 추출. alias가 있으면 alias를, 테이블명 접두사가 있으면 제거하고 컬럼명만 반환"""
     # SELECT와 FROM 사이의 내용 추출
     select_pattern = re.compile(r'SELECT\s+(.*?)\s+FROM', re.IGNORECASE | re.DOTALL)
     match = select_pattern.search(query)
@@ -90,7 +90,7 @@ def extract_columns(query: str) -> List[str]:
     return columns
 
 def find_matching_rule(columns: List[str], selected_table: str) -> str:
-    """추출된 컬럼에 맞는 ORDER BY 규칙 찾기"""
+    """추출된 컬럼 조합에 맞는 ORDER BY 규칙 찾기. *는 테이블별 기본정렬, 알려지지 않은 컬럼은 DESC 정렬"""
     columns_set = set(columns)
     
     # SELECT * 인 경우 테이블별 기본 정렬
@@ -112,7 +112,10 @@ def find_matching_rule(columns: List[str], selected_table: str) -> str:
     return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
 
 def add_order_by(query: str, selected_table: str) -> str:
-    """SQL 쿼리에 ORDER BY 절 추가"""
+    """SQL 쿼리에 ORDER BY절 추가. 기존 ORDER BY가 있으면 그대로 반환, 없으면 규칙에 따라 ORDER BY 추가
+    Returns:
+        ORDER BY절이 추가된 SQL 쿼리문 (맨 뒤 세미콜론 포함)
+    """
     # 이미 ORDER BY가 있으면 그대로 반환
     if has_order_by(query):
         return query

@@ -11,6 +11,12 @@ database_service = DatabaseService()
 qna_manager = QnAManager()
 
 async def shellder(trace_id: str, user_question: str, last_data: List[str]) -> str:
+    """이전 대화 맥락을 기반으로 현재 질문이 금융 데이터 조회와 관련있는지 검사
+    Args:
+        last_data: 이전 3개의 질의응답 기록 
+    Returns:
+        "no"(관련없음), "1"(맥락 연결), "0"(새로운 질의) 중 하나
+    """
     last_data_str = ''
     for x in last_data:
         last_template = "\n제공된 맥락"+\

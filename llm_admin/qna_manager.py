@@ -13,6 +13,12 @@ logger = setup_logger('qna')
 
 class QnAManager:
     def format_message_str(self, msg_str: str) -> str:
+        """ChatPromptTemplate의 메시지 문자열을 role과 content로 파싱하여 포맷팅
+        Args:
+            msg_str: ChatPromptTemplate의 messages 속성을 str로 변환한 문자열
+        Returns:
+            'role\ncontent' 형식의 문자열들을 개행 2번으로 구분하여 연결한 문자열
+        """
         messages = []
         # 각 메시지를 분리
         parts = msg_str.strip('[]').split('), ')

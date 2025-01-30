@@ -13,6 +13,12 @@ class DecimalEncoder(json.JSONEncoder):
 class StateManager:
     @staticmethod
     def update_state(trace_id: str, updates: Dict[str, Any]) -> bool:
+        """state 테이블에 새로운 상태 추가. 이전 상태에서 updates에 없는 값들은 보존하고 Decimal은 float로 변환
+        Args:
+            updates: 갱신할 상태값들의 dictionary. query_result_stats와 query_result는 JSON으로 저장
+        Returns:
+            state 저장 성공 여부
+        """
         try:
             # 현재 trace의 직전 상태 조회
             current_state = StateManager.get_latest_state(trace_id)
@@ -66,8 +72,9 @@ class StateManager:
 
     @staticmethod
     def get_latest_state(trace_id: str) -> Optional[Dict[str, Any]]:
-        """
-        현재 trace의 chain_id를 기반으로 직전 trace의 상태를 조회
+        """현재 trace와 같은 chain_id를 가진 직전 trace의 state를 조회. JSON 필드는 파싱하여 반환
+        Returns:
+            이전 상태 dictionary 또는 None (이전 state가 없는 경우)
         """
         query = """
             SELECT s.*

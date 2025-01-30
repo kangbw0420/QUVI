@@ -11,6 +11,12 @@ database_service = DatabaseService()
 qna_manager = QnAManager()
 
 async def yadoking(trace_id: str, user_question: str, last_data: List[str]) -> str:
+    """이전 대화 맥락을 바탕으로 현재 질문 재해석
+    Args:
+        last_data: 이전 3개의 질의응답 기록
+    Returns:
+        재해석된 질문 문자열
+    """
     last_data_str = ''
     for x in last_data:
         last_template = "\n제공된 맥락"+\

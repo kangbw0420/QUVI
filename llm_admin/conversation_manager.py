@@ -8,7 +8,11 @@ logger = setup_logger('conversation_manager')
 
 load_dotenv()
 
-def check_conversation_id(user_id: str, conversation_id: str) -> bool:
+def check_conversation_id(conversation_id: str) -> bool:
+    """conversation_id가 존재하고 status가 active인지 확인 
+    Returns:
+        conversation이 존재하고 active면 True, 그 외는 False
+    """
     logger.info("check_conversation_id start")
     # conversation_id 검증
     check_exists_query = """
@@ -41,6 +45,7 @@ def check_conversation_id(user_id: str, conversation_id: str) -> bool:
     return 0
 
 def make_conversation_id(user_id: str) -> str:
+    """새로운 conversation 생성. UUID로 ID 생성하고 status는 active로 설정"""
     conversation_id = str(uuid.uuid4())
     logger.info("make_conversation_id start")
     query = """
@@ -56,7 +61,8 @@ def make_conversation_id(user_id: str) -> str:
     logger.info("make_conversation_id end")
     return conversation_id
 
-def save_record(conversation_id: str, user_question: str, answer: str, sql_query: str) -> bool:        
+def save_record(conversation_id: str, user_question: str, answer: str, sql_query: str) -> bool:
+    """conversation의 질의-응답 기록 저장"""    
     logger.info("save_record start")
     query = """
         INSERT INTO record (conversation_id, last_question, last_answer, last_sql_query)
@@ -73,6 +79,7 @@ def save_record(conversation_id: str, user_question: str, answer: str, sql_query
     return query_execute(query, params, use_prompt_db=True)
 
 def extract_last_data(conversation_id:str) -> list:
+    """conversation의 최근 3개 기록을 시간 역순으로 조회"""
     # 최대 3개의 row
     query = """
         SELECT last_question, last_answer, last_sql_query 

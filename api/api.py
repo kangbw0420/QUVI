@@ -29,10 +29,10 @@ async def process_input(request: Input) -> Output:
     logger.info(f"company_id: {request.company_id}")
     
     try:
-        logger.info("####################converation_id check start#####################")
+        logger.info("#######converation_id check start#######")
         # 세션 확인/생성을 가장 먼저 수행
         conversation_id = (
-            request.session_id if check_conversation_id(request.user_id, request.session_id)
+            request.session_id if check_conversation_id(request.session_id)
             else make_conversation_id(request.user_id)
         )
         logger.info(f"conversation_id: {conversation_id}")
@@ -40,7 +40,7 @@ async def process_input(request: Input) -> Output:
         user_info = (request.user_id, request.use_intt_id)
         
         # last_data 조회
-        last_data = extract_last_data(conversation_id) if check_conversation_id(request.user_id, conversation_id) else None
+        last_data = extract_last_data(conversation_id) if check_conversation_id(conversation_id) else None
         logger.info(f"last_data: {last_data}")
 
         # 체인 생성

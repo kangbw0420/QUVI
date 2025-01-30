@@ -12,9 +12,8 @@ currency_list = [
 ]
 
 def find_currency_column(data: List[Dict[str, Any]]) -> str:
-    """
-    데이터에서 통화 컬럼 찾기
-    """
+    """데이터에서 통화 컬럼 찾기
+    첫 행의 각 컬럼을 확인해 통화 리스트에 있는 값을 포함하는 컬럼명을 반환"""
     if not data:
         return None
         
@@ -27,33 +26,61 @@ def find_currency_column(data: List[Dict[str, Any]]) -> str:
     return None
 
 def convert_decimal_values(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Decimal 타입의 컬럼을 float로 변환
-    """
+    """Decimal 타입의 컬럼을 float로 변환"""
     for col in df.columns:
         if len(df[col].dropna()) > 0 and isinstance(df[col].dropna().iloc[0], Decimal):
             df[col] = df[col].astype(float)
     return df
 
-def calculate_transaction_stats(df: pd.DataFrame, amount_col: str) -> Dict[str, Any]:
-    """입출금 거래에 대한 통계 계산"""
+def calculate_transaction_stats(df: pd.DataFrame, amount_col: str, currency_col: str = None) -> Dict[str, Any]:
+    """입출금 거래의 통계 계산. 통화 컬럼이 있는 경우 통화별로 그룹화하여 입출금 통계 산출
+    Args:
+        currency_col: None이면 통화 구분 없이 계산, str이면 해당 컬럼으로 통화별 그룹화
+    Returns:
+        통화코드 또는 입출금구분을 key로 하는 통계 dictionary
+    """
     stats = {}
     
-    # 입금 통계
-    deposits = df[df['in_out_dv'] == '입금'][amount_col]
-    if not deposits.empty:
-        stats['입금'] = {
-            'sum': deposits.sum(),
-            'count': len(deposits)
-        }
-    
-    # 출금 통계
-    withdrawals = df[df['in_out_dv'] == '출금'][amount_col]
-    if not withdrawals.empty:
-        stats['출금'] = {
-            'sum': withdrawals.sum(),
-            'count': len(withdrawals)
-        }
+    # 통화별로 그룹화할지 결정
+    if currency_col:
+        for curr in df[currency_col].unique():
+            curr_df = df[df[currency_col] == curr]
+            
+            # 입금 통계
+            deposits = curr_df[curr_df['in_out_dv'] == '입금'][amount_col]
+            if not deposits.empty:
+                if curr not in stats:
+                    stats[curr] = {}
+                stats[curr]['입금'] = {
+                    'sum': deposits.sum(),
+                    'count': len(deposits)
+                }
+            
+            # 출금 통계
+            withdrawals = curr_df[curr_df['in_out_dv'] == '출금'][amount_col]
+            if not withdrawals.empty:
+                if curr not in stats:
+                    stats[curr] = {}
+                stats[curr]['출금'] = {
+                    'sum': withdrawals.sum(),
+                    'count': len(withdrawals)
+                }
+    else:
+        # 입금 통계
+        deposits = df[df['in_out_dv'] == '입금'][amount_col]
+        if not deposits.empty:
+            stats['입금'] = {
+                'sum': deposits.sum(),
+                'count': len(deposits)
+            }
+        
+        # 출금 통계
+        withdrawals = df[df['in_out_dv'] == '출금'][amount_col]
+        if not withdrawals.empty:
+            stats['출금'] = {
+                'sum': withdrawals.sum(),
+                'count': len(withdrawals)
+            }
     
     return stats
 
