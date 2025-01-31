@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TypedDict, Tuple, List, Dict
 from xmlrpc.client import boolean
 
+from api.dto import CompanyInfo
 from graph.task.shellder import shellder
 from graph.task.yadoking import yadoking
 from graph.task.select_table import select_table
@@ -22,7 +23,7 @@ class GraphState(TypedDict):
     chain_id: str
     trace_id: str
     user_info: Tuple[str, str]
-    company_id: Dict[str, List[str]]
+    access_company_list: List[CompanyInfo]
     shellder: boolean
     user_question: str  # 최초 사용자 질의
     selected_table: str  # 사용자 질의에 대한 선택된 테이블
@@ -119,8 +120,9 @@ async def query_creator(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
-    main_com = state["company_id"]["main_com"][0]  # 첫 번째(유일한) main_com
-    sub_coms = state["company_id"]["sub_com"]      # sub_com 리스트
+    company_list = state["access_company_list"]
+    main_com = company_list[0].custNm
+    sub_coms = [comp.custNm for comp in company_list[1:]]
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성

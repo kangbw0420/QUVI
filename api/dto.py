@@ -3,12 +3,16 @@ from typing import List, Dict, Any
 from pydantic import BaseModel
 
 
+class CompanyInfo(BaseModel):
+    custApiDv: str
+    custNm: str
+
 class Input(BaseModel):
     user_question: str
     user_id: str = 'daquv03'
     session_id: str = 'default_session'
     use_intt_id: str
-    company_id: Any
+    access_company_list: List[CompanyInfo]
 
 
 class Output(BaseModel):

@@ -16,17 +16,9 @@ graph = make_graph()
 @api.post("/process")
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
-    logger.info(type(request.company_id))
-    logger.info(request.company_id)
+    logger.info(type(request.access_company_list))
+    logger.info(request.access_company_list)
     chain_id = None
-    if isinstance(request.company_id, str):
-        request.company_id = {
-            "main_com": [request.company_id],
-            "sub_com": ['쿠콘', '비즈플레이', '웹케시벡터', '웹케시하위', '위플렉스', '웹케시글로벌']
-        }
-    
-    logger.info(type(request.company_id))
-    logger.info(f"company_id: {request.company_id}")
     
     try:
         logger.info("#######converation_id check start#######")
@@ -50,7 +42,7 @@ async def process_input(request: Input) -> Output:
         initial_state = {
             "chain_id": chain_id,
             "user_info": user_info,
-            "company_id": request.company_id,
+            "access_company_list": request.access_company_list,
             "user_question": request.user_question,
             "last_data": last_data if last_data else []
         }
