@@ -12,19 +12,57 @@ def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
     # 테이블 타입에 따른 날짜 컬럼명 결정
     date_column = 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
     
-    # BETWEEN 구문이 있는 경우의 패턴
+    # due_dt 패턴 확인
+    due_dates = None
+    due_between_pattern = "due_dt\\s+BETWEEN\\s+'(\\d{8})'\\s+AND\\s+'(\\d{8})'"
+    due_between_match = re.search(due_between_pattern, query, re.IGNORECASE)
+    
+    if due_between_match:
+        due_dates = (due_between_match.group(1), due_between_match.group(2))
+    else:
+        # due_dt의 부등호 패턴
+        due_inequality_patterns = [
+            (r"due_dt\s*>=\s*'(\d{8})'", r"due_dt\s*<=\s*'(\d{8})'"),
+            (r"due_dt\s*>\s*'(\d{8})'", r"due_dt\s*<\s*'(\d{8})'"),
+        ]
+        
+        for start_pattern, end_pattern in due_inequality_patterns:
+            start_match = re.search(start_pattern, query, re.IGNORECASE)
+            end_match = re.search(end_pattern, query, re.IGNORECASE)
+            
+            if start_match and end_match:
+                due_dates = (start_match.group(1), end_match.group(1))
+                break
+            elif end_match:
+                due_date = end_match.group(1)
+                due_dates = (due_date, due_date)
+                break
+    
+    if not due_dates:
+        # due_dt 단일 날짜 패턴 확인
+        due_single_pattern = r"due_dt\s*=\s*'(\d{8})'"
+        due_single_match = re.search(due_single_pattern, query, re.IGNORECASE)
+        if due_single_match:
+            due_date = due_single_match.group(1)
+            due_dates = (due_date, due_date)
+    
+    # date_column(reg_dt/trsc_dt) 패턴 확인
     between_pattern = f"{date_column}\\s+BETWEEN\\s+'(\\d{{8}})'\\s+AND\\s+'(\\d{{8}})'"
     between_match = re.search(between_pattern, query, re.IGNORECASE)
     
     if between_match:
         start_date = between_match.group(1)
         end_date = between_match.group(2)
+        
+        # due_dates가 있고 end_date가 due_dates의 끝값보다 큰 경우
+        if due_dates and end_date > due_dates[1]:
+            return due_dates
         return (start_date, end_date)
     
     # 부등호를 사용한 날짜 범위 패턴
     inequality_patterns = [
-        (f"{date_column}\\s*>=\\s*'(\\d{{8}})'", f"{date_column}\\s*<=\\s*'(\\d{{8}})'"),  # >= 및 <=
-        (f"{date_column}\\s*>\\s*'(\\d{{8}})'", f"{date_column}\\s*<\\s*'(\\d{{8}})'"),    # > 및 <
+        (f"{date_column}\\s*>=\\s*'(\\d{{8}})'", f"{date_column}\\s*<=\\s*'(\\d{{8}})'"),
+        (f"{date_column}\\s*>\\s*'(\\d{{8}})'", f"{date_column}\\s*<\\s*'(\\d{{8}})'"),
     ]
     
     for start_pattern, end_pattern in inequality_patterns:
@@ -34,17 +72,28 @@ def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
         if start_match and end_match:
             start_date = start_match.group(1)
             end_date = end_match.group(1)
+            
+            # due_dates가 있고 end_date가 due_dates의 끝값보다 큰 경우
+            if due_dates and end_date > due_dates[1]:
+                return due_dates
             return (start_date, end_date)
+            
         elif start_match:
-            # 시작일만 있는 경우 종료일을 현재 날짜로
             start_date = start_match.group(1)
             end_date = datetime.now().strftime("%Y%m%d")
-            return (start_date, end_date)
-        elif end_match:
-            # 종료일만 있는 경우 시작일을 가장 과거로
             
+            # due_dates가 있고 현재 날짜가 due_dates의 끝값보다 큰 경우
+            if due_dates and end_date > due_dates[1]:
+                return due_dates
+            return (start_date, end_date)
+            
+        elif end_match:
             end_date = end_match.group(1)
             start_date = (datetime.now() - timedelta(days=7)).strftime("%Y%m%d")
+            
+            # due_dates가 있고 end_date가 due_dates의 끝값보다 큰 경우
+            if due_dates and end_date > due_dates[1]:
+                return due_dates
             return (start_date, end_date)
     
     # 단일 날짜가 있는 경우의 패턴
@@ -53,9 +102,12 @@ def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
     
     if single_match:
         date = single_match.group(1)
+        # due_dates가 있고 date가 due_dates의 끝값보다 큰 경우
+        if due_dates and date > due_dates[1]:
+            return due_dates
         return (date, date)
     
-    raise ValueError(f"날짜를 찾을 수 없습니다. {date_column} 컬럼의 조건을 확인해주세요.")
+    raise ValueError(f"날짜를 찾을 수 없습니다. {date_column} 또는 due_dt 컬럼의 조건을 확인해주세요.")
 
 def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], view_date: Tuple[str, str]) -> str:
     """SQL 쿼리 테이블 뒤에 뷰테이블 함수를 붙임
