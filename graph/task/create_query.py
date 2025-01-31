@@ -6,7 +6,7 @@ from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
-from graph.models import qwen_llm
+from graph.models import qwen_llm, nl2sql
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 
@@ -96,10 +96,10 @@ async def create_query(
         qna_id = qna_manager.create_question(
             trace_id=trace_id,
             question=prompt,
-            model="qwen_14b"
+            model="qwen_nl2sql"
         )
 
-        chain = prompt | qwen_llm
+        chain = prompt | nl2sql
         output = chain.invoke(
             {"user_question": formatted_question}
         )
