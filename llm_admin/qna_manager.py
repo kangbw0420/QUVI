@@ -43,7 +43,11 @@ class QnAManager:
                 
                 if template_start_single != -1:
                     content_start = template_start_single + 10
-                    content_end = part.find("')", content_start)
+                    yymm_pos = part[content_start:].find("YYMM')")
+                    if yymm_pos != -1:
+                        content_end = part.rfind("')")
+                    else:
+                        content_end = part.find("')", content_start)
                 elif template_start_double != -1:
                     content_start = template_start_double + 10
                     content_end = part.find('")', content_start)

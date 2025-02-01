@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class CompanyInfo(BaseModel):
     custApiDv: str
     custNm: str
+    isMainYn: str
 
 class Input(BaseModel):
     user_question: str
