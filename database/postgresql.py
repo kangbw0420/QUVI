@@ -1,4 +1,5 @@
 import psycopg2.pool
+from psycopg2 import OperationalError, InterfaceError
 from psycopg2.extras import RealDictCursor
 
 from api.dto import PostgreToVectorData, MappingRequest
@@ -44,6 +45,22 @@ def connect_postgresql_pool():
 connect_postgresql_pool()
 
 
+def get_connection(pool: psycopg2.pool.SimpleConnectionPool):
+    """끊어진 연결이 있으면 감지하고, 새로 연결을 가져옴"""
+    if pool is None:
+        connect_postgresql_pool()
+
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1")  # 연결 상태 체크
+        return conn
+    except (OperationalError, InterfaceError):
+        print("Connection Failed. Retry...")
+        pool.putconn(conn, close=True)  # 기존 연결 폐기
+        return pool.getconn()  # 새 연결 가져오기
+
+
 # 쿼리를 실행하는 일반 함수
 def execute_query(query):
     return query_execute(query)
@@ -56,7 +73,8 @@ def query_execute(query, params=None, use_prompt_db=False):
     try:
         # 사용하려는 데이터베이스 풀 선택
         pool = PostgreSQL.pool_prompt if use_prompt_db else PostgreSQL.pool_data
-        connection = pool.getconn()  # 선택된 풀에서 연결 가져오기
+        # connection = pool.getconn()  # 선택된 풀에서 연결 가져오기
+        connection = get_connection(pool)  # 선택된 풀에서 연결 가져오기
         cursor = connection.cursor(cursor_factory=RealDictCursor)
 
         # 사용하려는 스키마 지정
