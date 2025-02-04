@@ -11,6 +11,7 @@ from graph.task.sql_response import sql_response
 from graph.task.execute_query import execute_query
 from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats
+from utils.filter_com import filter_com
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
 from llm_admin.state_manager import StateManager
@@ -139,6 +140,9 @@ def result_executor(state: GraphState) -> GraphState:
         ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
     """
     trace_id = state["trace_id"]
+    company_list = state["access_company_list"]
+    main_com = company_list[0].custNm
+    sub_coms = [comp.custNm for comp in company_list[1:]]
     # SQL 쿼리 가져오기
 
     raw_query = state.get("sql_query")
@@ -149,6 +153,7 @@ def result_executor(state: GraphState) -> GraphState:
 
     user_info = state.get("user_info")
     selected_table = state.get("selected_table")
+    query_one_com = filter_com(raw_query, main_com, sub_coms)
     query_ordered = add_order_by(raw_query, selected_table)
 
     try:

@@ -25,7 +25,7 @@ def check_acct_no(result: List[Dict[str, Any]], selected_table: str) -> List[Dic
     """
     # amt 테이블이면 그대로 반환
     if selected_table in ['amt', 'stock']:
-        return result
+        return [{'data': result}]
         
     # trsc 테이블이 아니면 빈 리스트 반환
     if selected_table != 'trsc':
@@ -38,7 +38,7 @@ def check_acct_no(result: List[Dict[str, Any]], selected_table: str) -> List[Dic
     # 필요한 컬럼 존재 여부 확인
     required_columns = {'acct_no', 'bank_nm'}
     if not all(col in result[0] for col in required_columns):
-        return result
+        return [{'data': result}]
         
     new_result = []
     bank_accounts = {}
