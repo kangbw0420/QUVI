@@ -8,6 +8,7 @@ mapping_api = APIRouter(tags=["mapping"])
 
 # 컬럼명 관리 데이터 전체 조회
 @mapping_api.get("/getAll")
+@mapping_api.post("/getAll")
 def get_all_mapping():
     """
     컬럼명 관리 데이터를 전체 조회합니다.
