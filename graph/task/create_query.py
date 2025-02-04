@@ -39,10 +39,6 @@ async def create_query(
         TypeError: LLM 응답이 예상된 형식이 아닌 경우.
     """
     try:
-        sub_coms_quoted = [f"'{com}'" for com in sub_coms]
-        sub_coms_list = ", ".join(sub_coms_quoted)
-        
-        # IN 절을 위한 모든 회사 리스트 (main_com + sub_coms)
         all_companies = [main_com] + sub_coms
         all_coms_quoted = [f"'{com}'" for com in all_companies]
         all_coms_list = ", ".join(all_coms_quoted)
@@ -53,8 +49,6 @@ async def create_query(
                 prompt_nm=selected_table
             )[0]['prompt'].format(
                 today=today,
-                main_com=main_com,
-                sub_coms=sub_coms_list,
                 all_coms=all_coms_list
             )
 
