@@ -154,7 +154,7 @@ def result_executor(state: GraphState) -> GraphState:
     user_info = state.get("user_info")
     selected_table = state.get("selected_table")
     query_one_com = filter_com(raw_query, main_com, sub_coms)
-    query_ordered = add_order_by(raw_query, selected_table)
+    query_ordered = add_order_by(query_one_com, selected_table)
 
     try:
         view_date = extract_view_date(raw_query, selected_table)
