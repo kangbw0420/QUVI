@@ -61,7 +61,7 @@ async def process_input(request: Input) -> Output:
         # for shot making
         query_result_stats = final_state["query_result_stats"]
         stats_str = ''.join(query_result_stats) if isinstance(query_result_stats, list) else str(query_result_stats)
-        kabigon = f"{sql_query}\n\n\n{stats_str}"
+        kabigon = f"{chain_id}$$$$$$\n\n\n{sql_query}\n\n\n{stats_str}"
         
         # 기존 레코드 저장
         save_record(conversation_id, user_question, answer, sql_query)

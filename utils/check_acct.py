@@ -2,29 +2,29 @@ from typing import Dict, Any, List
 
 def check_acct_no(result: List[Dict[str, Any]], selected_table: str) -> List[Dict[str, Any]]:
     """
-    선택된 테이블이 trsc인 경우 회사별로 묶인 데이터를 계좌번호별로 추가 그룹화
+    선택된 테이블이 trsc인 경우 데이터를 은행명과 계좌번호로 그룹화
     
     Args:
-        result: check_com_nm의 결과
+        result: SQL 쿼리 실행 결과 리스트
         selected_table: 선택된 테이블 ('amt' 또는 'trsc')
         
     Returns:
         List[Dict[str, Any]]:
-        - amt 테이블인 경우: 입력값을 그대로 반환
+        - amt/stock 테이블인 경우: 입력값을 그대로 반환
         - trsc 테이블인 경우: 다음 형식으로 반환
           [
               {
                   'key': {
-                      'title': '회사명',
+                      'title': '은행명',
                       'subtitle': '계좌번호'
                   },
-                  'data': [{'col1': val1, ...}]  # acct_no 컬럼이 제거된 데이터
+                  'data': [{'col1': val1, ...}]  # acct_no, bank_nm 컬럼이 제거된 데이터
               },
               ...
           ]
     """
     # amt 테이블이면 그대로 반환
-    if selected_table == 'amt':
+    if selected_table in ['amt', 'stock']:
         return result
         
     # trsc 테이블이 아니면 빈 리스트 반환
@@ -35,36 +35,41 @@ def check_acct_no(result: List[Dict[str, Any]], selected_table: str) -> List[Dic
     if not result:
         return []
         
+    # 필요한 컬럼 존재 여부 확인
+    required_columns = {'acct_no', 'bank_nm'}
+    if not all(col in result[0] for col in required_columns):
+        return result
+        
     new_result = []
+    bank_accounts = {}
     
-    # 각 회사별 데이터 처리
-    for company_group in result:
-        company_name = company_group['key']['title']
-        company_data = company_group['data']
+    # 데이터를 은행명과 계좌번호로 그룹화
+    for row in result:
+        bank_nm = row['bank_nm']
+        acct_no = row['acct_no']
+        # acct_no와 bank_nm을 제외한 새로운 딕셔너리 생성
+        data_without_keys = {k: v for k, v in row.items() if k not in ['acct_no', 'bank_nm']}
         
-        # 첫 번째 데이터로 acct_no 컬럼 존재 여부 확인
-        if not company_data or 'acct_no' not in company_data[0]:
-            continue
-            
-        # 회사 내 데이터를 계좌번호별로 그룹화
-        accounts = {}
-        for row in company_data:
-            acct_no = row['acct_no']
-            # acct_no를 제외한 새로운 딕셔너리 생성
-            data_without_acct = {k: v for k, v in row.items() if k != 'acct_no'}
-            
-            if acct_no not in accounts:
-                accounts[acct_no] = []
-            accounts[acct_no].append(data_without_acct)
+        bank_key = bank_nm
+        account_key = f"{bank_nm}_{acct_no}"
         
-        # 계좌번호별로 그룹화된 데이터를 새로운 형식으로 변환
-        for acct_no, acct_data in accounts.items():
+        if bank_key not in bank_accounts:
+            bank_accounts[bank_key] = {}
+        if account_key not in bank_accounts[bank_key]:
+            bank_accounts[bank_key][account_key] = []
+            
+        bank_accounts[bank_key][account_key].append(data_without_keys)
+    
+    # 그룹화된 데이터를 새로운 형식으로 변환
+    for bank_nm, accounts in bank_accounts.items():
+        for account_key, account_data in accounts.items():
+            acct_no = account_key.split('_')[1]  # bank_nm_acct_no에서 acct_no 추출
             new_result.append({
                 'key': {
-                    'title': company_name,
+                    'title': bank_nm,
                     'subtitle': acct_no
                 },
-                'data': acct_data
+                'data': account_data
             })
     
     return new_result

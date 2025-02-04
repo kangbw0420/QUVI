@@ -9,7 +9,6 @@ from graph.task.select_table import select_table
 from graph.task.create_query import create_query
 from graph.task.sql_response import sql_response
 from graph.task.execute_query import execute_query
-from utils.check_com import check_com_nm
 from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats
 from utils.view_table import extract_view_date, add_view_table
@@ -178,14 +177,11 @@ def result_executor(state: GraphState) -> GraphState:
         })
         return state
 
-    # 1. 회사별 데이터 그룹화
-    grouped_by_company = check_com_nm(result)
+    # 통계 계산
+    query_result_stats = calculate_stats(result)
     
-    # 2. 통계 계산
-    query_result_stats = calculate_stats(grouped_by_company)
-    
-    # 3. 계좌번호별 추가 그룹화 (필요한 경우)
-    final_result = check_acct_no(grouped_by_company, selected_table)
+    # 계좌번호별 추가 그룹화
+    final_result = check_acct_no(result, selected_table)
 
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": final_result})
