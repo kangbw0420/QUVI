@@ -7,6 +7,7 @@ from graph.graph import make_graph
 from llm_admin.conversation_manager import check_conversation_id, make_conversation_id, save_record, extract_last_data
 from llm_admin.chain_manager import ChainManager
 from utils.logger import setup_logger
+from utils.retriever import retriever
 
 logger = setup_logger('api')
 
@@ -22,6 +23,14 @@ async def process_input(request: Input) -> Output:
     
     try:
         logger.info("#######converation_id check start#######")
+        # 노드들의 벡터 DB 검색과 경합을 피하기 위해 초반에 추천질의 벡터 검색
+        recommend_list = await retriever.get_few_shots(
+            query_text=request.user_question,
+            collection_name="hall_of_fame",
+            top_k=3
+        )
+        logger.info(recommend_list)
+        
         # 세션 확인/생성을 가장 먼저 수행
         conversation_id = (
             request.session_id if check_conversation_id(request.session_id)
@@ -63,6 +72,8 @@ async def process_input(request: Input) -> Output:
         stats_str = ''.join(query_result_stats) if isinstance(query_result_stats, list) else str(query_result_stats)
         kabigon = f"{chain_id}$$$$$$\n\n\n{sql_query}\n\n\n{stats_str}"
         
+
+        
         # 기존 레코드 저장
         save_record(conversation_id, user_question, answer, sql_query)
         
@@ -78,6 +89,7 @@ async def process_input(request: Input) -> Output:
                 "answer": answer,
                 "raw_data": raw_data,
                 "session_id": conversation_id,
+                "recommend": recommend_list,
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }
         )
