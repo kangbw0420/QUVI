@@ -75,11 +75,13 @@ def test_amt_table():
     print_data(test_data)
     
     result = check_acct_no(test_data, "amt")
-    print("\n[결과 데이터 (입력 그대로)]")
+    print("\n[결과 데이터 (data 키로 감싸진 형태)]")
     print_data(result)
     
-    # amt 테이블에서는 입력을 그대로 반환
-    assert result == test_data
+    # amt 테이블에서는 data 키로 감싸서 반환
+    assert len(result) == 1
+    assert 'data' in result[0]
+    assert result[0]['data'] == test_data
 
 def test_stock_table():
     print("\n=== STOCK 테이블 테스트 ===")
@@ -87,22 +89,13 @@ def test_stock_table():
     print_data(test_data)
     
     result = check_acct_no(test_data, "stock")
-    print("\n[결과 데이터 (빈 리스트)]")
+    print("\n[결과 데이터 (data 키로 감싸진 형태)]")
     print_data(result)
     
-    # stock 테이블에서는 빈 리스트 반환
-    assert result == []
-
-def test_empty_data():
-    print("\n=== 빈 데이터 테스트 ===")
-    print("\n[입력 데이터]")
-    print_data([])
-    
-    result = check_acct_no([], "trsc")
-    print("\n[결과 데이터]")
-    print_data(result)
-    
-    assert result == []
+    # stock 테이블에서는 data 키로 감싸서 반환
+    assert len(result) == 1
+    assert 'data' in result[0]
+    assert result[0]['data'] == test_data
 
 def test_no_required_columns():
     print("\n=== 필수 컬럼 없는 데이터 테스트 ===")
@@ -111,6 +104,20 @@ def test_no_required_columns():
     print_data(data_without_required)
     
     result = check_acct_no(data_without_required, "trsc")
+    print("\n[결과 데이터 (data 키로 감싸진 형태)]")
+    print_data(result)
+    
+    # 필수 컬럼이 없으면 data 키로 감싸서 반환
+    assert len(result) == 1
+    assert 'data' in result[0]
+    assert result[0]['data'] == data_without_required
+
+def test_empty_data():
+    print("\n=== 빈 데이터 테스트 ===")
+    print("\n[입력 데이터]")
+    print_data([])
+    
+    result = check_acct_no([], "trsc")
     print("\n[결과 데이터]")
     print_data(result)
     
