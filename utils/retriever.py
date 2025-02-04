@@ -56,7 +56,6 @@ class FewShotRetriever:
                         
                         # Pair documents with their metadata
                         for doc, meta in zip(documents, metadatas):
-                            print(1)
                             formatted_results.append({
                                 "document": doc,
                                 "metadata": meta
@@ -85,6 +84,7 @@ class FewShotRetriever:
             for result in results:
                 if "document" in result:
                     document = result["document"]
+
                     # Extract the question from document
                     question = document.strip()
                     
@@ -130,19 +130,9 @@ class FewShotRetriever:
         
         return few_shots
     
-    async def get_recommend(self, query_text: str, collection_name: Optional[str] = None, top_k: int = 6) -> List[str]:
-            """주어진 쿼리와 유사한 질문들을 검색합니다.
-            Args:
-                query_text: 사용자의 질문
-                collection_name: 검색할 컬렉션 이름
-                top_k: 반환할 최대 결과 수
-            Returns:
-                List[str]: 검색된 유사 질문들의 리스트.
-                빈 리스트는 유사 질문을 찾지 못했거나 처리 중 오류가 발생한 경우를 의미.
-            """
-            results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
-            # document 값들만 추출하여 리스트로 반환
-            return [result["document"].strip() for result in results if "document" in result]
+    async def get_recommend(self, query_text: str, collection_name: Optional[str] = None, top_k: int=3) -> List[Dict]:
+        results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
+        return [result["document"].strip() for result in results if "document" in result]
 
 # Create a singleton instance
 retriever = FewShotRetriever()

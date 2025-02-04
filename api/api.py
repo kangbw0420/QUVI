@@ -17,14 +17,12 @@ graph = make_graph()
 @api.post("/process")
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
-    logger.info(type(request.access_company_list))
-    logger.info(request.access_company_list)
+    logger.info(f"access_company_list: {request.access_company_list}")
     chain_id = None
     
     try:
-        logger.info("#######converation_id check start#######")
         # 노드들의 벡터 DB 검색과 경합을 피하기 위해 초반에 추천질의 벡터 검색
-        recommend_list = await retriever.get_few_shots(
+        recommend_list = await retriever.get_recommend(
             query_text=request.user_question,
             collection_name="hall_of_fame",
             top_k=3
