@@ -282,8 +282,15 @@ def delete_data_rdb(title: str):
 # 컬럼명 관리 데이터 전체 조회
 def get_all_mapping():
     query = """
-        SELECT *
+        SELECT
+            idx,
+            original_title,
+            replace_title,
+            type,
+            align,
+            TO_CHAR(reg_dtm, 'YYYY-MM-DD HH24:MI:SS') AS reg_dtm
         FROM title_mapping
+        ORDER BY idx
     """
     return query_execute(
         query,
