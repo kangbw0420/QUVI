@@ -130,9 +130,37 @@ class FewShotRetriever:
         
         return few_shots
     
-    async def get_recommend(self, query_text: str, collection_name: Optional[str] = None, top_k: int=3) -> List[Dict]:
+    async def get_recommend(self, query_text: str, collection_name: Optional[str] = None, top_k: int=4) -> List[Dict]:
+        """벡터 DB에서 유사한 질문 4개를 검색하고, 조건에 따라 3개를 반환합니다.
+        
+        Args:
+            query_text: 검색할 텍스트
+            collection_name: 검색할 컬렉션 이름
+            top_k: 검색할 문서 수 (기본값 4)
+            
+        Returns:
+            List[str]: 검색된 문서 중 선별된 3개의 문서 리스트.
+            - 입력된 query_text와 동일한 문서가 있는 경우: 해당 문서를 제외한 3개
+            - 입력된 query_text와 동일한 문서가 없는 경우: 마지막 문서를 제외한 3개
+        """
+        # 벡터 DB에서 4개 검색
         results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
-        return [result["document"].strip() for result in results if "document" in result]
+        
+        # document 추출 및 strip() 적용
+        documents = [result["document"].strip() for result in results if "document" in result]
+        
+        if not documents:
+            return []
+            
+        # query_text가 검색 결과에 있는지 확인
+        try:
+            query_index = documents.index(query_text)
+            # query_text가 있으면 해당 항목을 제외한 나머지 중 앞의 3개 반환
+            filtered_docs = documents[:query_index] + documents[query_index + 1:]
+            return filtered_docs[:3]
+        except ValueError:
+            # query_text가 없으면 마지막 항목을 제외한 3개 반환
+            return documents[:3]
 
 # Create a singleton instance
 retriever = FewShotRetriever()

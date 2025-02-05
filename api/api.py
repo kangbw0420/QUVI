@@ -25,7 +25,7 @@ async def process_input(request: Input) -> Output:
         recommend_list = await retriever.get_recommend(
             query_text=request.user_question,
             collection_name="hall_of_fame",
-            top_k=3
+            top_k=4
         )
         logger.info(recommend_list)
         
