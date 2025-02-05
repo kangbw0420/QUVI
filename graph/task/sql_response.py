@@ -3,7 +3,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
-from graph.models import qwen_llm
+from graph.models import qwen_llm, solver
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 
@@ -56,7 +56,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
         model="qwen_14b"
     )
 
-    chain = prompt | qwen_llm | output_parser
+    chain = prompt | solver | output_parser
     output = chain.invoke({"human_prompt": user_question})
 
     print("=" * 40 + "respondent(A)" + "=" * 40)

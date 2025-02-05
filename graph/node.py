@@ -146,8 +146,6 @@ def result_executor(state: GraphState) -> GraphState:
     # SQL 쿼리 가져오기
 
     raw_query = state.get("sql_query")
-    print("#" * 20)
-    print(raw_query)
     if not raw_query:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
 
@@ -159,13 +157,11 @@ def result_executor(state: GraphState) -> GraphState:
     try:
         view_date = extract_view_date(raw_query, selected_table)
         query = add_view_table(query_ordered, selected_table, user_info, view_date)
-        print("#" * 20)
-        print(query)
+        logger.info(f"query-m: {query}")
         result = execute_query(query)
         
     except Exception as e:
-        print("@" * 40)
-        print(f"Error in view table processing: {str(e)}")
+        logger.error(f"Error in view table processing: {str(e)}")
         result = execute_query(query_ordered)
 
     # 결과가 없는 경우 처리
@@ -184,7 +180,7 @@ def result_executor(state: GraphState) -> GraphState:
 
     # 통계 계산
     query_result_stats = calculate_stats(result)
-    
+
     # 계좌번호별 추가 그룹화
     final_result = check_acct_no(result, selected_table)
 
