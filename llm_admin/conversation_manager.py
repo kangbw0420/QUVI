@@ -86,7 +86,7 @@ def extract_last_data(conversation_id:str) -> list:
         FROM record 
         WHERE conversation_id = %(conversation_id)s 
         ORDER BY record_time DESC 
-        LIMIT 3
+        LIMIT 1
     """
     
     return query_execute(query, {'conversation_id': conversation_id}, use_prompt_db=True)
