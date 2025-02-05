@@ -288,7 +288,7 @@ def get_all_mapping():
             replace_title,
             type,
             align,
-            TO_CHAR(reg_dtm, 'YYYY-MM-DD HH24:MI:SS') AS reg_Dtm
+            TO_CHAR(reg_dtm, 'YYYY-MM-DD HH24:MI:SS') AS reg_dtm
         FROM title_mapping
         ORDER BY idx
     """
