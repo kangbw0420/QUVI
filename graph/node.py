@@ -19,18 +19,25 @@ from utils.logger import setup_logger
 
 logger = setup_logger('node')
 
+class ProcessingFlags(TypedDict):
+    no_data: bool
+    no_access: bool
+    comp_changed: bool
+    date_changed: bool
+
 class GraphState(TypedDict):
     chain_id: str
     trace_id: str
     user_info: Tuple[str, str]
     access_company_list: List[CompanyInfo]
     shellder: boolean
-    user_question: str  # 최초 사용자 질의
-    selected_table: str  # 사용자 질의에 대한 선택된 테이블
-    sql_query: str  # NL2SQL을 통해 생성된 SQL 쿼리
-    query_result_stats: str  # sql_query 실행 결과에 따른 데이터의 통계값 (final_answer 생성에 사용)
-    query_result: dict  # sql_query 실행 결과 데이터 (데이터프레임 형식)
-    final_answer: str  # 최종 답변
+    user_question: str
+    selected_table: str
+    sql_query: str
+    query_result_stats: str
+    query_result: dict
+    final_answer: str
+    flags: ProcessingFlags
     last_data: List[Dict[str, str]] # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
 
 async def yadon(state: GraphState) -> GraphState:
@@ -143,15 +150,16 @@ def result_executor(state: GraphState) -> GraphState:
     company_list = state["access_company_list"]
     main_com = company_list[0].custNm
     sub_coms = [comp.custNm for comp in company_list[1:]]
-    # SQL 쿼리 가져오기
-
     raw_query = state.get("sql_query")
     if not raw_query:
         raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
-
     user_info = state.get("user_info")
     selected_table = state.get("selected_table")
-    query_one_com = filter_com(raw_query, main_com, sub_coms)
+    flags = state.get("flags")
+    
+    logger.info(f"flag0: {flags}")
+    query_one_com = filter_com(raw_query, main_com, sub_coms, flags)
+    logger.info(f"flag1: {flags}")
     query_ordered = add_order_by(query_one_com, selected_table)
 
     try:

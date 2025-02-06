@@ -17,7 +17,7 @@ def normalize_query(query: str) -> str:
     query = re.sub(r',\s*', ', ', query)
     return query.strip()
 
-def filter_com(query: str, main_com: str, sub_coms: List[str]) -> str:
+def filter_com(query: str, main_com: str, sub_coms: List[str], flags: dict) -> str:
     """SQL 쿼리의 회사명(com_nm) 필터 조건을 정제"""
     # UNION 쿼리 처리
     if ' UNION ' in query.upper():
@@ -52,6 +52,7 @@ def filter_com(query: str, main_com: str, sub_coms: List[str]) -> str:
                 new_condition = f"com_nm = '{main_com}'"
             else:
                 new_condition = f"com_nm = '{companies[0]}'"
+            flags["comp_changed"] = True
             result = result.replace(condition, new_condition)
     
     return result

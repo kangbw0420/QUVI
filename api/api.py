@@ -51,6 +51,12 @@ async def process_input(request: Input) -> Output:
             "user_info": user_info,
             "access_company_list": request.access_company_list,
             "user_question": request.user_question,
+            "flags": {
+                "no_data": False,
+                "no_access": False,
+                "comp_changed": False,
+                "date_changed": False
+            },
             "last_data": last_data if last_data else []
         }
         
