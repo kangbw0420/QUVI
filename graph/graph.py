@@ -98,7 +98,7 @@ def make_graph() -> CompiledStateGraph:
         
         workflow.add_conditional_edges(
             "result_executor",
-            lambda x: {
+            lambda x: (
                 # 접근 권한이 없어서 데이터를 못 가져왔으면 종료
                 "END" if x["flags"]["no_access"] else
                 # 데이터가 없었다면 데이터 없었다는 사과문 작성하러
@@ -107,11 +107,11 @@ def make_graph() -> CompiledStateGraph:
                 "parallel_nodes" if x["flags"]["com_changed"] else
                 # 그 외의 경우 respondent로
                 "sql_respondent"
-            },
+            ),
             {
                 "END": END,
                 "nodata": "nodata",
-                "parallel_nodes": ["referral", "sql_respondent"],
+                "parallel_nodes": "sql_respondent", # parallel...
                 "sql_respondent": "sql_respondent"
             }
         )

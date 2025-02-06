@@ -44,7 +44,7 @@ def filter_com(query: str, main_com: str, sub_coms: List[str], flags: dict) -> s
 
     if not com_conditions:
         # 회사명 조건이 없는 경우 main_com 조건 추가
-        return _add_com_condition(query, main_com)
+        return _add_com_condition(query, main_com), [], ""
     
     # 회사명 조건 변환
     result = query
