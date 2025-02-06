@@ -247,10 +247,7 @@ def result_executor(state: GraphState) -> GraphState:
     # 통계 계산
     query_result_stats = calculate_stats(result)
 
-    if select_table != 'api':
-        final_result = check_acct_no(result, selected_table)
-    else:
-        final_result = result
+    final_result = check_acct_no(result, selected_table)
 
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": final_result})
