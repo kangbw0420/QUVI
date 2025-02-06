@@ -22,7 +22,7 @@ def get_date_column(selected_table: str) -> str:
     """
     return 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
 
-def validate_future_date(query: str, date_column: str) -> Tuple[str, Optional[str]]:
+def validate_future_date(query: str, date_column: str, flags: dict) -> Tuple[str, Optional[str]]:
     """Returns:
         Tuple[str, Optional[str]]: (수정된 쿼리, 수정된 날짜)
         날짜가 수정되지 않았다면 두 번째 요소는 None
@@ -41,10 +41,11 @@ def validate_future_date(query: str, date_column: str) -> Tuple[str, Optional[st
             new_condition = f"{date_column} = '{today}'"
             query = query[:start_pos] + new_condition + query[end_pos:]
             modified_date = today
+            flags["date_changed"] = True
     
     return query, modified_date
 
-def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
+def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str, str]:
     """뷰테이블에 사용될 날짜 튜플 추출
     Returns:
         Tuple[str, str]: (시작일, 종료일) 형식의 튜플
@@ -52,9 +53,9 @@ def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
         ValueError: 날짜 형식이 올바르지 않거나 날짜를 찾을 수 없는 경우
     """
     date_column = get_date_column(selected_table)
-    
+
     # 미래 날짜 검증 및 수정
-    query, modified_date = validate_future_date(query, date_column)
+    query, modified_date = validate_future_date(query, date_column, flags)
     
     # due_dt 패턴 확인
     due_dates = None
@@ -152,7 +153,7 @@ def extract_view_date(query: str, selected_table: str) -> Tuple[str, str]:
     raise ValueError(f"날짜를 찾을 수 없습니다. {date_column} 또는 due_dt 컬럼의 조건을 확인해주세요.")
 
 
-def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], view_date: Tuple[str, str]) -> str:
+def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], view_date: Tuple[str, str], flags: dict) -> str:
     """SQL 쿼리 테이블 뒤에 뷰테이블 함수를 붙임
     Returns:
         str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문
@@ -163,7 +164,7 @@ def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], 
     date_column = get_date_column(selected_table)
     
     # 미래 날짜 검증 및 수정
-    query, _ = validate_future_date(query, date_column)
+    query, _ = validate_future_date(query, date_column, flags)
     
     # FROM 절 위치를 찾습니다
     from_pattern = r'FROM\s+'

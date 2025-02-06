@@ -156,18 +156,19 @@ def result_executor(state: GraphState) -> GraphState:
     user_info = state.get("user_info")
     selected_table = state.get("selected_table")
     flags = state.get("flags")
-    
+
     logger.info(f"flag0: {flags}")
     query_one_com = filter_com(raw_query, main_com, sub_coms, flags)
     logger.info(f"flag1: {flags}")
     query_ordered = add_order_by(query_one_com, selected_table)
 
     try:
-        view_date = extract_view_date(raw_query, selected_table)
-        query = add_view_table(query_ordered, selected_table, user_info, view_date)
+        view_date = extract_view_date(raw_query, selected_table, flags)
+        query = add_view_table(query_ordered, selected_table, user_info, view_date, flags)
+        logger.info(f"flag2: {flags}")
         logger.info(f"query-m: {query}")
         result = execute_query(query)
-        
+
     except Exception as e:
         logger.error(f"Error in view table processing: {str(e)}")
         result = execute_query(query_ordered)

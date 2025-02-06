@@ -43,17 +43,26 @@ def filter_com(query: str, main_com: str, sub_coms: List[str], flags: dict) -> s
     
     # 회사명 조건 변환
     result = query
+    authorized_companies = [main_com] + sub_coms
     for match in com_conditions:
         condition = match.group()
         if 'IN' in condition.upper():
             # IN 절 처리
             companies = re.findall(r"'([^']*)'", condition)
-            if main_com in companies:
+            if not any(comp in authorized_companies for comp in companies):
+                flags["no_access"] = True
+
+            elif main_com in companies:
                 new_condition = f"com_nm = '{main_com}'"
             else:
                 new_condition = f"com_nm = '{companies[0]}'"
             flags["comp_changed"] = True
             result = result.replace(condition, new_condition)
+        else:
+            # 단일 회사명 조건 처리
+            company = re.findall(r"'([^']*)'", condition)[0]
+            if company not in authorized_companies:
+                flags["no_access"] = True
     
     return result
 
