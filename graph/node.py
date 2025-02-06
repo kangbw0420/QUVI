@@ -10,7 +10,9 @@ from graph.task.create_query import create_query
 from graph.task.sql_response import sql_response
 from graph.task.execute_query import execute_query
 from graph.task.referral import question_referral
+from graph.task.select_api import select_api
 from graph.task.nodata import no_data
+from graph.task.create_params import create_params
 from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats
 from utils.filter_com import filter_com
@@ -36,6 +38,7 @@ class GraphState(TypedDict):
     shellder: boolean
     user_question: str
     selected_table: str
+    selected_api: str
     sql_query: str
     query_result_stats: str
     query_result: dict
@@ -99,23 +102,67 @@ async def table_selector(state: GraphState) -> GraphState:
     selected_table = await select_table(trace_id, user_question)
 
     state.update({"selected_table": selected_table})
-
-    if selected_table == "api":
-        state.update({
-            "final_answer": "이 질문은 api로 굉장히 멋있는 답변을 제공드릴 예정입니다.",
-            "query_result": [],  # Empty list for raw_data
-            "sql_query": "",
-            "query_result_stats": "" # temporary 
-        })
     
     StateManager.update_state(trace_id, {
         "user_question": user_question,
-        "selected_table": selected_table,
-        **({"final_answer": state["final_answer"], 
-            "query_result": state["query_result"],
-            "sql_query": state["sql_query"]} if selected_table == "api" else {})
+        "selected_table": selected_table
     })
 
+    return state
+
+async def api_selector(state: GraphState) -> GraphState:
+    """사용자 질문에 검색해야 할 table을 선택
+    Returns:
+        GraphState: selected_table 업데이트.
+    Raises:
+        KeyError: state에 user_question이 없는 경우.
+    """
+    logger.info("api_selector start")
+    user_question = state["user_question"]
+    trace_id = state["trace_id"]
+
+    selected_api = await select_api(trace_id, user_question)
+
+    state.update({"selected_api": selected_api})
+
+    StateManager.update_state(
+        trace_id,
+        {
+            "user_question": user_question,
+            "selected_table": selected_api,
+        },
+    )
+
+    return state
+
+
+async def params_creator(state: GraphState) -> GraphState:
+    """사용자 질문을 기반으로 SQL 쿼리를 생성(sql함수에 paramsa만 채워넣음)
+    Returns:
+        GraphState: sql_query가 추가된 상태.
+    Raises:
+        KeyError: state에 필요한 값이 없는 경우.
+        ValueError: SQL 쿼리 생성에 실패한 경우.
+    """
+    trace_id = state["trace_id"]
+    selected_api = state["selected_api"]
+    user_question = state["user_question"]
+    company_list = state["access_company_list"]
+    main_com = company_list[0].custNm
+    user_info = state["user_info"]
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    # SQL 쿼리 생성
+    sql_query = await create_params(
+        trace_id, selected_api, user_question, main_com, user_info, today
+    )
+    # 상태 업데이트
+    state.update(
+        {
+            "sql_query": sql_query,
+        }
+    )
+    StateManager.update_state(trace_id, {"sql_query": sql_query})
     return state
 
 
@@ -151,37 +198,44 @@ def result_executor(state: GraphState) -> GraphState:
     """
     trace_id = state["trace_id"]
     company_list = state["access_company_list"]
+    selected_table = state["selected_table"]
     main_com = company_list[0].custNm
     sub_coms = [comp.custNm for comp in company_list[1:]]
-    raw_query = state.get("sql_query")
-    if not raw_query:
-        raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
-    user_info = state.get("user_info")
-    selected_table = state.get("selected_table")
-    flags = state.get("flags")
-
-    logger.info(f"flag0: {flags}")
-    query_one_com, residual_com, selected_com = filter_com(raw_query, main_com, sub_coms, flags)
     
-    if flags["no_access"] == True:
-        state.update({
-            "final_answer": "해당 기업의 조회 권한이 없습니다.",
-            "query_result": [],
-            "sql_query": ""
-        })
-    logger.info(f"flag1: {flags}")
-    query_ordered = add_order_by(query_one_com, selected_table)
-
-    try:
-        view_date = extract_view_date(raw_query, selected_table, flags)
-        query = add_view_table(query_ordered, selected_table, user_info, view_date, flags)
-        logger.info(f"flag2: {flags}")
-        logger.info(f"query-m: {query}")
+    if selected_table == "api":
+        query = state.get("sql_query")
         result = execute_query(query)
+    
+    else:
+        raw_query = state.get("sql_query")
+        if not raw_query:
+            raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
+        user_info = state.get("user_info")
+        selected_table = state.get("selected_table")
+        flags = state.get("flags")
 
-    except Exception as e:
-        logger.error(f"Error in view table processing: {str(e)}")
-        result = execute_query(query_ordered)
+        logger.info(f"flag0: {flags}")
+        query_one_com, residual_com, selected_com = filter_com(raw_query, main_com, sub_coms, flags)
+        
+        if flags["no_access"] == True:
+            state.update({
+                "final_answer": "해당 기업의 조회 권한이 없습니다.",
+                "query_result": [],
+                "sql_query": ""
+            })
+        logger.info(f"flag1: {flags}")
+        query_ordered = add_order_by(query_one_com, selected_table)
+
+        try:
+            view_date = extract_view_date(raw_query, selected_table, flags)
+            query = add_view_table(query_ordered, selected_table, user_info, view_date, flags)
+            logger.info(f"flag2: {flags}")
+            logger.info(f"query-m: {query}")
+            result = execute_query(query)
+
+        except Exception as e:
+            logger.error(f"Error in view table processing: {str(e)}")
+            result = execute_query(query_ordered)
 
     # 결과가 없는 경우 처리
     if not result:

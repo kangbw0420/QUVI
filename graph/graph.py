@@ -9,6 +9,8 @@ from .node import (
     yadon,
     yadoran,
     table_selector,
+    api_selector,
+    params_creator,
     query_creator,
     sql_respondent,
     result_executor,
@@ -62,6 +64,8 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("yadon", yadon)
         workflow.add_node("yadoran", yadoran)
         workflow.add_node("table_selector", table_selector)
+        workflow.add_node("api_selector", api_selector)
+        workflow.add_node("params_creator", params_creator)
         workflow.add_node("query_creator", query_creator)
         workflow.add_node("result_executor", result_executor)
         workflow.add_node("sql_respondent", sql_respondent)
@@ -88,12 +92,15 @@ def make_graph() -> CompiledStateGraph:
         # selector가 api를 토하면 끝남
         workflow.add_conditional_edges(
             "table_selector",
-            lambda x: "END" if x["selected_table"] == "api" else "query_creator",
+            lambda x: "api_selector" if x["selected_table"] == "api" else "query_creator",
             {
                 "query_creator": "query_creator",
-                "END": END
+                "api_selector": "api_selector"
             }
         )
+        workflow.add_edge("api_selector", "params_creator")
+        workflow.add_edge("params_creator", "result_executor")
+        
         workflow.add_edge("query_creator", "result_executor")
         
         workflow.add_conditional_edges(
