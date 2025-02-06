@@ -70,6 +70,18 @@ async def process_input(request: Input) -> Output:
         raw_data = final_state["query_result"]
         user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
+        referral_list = final_state.get("flags", {}).get("referral", [])
+        
+        # recommend_list 갱신
+        if referral_list:
+            # referral_list의 길이 확인
+            n_referral = len(referral_list)
+            if n_referral >= 3:
+                # referral_list가 3개 이상이면 전부 교체
+                recommend_list = referral_list[:3]
+            else:
+                # referral_list가 1개 또는 2개면 나머지를 recommend_list로 채움
+                recommend_list = referral_list + recommend_list[:(3-n_referral)]
 
         # for shot making
         query_result_stats = final_state["query_result_stats"]

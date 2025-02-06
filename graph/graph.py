@@ -111,20 +111,20 @@ def make_graph() -> CompiledStateGraph:
                 # 데이터가 없었다면 데이터 없었다는 사과문 작성하러
                 "nodata" if x["flags"]["no_data"] else
                 # 복수 회사 조회 질문을 단일 회사 조회 질문으로 바꿨다면 답변도 하고 추천 질문도 만듦
-                "parallel_nodes" if x["flags"]["com_changed"] else
+                "referral" if x["flags"]["com_changed"] else
                 # 그 외의 경우 respondent로
                 "sql_respondent"
             ),
             {
                 "END": END,
                 "nodata": "nodata",
-                "parallel_nodes": "sql_respondent", # parallel...
+                "referral": "referral",
                 "sql_respondent": "sql_respondent"
             }
         )
-        workflow.add_edge("nodata", END)
-        workflow.add_edge("referral", END)
+        workflow.add_edge("referral", "sql_respondent")
         workflow.add_edge("sql_respondent", END)
+        workflow.add_edge("nodata", END)
 
         # 그래프 컴파일
         app = workflow.compile()

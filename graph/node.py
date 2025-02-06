@@ -25,11 +25,13 @@ logger = setup_logger('node')
 
 class ProcessingFlags(TypedDict):
     referral: List[str]
+    residual_com: List[str]
+    selected_com: str
     no_data: bool
     no_access: bool
     com_changed: bool
     date_changed: bool
-
+    
 class GraphState(TypedDict):
     chain_id: str
     trace_id: str
@@ -209,9 +211,18 @@ def result_executor(state: GraphState) -> GraphState:
         logger.info(f"flag0: {flags}")
         query_one_com, residual_com, selected_com = filter_com(raw_query, main_com, sub_coms, flags)
         
+        if selected_com:
+            flags["residual_com"] = residual_com
+            flags["selected_com"] = selected_com
+        
         if flags["no_access"] == True:
+            # CompanyInfo 객체들에서 회사명만 추출하여 리스트로 만듦
+            accessible_companies = [comp.custNm for comp in company_list]
+            # 회사명들을 쉼표와 공백으로 구분하여 하나의 문자열로 만듦
+            companies_str = ", ".join(accessible_companies)
+            
             state.update({
-                "final_answer": "해당 기업의 조회 권한이 없습니다.",
+                "final_answer": f"해당 기업의 조회 권한이 없습니다. 조회 가능하신 기업은 {companies_str}입니다.",
                 "query_result": [],
                 "sql_query": ""
             })
@@ -292,7 +303,16 @@ async def referral(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     flags = state["flags"]
 
-    referral_list = await question_referral(trace_id, user_question)
+    # flags에서 selected_com과 residual_com 가져오기
+    selected_com = flags.get("selected_com", "")
+    residual_com = flags.get("residual_com", [])
+
+    referral_list = await question_referral(
+        trace_id=trace_id,
+        user_question=user_question,
+        selected_com=selected_com,
+        residual_com=residual_com
+    )
 
     flags["referral"] = referral_list
     logger.info("referral end")

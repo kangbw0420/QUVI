@@ -56,18 +56,21 @@ def filter_com(query: str, main_com: str, sub_coms: List[str], flags: dict) -> s
             companies = re.findall(r"'([^']*)'", condition)
             if not any(comp in authorized_companies for comp in companies):
                 flags["no_access"] = True
-
             elif main_com in companies:
                 new_condition = f"com_nm = '{main_com}'"
                 flags["com_changed"] = True
+                # 잔여 회사 리스트는 3개까지만 저장, 추천 질의에 사용될 것이기 때문
+                residual_com = [comp for comp in companies if comp != main_com][:3]
                 result = result.replace(condition, new_condition)
-                return result, companies, main_com
+                return result, residual_com, main_com
             else:
                 selected_com = companies[0]
                 new_condition = f"com_nm = '{selected_com}'"
                 flags["com_changed"] = True
-                result = result.replace(condition, new_condition)
-                return result, companies, selected_com
+                # 잔여 회사 리스트는 3개까지만 저장, 추천 질의에 사용될 것이기 때문
+                residual_com = [comp for comp in companies if comp != selected_com][:3]
+                result = result.replace(condition, new_condition) 
+                return result, residual_com, selected_com
         else:
             # 단일 회사명 조건 처리
             company = re.findall(r"'([^']*)'", condition)[0]
