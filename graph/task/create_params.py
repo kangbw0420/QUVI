@@ -15,7 +15,7 @@ database_service = DatabaseService()
 qna_manager = QnAManager()
 
 SQL_TEMPLATE = (
-    """SELECT * FROM sql_func(use_intt_id, user_id, main_com, from_date, to_date)"""
+    """SELECT * FROM sql_func('use_intt_id', 'user_id', 'main_com', 'from_date', 'to_date')"""
 )
 
 WEEKDAYS = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}

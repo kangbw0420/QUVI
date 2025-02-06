@@ -125,14 +125,6 @@ async def api_selector(state: GraphState) -> GraphState:
 
     state.update({"selected_api": selected_api})
 
-    StateManager.update_state(
-        trace_id,
-        {
-            "user_question": user_question,
-            "selected_table": selected_api,
-        },
-    )
-
     return state
 
 
@@ -255,8 +247,10 @@ def result_executor(state: GraphState) -> GraphState:
     # 통계 계산
     query_result_stats = calculate_stats(result)
 
-    # 계좌번호별 추가 그룹화
-    final_result = check_acct_no(result, selected_table)
+    if select_table != 'api':
+        final_result = check_acct_no(result, selected_table)
+    else:
+        final_result = result
 
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": final_result})
