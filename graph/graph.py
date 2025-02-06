@@ -12,6 +12,8 @@ from .node import (
     query_creator,
     sql_respondent,
     result_executor,
+    referral,
+    nodata
 )
 
 class TrackedStateGraph(StateGraph):
@@ -63,6 +65,8 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("query_creator", query_creator)
         workflow.add_node("result_executor", result_executor)
         workflow.add_node("sql_respondent", sql_respondent)
+        workflow.add_node("referral", referral)
+        workflow.add_node("nodata", nodata)
 
         # Entry point에서 yadon으로 시작
         workflow.set_entry_point("yadon")
@@ -91,7 +95,28 @@ def make_graph() -> CompiledStateGraph:
             }
         )
         workflow.add_edge("query_creator", "result_executor")
-        workflow.add_edge("result_executor", "sql_respondent")
+        
+        workflow.add_conditional_edges(
+            "result_executor",
+            lambda x: {
+                # 접근 권한이 없어서 데이터를 못 가져왔으면 종료
+                "END" if x["flags"]["no_access"] else
+                # 데이터가 없었다면 데이터 없었다는 사과문 작성하러
+                "nodata" if x["flags"]["no_data"] else
+                # 복수 회사 조회 질문을 단일 회사 조회 질문으로 바꿨다면 답변도 하고 추천 질문도 만듦
+                "parallel_nodes" if x["flags"]["com_changed"] else
+                # 그 외의 경우 respondent로
+                "sql_respondent"
+            },
+            {
+                "END": END,
+                "nodata": "nodata",
+                "parallel_nodes": ["referral", "sql_respondent"],
+                "sql_respondent": "sql_respondent"
+            }
+        )
+        workflow.add_edge("nodata", END)
+        workflow.add_edge("referral", END)
         workflow.add_edge("sql_respondent", END)
 
         # 그래프 컴파일

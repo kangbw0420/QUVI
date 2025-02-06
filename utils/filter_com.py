@@ -18,12 +18,17 @@ def normalize_query(query: str) -> str:
     return query.strip()
 
 def filter_com(query: str, main_com: str, sub_coms: List[str], flags: dict) -> str:
-    """SQL 쿼리의 회사명(com_nm) 필터 조건을 정제"""
+    """SQL 쿼리의 회사명(com_nm) 필터 조건을 정제
+    
+    Returns:
+        Tuple[str, List[str], str]: (필터링된 쿼리, 회사 리스트, 선택된 회사)
+        - flags["com_changed"] = True일 때만 회사 리스트와 선택된 회사가 의미있는 값을 가짐
+    """
     # UNION 쿼리 처리
     if ' UNION ' in query.upper():
         parts = query.split(' UNION ')
-        filtered_parts = [filter_com(part.strip(), main_com, sub_coms) for part in parts]
-        return ' UNION '.join(filtered_parts)
+        filtered_parts = [filter_com(part.strip(), main_com, sub_coms, flags)[0] for part in parts]
+        return ' UNION '.join(filtered_parts), [], ""
 
     # 쿼리 표준화
     query = normalize_query(query)
@@ -31,12 +36,12 @@ def filter_com(query: str, main_com: str, sub_coms: List[str], flags: dict) -> s
     # 회사명 조건 패턴
     single_pattern = r"com_nm\s*=\s*'[^']*'"
     in_pattern = r"com_nm\s+IN\s*\([^)]*\)"
-    
+
     # 모든 회사명 조건 찾기
     com_conditions = []
     com_conditions.extend(re.finditer(single_pattern, query, re.IGNORECASE))
     com_conditions.extend(re.finditer(in_pattern, query, re.IGNORECASE))
-    
+
     if not com_conditions:
         # 회사명 조건이 없는 경우 main_com 조건 추가
         return _add_com_condition(query, main_com)
@@ -54,17 +59,22 @@ def filter_com(query: str, main_com: str, sub_coms: List[str], flags: dict) -> s
 
             elif main_com in companies:
                 new_condition = f"com_nm = '{main_com}'"
+                flags["com_changed"] = True
+                result = result.replace(condition, new_condition)
+                return result, companies, main_com
             else:
-                new_condition = f"com_nm = '{companies[0]}'"
-            flags["comp_changed"] = True
-            result = result.replace(condition, new_condition)
+                selected_com = companies[0]
+                new_condition = f"com_nm = '{selected_com}'"
+                flags["com_changed"] = True
+                result = result.replace(condition, new_condition)
+                return result, companies, selected_com
         else:
             # 단일 회사명 조건 처리
             company = re.findall(r"'([^']*)'", condition)[0]
             if company not in authorized_companies:
                 flags["no_access"] = True
-
-    return result
+    
+    return result, [], ""
 
 def _add_com_condition(query: str, main_com: str) -> str:
     """회사명 조건이 없는 SQL 쿼리에 회사명 조건 추가"""

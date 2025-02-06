@@ -54,17 +54,17 @@ async def process_input(request: Input) -> Output:
             "flags": {
                 "no_data": False,
                 "no_access": False,
-                "comp_changed": False,
+                "com_changed": False,
                 "date_changed": False
             },
             "last_data": last_data if last_data else []
         }
-        
+
         # 그래프 실행
         final_state = await graph.ainvoke(
             initial_state
         )
-        
+
         # 결과 추출
         answer = final_state["final_answer"]
         raw_data = final_state["query_result"]

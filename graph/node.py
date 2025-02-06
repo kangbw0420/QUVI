@@ -9,6 +9,8 @@ from graph.task.select_table import select_table
 from graph.task.create_query import create_query
 from graph.task.sql_response import sql_response
 from graph.task.execute_query import execute_query
+from graph.task.referral import question_referral
+from graph.task.nodata import no_data
 from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats
 from utils.filter_com import filter_com
@@ -20,9 +22,10 @@ from utils.logger import setup_logger
 logger = setup_logger('node')
 
 class ProcessingFlags(TypedDict):
+    referral: List[str]
     no_data: bool
     no_access: bool
-    comp_changed: bool
+    com_changed: bool
     date_changed: bool
 
 class GraphState(TypedDict):
@@ -158,7 +161,14 @@ def result_executor(state: GraphState) -> GraphState:
     flags = state.get("flags")
 
     logger.info(f"flag0: {flags}")
-    query_one_com = filter_com(raw_query, main_com, sub_coms, flags)
+    query_one_com, residual_com, selected_com = filter_com(raw_query, main_com, sub_coms, flags)
+    
+    if flags["no_access"] == True:
+        state.update({
+            "final_answer": "해당 기업의 조회 권한이 없습니다.",
+            "query_result": [],
+            "sql_query": ""
+        })
     logger.info(f"flag1: {flags}")
     query_ordered = add_order_by(query_one_com, selected_table)
 
@@ -175,14 +185,15 @@ def result_executor(state: GraphState) -> GraphState:
 
     # 결과가 없는 경우 처리
     if not result:
+        flags["no_data"] = True
+        logger.info(f"flag3: {flags}")
         empty_result = []
-        empty_stats = ["데이터가 없습니다."]
         state.update({
-            "query_result_stats": empty_stats,
+            "query_result_stats": "데이터가 없습니다.",
             "query_result": empty_result
         })
         StateManager.update_state(trace_id, {
-            "query_result_stats": empty_stats,
+            "query_result_stats": "데이터가 없습니다.",
             "query_result": empty_result
         })
         return state
@@ -227,4 +238,30 @@ async def sql_respondent(state: GraphState) -> GraphState:
 
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
+    return state
+
+async def referral(state: GraphState) -> GraphState:
+    """복수 사업장 중 하나만 조회했으니 다른 것도 조회할지 권유하는 노드"""
+    logger.info("referral start")
+    trace_id = state["trace_id"]
+    user_question = state["user_question"]
+    flags = state["flags"]
+
+    referral_list = await question_referral(trace_id, user_question)
+
+    flags["referral"] = referral_list
+    logger.info("referral end")
+    return state
+
+async def nodata(state: GraphState) -> GraphState:
+    """데이터가 없어서 사과드리는 노드"""
+    logger.info("nodata start")
+    trace_id = state["trace_id"]
+    user_question = state["user_question"]
+
+    final_answer = await no_data(trace_id, user_question)
+
+    state.update({"final_answer": final_answer})
+    StateManager.update_state(trace_id, {"final_answer": final_answer})
+    logger.info("nodata end")
     return state
