@@ -63,7 +63,7 @@ def filter_com(query: str, main_com: str, sub_coms: List[str], flags: dict) -> s
             company = re.findall(r"'([^']*)'", condition)[0]
             if company not in authorized_companies:
                 flags["no_access"] = True
-    
+
     return result
 
 def _add_com_condition(query: str, main_com: str) -> str:
