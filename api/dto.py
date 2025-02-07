@@ -61,3 +61,15 @@ class MappingRequest(BaseModel):
     replace_title: str = ""
     type: str = ""
     align: str = ""
+
+class VocRequest(BaseModel):
+    seq: int = 0
+    userId: str = ""
+    companyId: str = ""
+    channel: str = ""
+    utteranceContents: str = ""
+    conversationId: str = ""
+    type: str = ""
+    imageUrl: str = ""
+    content: str = ""
+    answer: str = ""

@@ -1,17 +1,18 @@
 import argparse
 import time
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
 from api.api import api
 from api.data_api import data_api
 from api.llmadmin_api import llmadmin_api
 from api.mapping_api import mapping_api
-from utils.logger import setup_logger
+from api.voc_api import voc_api
 from database.postgresql import connect_postgresql_pool
+from utils.logger import setup_logger
 
 # 애플리케이션 루트 로거 설정
 logger = setup_logger('main')
@@ -61,6 +62,7 @@ app.include_router(api, prefix="")
 app.include_router(data_api, prefix="/data")
 app.include_router(llmadmin_api, prefix="/llmadmin")
 app.include_router(mapping_api, prefix="/mapping")
+app.include_router(voc_api, prefix="/voc")
 
 if __name__ == "__main__":
     args = parse_arguments()

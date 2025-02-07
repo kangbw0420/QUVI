@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from api.dto import PostgreToVectorData, VectorDataQuery, PromptInput, FewshotInput, MappingRequest
+from api.dto import MappingRequest
 from database.database_service import DatabaseService
 
 mapping_api = APIRouter(tags=["mapping"])

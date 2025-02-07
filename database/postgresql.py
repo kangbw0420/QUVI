@@ -2,7 +2,7 @@ import psycopg2.pool
 from psycopg2 import OperationalError, InterfaceError
 from psycopg2.extras import RealDictCursor
 
-from api.dto import PostgreToVectorData, MappingRequest
+from api.dto import PostgreToVectorData, MappingRequest, VocRequest
 from utils.config import Config
 
 
@@ -86,6 +86,9 @@ def query_execute(query, params=None, use_prompt_db=False):
         # SELECT 쿼리라면 결과 반환
         if query.strip().upper().startswith("SELECT"):
             return cursor.fetchall()
+        # INSERT 쿼리라면 신규row 의 idx 반환
+        elif query.strip().upper().startswith("INSERT"):
+            return cursor.fetchone()[0]
         connection.commit()
         cursor.close()
         return True
@@ -352,5 +355,118 @@ def delete_mapping(idx: int):
     return query_execute(
         query,
         params=([idx]),
+        use_prompt_db=True
+    )
+
+
+
+
+# VOC 데이터 전체 조회
+def get_all_voc():
+    query = """
+        SELECT
+            seq,
+            user_id,
+            company_id,
+            channel,
+            utterance_contents,
+            content,
+            answer,
+            type,
+            TO_CHAR(regist_datetime, 'YYYY-MM-DD HH24:MI:SS') AS regist_datetime,
+            TO_CHAR(answer_datetime, 'YYYY-MM-DD HH24:MI:SS') AS answer_datetime
+        FROM voc_list
+        ORDER BY seq DESC
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
+# VOC 데이터 조회
+def get_voc(seq: int):
+    query = """
+        SELECT
+            seq,
+            user_id,
+            company_id,
+            channel,
+            utterance_contents,
+            content,
+            answer,
+            type,
+            TO_CHAR(regist_datetime, 'YYYY-MM-DD HH24:MI:SS') AS regist_datetime,
+            TO_CHAR(answer_datetime, 'YYYY-MM-DD HH24:MI:SS') AS answer_datetime
+        FROM voc_list
+        WHERE seq = %s
+    """
+    return query_execute(
+        query,
+        params=([seq]),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 추가
+def insert_voc(data: VocRequest):
+    query = """
+        INSERT INTO voc_list (
+            user_id,
+            company_id,
+            channel,
+            utterance_contents,
+            conversation_id,
+            type,
+            content,
+            answer
+        ) 
+        VALUES (
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        )
+        RETURNING seq
+    """
+    return query_execute(
+        query,
+        params=(data.userId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.type, data.content, data.answer),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 수정
+def update_voc(data: VocRequest):
+    query = """
+        UPDATE voc_list
+        SET
+            image_url = %s
+        WHERE
+            seq = %s
+    """
+    return query_execute(
+        query,
+        params=(data.imageUrl, [data.seq]),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 삭제
+def delete_voc(seq: int):
+    query = """
+        DELETE
+        FROM voc_list
+        WHERE
+            seq = %s
+    """
+    return query_execute(
+        query,
+        params=([seq]),
         use_prompt_db=True
     )

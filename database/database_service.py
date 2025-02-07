@@ -3,10 +3,10 @@ import uuid
 
 from fastapi import HTTPException
 
-from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest
+from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest, VocRequest
 from database.postgresql import get_all_prompt, get_prompt, insert_prompt, delete_prompt, get_all_data_rdb, \
     get_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb, get_all_mapping, insert_mapping, \
-    update_mapping, delete_mapping
+    update_mapping, delete_mapping, get_all_voc, get_voc, insert_voc, update_voc, delete_voc
 from database.vector_db import EmbeddingAPIClient
 
 
@@ -224,7 +224,7 @@ class DatabaseService:
 
 
 
-    #####  /table  #####
+    #####  /mapping  #####
 
     def get_all_mapping():
         return get_all_mapping()
@@ -240,3 +240,27 @@ class DatabaseService:
 
     def delete_mapping(idx: int):
         return delete_mapping(idx)
+
+
+
+
+    #####  /voc  #####
+
+    def get_all_voc():
+        return get_all_voc()
+
+
+    def get_voc(seq: int):
+        return get_voc(seq)
+
+
+    def insert_voc(data: VocRequest):
+        return insert_voc(data)
+
+
+    def update_voc(data: VocRequest):
+        return update_voc(data)
+
+
+    def delete_voc(seq: int):
+        return delete_voc(seq)
