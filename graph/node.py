@@ -7,8 +7,8 @@ from graph.task.shellder import shellder
 from graph.task.yadoking import yadoking
 from graph.task.commander import commander
 from graph.task.nl2sql import nl2sql
-from graph.task.response import response
-from graph.task.execute import execute_query
+from graph.task.respondent import response
+from graph.task.executor import execute
 from graph.task.referral import question_referral
 from graph.task.funk import func_select
 from graph.task.nodata import no_data
@@ -198,7 +198,7 @@ def executor(state: GraphState) -> GraphState:
     
     if selected_table == "api":
         query = state.get("sql_query")
-        result = execute_query(query)
+        result = execute(query)
     
     else:
         raw_query = state.get("sql_query")
@@ -234,11 +234,11 @@ def executor(state: GraphState) -> GraphState:
             query = add_view_table(query_ordered, selected_table, user_info, view_date, flags)
             logger.info(f"flag2: {flags}")
             logger.info(f"query-m: {query}")
-            result = execute_query(query)
+            result = execute(query)
 
         except Exception as e:
             logger.error(f"Error in view table processing: {str(e)}")
-            result = execute_query(query_ordered)
+            result = execute(query_ordered)
 
     # 결과가 없는 경우 처리
     if not result:

@@ -13,7 +13,7 @@ logger = setup_logger('execute_query')
 
 qna_manager = QnAManager()
 
-def execute_query(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict[str, Any]], Result]:  # type: ignore
+def execute(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict[str, Any]], Result]:  # type: ignore
     """SQL 쿼리를 실행하고 결과를 반환합니다.
     Returns:
         Union[Sequence[Dict[str, Any]], Result]: 쿼리 실행 결과.
