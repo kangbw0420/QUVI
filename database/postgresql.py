@@ -83,6 +83,7 @@ def query_execute(query, params=None, use_prompt_db=False):
 
         # 쿼리 실행
         cursor.execute(query, params if params else ())
+
         # SELECT 쿼리라면 결과 반환
         if query.strip().upper().startswith("SELECT"):
             return cursor.fetchall()
@@ -91,7 +92,10 @@ def query_execute(query, params=None, use_prompt_db=False):
             result = cursor.fetchone()
             if result is None:
                 raise
+            connection.commit()
+            cursor.close()
             return result['seq']
+
         connection.commit()
         cursor.close()
         return True
@@ -453,7 +457,7 @@ def update_voc(data: VocRequest):
     """
     return query_execute(
         query,
-        params=(data.imageUrl, [data.seq]),
+        params=(data.imageUrl, data.seq),
         use_prompt_db=True
     )
 
@@ -468,6 +472,28 @@ def delete_voc(seq: int):
     """
     return query_execute(
         query,
-        params=([seq]),
+        params=(seq),
+        use_prompt_db=True
+    )
+
+
+
+
+# # 홈 화면 추천질의 데이터 조회
+def get_home_recommend():
+    query = """
+        SELECT
+            r.ctgry_cd AS ctgryCd,
+            r.ctgry_nm AS ctrgyNm,
+            r.img_path AS imgPath,
+            STRING_AGG(c.recommend_quest, '|' ORDER BY c.recommend_quest) AS recommendQuest
+        FROM ctgry_code r
+        LEFT JOIN recommend_quest c
+        ON (r.ctgry_cd = c.ctgry_code)
+        GROUP BY r.ctgry_cd, r.ctgry_nm, r.img_path
+    """
+    return query_execute(
+        query,
+        params=(),
         use_prompt_db=True
     )

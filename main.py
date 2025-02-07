@@ -11,6 +11,7 @@ from api.data_api import data_api
 from api.llmadmin_api import llmadmin_api
 from api.mapping_api import mapping_api
 from api.voc_api import voc_api
+from api.recommend_api import recommend_api
 from database.postgresql import connect_postgresql_pool
 from utils.logger import setup_logger
 
@@ -63,6 +64,7 @@ app.include_router(data_api, prefix="/data")
 app.include_router(llmadmin_api, prefix="/llmadmin")
 app.include_router(mapping_api, prefix="/mapping")
 app.include_router(voc_api, prefix="/voc")
+app.include_router(recommend_api, prefix="/recommend")
 
 if __name__ == "__main__":
     args = parse_arguments()

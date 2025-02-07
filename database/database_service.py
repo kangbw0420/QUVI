@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest, VocRequest
 from database.postgresql import get_all_prompt, get_prompt, insert_prompt, delete_prompt, get_all_data_rdb, \
     get_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb, get_all_mapping, insert_mapping, \
-    update_mapping, delete_mapping, get_all_voc, get_voc, insert_voc, update_voc, delete_voc
+    update_mapping, delete_mapping, get_all_voc, get_voc, insert_voc, update_voc, delete_voc, get_home_recommend
 from database.vector_db import EmbeddingAPIClient
 
 
@@ -264,3 +264,11 @@ class DatabaseService:
 
     def delete_voc(seq: int):
         return delete_voc(seq)
+
+
+
+
+    #####  /recommend  #####
+
+    def get_home_recommend():
+        return get_home_recommend()
