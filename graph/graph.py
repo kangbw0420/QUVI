@@ -15,7 +15,8 @@ from .node import (
     respondent,
     executor,
     referral,
-    nodata
+    nodata,
+    killjoy
 )
 
 class TrackedStateGraph(StateGraph):
@@ -61,16 +62,17 @@ def make_graph() -> CompiledStateGraph:
         workflow = TrackedStateGraph(GraphState)
 
         # 노드 추가
-        workflow.add_node("yadon", yadon)
-        workflow.add_node("yadoran", yadoran)
-        workflow.add_node("commander", commander)
-        workflow.add_node("funk", funk)
-        workflow.add_node("params", params)
-        workflow.add_node("nl2sql", nl2sql)
-        workflow.add_node("executor", executor)
-        workflow.add_node("respondent", respondent)
-        workflow.add_node("referral", referral)
-        workflow.add_node("nodata", nodata)
+        workflow.add_node("yadon", yadon) # 꼬리가 물렸는지 판단
+        workflow.add_node("yadoran", yadoran) # 꼬리가 물린 후 질문을 변환
+        workflow.add_node("commander", commander) # 처리 경로를 결정
+        workflow.add_node("funk", funk) # api 함수 선택
+        workflow.add_node("params", params) # api 함수 파라미터 선택
+        workflow.add_node("nl2sql", nl2sql) # SQL 생성
+        workflow.add_node("executor", executor) # SQL 실행 및 상태 체크
+        workflow.add_node("respondent", respondent) # 답변 생성
+        workflow.add_node("referral", referral) # 복수 회사 질문에 대해 한 회사로만 답변한 경우 나머지 회사로 질의 추천
+        workflow.add_node("nodata", nodata) # 데이터가 없을 경우 답변 생성
+        workflow.add_node("killjoy", killjoy) # 일상 대화 대응
 
         # Entry point에서 yadon으로 시작
         workflow.set_entry_point("yadon")
@@ -92,10 +94,11 @@ def make_graph() -> CompiledStateGraph:
         # selector가 api를 토하면 끝남
         workflow.add_conditional_edges(
             "commander",
-            lambda x: "funk" if x["selected_table"] == "api" else "nl2sql",
+            lambda x: "funk" if x["selected_table"] == "api" else ("killjoy" if x["selected_table"] == "joy" else "nl2sql"),
             {
                 "nl2sql": "nl2sql",
-                "funk": "funk"
+                "funk": "funk",
+                "killjoy": "killjoy"
             }
         )
         workflow.add_edge("funk", "params")
@@ -125,6 +128,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_edge("referral", "respondent")
         workflow.add_edge("respondent", END)
         workflow.add_edge("nodata", END)
+        workflow.add_edge("killjoy", END)
 
         # 그래프 컴파일
         app = workflow.compile()

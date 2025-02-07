@@ -19,7 +19,7 @@ async def response(trace_id: str, user_question, query_result_stats = None, quer
     """
     output_parser = StrOutputParser()
 
-    system_prompt = database_service.get_prompt(node_nm='response', prompt_nm='system')[0]['prompt']
+    system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='system')[0]['prompt']
 
     few_shots = await retriever.get_few_shots(
         query_text=user_question,
@@ -37,7 +37,7 @@ async def response(trace_id: str, user_question, query_result_stats = None, quer
 
 
     # 통곗값이 있으면 통곗값을 쓰고, 아니면 결과 자체를 사용
-    human_prompt = database_service.get_prompt(node_nm='response', prompt_nm='human')[0]['prompt'].format(
+    human_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
         query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
 

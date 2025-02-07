@@ -25,7 +25,7 @@ async def shellder(trace_id: str, user_question: str, last_data: List[str]) -> s
         last_data_str += last_template
 
     system_prompt = database_service.get_prompt(
-        node_nm='create_query', prompt_nm='checkpoint'
+        node_nm='yadon', prompt_nm='system'
     )[0]['prompt'].format(last_data_str=last_data_str)
 
     prompt = ChatPromptTemplate.from_messages(

@@ -23,7 +23,7 @@ WEEKDAYS = {
     6: '일'
 }
 
-async def nl2sql(
+async def create_sql(
     trace_id: str, 
     selected_table: str, 
     user_question: str,
