@@ -16,7 +16,7 @@ def get_all_prompt():
         result = DatabaseService.get_all_prompt()
         return {"data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # 250109. KimGoon. 단건 조회는 안 쓸 듯.
@@ -32,7 +32,7 @@ def get_all_prompt():
 #             raise HTTPException(status_code=404, detail="Prompt not found")
 #         return {"data": result}
 #     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
+#         raise HTTPException(status_code=404, detail=str(e))
 
 
 # Prompt 데이터 추가
@@ -44,10 +44,14 @@ def add_prompt(prompt: PromptInput):
     try:
         success = DatabaseService.add_prompt(prompt.node_nm, prompt.prompt_nm, prompt.prompt)
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to insert prompt data")
-        return {"message": "Prompt added successfully"}
+            raise HTTPException(status_code=404, detail="Failed to insert prompt data")
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Prompt data added successfully"
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Prompt 데이터 삭제
@@ -58,9 +62,15 @@ def delete_prompt(prompt: PromptInput):
     """
     try:
         success = DatabaseService.delete_prompt(prompt.node_nm, prompt.prompt_nm)
-        return {"message": "Prompt data deleted successfully"}
+        if not success:
+            raise HTTPException(status_code=404, detail="Failed to delete prompt data")
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Prompt data deleted successfully"
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 
@@ -75,7 +85,7 @@ def query_fewshot(data: VectorDataQuery):
         result = DatabaseService.query_fewshot_vector(data)
         return {"data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Few-shot 전체 데이터 조회
@@ -88,7 +98,7 @@ def getAll_fewshot():
         result = DatabaseService.get_all_fewshot_vector()
         return {"data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Few-shot 데이터 조회
@@ -101,7 +111,7 @@ def get_fewshot(title: str):
         result = DatabaseService.get_fewshot_vector(title)
         return {"data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Few-shot 전체 데이터 조회
@@ -114,7 +124,7 @@ def getAllRDB_fewshot():
         result = DatabaseService.get_all_fewshot_rdb()
         return {"data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Few-shot 데이터 추가
@@ -128,7 +138,7 @@ def add_fewshot(data: FewshotInput):
         # success = DatabaseService.addList_fewshot(data.title, data.shots)
         return {"message": "Few-shot data added successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Few-shot 데이터 전체 삭제
@@ -141,7 +151,7 @@ def delete_fewshot(data: FewshotInput):
         success = DatabaseService.collection_delete_fewshot(data.title)
         return {"message": "Few-shot data deleted successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Few-shot 휘발데이터 복구
@@ -155,4 +165,4 @@ def restore_fewshot():
         DatabaseService.restore_fewshot(result)
         return {"message": "Few-shot data restored successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))

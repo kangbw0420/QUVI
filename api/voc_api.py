@@ -17,7 +17,7 @@ def get_all_voc():
         result = DatabaseService.get_all_voc()
         return {"data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # VOC 데이터 조회
@@ -30,7 +30,7 @@ def get_voc(data: VocRequest):
         result = DatabaseService.get_voc(data.seq)
         return {"data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # VOC 데이터 추가
@@ -42,17 +42,17 @@ def add_voc(data: VocRequest):
     try:
         seq = DatabaseService.insert_voc(data)
         if not seq:
-            raise HTTPException(status_code=500, detail="Failed to insert voc data")
+            raise HTTPException(status_code=404, detail="Failed to insert voc data")
         return {
             "status": 200,
-            "success": true,
+            "success": True,
             "message": "Mapping data inserted successfully",
             "body": {
                 "seq": seq
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # VOC 데이터 수정
@@ -65,14 +65,14 @@ def update_voc(data: VocRequest):
     try:
         success = DatabaseService.update_voc(data)
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to update voc data")
+            raise HTTPException(status_code=404, detail="Failed to update voc data")
         return {
             "status": 200,
-            "success": true,
+            "success": True,
             "message": "Mapping data updated successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # VOC 데이터 삭제
@@ -85,11 +85,11 @@ def delete_voc(data: VocRequest):
     try:
         success = DatabaseService.delete_voc(data.seq)
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to delete voc data")
+            raise HTTPException(status_code=404, detail="Failed to delete voc data")
         return {
             "status": 200,
-            "success": true,
+            "success": True,
             "message": "Mapping data deleted successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))

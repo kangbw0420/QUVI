@@ -88,7 +88,10 @@ def query_execute(query, params=None, use_prompt_db=False):
             return cursor.fetchall()
         # voc_list INSERT 쿼리라면 신규row 의 seq 반환
         elif query.strip().upper().startswith("INSERT INTO voc_list"):
-            return cursor.fetchone()[0]
+            result = cursor.fetchone()
+            if result is None:
+                raise
+            return result['seq']
         connection.commit()
         cursor.close()
         return True
@@ -419,11 +422,9 @@ def insert_voc(data: VocRequest):
             utterance_contents,
             conversation_id,
             type,
-            content,
-            answer
+            content
         ) 
         VALUES (
-            %s,
             %s,
             %s,
             %s,
@@ -436,7 +437,7 @@ def insert_voc(data: VocRequest):
     """
     return query_execute(
         query,
-        params=(data.userId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.type, data.content, data.answer),
+        params=(data.userId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.type, data.content),
         use_prompt_db=True
     )
 
