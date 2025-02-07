@@ -83,12 +83,19 @@ def query_execute(query, params=None, use_prompt_db=False):
 
         # 쿼리 실행
         cursor.execute(query, params if params else ())
+
         # SELECT 쿼리라면 결과 반환
         if query.strip().upper().startswith("SELECT"):
             return cursor.fetchall()
-        # INSERT 쿼리라면 신규row 의 idx 반환
-        elif query.strip().upper().startswith("INSERT"):
-            return cursor.fetchone()[0]
+        # voc_list INSERT 쿼리라면 신규row 의 seq 반환
+        elif query.strip().upper().startswith("INSERT INTO voc_list"):
+            result = cursor.fetchone()
+            if result is None:
+                raise
+            connection.commit()
+            cursor.close()
+            return result['seq']
+
         connection.commit()
         cursor.close()
         return True
@@ -370,9 +377,11 @@ def get_all_voc():
             company_id,
             channel,
             utterance_contents,
+            conversation_id,
+            type,
+            image_url,
             content,
             answer,
-            type,
             TO_CHAR(regist_datetime, 'YYYY-MM-DD HH24:MI:SS') AS regist_datetime,
             TO_CHAR(answer_datetime, 'YYYY-MM-DD HH24:MI:SS') AS answer_datetime
         FROM voc_list
@@ -394,9 +403,11 @@ def get_voc(seq: int):
             company_id,
             channel,
             utterance_contents,
+            conversation_id,
+            type,
+            image_url,
             content,
             answer,
-            type,
             TO_CHAR(regist_datetime, 'YYYY-MM-DD HH24:MI:SS') AS regist_datetime,
             TO_CHAR(answer_datetime, 'YYYY-MM-DD HH24:MI:SS') AS answer_datetime
         FROM voc_list
@@ -419,11 +430,9 @@ def insert_voc(data: VocRequest):
             utterance_contents,
             conversation_id,
             type,
-            content,
-            answer
+            content
         ) 
         VALUES (
-            %s,
             %s,
             %s,
             %s,
@@ -436,7 +445,7 @@ def insert_voc(data: VocRequest):
     """
     return query_execute(
         query,
-        params=(data.userId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.type, data.content, data.answer),
+        params=(data.userId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.type, data.content),
         use_prompt_db=True
     )
 
@@ -452,7 +461,7 @@ def update_voc(data: VocRequest):
     """
     return query_execute(
         query,
-        params=(data.imageUrl, [data.seq]),
+        params=(data.imageUrl, data.seq),
         use_prompt_db=True
     )
 
@@ -467,6 +476,28 @@ def delete_voc(seq: int):
     """
     return query_execute(
         query,
-        params=([seq]),
+        params=(seq),
+        use_prompt_db=True
+    )
+
+
+
+
+# # 홈 화면 추천질의 데이터 조회
+def get_home_recommend():
+    query = """
+        SELECT
+            r.ctgry_cd AS ctgryCd,
+            r.ctgry_nm AS ctrgyNm,
+            r.img_path AS imgPath,
+            STRING_AGG(c.recommend_quest, '|' ORDER BY c.recommend_quest) AS recommendQuest
+        FROM ctgry_code r
+        LEFT JOIN recommend_quest c
+        ON (r.ctgry_cd = c.ctgry_code)
+        GROUP BY r.ctgry_cd, r.ctgry_nm, r.img_path
+    """
+    return query_execute(
+        query,
+        params=(),
         use_prompt_db=True
     )
