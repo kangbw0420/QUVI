@@ -10,7 +10,7 @@ from llm_admin.qna_manager import QnAManager
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-async def sql_response(trace_id: str, user_question, query_result_stats = None, query_result = None) -> str:
+async def response(trace_id: str, user_question, query_result_stats = None, query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -19,7 +19,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
     """
     output_parser = StrOutputParser()
 
-    system_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='system')[0]['prompt']
+    system_prompt = database_service.get_prompt(node_nm='response', prompt_nm='system')[0]['prompt']
 
     few_shots = await retriever.get_few_shots(
         query_text=user_question,
@@ -37,7 +37,7 @@ async def sql_response(trace_id: str, user_question, query_result_stats = None, 
 
 
     # 통곗값이 있으면 통곗값을 쓰고, 아니면 결과 자체를 사용
-    human_prompt = database_service.get_prompt(node_nm='sql_response', prompt_nm='human')[0]['prompt'].format(
+    human_prompt = database_service.get_prompt(node_nm='response', prompt_nm='human')[0]['prompt'].format(
         query_result_stats=query_result_stats if query_result_stats is not None else query_result, user_question=user_question
     )
 

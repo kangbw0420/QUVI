@@ -23,7 +23,7 @@ WEEKDAYS = {
     6: '일'
 }
 
-async def create_query(
+async def nl2sql(
     trace_id: str, 
     selected_table: str, 
     user_question: str,
@@ -45,7 +45,7 @@ async def create_query(
 
         try:
             system_prompt = database_service.get_prompt(
-                node_nm='create_query', 
+                node_nm='nl2sql', 
                 prompt_nm=selected_table
             )[0]['prompt'].format(
                 today=today,
@@ -53,7 +53,7 @@ async def create_query(
             )
 
         except FileNotFoundError as e:
-            system_prompt = database_service.get_prompt(node_nm='create_query', prompt_nm='system')[0]['prompt'].format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(today=today)
 
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"

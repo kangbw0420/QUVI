@@ -6,9 +6,9 @@ from api.dto import CompanyInfo
 from graph.task.shellder import shellder
 from graph.task.yadoking import yadoking
 from graph.task.commander import commander
-from graph.task.create_query import create_query
-from graph.task.sql_response import sql_response
-from graph.task.execute_query import execute_query
+from graph.task.nl2sql import nl2sql
+from graph.task.response import response
+from graph.task.execute import execute_query
 from graph.task.referral import question_referral
 from graph.task.funk import func_select
 from graph.task.nodata import no_data
@@ -160,7 +160,7 @@ async def params(state: GraphState) -> GraphState:
     return state
 
 
-async def query_creator(state: GraphState) -> GraphState:
+async def nl2sql(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
     Returns:
         GraphState: sql_query가 추가된 상태.
@@ -177,13 +177,13 @@ async def query_creator(state: GraphState) -> GraphState:
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await create_query(trace_id, selected_table, user_question, main_com, sub_coms, today)
+    sql_query = await nl2sql(trace_id, selected_table, user_question, main_com, sub_coms, today)
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
     return state
 
-def result_executor(state: GraphState) -> GraphState:
+def executor(state: GraphState) -> GraphState:
     """SQL 쿼리를 실행하고 결과를 분석
     Returns:
         GraphState: query_result와 query_result_stats가 추가된 상태.
@@ -266,7 +266,7 @@ def result_executor(state: GraphState) -> GraphState:
     
     return state
 
-async def sql_respondent(state: GraphState) -> GraphState:
+async def respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성
     Returns:
         GraphState: final_answer가 추가된 상태.
@@ -284,7 +284,7 @@ async def sql_respondent(state: GraphState) -> GraphState:
         state.update({"final_answer": final_answer})
         return state
     
-    output = await sql_response(
+    output = await response(
         trace_id,
         user_question=user_question,
         query_result_stats=query_result_stats

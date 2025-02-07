@@ -11,9 +11,9 @@ from .node import (
     commander,
     funk,
     params,
-    query_creator,
-    sql_respondent,
-    result_executor,
+    nl2sql,
+    respondent,
+    executor,
     referral,
     nodata
 )
@@ -66,9 +66,9 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("commander", commander)
         workflow.add_node("funk", funk)
         workflow.add_node("params", params)
-        workflow.add_node("query_creator", query_creator)
-        workflow.add_node("result_executor", result_executor)
-        workflow.add_node("sql_respondent", sql_respondent)
+        workflow.add_node("nl2sql", nl2sql)
+        workflow.add_node("executor", executor)
+        workflow.add_node("respondent", respondent)
         workflow.add_node("referral", referral)
         workflow.add_node("nodata", nodata)
 
@@ -92,19 +92,19 @@ def make_graph() -> CompiledStateGraph:
         # selector가 api를 토하면 끝남
         workflow.add_conditional_edges(
             "commander",
-            lambda x: "funk" if x["selected_table"] == "api" else "query_creator",
+            lambda x: "funk" if x["selected_table"] == "api" else "nl2sql",
             {
-                "query_creator": "query_creator",
+                "nl2sql": "nl2sql",
                 "funk": "funk"
             }
         )
         workflow.add_edge("funk", "params")
-        workflow.add_edge("params", "result_executor")
+        workflow.add_edge("params", "executor")
         
-        workflow.add_edge("query_creator", "result_executor")
+        workflow.add_edge("nl2sql", "executor")
         
         workflow.add_conditional_edges(
-            "result_executor",
+            "executor",
             lambda x: (
                 # 접근 권한이 없어서 데이터를 못 가져왔으면 종료
                 "END" if x["flags"]["no_access"] else
@@ -113,17 +113,17 @@ def make_graph() -> CompiledStateGraph:
                 # 복수 회사 조회 질문을 단일 회사 조회 질문으로 바꿨다면 답변도 하고 추천 질문도 만듦
                 "referral" if x["flags"]["com_changed"] else
                 # 그 외의 경우 respondent로
-                "sql_respondent"
+                "respondent"
             ),
             {
                 "END": END,
                 "nodata": "nodata",
                 "referral": "referral",
-                "sql_respondent": "sql_respondent"
+                "respondent": "respondent"
             }
         )
-        workflow.add_edge("referral", "sql_respondent")
-        workflow.add_edge("sql_respondent", END)
+        workflow.add_edge("referral", "respondent")
+        workflow.add_edge("respondent", END)
         workflow.add_edge("nodata", END)
 
         # 그래프 컴파일
