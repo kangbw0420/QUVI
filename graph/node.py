@@ -5,8 +5,8 @@ from xmlrpc.client import boolean
 from api.dto import CompanyInfo
 from graph.task.shellder import shellder
 from graph.task.yadoking import yadoking
-from graph.task.commander import commander
-from graph.task.nl2sql import nl2sql
+from graph.task.commander import command
+from graph.task.nl2sql import create_sql
 from graph.task.respondent import response
 from graph.task.executor import execute
 from graph.task.referral import question_referral
@@ -101,7 +101,7 @@ async def commander(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     trace_id = state["trace_id"]
     
-    selected_table = await commander(trace_id, user_question)
+    selected_table = await command(trace_id, user_question)
 
     state.update({"selected_table": selected_table})
     
@@ -177,7 +177,7 @@ async def nl2sql(state: GraphState) -> GraphState:
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await nl2sql(trace_id, selected_table, user_question, main_com, sub_coms, today)
+    sql_query = await create_sql(trace_id, selected_table, user_question, main_com, sub_coms, today)
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})

@@ -55,7 +55,7 @@ venv\Scripts\activate
 python -m pip install -r requirements.txt
 ```
 
-## 주석 스타일(파이썬은 알아보기 쉬우므로, 자세함보다는 효율성을 추구)
+## 주석 스타일(자세함보다는 효율성)
     """(따옴표에 붙여서, 되도록이면 한 줄로, 불필요한 줄바꿈 no) 함수에 대한 간단한 설명
     Args: 헷갈릴 경우 적지만, 함수 정의에서 알아볼 수 있을 경우 되도록 적지 않습니다
     Returns:

@@ -61,16 +61,16 @@ def make_graph() -> CompiledStateGraph:
         workflow = TrackedStateGraph(GraphState)
 
         # 노드 추가
-        workflow.add_node("yadon", yadon)
-        workflow.add_node("yadoran", yadoran)
-        workflow.add_node("commander", commander)
-        workflow.add_node("funk", funk)
-        workflow.add_node("params", params)
-        workflow.add_node("nl2sql", nl2sql)
-        workflow.add_node("executor", executor)
-        workflow.add_node("respondent", respondent)
-        workflow.add_node("referral", referral)
-        workflow.add_node("nodata", nodata)
+        workflow.add_node("yadon", yadon) # 꼬리가 물렸는지 판단
+        workflow.add_node("yadoran", yadoran) # 꼬리가 물린 후 질문을 변환
+        workflow.add_node("commander", commander) # 처리 경로를 결정
+        workflow.add_node("funk", funk) # api 함수 선택
+        workflow.add_node("params", params) # api 함수 파라미터 선택
+        workflow.add_node("nl2sql", nl2sql) # SQL 생성
+        workflow.add_node("executor", executor) # SQL 실행 및 상태 체크
+        workflow.add_node("respondent", respondent) # 답변 생성
+        workflow.add_node("referral", referral) # 복수 회사 질문에 대해 한 회사로만 답변한 경우 나머지 회사로 질의 추천
+        workflow.add_node("nodata", nodata) # 데이터가 없을 경우 답변 생성
 
         # Entry point에서 yadon으로 시작
         workflow.set_entry_point("yadon")
