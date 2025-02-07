@@ -13,6 +13,8 @@ from graph.task.referral import question_referral
 from graph.task.funk import func_select
 from graph.task.nodata import no_data
 from graph.task.params import parameters
+from graph.task.killjoy import kill_joy
+
 from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats
 from utils.filter_com import filter_com
@@ -329,4 +331,23 @@ async def nodata(state: GraphState) -> GraphState:
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
     logger.info("nodata end")
+    return state
+
+async def killjoy(state: GraphState) -> GraphState:
+    """장난하지 말고 재무 데이터 조회나 물어보라는 노드"""
+    logger.info("killjoy start")
+    trace_id = state["trace_id"]
+    user_question = state["user_question"]
+    
+    final_answer = await kill_joy(trace_id, user_question)
+    
+    state.update({
+        "final_answer": final_answer,
+        "query_result": [],
+        "sql_query": "",
+        "query_result_stats": ""
+    })
+    
+    StateManager.update_state(trace_id, {"final_answer": final_answer})
+    logger.info("killjoy end")
     return state
