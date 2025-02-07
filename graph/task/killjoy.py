@@ -2,7 +2,7 @@ from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
-from graph.models import qwen_llm
+from graph.models import qwen_high
 from llm_admin.qna_manager import QnAManager
 
 database_service = DatabaseService()
@@ -31,7 +31,7 @@ async def kill_joy(trace_id: str, user_question: str) -> str:
         model="qwen_14b"
     )
 
-    referral_chain = prompt | qwen_llm
+    referral_chain = prompt | qwen_high
     final_answer = referral_chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "killjoy(A)" + "=" * 40)

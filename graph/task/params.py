@@ -1,3 +1,4 @@
+import json
 from typing import Tuple
 from datetime import datetime
 
@@ -92,7 +93,8 @@ async def parameters(
 
         print("=" * 40 + "params(A)" + "=" * 40)
         print(sql_query)
-        qna_manager.record_answer(qna_id, output)
+        output_str = json.dumps(output, ensure_ascii=False)
+        qna_manager.record_answer(qna_id, output_str)
 
         return sql_query.strip()
 
