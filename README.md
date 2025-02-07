@@ -1,3 +1,32 @@
+## Agent Architecture
+```mermaid
+stateDiagram-v2
+    [*] --> yadon
+    
+    yadon --> END: shellder = "no"
+    yadon --> yadoran: shellder = "1"
+    yadon --> commander: shellder = "0"
+    
+    yadoran --> commander
+    
+    commander --> funk: selected_table = "api"
+    commander --> nl2sql: selected_table != "api"
+    
+    funk --> params
+    params --> executor
+    
+    nl2sql --> executor
+    
+    executor --> END: flags.no_access = true
+    executor --> nodata: flags.no_data = true
+    executor --> referral: flags.com_changed = true
+    executor --> respondent: else
+    
+    nodata --> END
+    referral --> respondent
+    respondent --> END
+```
+
 ## 연락처
 궁금하신 사항이 있으실 때는 / 혹은 오류가 있을 때는 아래의 번호로 언제든 연락 부탁드립니다. :blush:  
 윤주호 010-3168-7616 / yoonjuho92@gmail.com  
