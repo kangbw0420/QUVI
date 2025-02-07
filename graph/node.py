@@ -3,8 +3,8 @@ from typing import TypedDict, Tuple, List, Dict
 from xmlrpc.client import boolean
 
 from api.dto import CompanyInfo
-from graph.task.shellder import shellder
-from graph.task.yadoking import yadoking
+from graph.task.yadon import shellder
+from graph.task.yadoran import yadoking
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
 from graph.task.respondent import response

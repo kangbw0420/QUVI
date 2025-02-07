@@ -16,7 +16,7 @@ async def no_data(trace_id: str, user_question: str) -> str:
         없다는 답변
     """
     system_prompt = database_service.get_prompt(
-        node_nm='create_query', prompt_nm='nodata'
+        node_nm='nodata', prompt_nm='system'
     )[0]['prompt']
 
     prompt = ChatPromptTemplate.from_messages(
