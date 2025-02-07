@@ -43,12 +43,13 @@ def add_voc(data: VocRequest):
         seq = DatabaseService.insert_voc(data)
         if not seq:
             raise HTTPException(status_code=404, detail="Failed to insert voc data")
+
         return {
             "status": 200,
             "success": True,
             "message": "Mapping data inserted successfully",
             "body": {
-                "seq": seq
+                "seq": str(seq)
             }
         }
     except Exception as e:

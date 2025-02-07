@@ -377,9 +377,11 @@ def get_all_voc():
             company_id,
             channel,
             utterance_contents,
+            conversation_id,
+            type,
+            image_url,
             content,
             answer,
-            type,
             TO_CHAR(regist_datetime, 'YYYY-MM-DD HH24:MI:SS') AS regist_datetime,
             TO_CHAR(answer_datetime, 'YYYY-MM-DD HH24:MI:SS') AS answer_datetime
         FROM voc_list
@@ -401,9 +403,11 @@ def get_voc(seq: int):
             company_id,
             channel,
             utterance_contents,
+            conversation_id,
+            type,
+            image_url,
             content,
             answer,
-            type,
             TO_CHAR(regist_datetime, 'YYYY-MM-DD HH24:MI:SS') AS regist_datetime,
             TO_CHAR(answer_datetime, 'YYYY-MM-DD HH24:MI:SS') AS answer_datetime
         FROM voc_list
