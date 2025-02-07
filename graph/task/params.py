@@ -21,7 +21,7 @@ SQL_TEMPLATE = (
 WEEKDAYS = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}
 
 
-async def create_params(
+async def parameters(
     trace_id: str,
     selected_api: str,
     user_question: str,
@@ -42,9 +42,8 @@ async def create_params(
     user_id, use_intt_id = user_info
 
     try:
-
         system_prompt = database_service.get_prompt(
-            node_nm="create_params", prompt_nm="system"
+            node_nm="params", prompt_nm="system"
         )[0]["prompt"]
 
         few_shots = await retriever.get_few_shots(
@@ -73,7 +72,7 @@ async def create_params(
             ]
         )
 
-        print("=" * 40 + "create_params(Q)" + "=" * 40)
+        print("=" * 40 + "params(Q)" + "=" * 40)
         qna_id = qna_manager.create_question(
             trace_id=trace_id, question=prompt, model="qwen_nl2sql"
         )
@@ -91,7 +90,7 @@ async def create_params(
             .replace("to_date", output["to_date"])
         )
 
-        print("=" * 40 + "create_params(A)" + "=" * 40)
+        print("=" * 40 + "params(A)" + "=" * 40)
         print(sql_query)
         qna_manager.record_answer(qna_id, output)
 

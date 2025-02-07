@@ -8,9 +8,9 @@ from .node import (
     GraphState,
     yadon,
     yadoran,
-    table_selector,
-    api_selector,
-    params_creator,
+    commander,
+    funk,
+    params,
     query_creator,
     sql_respondent,
     result_executor,
@@ -63,9 +63,9 @@ def make_graph() -> CompiledStateGraph:
         # 노드 추가
         workflow.add_node("yadon", yadon)
         workflow.add_node("yadoran", yadoran)
-        workflow.add_node("table_selector", table_selector)
-        workflow.add_node("api_selector", api_selector)
-        workflow.add_node("params_creator", params_creator)
+        workflow.add_node("commander", commander)
+        workflow.add_node("funk", funk)
+        workflow.add_node("params", params)
         workflow.add_node("query_creator", query_creator)
         workflow.add_node("result_executor", result_executor)
         workflow.add_node("sql_respondent", sql_respondent)
@@ -78,28 +78,28 @@ def make_graph() -> CompiledStateGraph:
         # 쉘더가 야돈의 꼬리를 물면 야도란으로 진화
         workflow.add_conditional_edges(
             "yadon",
-            lambda x: "END" if x["shellder"] == "no" else ("yadoran" if x["shellder"] else "table_selector"),
+            lambda x: "END" if x["shellder"] == "no" else ("yadoran" if x["shellder"] else "commander"),
             {
                 "yadoran": "yadoran",
-                "table_selector": "table_selector",
+                "commander": "commander",
                 "END": END
             }
         )
 
-        # yadoran은 항상 table_selector로
-        workflow.add_edge("yadoran", "table_selector")
+        # yadoran은 항상 commander로
+        workflow.add_edge("yadoran", "commander")
 
         # selector가 api를 토하면 끝남
         workflow.add_conditional_edges(
-            "table_selector",
-            lambda x: "api_selector" if x["selected_table"] == "api" else "query_creator",
+            "commander",
+            lambda x: "funk" if x["selected_table"] == "api" else "query_creator",
             {
                 "query_creator": "query_creator",
-                "api_selector": "api_selector"
+                "funk": "funk"
             }
         )
-        workflow.add_edge("api_selector", "params_creator")
-        workflow.add_edge("params_creator", "result_executor")
+        workflow.add_edge("funk", "params")
+        workflow.add_edge("params", "result_executor")
         
         workflow.add_edge("query_creator", "result_executor")
         

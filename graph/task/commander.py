@@ -3,54 +3,52 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
-from graph.models import qwen_llm
+from graph.models import selector
 from utils.retriever import retriever
-
 from llm_admin.qna_manager import QnAManager
 
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-
-async def select_api(trace_id: str, user_question: str) -> str:
+async def commander(trace_id: str, user_question: str) -> str:
     """사용자의 질문으로부터 테이블을 선택
     Returns:
-        str: 'aicfo_get_xxxx'의 테이블 (예: aicfo_get_financial_status)
+        str: 'aicfo_get_cabo_XXXX'의 테이블
     Raises:
         ValueError: 질문이 분석 가능한 형식이 아닌 경우.
     """
     output_parser = StrOutputParser()
 
-    system_prompt = database_service.get_prompt(
-        node_nm="api_selector", prompt_nm="system"
-    )[0]["prompt"]
+    system_prompt = database_service.get_prompt(node_nm='commander', prompt_nm='system')[0]['prompt']
 
     few_shots = await retriever.get_few_shots(
-        query_text=user_question, collection_name="shots_api_selector", top_k=5
+        query_text=user_question, collection_name="shots_selector", top_k=5
     )
     few_shot_prompt = []
     for example in few_shots:
         few_shot_prompt.append(("human", example["input"]))
         few_shot_prompt.append(("ai", example["output"]))
 
-    SELECT_API_PROMPT = ChatPromptTemplate.from_messages(
+    COMMANDER_PROMPT = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=system_prompt),
             *few_shot_prompt,
-            ("human", user_question),
+            ("human", user_question)
         ]
     )
 
-    print("=" * 40 + "select_api(Q)" + "=" * 40)
+    print("=" * 40 + "selector(Q)" + "=" * 40)
     qna_id = qna_manager.create_question(
-        trace_id=trace_id, question=SELECT_API_PROMPT, model="qwen_14b"
+        trace_id=trace_id,
+        question=COMMANDER_PROMPT,
+        model="qwen_selector"
     )
 
-    select_api_chain = SELECT_API_PROMPT | qwen_llm | output_parser
-    selected_api = select_api_chain.invoke({"user_question": user_question})
+    commander_chain = COMMANDER_PROMPT | selector | output_parser
+    selected_table = commander_chain.invoke({"user_question": user_question})
 
-    print("=" * 40 + "select_api(A)" + "=" * 40)
-    print(selected_api)
-    qna_manager.record_answer(qna_id, selected_api)
+    print("=" * 40 + "selector(A)" + "=" * 40)
+    print(selected_table)
+    qna_manager.record_answer(qna_id, selected_table)
 
-    return selected_api
+    return selected_table

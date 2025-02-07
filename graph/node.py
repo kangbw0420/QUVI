@@ -5,14 +5,14 @@ from xmlrpc.client import boolean
 from api.dto import CompanyInfo
 from graph.task.shellder import shellder
 from graph.task.yadoking import yadoking
-from graph.task.select_table import select_table
+from graph.task.commander import commander
 from graph.task.create_query import create_query
 from graph.task.sql_response import sql_response
 from graph.task.execute_query import execute_query
 from graph.task.referral import question_referral
-from graph.task.select_api import select_api
+from graph.task.funk import func_select
 from graph.task.nodata import no_data
-from graph.task.create_params import create_params
+from graph.task.params import parameters
 from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats
 from utils.filter_com import filter_com
@@ -90,18 +90,18 @@ async def yadoran(state: GraphState) -> GraphState:
     logger.info("yadoran end")
     return state
 
-async def table_selector(state: GraphState) -> GraphState:
+async def commander(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택
     Returns:
         GraphState: selected_table 업데이트.
     Raises:
         KeyError: state에 user_question이 없는 경우.
     """
-    logger.info("table_selector start")
+    logger.info("commander start")
     user_question = state["user_question"]
     trace_id = state["trace_id"]
     
-    selected_table = await select_table(trace_id, user_question)
+    selected_table = await commander(trace_id, user_question)
 
     state.update({"selected_table": selected_table})
     
@@ -112,25 +112,25 @@ async def table_selector(state: GraphState) -> GraphState:
 
     return state
 
-async def api_selector(state: GraphState) -> GraphState:
+async def funk(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택
     Returns:
         GraphState: selected_table 업데이트.
     Raises:
         KeyError: state에 user_question이 없는 경우.
     """
-    logger.info("api_selector start")
+    logger.info("funk start")
     user_question = state["user_question"]
     trace_id = state["trace_id"]
 
-    selected_api = await select_api(trace_id, user_question)
+    selected_api = await func_select(trace_id, user_question)
 
     state.update({"selected_api": selected_api})
 
     return state
 
 
-async def params_creator(state: GraphState) -> GraphState:
+async def params(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(sql함수에 paramsa만 채워넣음)
     Returns:
         GraphState: sql_query가 추가된 상태.
@@ -147,7 +147,7 @@ async def params_creator(state: GraphState) -> GraphState:
     today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
-    sql_query = await create_params(
+    sql_query = await parameters(
         trace_id, selected_api, user_question, main_com, user_info, today
     )
     # 상태 업데이트
