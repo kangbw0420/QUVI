@@ -86,8 +86,8 @@ def query_execute(query, params=None, use_prompt_db=False):
         # SELECT 쿼리라면 결과 반환
         if query.strip().upper().startswith("SELECT"):
             return cursor.fetchall()
-        # INSERT 쿼리라면 신규row 의 idx 반환
-        elif query.strip().upper().startswith("INSERT"):
+        # voc_list INSERT 쿼리라면 신규row 의 seq 반환
+        elif query.strip().upper().startswith("INSERT INTO voc_list"):
             return cursor.fetchone()[0]
         connection.commit()
         cursor.close()
