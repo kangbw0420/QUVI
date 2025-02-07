@@ -1,6 +1,6 @@
 import traceback
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from api.dto import Input, Output
 
 from graph.graph import make_graph
@@ -8,6 +8,7 @@ from llm_admin.conversation_manager import check_conversation_id, make_conversat
 from llm_admin.chain_manager import ChainManager
 from utils.logger import setup_logger
 from utils.retriever import retriever
+from utils.error_handler import ErrorHandler
 
 logger = setup_logger('api')
 
@@ -104,19 +105,21 @@ async def process_input(request: Input) -> Output:
                 "raw_data": raw_data,
                 "session_id": conversation_id,
                 "recommend": recommend_list,
+                "is_api": False,
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }
         )
         
     except Exception as e:
-        error_detail = str(e)
-        print(traceback.format_exc())
+        logger.error(f"---------------Error---------------")
+        logger.error(traceback.format_exc())
         
         # 체인 오류 상태 기록
         if chain_id:
             try:
-                ChainManager.mark_chain_error(chain_id, error_detail)
+                ChainManager.mark_chain_error(chain_id, str(e))
             except Exception as chain_error:
                 print(f"Error marking chain error: {str(chain_error)}")
         
-        raise HTTPException(status_code=500, detail=f"Error processing input: {error_detail}")
+        error_response = ErrorHandler.format_error_response(e)
+        return error_response

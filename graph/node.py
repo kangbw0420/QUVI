@@ -15,13 +15,14 @@ from graph.task.nodata import no_data
 from graph.task.params import parameters
 from graph.task.killjoy import kill_joy
 
+from llm_admin.state_manager import StateManager
+from utils.logger import setup_logger
 from utils.check_acct import check_acct_no
 from utils.stats import calculate_stats
 from utils.filter_com import filter_com
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
-from llm_admin.state_manager import StateManager
-from utils.logger import setup_logger
+from utils.modify_stock import modify_stock
 
 logger = setup_logger('node')
 
@@ -210,7 +211,7 @@ def executor(state: GraphState) -> GraphState:
         selected_table = state.get("selected_table")
         flags = state.get("flags")
 
-        logger.info(f"flag0: {flags}")
+        # 회사명을 권한 있는 회사로 변환. 이와 함께 권한 없는 조건, 회사 변환 조건이 처리됨
         query_one_com, residual_com, selected_com = filter_com(raw_query, main_com, sub_coms, flags)
         
         if selected_com:
@@ -228,14 +229,19 @@ def executor(state: GraphState) -> GraphState:
                 "query_result": [],
                 "sql_query": ""
             })
-        logger.info(f"flag1: {flags}")
+        
+        # stock 종목명 체크 맟 변환
+        if selected_table == 'stock':
+            query_one_com = modify_stock(query_one_com)
+
+        # SELECT절에서 컬럼을 추출하고 그에 맞게 ORDER BY 추가
         query_ordered = add_order_by(query_one_com, selected_table)
 
         try:
+            # 날짜를 추출하고, 미래 시제일 경우 변환
             view_date = extract_view_date(raw_query, selected_table, flags)
+            # 뷰테이블 파라미터를 SQL 쿼리에 추가
             query = add_view_table(query_ordered, selected_table, user_info, view_date, flags)
-            logger.info(f"flag2: {flags}")
-            logger.info(f"query-m: {query}")
             result = execute(query)
 
         except Exception as e:
@@ -321,7 +327,7 @@ async def referral(state: GraphState) -> GraphState:
     return state
 
 async def nodata(state: GraphState) -> GraphState:
-    """데이터가 없어서 사과드리는 노드"""
+    """데이터가 없음을 설명하는 노드"""
     logger.info("nodata start")
     trace_id = state["trace_id"]
     user_question = state["user_question"]
@@ -334,7 +340,7 @@ async def nodata(state: GraphState) -> GraphState:
     return state
 
 async def killjoy(state: GraphState) -> GraphState:
-    """장난하지 말고 재무 데이터 조회나 물어보라는 노드"""
+    """장난하지 말고 재무 데이터나 물어보라는 노드"""
     logger.info("killjoy start")
     trace_id = state["trace_id"]
     user_question = state["user_question"]
