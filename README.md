@@ -10,7 +10,8 @@ stateDiagram-v2
     yadoran --> commander
     
     commander --> funk: selected_table = "api"
-    commander --> nl2sql: selected_table != "api"
+    commander --> killjoy: selected_table = "joy"
+    commander --> nl2sql: else
     
     funk --> params
     params --> executor
@@ -22,6 +23,7 @@ stateDiagram-v2
     executor --> referral: flags.com_changed = true
     executor --> respondent: else
     
+    killjoy --> END
     nodata --> END
     referral --> respondent
     respondent --> END
