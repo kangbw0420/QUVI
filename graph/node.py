@@ -50,6 +50,8 @@ class GraphState(TypedDict):
     final_answer: str
     flags: ProcessingFlags
     last_data: List[Dict[str, str]] # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
+    
+today = datetime.now().strftime("%Y-%m-%d")
 
 async def yadon(state: GraphState) -> GraphState:
     """last_data 기반으로 질문을 검문하는 노드"""
@@ -88,7 +90,7 @@ async def yadoran(state: GraphState) -> GraphState:
         user_question = state["user_question"]
         last_data = state["last_data"]
 
-        new_question = await yadoking(trace_id, user_question, last_data)
+        new_question = await yadoking(trace_id, user_question, last_data, today)
         state["user_question"] = new_question
     logger.info("yadoran end")
     return state
@@ -147,7 +149,6 @@ async def params(state: GraphState) -> GraphState:
     company_list = state["access_company_list"]
     main_com = company_list[0].custNm
     user_info = state["user_info"]
-    today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
     sql_query = await parameters(
@@ -177,7 +178,6 @@ async def nl2sql(state: GraphState) -> GraphState:
     company_list = state["access_company_list"]
     main_com = company_list[0].custNm
     sub_coms = [comp.custNm for comp in company_list[1:]]
-    today = datetime.now().strftime("%Y-%m-%d")
 
     # SQL 쿼리 생성
     sql_query = await create_sql(trace_id, selected_table, user_question, main_com, sub_coms, today)

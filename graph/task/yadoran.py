@@ -10,7 +10,7 @@ from llm_admin.qna_manager import QnAManager
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-async def yadoking(trace_id: str, user_question: str, last_data: List[str]) -> str:
+async def yadoking(trace_id: str, user_question: str, last_data: List[str], today: str) -> str:
     """이전 대화 맥락을 바탕으로 현재 질문 재해석
     Args:
         last_data: 이전 3개의 질의응답 기록
@@ -26,7 +26,7 @@ async def yadoking(trace_id: str, user_question: str, last_data: List[str]) -> s
 
     system_prompt = database_service.get_prompt(
         node_nm='yadoran', prompt_nm='system'
-    )[0]['prompt'].format(last_data_str=last_data_str)
+    )[0]['prompt'].format(last_data_str=last_data_str, today=today)
 
     prompt = ChatPromptTemplate.from_messages(
         [
