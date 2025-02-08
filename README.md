@@ -28,11 +28,6 @@ stateDiagram-v2
     respondent --> END
 ```
 
-## 연락처
-궁금하신 사항이 있으실 때는 / 혹은 오류가 있을 때는 아래의 번호로 언제든 연락 부탁드립니다. :blush:  
-윤주호 010-3168-7616 / yoonjuho92@gmail.com  
-김하정 010-2098-1433 / kabigonmaniac@gmail.com
-
 ## 환경설정
 가상환경 설정 및 dependancy 설치 
 (macOS)  

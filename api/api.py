@@ -71,6 +71,7 @@ async def process_input(request: Input) -> Output:
         raw_data = final_state["query_result"]
         user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
+        selected_table = final_state["selected_table"]
         referral_list = final_state.get("flags", {}).get("referral", [])
         
         # recommend_list 갱신
@@ -105,7 +106,7 @@ async def process_input(request: Input) -> Output:
                 "raw_data": raw_data,
                 "session_id": conversation_id,
                 "recommend": recommend_list,
-                "is_api": False,
+                "is_api": selected_table == "api",
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }
         )
