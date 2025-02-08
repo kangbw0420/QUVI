@@ -21,6 +21,13 @@ SQL_TEMPLATE = (
 
 WEEKDAYS = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}
 
+def convert_date_format(date_str: str) -> str:
+    if len(date_str) == 8 and date_str.isdigit():
+        return date_str
+    # YYYY-MM-DD 형식 검사 및 변환
+    elif len(date_str) == 10 and date_str[4] == '-' and date_str[7] == '-':
+        return date_str.replace('-', '')
+    return date_str
 
 async def parameters(
     trace_id: str,
@@ -80,6 +87,12 @@ async def parameters(
 
         chain = prompt | qwen_llm | JsonOutputParser()
         output = chain.invoke({"user_question": user_question})
+        
+        print(output)
+
+        # from_date와 to_date 형식 변환
+        from_date = convert_date_format(output["from_date"])
+        to_date = convert_date_format(output["to_date"])
 
         # 출력에서 SQL 쿼리 조합
         sql_query = (
@@ -87,8 +100,8 @@ async def parameters(
             .replace("use_intt_id", use_intt_id)
             .replace("user_id", user_id)
             .replace("main_com", main_com)
-            .replace("from_date", output["from_date"])
-            .replace("to_date", output["to_date"])
+            .replace("from_date", from_date)
+            .replace("to_date", to_date)
         )
 
         print("=" * 40 + "params(A)" + "=" * 40)

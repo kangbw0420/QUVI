@@ -23,6 +23,7 @@ from utils.filter_com import filter_com
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
 from utils.modify_stock import modify_stock
+from utils.is_krw import is_krw
 
 logger = setup_logger('node')
 
@@ -274,6 +275,8 @@ def executor(state: GraphState) -> GraphState:
     query_result_stats = calculate_stats(result)
 
     final_result = check_acct_no(result, selected_table)
+    if selected_table == "api":
+        final_result = is_krw(final_result)
 
     # 상태 업데이트
     state.update({"query_result_stats": query_result_stats, "query_result": final_result})
