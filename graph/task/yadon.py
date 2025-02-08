@@ -4,7 +4,7 @@ from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
-from graph.models import qwen_llm
+from graph.models import qwen_boolean
 from llm_admin.qna_manager import QnAManager
 
 database_service = DatabaseService()
@@ -42,7 +42,7 @@ async def shellder(trace_id: str, user_question: str, last_data: List[str]) -> s
         model="qwen_14b"
     )
 
-    checkpoint_chain = prompt | qwen_llm
+    checkpoint_chain = prompt | qwen_boolean
     shellder = checkpoint_chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "Yadon(A)" + "=" * 40)

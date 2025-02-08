@@ -80,11 +80,10 @@ def make_graph() -> CompiledStateGraph:
         # 쉘더가 야돈의 꼬리를 물면 야도란으로 진화
         workflow.add_conditional_edges(
             "yadon",
-            lambda x: "END" if x["shellder"] == "no" else ("yadoran" if x["shellder"] else "commander"),
+            lambda x: "yadoran" if x["shellder"] else "commander",
             {
                 "yadoran": "yadoran",
-                "commander": "commander",
-                "END": END
+                "commander": "commander"
             }
         )
 
