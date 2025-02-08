@@ -146,15 +146,17 @@ class FewShotRetriever:
         # 벡터 DB에서 4개 검색
         results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
         
-        # document 추출 및 strip() 적용
+        # document 추출 및 strip() 적용, 띄어쓰기 제거
+        query_text_normalized = query_text.replace(" ", "").strip()
         documents = [result["document"].strip() for result in results if "document" in result]
+        documents_normalized = [doc.replace(" ", "") for doc in documents]
         
         if not documents:
             return []
             
         # query_text가 검색 결과에 있는지 확인
         try:
-            query_index = documents.index(query_text)
+            query_index = documents_normalized.index(query_text_normalized)
             # query_text가 있으면 해당 항목을 제외한 나머지 중 앞의 3개 반환
             filtered_docs = documents[:query_index] + documents[query_index + 1:]
             return filtered_docs[:3]
