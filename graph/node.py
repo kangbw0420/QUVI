@@ -194,21 +194,22 @@ def executor(state: GraphState) -> GraphState:
         ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
     """
     trace_id = state["trace_id"]
-    company_list = state["access_company_list"]
     selected_table = state["selected_table"]
-    main_com = company_list[0].custNm
-    sub_coms = [comp.custNm for comp in company_list[1:]]
     
     if selected_table == "api":
         query = state.get("sql_query")
         result = execute(query)
     
     else:
+        company_list = state["access_company_list"]
+        main_com = company_list[0].custNm
+        sub_coms = [comp.custNm for comp in company_list[1:]]
+        
         raw_query = state.get("sql_query")
         if not raw_query:
             raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
+        
         user_info = state.get("user_info")
-        selected_table = state.get("selected_table")
         flags = state.get("flags")
 
         # 회사명을 권한 있는 회사로 변환. 이와 함께 권한 없는 조건, 회사 변환 조건이 처리됨
@@ -242,6 +243,12 @@ def executor(state: GraphState) -> GraphState:
             view_date = extract_view_date(raw_query, selected_table, flags)
             # 뷰테이블 파라미터를 SQL 쿼리에 추가
             query = add_view_table(query_ordered, selected_table, user_info, view_date, flags)
+            
+            # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
+            if flags.get("date_changed"):
+                user_question = state["user_question"]
+                state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
+            
             result = execute(query)
 
         except Exception as e:
@@ -276,8 +283,6 @@ def executor(state: GraphState) -> GraphState:
 
 async def respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성
-    Returns:
-        GraphState: final_answer가 추가된 상태.
     Raises:
         KeyError: (user_question, query_result_stats)가 없는 경우.
     """
@@ -285,6 +290,7 @@ async def respondent(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     sql_query = state["sql_query"]
     query_result_stats = state.get("query_result_stats", [])
+    flags = state.get("flags", {})
 
     # 결과가 없는 경우 처리
     if query_result_stats == []:
@@ -299,6 +305,10 @@ async def respondent(state: GraphState) -> GraphState:
     )
 
     final_answer = (str(output))
+
+    # 날짜가 변경된 경우 안내 메시지 추가
+    if flags.get("date_changed"):
+        final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
 
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
