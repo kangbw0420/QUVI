@@ -3,7 +3,6 @@
 stateDiagram-v2
     [*] --> yadon
     
-    yadon --> END: shellder = "no"
     yadon --> yadoran: shellder = "1"
     yadon --> commander: shellder = "0"
     
