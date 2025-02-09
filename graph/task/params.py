@@ -15,19 +15,19 @@ from llm_admin.qna_manager import QnAManager
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-SQL_TEMPLATE = (
-    """SELECT * FROM sql_func('use_intt_id', 'user_id', 'main_com', 'from_date', 'to_date')"""
-)
+SQL_TEMPLATE = """SELECT * FROM sql_func('use_intt_id', 'user_id', 'main_com', 'from_date', 'to_date')"""
 
 WEEKDAYS = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}
+
 
 def convert_date_format(date_str: str) -> str:
     if len(date_str) == 8 and date_str.isdigit():
         return date_str
     # YYYY-MM-DD 형식 검사 및 변환
-    elif len(date_str) == 10 and date_str[4] == '-' and date_str[7] == '-':
-        return date_str.replace('-', '')
+    elif len(date_str) == 10 and date_str[4] == "-" and date_str[7] == "-":
+        return date_str.replace("-", "")
     return date_str
+
 
 async def parameters(
     trace_id: str,
@@ -63,8 +63,9 @@ async def parameters(
                 human_with_date = f'{example["input"]}, 오늘: {example["date"]}.'
             else:
                 human_with_date = example["input"]
+                formatted_output = "{" + str(example["output"]) + "}"
             few_shot_prompt.append(("human", human_with_date))
-            few_shot_prompt.append(("ai", example["output"]))
+            few_shot_prompt.append(("ai", formatted_output))
 
         today_date = datetime.strptime(today, "%Y-%m-%d")
         formatted_today = today_date.strftime("%Y%m%d")
@@ -87,7 +88,7 @@ async def parameters(
 
         chain = prompt | qwen_llm | JsonOutputParser()
         output = chain.invoke({"user_question": user_question})
-        
+
         print(output)
 
         # from_date와 to_date 형식 변환
