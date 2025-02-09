@@ -1,6 +1,6 @@
 import traceback
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from api.dto import Input, Output
 
 from graph.graph import make_graph
@@ -114,6 +114,7 @@ async def process_input(request: Input) -> Output:
         
     except Exception as e:
         logger.error(f"---------------Error---------------")
+        logger.error(str(e))
         logger.error(traceback.format_exc())
         
         # 체인 오류 상태 기록
@@ -122,6 +123,9 @@ async def process_input(request: Input) -> Output:
                 ChainManager.mark_chain_error(chain_id, str(e))
             except Exception as chain_error:
                 print(f"Error marking chain error: {str(chain_error)}")
+
+        error_detail = str(e)
+        raise HTTPException(status_code=500, detail=f"Error processing input: {error_detail}")
         
-        error_response = ErrorHandler.format_error_response(e)
-        return error_response
+        # error_response = ErrorHandler.format_error_response(e)
+        # return error_response

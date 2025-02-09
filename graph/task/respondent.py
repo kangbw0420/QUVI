@@ -45,7 +45,7 @@ async def response(trace_id: str, user_question, column_list = None) -> str:
     prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=system_prompt),
-            # *few_shot_prompt,
+            *few_shot_prompt,
             ("human", human_prompt),
         ]
     )
