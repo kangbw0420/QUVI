@@ -21,19 +21,19 @@ async def response(trace_id: str, user_question, column_list = None) -> str:
 
     system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='system')[0]['prompt']
 
-    # few_shots = await retriever.get_few_shots(
-    #     query_text=user_question,
-    #     collection_name="shots_respondent",
-    #     top_k=3
-    # )
-    # few_shot_prompt = []
-    # for example in few_shots:
-    #     if "stats" in example:
-    #         human_with_stats = f'사용 가능한 column_nm:\n{example["column"]}\n\n사용자의 질문:\n{example["input"]}'
-    #     else:
-    #         human_with_stats = example["input"]
-    #     few_shot_prompt.append(("human", human_with_stats))
-    #     few_shot_prompt.append(("ai", example["output"]))
+    few_shots = await retriever.get_few_shots(
+        query_text=user_question,
+        collection_name="shots_respondent",
+        top_k=3
+    )
+    few_shot_prompt = []
+    for example in few_shots:
+        if "stats" in example:
+            human_with_stats = f'사용 가능한 column_nm:\n{example["stats"]}\n\n사용자의 질문:\n{example["input"]}'
+        else:
+            human_with_stats = example["input"]
+        few_shot_prompt.append(("human", human_with_stats))
+        few_shot_prompt.append(("ai", example["output"]))
 
     # column_list를 문자열로 변환
     column_list_str = ", ".join(column_list) if column_list else ""
