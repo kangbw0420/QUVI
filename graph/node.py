@@ -291,7 +291,8 @@ async def respondent(state: GraphState) -> GraphState:
     raw_column_list = extract_col(result)
     result_for_col, column_list = transform_data(result, raw_column_list)
     # 샷 제작용
-    state.update({"query_result_stats": column_list})
+    column_list_str = ", ".join(column_list)
+    state.update({"query_result_stats": column_list_str})
     # 샷 제작용
     
     # SQL 쿼리 생성
