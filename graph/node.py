@@ -25,7 +25,7 @@ from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
 from utils.modify_stock import modify_stock
 from utils.is_krw import is_krw
-from utils.extract_col import extract_col
+from utils.extract_col import extract_col, fulfill_fstring
 
 logger = setup_logger('node')
 
@@ -298,7 +298,8 @@ async def respondent2(state: GraphState) -> GraphState:
     column_list = extract_col(result)
     
     # SQL 쿼리 생성
-    final_answer = await response2(trace_id, user_question, column_list)
+    fstring_answer = await response2(trace_id, user_question, column_list)
+    final_answer = fulfill_fstring(fstring_answer, result, column_list)
 
     ###### 테스트 끝나면 제거
     selected_table = state["selected_table"]

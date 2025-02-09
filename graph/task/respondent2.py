@@ -3,7 +3,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
-from graph.models import qwen_llm, solver
+from graph.models import solver, qwen_llm
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 
