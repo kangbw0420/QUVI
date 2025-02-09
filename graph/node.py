@@ -8,6 +8,7 @@ from graph.task.yadoran import yadoking
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
 from graph.task.respondent import response
+from graph.task.respondent2 import response2
 from graph.task.executor import execute
 from graph.task.referral import question_referral
 from graph.task.funk import func_select
@@ -24,6 +25,7 @@ from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
 from utils.modify_stock import modify_stock
 from utils.is_krw import is_krw
+from utils.extract_col import extract_col
 
 logger = setup_logger('node')
 
@@ -274,16 +276,48 @@ def executor(state: GraphState) -> GraphState:
     # 통계 계산
     query_result_stats = calculate_stats(result)
 
-    final_result = check_acct_no(result, selected_table)
-    if selected_table == "api":
-        final_result = is_krw(final_result)
+    # final_result = check_acct_no(result, selected_table)
+    # if selected_table == "api":
+    #     final_result = is_krw(final_result)
 
     # 상태 업데이트
-    state.update({"query_result_stats": query_result_stats, "query_result": final_result})
-    StateManager.update_state(trace_id, {"query_result_stats": query_result_stats, "query_result": final_result})
+    # state.update({"query_result_stats": query_result_stats, "query_result": final_result})
+    # StateManager.update_state(trace_id, {"query_result_stats": query_result_stats, "query_result": final_result})
+    state.update({"query_result_stats": query_result_stats, "query_result": result})
+    StateManager.update_state(trace_id, {"query_result_stats": query_result_stats, "query_result": result})
     
     return state
 
+async def respondent2(state: GraphState) -> GraphState:
+    """쿼리 결과를 바탕으로 최종 응답을 생성"""
+    trace_id = state["trace_id"]
+    user_question = state["user_question"]
+    result = state["query_result"]
+    flags = state.get("flags")
+    
+    column_list = extract_col(result)
+    
+    # SQL 쿼리 생성
+    final_answer = await response2(trace_id, user_question, column_list)
+
+    ###### 테스트 끝나면 제거
+    selected_table = state["selected_table"]
+    final_result = check_acct_no(result, selected_table)
+    if selected_table == "api":
+        final_result = is_krw(final_result)
+    state.update({"query_result": final_result})
+    StateManager.update_state(trace_id, {"query_result": final_result})   
+    ###### 테스트 끝나면 제거
+    
+    # 날짜가 변경된 경우 안내 메시지 추가
+    if flags.get("date_changed"):
+        final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
+
+    state.update({"final_answer": final_answer})
+    StateManager.update_state(trace_id, {"final_answer": final_answer})
+    return state
+
+'''
 async def respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성
     Raises:
@@ -291,15 +325,8 @@ async def respondent(state: GraphState) -> GraphState:
     """
     trace_id = state["trace_id"]
     user_question = state["user_question"]
-    sql_query = state["sql_query"]
     query_result_stats = state.get("query_result_stats", [])
     flags = state.get("flags", {})
-
-    # 결과가 없는 경우 처리
-    if query_result_stats == []:
-        final_answer = f'죄송합니다. 요청주신 내용에 따라 데이터베이스에서 다음 내용을 검색했지만 데이터가 없었습니다. \n {sql_query}'
-        state.update({"final_answer": final_answer})
-        return state
     
     output = await response(
         trace_id,
@@ -316,6 +343,7 @@ async def respondent(state: GraphState) -> GraphState:
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
     return state
+'''
 
 async def referral(state: GraphState) -> GraphState:
     """복수 사업장 중 하나만 조회했으니 다른 것도 조회할지 권유하는 노드"""

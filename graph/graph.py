@@ -12,7 +12,7 @@ from .node import (
     funk,
     params,
     nl2sql,
-    respondent,
+    respondent2,
     executor,
     referral,
     nodata,
@@ -69,7 +69,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("params", params) # api 함수 파라미터 선택
         workflow.add_node("nl2sql", nl2sql) # SQL 생성
         workflow.add_node("executor", executor) # SQL 실행 및 상태 체크
-        workflow.add_node("respondent", respondent) # 답변 생성
+        workflow.add_node("respondent", respondent2) # 답변 생성
         workflow.add_node("referral", referral) # 복수 회사 질문에 대해 한 회사로만 답변한 경우 나머지 회사로 질의 추천
         workflow.add_node("nodata", nodata) # 데이터가 없을 경우 답변 생성
         workflow.add_node("killjoy", killjoy) # 일상 대화 대응
