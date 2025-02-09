@@ -1,6 +1,4 @@
 from typing import List, Dict, Any
-import re
-from statistics import mean
 
 def extract_col(result: List[Dict[str, Any]]) -> List[str]:
     """
@@ -29,73 +27,97 @@ def extract_col(result: List[Dict[str, Any]]) -> List[str]:
         
     return columns
 
-def fulfill_fstring(fstring_answer: str, result: List[Dict[str, Any]], column_list: List[str]) -> str:
+def transform_inout_columns(result: List[Dict[str, Any]], column_list: List[str]) -> tuple[List[Dict[str, Any]], List[str]]:
     """
-    f-string 형태의 응답에서 함수를 실제 계산값으로 대체합니다.
+    입출금(in_out_dv) 관련 컬럼을 변환하는 함수
     
     Args:
-        fstring_answer (str): 함수를 포함한 f-string 형태의 응답
-        result (List[Dict[str, Any]]): SQL 쿼리 실행 결과
-        column_list (List[str]): 컬럼명 리스트
-        
+        result: SQL 쿼리 실행 결과
+        column_list: 원본 컬럼 리스트
+    
     Returns:
-        str: 계산된 값이 대체된 최종 응답
-        
-    Example:
-        >>> fstring = "수시입출계좌 잔액은 {sum(acct_bal_amt)}입니다."
-        >>> fulfill_fstring(fstring, result, columns)
-        "수시입출계좌 잔액은 11965052입니다."
+        tuple[List[Dict[str, Any]], List[str]]: (변환된 결과, 변환된 컬럼 리스트)
     """
-    if fstring_answer.startswith('f"') and fstring_answer.endswith('"'):
-        fstring_answer = fstring_answer[2:-1]
-    elif fstring_answer.startswith("f'") and fstring_answer.endswith("'"):
-        fstring_answer = fstring_answer[2:-1]
+    if not result or 'in_out_dv' not in column_list or 'trsc_amt' not in column_list:
+        return result, column_list
     
-    def calculate_sum(column: str) -> int:
-        """특정 컬럼의 모든 값을 합산"""
-        return sum(float(row[column]) for row in result if row[column] is not None)
+    # 새로운 결과와 컬럼 리스트 생성
+    new_result = []
+    new_column_list = column_list.copy()
     
-    def calculate_average(column: str) -> float:
-        """특정 컬럼의 평균값을 계산"""
-        values = [float(row[column]) for row in result if row[column] is not None]
-        return mean(values)
+    # in_out_dv와 trsc_amt 컬럼의 인덱스 찾기
+    inout_idx = new_column_list.index('in_out_dv')
+    amt_idx = new_column_list.index('trsc_amt')
     
-    def calculate_count(column: str) -> int:
-        """특정 컬럼의 값 개수를 계산"""
-        return len([row[column] for row in result if row[column] is not None])
+    # 컬럼 리스트 수정
+    new_column_list.remove('in_out_dv')
+    new_column_list.remove('trsc_amt')
+    new_column_list.extend(['trsc_deposit', 'trsc_withdrawl'])
     
-    def get_unique_values(column: str) -> str:
-        """특정 컬럼의 중복 제거된 값들을 반환"""
-        unique_values = set(str(row[column]) for row in result if row[column] is not None)
-        return ', '.join(sorted(unique_values))
+    # 각 레코드 변환
+    for row in result:
+        new_row = row.copy()
+        inout_type = new_row.pop('in_out_dv')
+        amount = new_row.pop('trsc_amt')
+        
+        if inout_type == '입금':
+            new_row['trsc_deposit'] = amount
+            new_row['trsc_withdrawl'] = None
+        else:  # '출금'
+            new_row['trsc_deposit'] = None
+            new_row['trsc_withdrawl'] = amount
+            
+        new_result.append(new_row)
+    
+    return new_result, new_column_list
 
-    # 함수와 컬럼명을 찾는 정규표현식 패턴
-    pattern = r'\{(sum|average|count|unique)\(([\w_]+)\)\}'
+def transform_currency_columns(result: List[Dict[str, Any]], column_list: List[str]) -> tuple[List[Dict[str, Any]], List[str]]:
+    """
+    통화(curr_cd) 관련 컬럼을 변환하는 함수
     
-    def replace_function(match):
-        func_name = match.group(1)
-        column = match.group(2)
+    Args:
+        result: SQL 쿼리 실행 결과
+        column_list: 원본 컬럼 리스트
+    
+    Returns:
+        tuple[List[Dict[str, Any]], List[str]]: (변환된 결과, 변환된 컬럼 리스트)
+    """
+    if not result or 'curr_cd' not in column_list:
+        return result, column_list
         
-        # 컬럼이 유효한지 확인
-        if column not in column_list:
-            raise ValueError(f"Invalid column name: {column}")
-        
-        # 함수별 계산 수행
-        if func_name == 'sum':
-            value = calculate_sum(column)
-            return format(value, ',')  # 천 단위 구분자 추가
-        elif func_name == 'average':
-            value = calculate_average(column)
-            return format(value, ',.2f')  # 소수점 2자리까지 표시
-        elif func_name == 'count':
-            value = calculate_count(column)
-            return format(value, ',')
-        elif func_name == 'unique':
-            return get_unique_values(column)
-        else:
-            raise ValueError(f"Unknown function: {func_name}")
+    # 통화 종류 수집
+    currencies = {row['curr_cd'] for row in result}
     
-    # 모든 함수를 계산값으로 대체
-    final_answer = re.sub(pattern, replace_function, fstring_answer)
+    # 새로운 컬럼 리스트 생성
+    new_column_list = []
+    base_columns = [col for col in column_list if col != 'curr_cd']
     
-    return final_answer
+    # 통화별로 컬럼 추가
+    for curr in sorted(currencies):
+        for col in base_columns:
+            new_column_list.append(f"{curr}_{col}")
+    
+    # 새로운 결과 생성
+    new_result = []
+    for row in result:
+        new_row = {}
+        curr = row['curr_cd']
+        for col in base_columns:
+            new_row[f"{curr}_{col}"] = row[col]
+        new_result.append(new_row)
+    
+    return new_result, new_column_list
+
+def transform_data(result: List[Dict[str, Any]], column_list: List[str]) -> tuple[List[Dict[str, Any]], List[str]]:
+    """
+    데이터와 컬럼 리스트를 변환하는 메인 함수
+    Returns:
+        tuple[List[Dict[str, Any]], List[str]]: (변환된 결과, 변환된 컬럼 리스트)
+    """
+    # 입출금 변환
+    result, column_list = transform_inout_columns(result, column_list)
+    
+    # 통화 변환
+    result, column_list = transform_currency_columns(result, column_list)
+    
+    return result, column_list

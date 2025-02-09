@@ -58,7 +58,19 @@ async def response(trace_id: str, user_question, column_list = None) -> str:
     )
 
     chain = prompt | solver | output_parser
-    fstring_answer = chain.invoke({"human_prompt": user_question})
+    raw_answer = chain.invoke({"human_prompt": user_question})
+
+    # Remove code block markers if present
+    fstring_answer = raw_answer.strip()
+    if fstring_answer.startswith('```python\n'):
+        fstring_answer = fstring_answer[10:]
+    elif fstring_answer.startswith('```python'):
+        fstring_answer = fstring_answer[9:]
+    
+    if fstring_answer.endswith('\n```'):
+        fstring_answer = fstring_answer[:-4]
+    elif fstring_answer.endswith('```'):
+        fstring_answer = fstring_answer[:-3]
 
     print("=" * 40 + "respondent(A)" + "=" * 40)
     print(fstring_answer)
