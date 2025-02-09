@@ -63,7 +63,7 @@ async def parameters(
                 human_with_date = f'{example["input"]}, 오늘: {example["date"]}.'
             else:
                 human_with_date = example["input"]
-                formatted_output = "{" + str(example["output"]) + "}"
+            formatted_output = "{" + str(example["output"]) + "}"
             few_shot_prompt.append(("human", human_with_date))
             few_shot_prompt.append(("ai", formatted_output))
 
