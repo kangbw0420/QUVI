@@ -32,7 +32,7 @@ class ProcessingFlags(TypedDict):
     referral: List[str]
     residual_com: List[str]
     selected_com: str
-    # from_to_date: List[str]
+    from_to_date: Dict[str, str]
     no_data: bool
     no_access: bool
     com_changed: bool
@@ -147,13 +147,18 @@ async def params(state: GraphState) -> GraphState:
     user_info = state["user_info"]
 
     # SQL 쿼리 생성
-    sql_query = await parameters(
+    sql_query, from_to_date = await parameters(
         trace_id, selected_api, user_question, main_com, user_info, today
     )
+    
+    flags = state.get("flags", {})
+    flags["from_to_date"] = from_to_date
+
     # 상태 업데이트
     state.update(
         {
             "sql_query": sql_query,
+            "flags": flags
         }
     )
     StateManager.update_state(trace_id, {"sql_query": sql_query})
@@ -288,13 +293,18 @@ async def respondent(state: GraphState) -> GraphState:
     logger.info(raw_column_list)
     result_for_col, column_list = transform_data(result, raw_column_list)
     logger.info(column_list)
+    
     # 샷 제작용
     column_list_str = ", ".join(column_list)
     state.update({"query_result_stats": column_list_str})
     # 샷 제작용
     
+    from_to_date = flags.get("from_to_date", {})
+    from_date = from_to_date.get("from_date")
+    to_date = flags.get("to_date")
+    
     # SQL 쿼리 생성
-    fstring_answer = await response(trace_id, user_question, column_list)
+    fstring_answer = await response(trace_id, user_question, column_list, from_date, to_date)
     final_answer = fulfill_fstring(fstring_answer, result_for_col, column_list)
 
     selected_table = state["selected_table"]

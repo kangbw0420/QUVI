@@ -1,3 +1,4 @@
+from typing import Optional
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,7 +11,7 @@ from llm_admin.qna_manager import QnAManager
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-async def response(trace_id: str, user_question, column_list = None) -> str:
+async def response(trace_id: str, user_question, column_list = None, from_date: Optional[str] = None, to_date: Optional[str] = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -29,17 +30,30 @@ async def response(trace_id: str, user_question, column_list = None) -> str:
     few_shot_prompt = []
     for example in few_shots:
         if "stats" in example:
-            human_with_stats = f'사용 가능한 column_nm:\n{example["stats"]}\n\n사용자의 질문:\n{example["input"]}'
+            # 날짜 정보가 있는 경우와 없는 경우를 구분
+            if "date" in example:
+                human_with_stats_date = (
+                    f'사용 가능한 column_nm:\n{example["stats"]}\n\n'
+                    f'사용자의 질문:\n{example["date"]}. {example["input"]}'
+                )
+                few_shot_prompt.append(("human", human_with_stats_date))
+            else:
+                human_with_stats = f'사용 가능한 column_nm:\n{example["stats"]}\n\n사용자의 질문:\n{example["input"]}'
+                few_shot_prompt.append(("human", human_with_stats))
         else:
-            human_with_stats = example["input"]
-        few_shot_prompt.append(("human", human_with_stats))
+            few_shot_prompt.append(("human", example["input"]))
         few_shot_prompt.append(("ai", example["output"]))
 
     # column_list를 문자열로 변환
     column_list_str = ", ".join(column_list) if column_list else ""
+    
+    if from_date and to_date:
+        formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}.  {user_question}"
+    else:
+        formatted_user_question = user_question
 
     human_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
-        column_list=column_list_str, user_question=user_question
+        column_list=column_list_str, user_question=formatted_user_question
     )
 
     prompt = ChatPromptTemplate.from_messages(

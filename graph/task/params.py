@@ -109,8 +109,13 @@ async def parameters(
         print(sql_query)
         output_str = json.dumps(output, ensure_ascii=False)
         qna_manager.record_answer(qna_id, output_str)
+        
+        from_to_date = {
+            "from_date": from_date,
+            "to_date": to_date
+        }
 
-        return sql_query.strip()
+        return sql_query.strip(), from_to_date
 
     except Exception as e:
         raise
