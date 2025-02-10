@@ -3,10 +3,11 @@ import uuid
 
 from fastapi import HTTPException
 
-from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest, VocRequest
+from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest, VocRequest, StockRequest
 from database.postgresql import get_all_prompt, get_prompt, insert_prompt, delete_prompt, get_all_data_rdb, \
     get_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb, get_all_mapping, insert_mapping, \
-    update_mapping, delete_mapping, get_all_voc, get_voc, insert_voc, update_voc, delete_voc, get_home_recommend
+    update_mapping, delete_mapping, get_all_voc, get_voc, insert_voc, update_voc, delete_voc, get_home_recommend, \
+    get_all_stock, insert_stock, delete_stock
 from database.vector_db import EmbeddingAPIClient
 
 
@@ -272,3 +273,19 @@ class DatabaseService:
 
     def get_home_recommend():
         return get_home_recommend()
+
+
+
+
+    #####  /stock  #####
+
+    def get_all_stock():
+        return get_all_stock()
+
+
+    def insert_stock(data: StockRequest):
+        return insert_stock(data)
+
+
+    def delete_stock(stockCd: str):
+        return delete_stock(stockCd)

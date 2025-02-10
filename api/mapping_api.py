@@ -30,7 +30,11 @@ def add_mapping(data: MappingRequest):
         success = DatabaseService.insert_mapping(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to insert mapping data")
-        return {"message": "Mapping data added successfully"}
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Mapping data added successfully"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -45,7 +49,11 @@ def update_mapping(data: MappingRequest):
         success = DatabaseService.update_mapping(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update mapping data")
-        return {"message": "Mapping data updated successfully"}
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Mapping data updated successfully"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -60,6 +68,10 @@ def delete_mapping(data: MappingRequest):
         success = DatabaseService.delete_mapping(data.idx)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete mapping data")
-        return {"message": "Mapping data deleted successfully"}
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Mapping data deleted successfully"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

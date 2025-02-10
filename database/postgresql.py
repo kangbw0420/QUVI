@@ -2,7 +2,7 @@ import psycopg2.pool
 from psycopg2 import OperationalError, InterfaceError
 from psycopg2.extras import RealDictCursor
 
-from api.dto import PostgreToVectorData, MappingRequest, VocRequest
+from api.dto import PostgreToVectorData, MappingRequest, VocRequest, StockRequest
 from utils.config import Config
 
 
@@ -327,7 +327,7 @@ def insert_mapping(data: MappingRequest):
     """
     return query_execute(
         query,
-        params=(data.original_title, data.replace_title, data.type, data.align),
+        params=(data.originalTitle, data.replaceTitle, data.type, data.align),
         use_prompt_db=True
     )
 
@@ -346,7 +346,7 @@ def update_mapping(data: MappingRequest):
     """
     return query_execute(
         query,
-        params=(data.original_title, data.replace_title, data.type, data.align, data.idx),
+        params=(data.originalTitle, data.replaceTitle, data.type, data.align, data.idx),
         use_prompt_db=True
     )
 
@@ -395,23 +395,10 @@ def get_all_voc():
     )
 
 
-# VOC 데이터 조회
+# VOC 데이터 단건 조회
 def get_voc(seq: int):
     query = """
-        SELECT
-            seq,
-            user_id,
-            company_id,
-            channel,
-            utterance_contents,
-            conversation_id,
-            chain_id,
-            type,
-            image_url,
-            content,
-            answer,
-            TO_CHAR(regist_datetime, 'YYYY-MM-DD HH24:MI:SS') AS regist_datetime,
-            TO_CHAR(answer_datetime, 'YYYY-MM-DD HH24:MI:SS') AS answer_datetime
+        SELECT *
         FROM voc_list
         WHERE seq = %s
     """
@@ -422,7 +409,7 @@ def get_voc(seq: int):
     )
 
 
-# 컬럼명 관리 데이터 추가
+# VOC 관리 데이터 추가
 def insert_voc(data: VocRequest):
     query = """
         INSERT INTO voc_list (
@@ -454,7 +441,7 @@ def insert_voc(data: VocRequest):
     )
 
 
-# 컬럼명 관리 데이터 수정
+# VOC 관리 데이터 수정
 def update_voc(data: VocRequest):
     query = """
         UPDATE voc_list
@@ -470,7 +457,7 @@ def update_voc(data: VocRequest):
     )
 
 
-# 컬럼명 관리 데이터 삭제
+# VOC 관리 데이터 삭제
 def delete_voc(seq: int):
     query = """
         DELETE
@@ -487,7 +474,7 @@ def delete_voc(seq: int):
 
 
 
-# # 홈 화면 추천질의 데이터 조회
+# 홈 화면 추천질의 데이터 조회
 def get_home_recommend():
     query = """
         SELECT
@@ -499,9 +486,67 @@ def get_home_recommend():
         LEFT JOIN recommend_quest c
         ON (r.ctgry_cd = c.ctgry_code)
         GROUP BY r.ctgry_cd, r.ctgry_nm, r.img_path
+        ORDER BY r.order_by ASC
     """
     return query_execute(
         query,
         params=(),
+        use_prompt_db=True
+    )
+
+
+
+
+# 주식명 유의어 데이터 전체 조회
+def get_all_stock():
+    query = """
+        SELECT
+            stock_cd,
+            stock_nm,
+            STRING_AGG(stock_nick_nm, ',') AS stock_nick_nm
+        FROM stockname
+        GROUP BY stock_cd, stock_nm
+        ORDER BY stock_cd ASC
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
+# 주식명 유의어 관리 데이터 추가
+def insert_stock(data: StockRequest):
+    query = """
+        INSERT INTO stockname (
+            stock_cd,
+            stock_nm,
+            stock_nick_nm
+        ) 
+        VALUES (
+            %s,
+            %s,
+            %s
+        )
+        RETURNING seq
+    """
+    return query_execute(
+        query,
+        params=(data.stockCd, data.stockNm, data.stockNickNm),
+        use_prompt_db=True
+    )
+
+
+# 주식명 유의어 관리 데이터 삭제
+def delete_stock(stockCd: str):
+    query = """
+        DELETE
+        FROM stockname
+        WHERE
+            stock_cd = %s
+    """
+    return query_execute(
+        query,
+        params=(stockCd),
         use_prompt_db=True
     )

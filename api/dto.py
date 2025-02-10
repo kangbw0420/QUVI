@@ -57,8 +57,8 @@ class DocumentRequest(BaseModel):
 
 class MappingRequest(BaseModel):
     idx: int = 0
-    original_title: str = ""
-    replace_title: str = ""
+    originalTitle: str = ""
+    replaceTitle: str = ""
     type: str = ""
     align: str = ""
 
@@ -74,3 +74,9 @@ class VocRequest(BaseModel):
     imageUrl: str = ""
     content: str = ""
     answer: str = ""
+
+class StockRequest(BaseModel):
+    stockCd: str = ""
+    stockNm: str = ""
+    stockNickNm: str = ""
+    stockNickNmList: List[str] = []
