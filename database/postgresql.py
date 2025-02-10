@@ -488,7 +488,7 @@ def get_home_recommend():
     query = """
         SELECT
             r.ctgry_cd AS ctgryCd,
-            r.ctgry_nm AS ctrgyNm,
+            r.ctgry_nm AS ctgryNm,
             r.img_path AS imgPath,
             STRING_AGG(c.recommend_quest, '|' ORDER BY c.recommend_quest) AS recommendQuest
         FROM ctgry_code r
