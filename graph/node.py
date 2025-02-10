@@ -301,7 +301,7 @@ async def respondent(state: GraphState) -> GraphState:
     
     from_to_date = flags.get("from_to_date", {})
     from_date = from_to_date.get("from_date")
-    to_date = flags.get("to_date")
+    to_date = from_to_date.get("to_date")
     
     # SQL 쿼리 생성
     fstring_answer = await response(trace_id, user_question, column_list, from_date, to_date)
