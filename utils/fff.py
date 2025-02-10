@@ -68,6 +68,54 @@ def evaluate_expression(expression: str, result: List[Dict[str, Any]], column_li
     # Evaluate the resulting mathematical expression
     return float(eval(expression))
 
+def detect_computed_column(error_msg: str, column_list: List[str]) -> tuple[bool, str, str]:
+    """
+    Detect if the error is from trying to access a computed column directly
+    
+    Args:
+        error_msg: The error message containing "Invalid column name: xxx"
+        column_list: List of available columns including computed ones
+        
+    Returns:
+        tuple[bool, str, str]: (is_computed, function_name, column_name)
+    """
+    # Extract the invalid column name from error
+    match = re.search(r"Invalid column name: (\w+)", error_msg)
+    if not match:
+        return False, "", ""
+        
+    invalid_col = match.group(1)
+    
+    # Check if any computed columns exist
+    computed_cols = [col for col in column_list if col in ['sum', 'count', 'average']]
+    if not computed_cols:
+        return False, "", ""
+        
+    # Look for function pattern in the original expression
+    for func in ['sum', 'count', 'average']:
+        if f"{func}({invalid_col})" in error_msg:
+            if func in computed_cols:
+                return True, func, invalid_col
+                
+    return False, "", ""
+
+def handle_computed_column(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
+    """Handle expressions inside curly braces with support for computed columns"""
+    expression = match.group(1)
+    
+    try:
+        return handle_math_expression(match, result, column_list)
+    except ValueError as e:
+        error_msg = str(e)
+        is_computed, func_name, _ = detect_computed_column(error_msg, column_list)
+        
+        if is_computed:
+            # Replace function(column_name) with value(function_name)
+            modified_expression = f"value({func_name})"
+            modified_match = type('Match', (), {'group': lambda x: modified_expression})()
+            return handle_math_expression(modified_match, result, column_list)
+        raise
+
 def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
     """Handle expressions inside curly braces"""
     expression = match.group(1)
@@ -155,4 +203,4 @@ def fulfill_fstring(fstring_answer: str, result: List[Dict[str, Any]], column_li
         fstring_answer = fstring_answer[2:-1]
 
     pattern = r'\{([^}]+)\}'
-    return re.sub(pattern, lambda m: handle_math_expression(m, result, column_list), fstring_answer)
+    return re.sub(pattern, lambda m: handle_computed_column(m, result, column_list), fstring_answer)
