@@ -378,6 +378,7 @@ def get_all_voc():
             channel,
             utterance_contents,
             conversation_id,
+            chain_id,
             type,
             image_url,
             content,
@@ -404,6 +405,7 @@ def get_voc(seq: int):
             channel,
             utterance_contents,
             conversation_id,
+            chain_id,
             type,
             image_url,
             content,
@@ -429,10 +431,12 @@ def insert_voc(data: VocRequest):
             channel,
             utterance_contents,
             conversation_id,
+            chain_id,
             type,
             content
         ) 
         VALUES (
+            %s,
             %s,
             %s,
             %s,
@@ -445,7 +449,7 @@ def insert_voc(data: VocRequest):
     """
     return query_execute(
         query,
-        params=(data.userId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.type, data.content),
+        params=(data.userId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.chainId, data.type, data.content),
         use_prompt_db=True
     )
 

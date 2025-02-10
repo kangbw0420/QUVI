@@ -69,6 +69,7 @@ class VocRequest(BaseModel):
     channel: str = ""
     utteranceContents: str = ""
     conversationId: str = ""
+    chainId: str = ""
     type: str = ""
     imageUrl: str = ""
     content: str = ""
