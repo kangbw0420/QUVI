@@ -1,5 +1,7 @@
 from typing import List, Dict, Any
 
+# 제외할 컬럼 리스트??? ['in_out_dv', 'view_dv', 'com_nm', 'acct_nick_nm', 'acct_dv', 'curr_cd']
+
 def extract_col(result: List[Dict[str, Any]]) -> List[str]:
     """
     데이터프레임 형태의 쿼리 결과에서 컬럼명(키)을 추출합니다.

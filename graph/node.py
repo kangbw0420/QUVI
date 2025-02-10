@@ -18,7 +18,6 @@ from graph.task.killjoy import kill_joy
 from llm_admin.state_manager import StateManager
 from utils.logger import setup_logger
 from utils.check_acct import check_acct_no
-from utils.stats import calculate_stats
 from utils.filter_com import filter_com
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by
@@ -33,6 +32,7 @@ class ProcessingFlags(TypedDict):
     referral: List[str]
     residual_com: List[str]
     selected_com: str
+    # from_to_date: List[str]
     no_data: bool
     no_access: bool
     com_changed: bool
@@ -67,18 +67,9 @@ async def yadon(state: GraphState) -> GraphState:
 
         shellder_result = await shellder(trace_id, user_question, last_data)
         
-        # Handle the "no" case
-        if shellder_result == "no":
-            state.update({
-                "final_answer": "금융 데이터 조회와 관련이 없는 질문으로 판단됩니다.",
-                "query_result": [],
-                "sql_query": "",
-                "shellder": "no"
-            })
-        else:
-            # Convert string "1" to True, "0" to False
-            shellder_check = shellder_result == "1"
-            state["shellder"] = shellder_check
+        shellder_check = shellder_result == "1"
+        state["shellder"] = shellder_check
+        
     else:
         state["shellder"] = False
     
@@ -135,6 +126,7 @@ async def funk(state: GraphState) -> GraphState:
 
     state.update({"selected_api": selected_api})
 
+    logger.info("funk end")
     return state
 
 
@@ -146,6 +138,7 @@ async def params(state: GraphState) -> GraphState:
         KeyError: state에 필요한 값이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
+    logger.info("params start")
     trace_id = state["trace_id"]
     selected_api = state["selected_api"]
     user_question = state["user_question"]
@@ -164,6 +157,7 @@ async def params(state: GraphState) -> GraphState:
         }
     )
     StateManager.update_state(trace_id, {"sql_query": sql_query})
+    logger.info("params end")
     return state
 
 
@@ -175,6 +169,7 @@ async def nl2sql(state: GraphState) -> GraphState:
         KeyError: state에 필요한 값이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
+    logger.info("nl2sql start")
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
@@ -187,6 +182,7 @@ async def nl2sql(state: GraphState) -> GraphState:
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
+    logger.info("nl2sql end")
     return state
 
 def executor(state: GraphState) -> GraphState:
@@ -196,6 +192,7 @@ def executor(state: GraphState) -> GraphState:
     Raises:
         ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
     """
+    logger.info("executor start")
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     
@@ -261,35 +258,36 @@ def executor(state: GraphState) -> GraphState:
     # 결과가 없는 경우 처리
     if not result:
         flags["no_data"] = True
-        logger.info(f"flag3: {flags}")
         empty_result = []
         state.update({
-            "query_result_stats": "데이터가 없습니다.",
+            "query_result_stats": "nodata",
             "query_result": empty_result
         })
         StateManager.update_state(trace_id, {
-            "query_result_stats": "데이터가 없습니다.",
+            "query_result_stats": "nodata",
             "query_result": empty_result
         })
+        logger.info("executor end")
         return state
 
-    # 통계 계산
-    query_result_stats = calculate_stats(result)
-
-    state.update({"query_result_stats": query_result_stats, "query_result": result})
-    StateManager.update_state(trace_id, {"query_result_stats": query_result_stats, "query_result": result})
+    state.update({"query_result": result})
+    StateManager.update_state(trace_id, {"query_result": result})
     
+    logger.info("executor end")
     return state
 
 async def respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성"""
+    logger.info("respondent start")
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     result = state["query_result"]
     flags = state.get("flags")
     
     raw_column_list = extract_col(result)
+    logger.info(raw_column_list)
     result_for_col, column_list = transform_data(result, raw_column_list)
+    logger.info(column_list)
     # 샷 제작용
     column_list_str = ", ".join(column_list)
     state.update({"query_result_stats": column_list_str})
@@ -312,6 +310,7 @@ async def respondent(state: GraphState) -> GraphState:
 
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
+    logger.info("respondent end")
     return state
 
 async def referral(state: GraphState) -> GraphState:
