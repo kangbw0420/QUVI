@@ -14,6 +14,7 @@ def get_home_recommend():
     """
     try:
         result = DatabaseService.get_home_recommend()
+
         return {"body": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

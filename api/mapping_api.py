@@ -15,6 +15,7 @@ def get_all_mapping():
     """
     try:
         result = DatabaseService.get_all_mapping()
+
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -30,6 +31,7 @@ def add_mapping(data: MappingRequest):
         success = DatabaseService.insert_mapping(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to insert mapping data")
+
         return {
             "status": 200,
             "success": True,
@@ -49,6 +51,7 @@ def update_mapping(data: MappingRequest):
         success = DatabaseService.update_mapping(data)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update mapping data")
+
         return {
             "status": 200,
             "success": True,
@@ -68,6 +71,7 @@ def delete_mapping(data: MappingRequest):
         success = DatabaseService.delete_mapping(data.idx)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete mapping data")
+
         return {
             "status": 200,
             "success": True,

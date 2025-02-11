@@ -14,6 +14,7 @@ def get_all_prompt():
     """
     try:
         result = DatabaseService.get_all_prompt()
+
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -27,8 +28,7 @@ def get_prompt(node_nm:str, prompt_nm: str):
     """
     try:
         result = DatabaseService.get_prompt(node_nm, prompt_nm)
-        if not result:
-            raise HTTPException(status_code=500, detail="Prompt not found")
+
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -44,6 +44,7 @@ def add_prompt(prompt: PromptInput):
         success = DatabaseService.add_prompt(prompt.node_nm, prompt.prompt_nm, prompt.prompt)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to insert prompt data")
+
         return {
             "status": 200,
             "success": True,
@@ -63,6 +64,7 @@ def delete_prompt(prompt: PromptInput):
         success = DatabaseService.delete_prompt(prompt.node_nm, prompt.prompt_nm)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete prompt data")
+
         return {
             "status": 200,
             "success": True,
@@ -82,6 +84,7 @@ def query_fewshot(data: VectorDataQuery):
     """
     try:
         result = DatabaseService.query_fewshot_vector(data)
+
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -95,6 +98,7 @@ def getAll_fewshot():
     """
     try:
         result = DatabaseService.get_all_fewshot_vector()
+
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -108,6 +112,7 @@ def get_fewshot(title: str):
     """
     try:
         result = DatabaseService.get_fewshot_vector(title)
+
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -121,6 +126,7 @@ def getAllRDB_fewshot():
     """
     try:
         result = DatabaseService.get_all_fewshot_rdb()
+
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -134,8 +140,15 @@ def add_fewshot(data: FewshotInput):
     """
     try:
         success = DatabaseService.add_fewshot(data.title, data.shots)
-        # success = DatabaseService.addList_fewshot(data.title, data.shots)
-        return {"message": "Few-shot data added successfully"}
+        # success = DatabaseService.add_fewshot_list(data.title, data.shots)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to add fewshot data")
+
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Few-shot data added successfully",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -148,7 +161,14 @@ def delete_fewshot(data: FewshotInput):
     """
     try:
         success = DatabaseService.collection_delete_fewshot(data.title)
-        return {"message": "Few-shot data deleted successfully"}
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete fewshot data")
+
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Few-shot data deleted successfully",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -162,6 +182,11 @@ def restore_fewshot():
     try:
         result = DatabaseService.get_all_fewshot_rdb()
         DatabaseService.restore_fewshot(result)
-        return {"message": "Few-shot data restored successfully"}
+
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Few-shot data restored successfully",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -6,8 +6,8 @@ from fastapi import HTTPException
 from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest, VocRequest, StockRequest
 from database.postgresql import get_all_prompt, get_prompt, insert_prompt, delete_prompt, get_all_data_rdb, \
     get_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb, get_all_mapping, insert_mapping, \
-    update_mapping, delete_mapping, get_all_voc, get_voc, insert_voc, update_voc, delete_voc, get_home_recommend, \
-    get_all_stock, insert_stock, delete_stock
+    update_mapping, delete_mapping, get_all_voc, get_voc, insert_voc, update_voc, delete_voc, answer_voc, \
+    get_home_recommend, get_all_stock, insert_stock, delete_stock
 from database.vector_db import EmbeddingAPIClient
 
 
@@ -105,7 +105,7 @@ class DatabaseService:
         return success
 
 
-    def addList_few_shot(title: str, shots: list[str]):
+    def add_fewshot_list(title: str, shots: list[str]):
         ids = []
         documents = []  # question text for vectorization
         metadatas = []  # metadata including SQL
@@ -148,7 +148,7 @@ class DatabaseService:
         return success
 
 
-    def update_few_shot(data : PostgreToVectorData):
+    def update_fewshot(data : PostgreToVectorData):
         success = update_vector_data(data)
         if success:
             EmbeddingAPIClient.update_embedding(
@@ -267,6 +267,10 @@ class DatabaseService:
         return delete_voc(seq)
 
 
+    def answer_voc(data: VocRequest):
+        return answer_voc(data)
+
+
 
 
     #####  /recommend  #####
@@ -285,6 +289,14 @@ class DatabaseService:
 
     def insert_stock(data: StockRequest):
         return insert_stock(data)
+
+    def insert_stock_list(data: StockRequest):
+        for stockNickNm in data.stockNickNmList:
+            data["stockNickNm"] = stockNickNm
+            success = DatabaseService.insert_stock(data)
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to insert stock data")
+        return success
 
 
     def delete_stock(stockCd: str):

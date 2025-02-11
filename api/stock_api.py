@@ -14,6 +14,7 @@ def get_all_stock():
     """
     try:
         result = DatabaseService.get_all_stock()
+
         return {"data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -31,10 +32,35 @@ def add_stock(data: StockRequest):
             success = DatabaseService.insert_stock(data)
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to insert stock data")
+
         return {
             "status": 200,
             "success": True,
             "message": "Stock data added successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# 주식명 유의어 관리 데이터 수정
+@stock_api.put("/update")
+def update_stock(data: StockRequest):
+    """
+    주식명 유의어 관리 데이터를 수정합니다.
+    """
+    try:
+        success = DatabaseService.delete_stock(data.stockCd)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete stock data")
+
+        success = DatabaseService.insert_stock_list(data)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to insert stock data")
+
+        return {
+            "status": 200,
+            "success": True,
+            "message": "Stock data updated successfully"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -50,6 +76,7 @@ def delete_stock(data: StockRequest):
         success = DatabaseService.delete_stock(data.stockCd)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete stock data")
+
         return {
             "status": 200,
             "success": True,

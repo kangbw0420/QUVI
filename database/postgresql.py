@@ -472,6 +472,23 @@ def delete_voc(seq: int):
     )
 
 
+# VOC 관리 데이터 답변 저장
+def answer_voc(data: VocRequest):
+    query = """
+        UPDATE voc_list
+        SET
+            answer = %s,
+            answer_datetime = NOW()
+        WHERE
+            seq = %s
+    """
+    return query_execute(
+        query,
+        params=(data.answer, data.seq),
+        use_prompt_db=True
+    )
+
+
 
 
 # 홈 화면 추천질의 데이터 조회
