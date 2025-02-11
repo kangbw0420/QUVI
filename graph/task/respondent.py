@@ -48,13 +48,9 @@ async def response(trace_id: str, user_question, column_list = None, date_info: 
     column_list_str = ", ".join(column_list) if column_list else ""
     
     if date_info:
-        if date_info[0] == date_info[1]:  # 두 날짜가 같을 때
-            query_date = date_info[0]
-            formatted_user_question = f"조회 시점: {query_date}. {user_question}"
-        else:  # 두 날짜가 다를 때
-            (from_date, to_date) = date_info
-            formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}. {user_question}"
-    else:  # date_info가 None일 때
+        (from_date, to_date) = date_info
+        formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}.  {user_question}"
+    else:
         formatted_user_question = user_question
 
     human_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(

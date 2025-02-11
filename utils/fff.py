@@ -270,9 +270,9 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
     # Check if expression contains operators
     if any(op in expression for op in ['+', '-', '*', '/']):
         try:
-            # Evaluate each function and replace with its value
             pattern = r'(\w+(?:\.\w+)?)\((.*?)\)'
             replaced_values = []
+            primary_func_name = None  # 첫 번째 함수명 저장
 
             while True:
                 func_match = re.search(pattern, expression)
@@ -280,6 +280,8 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
                     break
                     
                 func_name, param_str = func_match.groups()
+                if primary_func_name is None:
+                    primary_func_name = func_name  # 첫 번째 함수명 캡처
                 params = parse_function_params(param_str)
                 value = eval_function(func_name, params, result, column_list)
                  
@@ -289,7 +291,6 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
                     'params': params 
                 })
                  
-                # Replace the function call with its value
                 expression = expression[:func_match.start()] + str(value) + expression[func_match.end():]
                  
             final_value = eval(expression)
@@ -297,8 +298,8 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
             for val_info in replaced_values:
                 all_params.extend(val_info['params'])
              
-            # Evaluate the final expression
-            return format_number(final_value, "", "", all_params)
+            # 첫 번째 함수명을 format_number에 전달
+            return format_number(final_value, "", primary_func_name, all_params)
             
         except Exception as e:
             return f"Error: {str(e)}"

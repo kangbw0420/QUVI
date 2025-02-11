@@ -285,12 +285,10 @@ async def respondent(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     result = state["query_result"]
     flags = state.get("flags")
-    date_info = state["date_info"]
+    selected_table = state["selected_table"]
     
     raw_column_list = extract_col(result)
-    logger.info(raw_column_list)
     result_for_col, column_list = transform_data(result, raw_column_list)
-    logger.info(column_list)
     
     # 샷 제작용
     column_list_str = ", ".join(column_list)
@@ -298,10 +296,13 @@ async def respondent(state: GraphState) -> GraphState:
     # 샷 제작용
     
     # SQL 쿼리 생성
+    if selected_table == "api":
+        date_info = state["date_info"]
+    else:
+        date_info = ()
     fstring_answer = await response(trace_id, user_question, column_list, date_info)
     final_answer = fulfill_fstring(fstring_answer, result_for_col, column_list)
 
-    selected_table = state["selected_table"]
     final_result = check_acct_no(result, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)

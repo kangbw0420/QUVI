@@ -73,6 +73,7 @@ async def process_input(request: Input) -> Output:
         sql_query = final_state["sql_query"]
         selected_table = final_state["selected_table"]
         referral_list = final_state.get("flags", {}).get("referral", [])
+        date_info = final_state["date_info"]
         
         # recommend_list 갱신
         if referral_list:
@@ -108,6 +109,7 @@ async def process_input(request: Input) -> Output:
                 "chain_id": chain_id,
                 "recommend": recommend_list,
                 "is_api": selected_table == "api",
+                "date_info": date_info,
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }
         )
