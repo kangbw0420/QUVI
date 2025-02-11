@@ -361,7 +361,7 @@ def delete_mapping(idx: int):
     """
     return query_execute(
         query,
-        params=([idx]),
+        params=(idx,),
         use_prompt_db=True
     )
 
@@ -404,7 +404,7 @@ def get_voc(seq: int):
     """
     return query_execute(
         query,
-        params=([seq]),
+        params=(seq,),
         use_prompt_db=True
     )
 

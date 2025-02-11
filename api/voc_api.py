@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
@@ -50,44 +51,40 @@ def add_voc(data: VocRequest):
         if not seq:
             raise HTTPException(status_code=500, detail="Failed to insert voc data")
 
-        try:
-            load_dotenv()
-            ADMIN_DOMAIN = os.getenv("ADMIN_DOMAIN")
 
-            llmURL = f"{ADMIN_DOMAIN}/main/llmadmin/{data.userId}"
-            if (data.conversationId):
-                llmURL += f"/conversation/{data.conversationId}"
-            if (data.chainId):
-                llmURL += f"/chain/{data.chainId}"
+        apiURL = "https://api.flow.team/v1/posts/projects/2396558/tasks"
 
-            apiURL = "https://api.flow.team/v1/posts/projects/2396558/tasks"
+        load_dotenv()
+        ADMIN_DOMAIN = os.getenv("ADMIN_DOMAIN")
+        llmURL = f"{ADMIN_DOMAIN}/main/llmadmin/{data.userId}"
+        if (data.conversationId):
+            llmURL += f"/conversation/{data.conversationId}"
+        if (data.chainId):
+            llmURL += f"/chain/{data.chainId}"
+        contents = (f"인입경로 : {data.channel}\n"
+                    f"아이디 : {data.userId}\n"
+                    f"발화내용 : {data.utteranceContents}\n"
+                    f"LLM로그 : {llmURL}\n"
+                    f"문의내용 : {data.content}")
+        # print(f"contents : {contents}")
 
-            contents = (f"인입경로 : {data.channel}\n"
-                        f"아이디 : {data.userId}\n"
-                        f"발화내용 : {data.utteranceContents}\n"
-                        f"LLM로그 : {llmURL}\n"
-                        f"문의내용 : {data.content}")
-            # print(f"contents : {contents}")
-            body = {
-                "registerId": "philoyyj@daquv.com",
-                "title": data.companyId,
-                "contents": contents,
-                "status": "request"
-            }
-            print(f"body : {body}")
+        body = {
+            "registerId": "philoyyj@daquv.com",
+            "title": data.companyId,
+            "contents": contents,
+            "status": "request"
+        }
+        print(f"body : {body}")
 
-            headers = {
-                "Content-Type": "application/json",
-                "x-flow-api-key": "20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144"
-            }
-            # print(f"headers : {headers}")
+        headers = {
+            "Content-Type": "application/json",
+            "x-flow-api-key": "20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144"
+        }
+        # print(f"headers : {headers}")
 
-            response = requests.post(apiURL, json=body, headers=headers)
-            response.raise_for_status()
-            print(f"[FLOW] {response.text}")
-
-        except requests.exceptions.RequestException as e:
-            print(f"[FLOW] Failed to post flow task: {e}")
+        response = requests.post(apiURL, json=body, headers=headers)
+        response.raise_for_status()
+        print(f"[FLOW] {response}")
 
         return {
             "status": 200,
@@ -153,69 +150,50 @@ def answer_voc(data: VocRequest):
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update voc answer data")
 
-        return {
-            "status": 200,
-            "success": True,
-            "message": "Voc Answer data updated successfully",
+
+        result = DatabaseService.get_voc(data.seq)
+        if result:
+            result = result[0]
+
+        DAQUV_API_DOMAIN = "https://aicfo-new.daquv.com"
+
+        tokenData = {
+            "userId": result['user_id'],
+            "companyId": result['company_id']
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        tokenResponse = requests.post(DAQUV_API_DOMAIN + "/api/v1/auth/generate-token", json=tokenData)
+        tokenResponse.raise_for_status()
+        tokenJson = tokenResponse.json()
+        if tokenJson['success']:
+            jwtToken = tokenJson['body']['JWT-TOKEN']
+            # print(f"jwtToken : {jwtToken}")
 
-@voc_api.post("/answer2")
-def answer_voc2(data: VocRequest):
-    """
-    VOC 의 답변을 저장합니다.
-    """
-    try:
-        success = DatabaseService.answer_voc(data)
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to update voc answer data")
+        now = datetime.now()
+        formattedNow = now.strftime('%Y-%m-%d %H:%M:%S')
+        # print(f"formattedNow : {formattedNow}")
 
-        try:
-            DAQUV_API_DOMAIN = "https://aicfo-new.daquv.com"
+        pushData = {
+            "pushTitle": "문의하신 내용에 대한 답변이 도착했습니다.",
+            "pushBody": result['answer'],
+            "bodyTitle": "",
+            "bodyText1": "문의하신 내용에 대한 답변이 도착했습니다.",
+            "bodyText2": result['answer'],
+            "bodyText3": "",
+            "bodyText4": formattedNow,
+            "vocSeq": result['seq'],
+            "userId": result['user_id'],
+        }
+        print(f"pushData : {pushData}")
 
-            tokenData = {
-                "userId": data.userId,
-                "companyId": data.companyId
-            }
-            response = requests.post(DAQUV_API_DOMAIN + "/api/v1/auth/generate-token", json=tokenData)
-            response.raise_for_status()
-            print(f"[FLOW] {response.text()}")
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": jwtToken
+        }
+        # print(f"headers : {headers}")
 
-            llmURL = f"https://{request.url.hostname}/main/llmadmin/{data.userId}"
-            if (data.conversationId):
-                llmURL += f"/conversation/{data.conversationId}"
-            if (data.chainId):
-                llmURL += f"/chain/{data.chainId}"
-            print(f"llmURL : {llmURL}")
-
-            contents = (f"인입경로 : {data.channel}\n"
-                        f"아이디 : {data.userId}\n"
-                        f"발화내용 : {data.utteranceContents}\n"
-                        f"LLM로그 : {llmURL}\n"
-                        f"문의내용 : {data.content}")
-            print(f"contents : {contents}")
-            apiURL = "https://api.flow.team/v1/posts/projects/2396558/tasks"
-            print(f"apiURL : {apiURL}")
-            body = {
-                "registerId": "philoyyj@daquv.com",
-                "title": data.companyId,
-                "contents": contents,
-                "status": "request"
-            }
-            print(f"body : {body}")
-            headers = {
-                "Content-Type": "application/json",
-                "x-flow-api-key": "20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144"
-            }
-            print(f"headers : {headers}")
-
-            response = requests.post(apiURL, json=body, headers=headers)
-            response.raise_for_status()
-            print(f"[FLOW] {response.text()}")
-
-        except requests.exceptions.RequestException as e:
-            print(f"[FLOW] Failed to post flow task: {e}")
+        pushResponse = requests.post(DAQUV_API_DOMAIN + "/api/v1/push/voc", json=pushData, headers=headers)
+        pushResponse.raise_for_status()
+        print(f"pushResponse : {pushResponse.text}")
 
         return {
             "status": 200,
