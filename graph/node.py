@@ -32,7 +32,6 @@ class ProcessingFlags(TypedDict):
     referral: List[str]
     residual_com: List[str]
     selected_com: str
-    from_to_date: Dict[str, str]
     no_data: bool
     no_access: bool
     com_changed: bool
@@ -49,6 +48,7 @@ class GraphState(TypedDict):
     selected_api: str
     sql_query: str
     query_result_stats: str
+    date_info: Tuple[str, str]
     query_result: dict
     final_answer: str
     flags: ProcessingFlags
@@ -147,18 +147,15 @@ async def params(state: GraphState) -> GraphState:
     user_info = state["user_info"]
 
     # SQL 쿼리 생성
-    sql_query, from_to_date = await parameters(
+    sql_query, date_info = await parameters(
         trace_id, selected_api, user_question, main_com, user_info, today
     )
-    
-    flags = state.get("flags", {})
-    flags["from_to_date"] = from_to_date
 
     # 상태 업데이트
     state.update(
         {
             "sql_query": sql_query,
-            "flags": flags
+            "date_info": date_info
         }
     )
     StateManager.update_state(trace_id, {"sql_query": sql_query})
@@ -275,7 +272,7 @@ def executor(state: GraphState) -> GraphState:
         logger.info("executor end")
         return state
 
-    state.update({"query_result": result})
+    state.update({"query_result": result, "date_info": view_date})
     StateManager.update_state(trace_id, {"query_result": result})
     
     logger.info("executor end")
@@ -288,6 +285,7 @@ async def respondent(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     result = state["query_result"]
     flags = state.get("flags")
+    date_info = state["date_info"]
     
     raw_column_list = extract_col(result)
     logger.info(raw_column_list)
@@ -299,12 +297,8 @@ async def respondent(state: GraphState) -> GraphState:
     state.update({"query_result_stats": column_list_str})
     # 샷 제작용
     
-    from_to_date = flags.get("from_to_date", {})
-    from_date = from_to_date.get("from_date")
-    to_date = from_to_date.get("to_date")
-    
     # SQL 쿼리 생성
-    fstring_answer = await response(trace_id, user_question, column_list, from_date, to_date)
+    fstring_answer = await response(trace_id, user_question, column_list, date_info)
     final_answer = fulfill_fstring(fstring_answer, result_for_col, column_list)
 
     selected_table = state["selected_table"]

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -11,7 +11,7 @@ from llm_admin.qna_manager import QnAManager
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-async def response(trace_id: str, user_question, column_list = None, from_date: Optional[str] = None, to_date: Optional[str] = None) -> str:
+async def response(trace_id: str, user_question, column_list = None, date_info: Optional[Tuple[str, str]] = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -47,9 +47,14 @@ async def response(trace_id: str, user_question, column_list = None, from_date: 
     # column_list를 문자열로 변환
     column_list_str = ", ".join(column_list) if column_list else ""
     
-    if from_date and to_date:
-        formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}.  {user_question}"
-    else:
+    if date_info:
+        if date_info[0] == date_info[1]:  # 두 날짜가 같을 때
+            query_date = date_info[0]
+            formatted_user_question = f"조회 시점: {query_date}. {user_question}"
+        else:  # 두 날짜가 다를 때
+            (from_date, to_date) = date_info
+            formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}. {user_question}"
+    else:  # date_info가 None일 때
         formatted_user_question = user_question
 
     human_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(

@@ -36,7 +36,7 @@ async def parameters(
     main_com: str,
     user_info: Tuple[str, str],
     today: str,
-) -> str:
+) -> Tuple[str, Tuple[str, str]]:
     """TODO
     1) 프롬프트와 퓨샷도 마찬가지로 하드코딩되어 있습니다.
     """
@@ -110,12 +110,9 @@ async def parameters(
         output_str = json.dumps(output, ensure_ascii=False)
         qna_manager.record_answer(qna_id, output_str)
         
-        from_to_date = {
-            "from_date": from_date,
-            "to_date": to_date
-        }
+        date_info = (from_date, to_date)
 
-        return sql_query.strip(), from_to_date
+        return sql_query.strip(), date_info
 
     except Exception as e:
         raise

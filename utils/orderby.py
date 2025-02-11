@@ -19,7 +19,8 @@ COLUMN_ORDER_RULES = {
 
 DEFAULT_ORDER_RULES = {
     "amt": "com_nm DESC, reg_dt DESC",
-    "trsc": "com_nm DESC, trsc_dt DESC"
+    "trsc": "com_nm DESC, trsc_dt DESC",
+    "stock": "com_nm DESC, reg_dt DESC"
 }
 
 # 알려진 모든 컬럼들의 집합
@@ -54,7 +55,7 @@ def has_order_by(query: str) -> bool:
     query = re.sub(r'--.*$', '', query, flags=re.MULTILINE)
     query = re.sub(r'/\*.*?\*/', '', query, flags=re.DOTALL)
     
-    # ORDER BY 검색 (대소문자 구분 없이)
+    # ORDER BY 검색 (대소문자 구분 없이)    
     pattern = r'\bORDER\s+BY\b'
     return bool(re.search(pattern, query, re.IGNORECASE))
 
