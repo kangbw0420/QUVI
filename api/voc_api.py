@@ -54,18 +54,21 @@ def add_voc(data: VocRequest):
 
         apiURL = "https://api.flow.team/v1/posts/projects/2396558/tasks"
 
-        load_dotenv()
-        ADMIN_DOMAIN = os.getenv("ADMIN_DOMAIN")
-        llmURL = f"{ADMIN_DOMAIN}/main/llmadmin/{data.userId}"
-        if (data.conversationId):
-            llmURL += f"/conversation/{data.conversationId}"
-        if (data.chainId):
-            llmURL += f"/chain/{data.chainId}"
+        llmURL = ""
+        if data.utteranceContents:
+            load_dotenv()
+            ADMIN_DOMAIN = os.getenv("ADMIN_DOMAIN")
+            llmURL = f"{ADMIN_DOMAIN}/main/llmadmin/{data.userId}"
+            if (data.conversationId):
+                llmURL += f"/conversation/{data.conversationId}"
+            if (data.chainId):
+                llmURL += f"/chain/{data.chainId}"
         contents = (f"인입경로 : {data.channel}\n"
                     f"아이디 : {data.userId}\n"
                     f"발화내용 : {data.utteranceContents}\n"
                     f"LLM로그 : {llmURL}\n"
-                    f"문의내용 : {data.content}")
+                    f"--------------------------------------------------\n"
+                    f"{data.content}")
         # print(f"contents : {contents}")
 
         body = {
