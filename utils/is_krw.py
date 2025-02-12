@@ -30,14 +30,14 @@ def is_krw(result: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     # KRW 데이터가 있으면 추가
     if krw_data:
         new_result.append({
-            'key': {'desc': 'KRW'},
+            'key': {'desc': '원화자금'},
             'data': krw_data
         })
     
     # FC 데이터가 있으면 추가
     if fc_data:
         new_result.append({
-            'key': {'desc': 'FC'},
+            'key': {'desc': '외화자금'},
             'data': fc_data
         })
 
