@@ -73,7 +73,11 @@ async def process_input(request: Input) -> Output:
         sql_query = final_state["sql_query"]
         selected_table = final_state["selected_table"]
         referral_list = final_state.get("flags", {}).get("referral", [])
-        date_info = final_state["date_info"]
+
+        if "date_info" not in final_state or not final_state["date_info"]:
+            date_info = (None, None)
+        else:
+            date_info = final_state["date_info"]
         
         # recommend_list 갱신
         if referral_list:
