@@ -24,7 +24,7 @@ from utils.orderby import add_order_by
 from utils.modify_stock import modify_stock
 from utils.is_krw import is_krw
 from utils.extract_col import extract_col, transform_data
-from utils.fff import fulfill_fstring
+from utils.compute.compute_main import compute_fstring
 
 logger = setup_logger('node')
 
@@ -58,7 +58,6 @@ today = datetime.now().strftime("%Y-%m-%d")
 
 async def yadon(state: GraphState) -> GraphState:
     """last_data 기반으로 질문을 검문하는 노드"""
-    logger.info("yadon start")
     
     if state.get("last_data"):
         trace_id = state["trace_id"]
@@ -73,12 +72,10 @@ async def yadon(state: GraphState) -> GraphState:
     else:
         state["shellder"] = False
     
-    logger.info("yadon end")
     return state
 
 async def yadoran(state: GraphState) -> GraphState:
     """shellder가 True일 때 질문을 재해석하는 노드"""
-    logger.info("yadoran start")
     if state["shellder"]:
         trace_id = state["trace_id"]
         user_question = state["user_question"]
@@ -86,17 +83,10 @@ async def yadoran(state: GraphState) -> GraphState:
 
         new_question = await yadoking(trace_id, user_question, last_data, today)
         state["user_question"] = new_question
-    logger.info("yadoran end")
     return state
 
 async def commander(state: GraphState) -> GraphState:
-    """사용자 질문에 검색해야 할 table을 선택
-    Returns:
-        GraphState: selected_table 업데이트.
-    Raises:
-        KeyError: state에 user_question이 없는 경우.
-    """
-    logger.info("commander start")
+    """사용자 질문에 검색해야 할 table을 선택"""
     user_question = state["user_question"]
     trace_id = state["trace_id"]
     
@@ -112,13 +102,7 @@ async def commander(state: GraphState) -> GraphState:
     return state
 
 async def funk(state: GraphState) -> GraphState:
-    """사용자 질문에 검색해야 할 table을 선택
-    Returns:
-        GraphState: selected_table 업데이트.
-    Raises:
-        KeyError: state에 user_question이 없는 경우.
-    """
-    logger.info("funk start")
+    """사용자 질문에 검색해야 할 table을 선택"""
     user_question = state["user_question"]
     trace_id = state["trace_id"]
 
@@ -126,7 +110,6 @@ async def funk(state: GraphState) -> GraphState:
 
     state.update({"selected_api": selected_api})
 
-    logger.info("funk end")
     return state
 
 
@@ -138,7 +121,6 @@ async def params(state: GraphState) -> GraphState:
         KeyError: state에 필요한 값이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
-    logger.info("params start")
     trace_id = state["trace_id"]
     selected_api = state["selected_api"]
     user_question = state["user_question"]
@@ -152,14 +134,8 @@ async def params(state: GraphState) -> GraphState:
     )
 
     # 상태 업데이트
-    state.update(
-        {
-            "sql_query": sql_query,
-            "date_info": date_info
-        }
-    )
+    state.update({"sql_query": sql_query, "date_info": date_info})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
-    logger.info("params end")
     return state
 
 
@@ -171,7 +147,6 @@ async def nl2sql(state: GraphState) -> GraphState:
         KeyError: state에 필요한 값이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
     """
-    logger.info("nl2sql start")
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
@@ -184,7 +159,6 @@ async def nl2sql(state: GraphState) -> GraphState:
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
-    logger.info("nl2sql end")
     return state
 
 def executor(state: GraphState) -> GraphState:
@@ -194,7 +168,6 @@ def executor(state: GraphState) -> GraphState:
     Raises:
         ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
     """
-    logger.info("executor start")
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     
@@ -215,7 +188,7 @@ def executor(state: GraphState) -> GraphState:
         flags = state.get("flags")
 
         # 회사명을 권한 있는 회사로 변환. 이와 함께 권한 없는 조건, 회사 변환 조건이 처리됨
-        query_one_com, residual_com, selected_com = filter_com(raw_query, main_com, sub_coms, flags)
+        query_one_com, view_com, residual_com, selected_com = filter_com(raw_query, main_com, sub_coms, flags)
         
         if selected_com:
             flags["residual_com"] = residual_com
@@ -244,7 +217,7 @@ def executor(state: GraphState) -> GraphState:
             # 날짜를 추출하고, 미래 시제일 경우 변환
             view_date = extract_view_date(raw_query, selected_table, flags)
             # 뷰테이블 파라미터를 SQL 쿼리에 추가
-            query = add_view_table(query_ordered, selected_table, user_info, view_date, flags)
+            query = add_view_table(query_ordered, view_com, user_info, view_date, flags)
             
             # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
             if flags.get("date_changed"):
@@ -270,18 +243,15 @@ def executor(state: GraphState) -> GraphState:
             "query_result_stats": "nodata",
             "query_result": empty_result
         })
-        logger.info("executor end")
         return state
 
     state.update({"query_result": result})
     StateManager.update_state(trace_id, {"query_result": result})
     
-    logger.info("executor end")
     return state
 
 async def respondent(state: GraphState) -> GraphState:
     """쿼리 결과를 바탕으로 최종 응답을 생성"""
-    logger.info("respondent start")
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     result = state["query_result"]
@@ -302,7 +272,7 @@ async def respondent(state: GraphState) -> GraphState:
     else:
         date_info = ()
     fstring_answer = await response(trace_id, user_question, column_list, date_info)
-    final_answer = fulfill_fstring(fstring_answer, result_for_col, column_list)
+    final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
     final_result = check_acct_no(result, selected_table)
     if selected_table == "api":
@@ -316,12 +286,10 @@ async def respondent(state: GraphState) -> GraphState:
 
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
-    logger.info("respondent end")
     return state
 
 async def referral(state: GraphState) -> GraphState:
     """복수 사업장 중 하나만 조회했으니 다른 것도 조회할지 권유하는 노드"""
-    logger.info("referral start")
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     flags = state["flags"]
@@ -338,12 +306,10 @@ async def referral(state: GraphState) -> GraphState:
     )
 
     flags["referral"] = referral_list
-    logger.info("referral end")
     return state
 
 async def nodata(state: GraphState) -> GraphState:
     """데이터가 없음을 설명하는 노드"""
-    logger.info("nodata start")
     trace_id = state["trace_id"]
     user_question = state["user_question"]
 
@@ -351,12 +317,10 @@ async def nodata(state: GraphState) -> GraphState:
 
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
-    logger.info("nodata end")
     return state
 
 async def killjoy(state: GraphState) -> GraphState:
     """장난하지 말고 재무 데이터나 물어보라는 노드"""
-    logger.info("killjoy start")
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     
@@ -370,5 +334,4 @@ async def killjoy(state: GraphState) -> GraphState:
     })
     
     StateManager.update_state(trace_id, {"final_answer": final_answer})
-    logger.info("killjoy end")
     return state

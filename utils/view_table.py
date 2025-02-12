@@ -150,14 +150,16 @@ def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str
             return due_dates
         return (date, date)
     
-    raise ValueError(f"날짜를 찾을 수 없습니다. {date_column} 또는 due_dt 컬럼의 조건을 확인해주세요.")
+    today = datetime.now().strftime("%Y%m%d")
+    return (today, today)
+    # raise ValueError(f"날짜를 찾을 수 없습니다. {date_column} 또는 due_dt 컬럼의 조건을 확인해주세요.")
 
 
-def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], view_date: Tuple[str, str], flags: dict) -> str:
+def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], view_com: str, view_date: Tuple[str, str], flags: dict) -> str:
     """SQL 쿼리 테이블 뒤에 뷰테이블 함수를 붙임
     Returns:
-        str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문
-            예: "SELECT * FROM aicfo_get_all_amt('user123', 'intt456', '20250101', '20250131') 
+        str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문'
+            예: "SELECT * FROM aicfo_get_all_amt('user123', 'intt456', '회사', '20250101', '20250131') 
                 WHERE view_dv = '대출' AND reg_dt = '20250120'"
     """
     # 날짜 컬럼 결정
@@ -185,7 +187,7 @@ def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], 
     user_id, use_intt_id = user_info
     
     # 뷰 테이블 함수 호출 형식으로 변환
-    view_table_part = f"{table_name}('{use_intt_id}', '{user_id}', '{view_date[0]}', '{view_date[1]}')"
+    view_table_part = f"{table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}')"
     
     # 최종 쿼리 조립 - FROM 이후의 모든 절을 그대로 유지
     final_query = f"{before_from} FROM {view_table_part} {after_from}"

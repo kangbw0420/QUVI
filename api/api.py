@@ -130,8 +130,8 @@ async def process_input(request: Input) -> Output:
             except Exception as chain_error:
                 print(f"Error marking chain error: {str(chain_error)}")
 
-        error_detail = str(e)
-        raise HTTPException(status_code=500, detail=f"Error processing input: {error_detail}")
+        # error_detail = str(e)
+        # raise HTTPException(status_code=500, detail=f"Error processing input: {error_detail}")
         
-        # error_response = ErrorHandler.format_error_response(e)
-        # return error_response
+        error_response = ErrorHandler.format_error_response(e)
+        return error_response
