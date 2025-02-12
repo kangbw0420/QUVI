@@ -252,6 +252,7 @@ def executor(state: GraphState) -> GraphState:
                 state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
             
             result = execute(query)
+            state.update({"date_info": view_date})
 
         except Exception as e:
             logger.error(f"Error in view table processing: {str(e)}")
@@ -272,7 +273,7 @@ def executor(state: GraphState) -> GraphState:
         logger.info("executor end")
         return state
 
-    state.update({"query_result": result, "date_info": view_date})
+    state.update({"query_result": result})
     StateManager.update_state(trace_id, {"query_result": result})
     
     logger.info("executor end")
