@@ -103,7 +103,7 @@ def eval_function(func_name: str, params: List[str], result: List[Dict[str, Any]
         
     elif func_name == 'count':
         col = evaluated_params[0]
-        return float(len([row[col] for row in result if col in row and row[col] is not None]))
+        return int(len([row[col] for row in result if col in row and row[col] is not None]))
         
     elif func_name == 'unique':
         col = evaluated_params[0]
