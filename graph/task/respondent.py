@@ -28,7 +28,7 @@ async def response(trace_id: str, user_question, column_list = None, date_info: 
         top_k=3
     )
     few_shot_prompt = []
-    for example in few_shots:
+    for example in reversed(few_shots):
         if "stats" in example:
             # 날짜 정보가 있는 경우와 없는 경우를 구분
             if "date" in example:

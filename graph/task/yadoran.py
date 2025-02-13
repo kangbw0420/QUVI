@@ -17,20 +17,19 @@ async def yadoking(trace_id: str, user_question: str, last_data: List[str], toda
     Returns:
         재해석된 질문 문자열
     """
-    last_data_str = ''
+    last_data_chat = []
     for x in last_data:
-        last_template = "\n제공된 맥락"+\
-                f"\n- 이전 질문\n{x['last_question']}\n"+\
-                f"\n- 이전 질문에 대한 답변\n{x['last_answer']}\n"
-        last_data_str += last_template
+        last_data_chat.append(("human", x['last_question']))
+        last_data_chat.append(("ai", x['last_answer']))
 
     system_prompt = database_service.get_prompt(
         node_nm='yadoran', prompt_nm='system'
-    )[0]['prompt'].format(last_data_str=last_data_str, today=today)
+    )[0]['prompt'].format(today=today)
 
     prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessage(content=system_prompt),
+            *last_data_chat,           
             ("human", user_question)
         ]
     )

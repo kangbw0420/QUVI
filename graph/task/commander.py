@@ -25,7 +25,7 @@ async def command(trace_id: str, user_question: str) -> str:
         query_text=user_question, collection_name="shots_selector", top_k=5
     )
     few_shot_prompt = []
-    for example in few_shots:
+    for example in reversed(few_shots):
         few_shot_prompt.append(("human", example["input"]))
         few_shot_prompt.append(("ai", example["output"]))
 

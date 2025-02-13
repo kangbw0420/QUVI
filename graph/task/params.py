@@ -58,7 +58,7 @@ async def parameters(
             query_text=user_question, collection_name="shots_params_creator", top_k=3
         )
         few_shot_prompt = []
-        for example in few_shots:
+        for example in reversed(few_shots):
             if "date" in example:
                 human_with_date = f'{example["input"]}, 오늘: {example["date"]}.'
             else:
