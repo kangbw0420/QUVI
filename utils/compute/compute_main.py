@@ -1,7 +1,8 @@
 import re
 from typing import List, Dict, Any
+from decimal import Decimal
 from utils.compute.formatter import format_number
-from utils.compute.eval_func import parse_function_params, eval_function
+from utils.compute.computer import parse_function_params, compute_function
 
 def detect_computed_column(error_msg: str, column_list: List[str]) -> tuple[bool, str, str]:
     """Detect if the error is from trying to access a computed column directly
@@ -35,62 +36,59 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
     """Handle expressions inside curly braces with support for nested functions"""
     expression = match.group(1)
     
-    # Check if expression contains operators
-    if any(op in expression for op in ['+', '-', '*', '/']):
-        try:
-            pattern = r'(\w+(?:\.\w+)?)\((.*?)\)'
-            replaced_values = []
-            primary_func_name = None  # 첫 번째 함수명 저장
-
-            while True:
-                func_match = re.search(pattern, expression)
-                if not func_match:
-                    break
-                    
-                func_name, param_str = func_match.groups()
-                if primary_func_name is None:
-                    primary_func_name = func_name  # 첫 번째 함수명 캡처
-                params = parse_function_params(param_str)
-                value = eval_function(func_name, params, result, column_list)
+    # 단일 함수 호출 패턴
+    func_pattern = r'(\w+(?:\.\w+)?)\((.*?)\)'
+    
+    # 연산자가 있는지 확인
+    has_operators = any(op in expression for op in ['+', '-', '*', '/'])
+    
+    if has_operators:
+        # 모든 함수 호출을 찾아서 평가
+        while True:
+            func_match = re.search(func_pattern, expression)
+            if not func_match:
+                break
                 
-                replaced_values.append({
-                    'value': value, 
-                    'func_name': func_name,
-                    'params': params 
-                })
-                 
-                expression = expression[:func_match.start()] + str(value) + expression[func_match.end():]
-                 
-            final_value = eval(expression)
-            all_params = []
-            for val_info in replaced_values:
-                all_params.extend(val_info['params'])
-             
-            # 첫 번째 함수명을 format_number에 전달
-            return format_number(final_value, "", primary_func_name, all_params)
+            func_name, param_str = func_match.groups()
+            params = parse_function_params(param_str)
             
+            try:
+                # 함수 결과를 계산
+                value = compute_function(func_name, params, result, column_list)
+                # 결과를 문자열로 변환하여 표현식에 대체
+                expression = expression[:func_match.start()] + str(value) + expression[func_match.end():]
+                
+            except Exception as e:
+                return f"Error: {str(e)}"
+        
+        # 모든 함수가 평가된 후의 최종 식을 처리
+        try:
+            # 산술 연산을 위한 가상의 함수 생성
+            calc_params = [expression]
+            final_value = compute_function('value', calc_params, result, column_list)
+            return format_number(final_value, "", None, None)
         except Exception as e:
             return f"Error: {str(e)}"
-    
-    # Handle single function
-    func_match = re.match(r'(\w+(?:\.\w+)?)\((.*)\)', expression)
-    if not func_match:
-        return '{' + expression + '}'
+            
+    else:
+        # 단일 함수 처리
+        func_match = re.match(func_pattern, expression)
+        if not func_match:
+            return '{' + expression + '}'
+            
+        func_name, param_str = func_match.groups()
+        params = parse_function_params(param_str)
         
-    func_name, param_str = func_match.groups()
-    params = parse_function_params(param_str)
-    
-    try:
-        value = eval_function(func_name, params, result, column_list)
-        # Only format numeric results
-        if isinstance(value, (int, float)):
-            return format_number(value,
-                                 params[0] if len(params) == 1 else "",
-                                 func_name,
-                                 params if len(params) > 1 else None)
-        return str(value)
-    except Exception as e:
-        return f"Error: {str(e)}"
+        try:
+            value = compute_function(func_name, params, result, column_list)
+            if isinstance(value, (int, float, Decimal)):
+                return format_number(value,
+                                    params[0] if len(params) == 1 else "",
+                                    func_name,
+                                    params if len(params) > 1 else None)
+            return str(value)
+        except Exception as e:
+            return f"Error: {str(e)}"
 
 def handle_computed_column(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
     """Handle expressions inside curly braces with support for computed columns"""

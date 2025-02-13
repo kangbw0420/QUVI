@@ -1,6 +1,16 @@
 import re
 from typing import List, Dict, Any, Union
-from statistics import mean, mode, StatisticsError
+from statistics import mode, StatisticsError
+from decimal import Decimal
+
+def safe_decimal(value: Any) -> Decimal:
+    """문자열이나 숫자를 안전하게 Decimal로 변환"""
+    try:
+        if value is None:
+            return Decimal('0')
+        return Decimal(str(value))
+    except Exception:
+        return Decimal('0')
 
 def parse_function_params(param_str: str) -> List[str]:
     """Parse function parameters, handling nested functions and multiple parameters"""
@@ -26,8 +36,8 @@ def parse_function_params(param_str: str) -> List[str]:
         
     return params
 
-def eval_function(func_name: str, params: List[str], result: List[Dict[str, Any]], column_list: List[str]) -> Union[float, str]:
-    """Evaluate a function with its parameters"""
+def compute_function(func_name: str, params: List[str], result: List[Dict[str, Any]], column_list: List[str]) -> Union[float, str]:
+    """compute a function with its parameters"""
     # Handle nested functions first
     if func_name == 'sum':
         if len(params) != 1:
@@ -66,7 +76,7 @@ def eval_function(func_name: str, params: List[str], result: List[Dict[str, Any]
             nested_match = re.match(r'(\w+(?:\.\w+)?)\((.*)\)', param)
             if nested_match:
                 nested_func, nested_params = nested_match.groups()
-                nested_result = eval_function(
+                nested_result = compute_function(
                     nested_func,
                     parse_function_params(nested_params),
                     result,
@@ -79,25 +89,27 @@ def eval_function(func_name: str, params: List[str], result: List[Dict[str, Any]
                 raise ValueError(f"Invalid column name: {param}")
             evaluated_params.append(param)
 
-    # Now handle the main function
+    # main function
     if func_name == 'sum':
         col = evaluated_params[0]
-        return sum(float(row[col]) for row in result if col in row and row[col] is not None)
+        return sum(safe_decimal(row[col]) for row in result if col in row and row[col] is not None)
         
     elif func_name == 'average':
         col = evaluated_params[0]
-        values = [float(row[col]) for row in result if col in row and row[col] is not None]
-        return mean(values)
+        values = [safe_decimal(row[col]) for row in result if col in row and row[col] is not None]
+        if not values:
+            return Decimal('0')
+        return sum(values) / Decimal(str(len(values)))
         
     elif func_name == 'sumproduct':
         value_col, weight_col = evaluated_params
         
-        valid_pairs = [(float(row[value_col]), float(row[weight_col])) 
+        valid_pairs = [(safe_decimal(row[value_col]), safe_decimal(row[weight_col])) 
                      for row in result 
                      if row[value_col] is not None and row[weight_col] is not None]
         
         if not valid_pairs:
-            return 0
+            return Decimal('0')
             
         return sum(v * w for v, w in valid_pairs)
         
@@ -125,30 +137,26 @@ def eval_function(func_name: str, params: List[str], result: List[Dict[str, Any]
             
     elif func_name == 'max':
         col = evaluated_params[0]
-        values = [row[col] for row in result if col in row and row[col] is not None]
-        try:
-            numeric_values = [float(val) for val in values]
-            return max(numeric_values)
-        except ValueError:
-            return max(values)
+        values = [safe_decimal(row[col]) for row in result if col in row and row[col] is not None]
+        if not values:
+            return Decimal('0')
+        return max(values)
             
     elif func_name == 'min':
         col = evaluated_params[0]
-        values = [row[col] for row in result if col in row and row[col] is not None]
-        try:
-            numeric_values = [float(val) for val in values]
-            return min(numeric_values)
-        except ValueError:
-            return min(values)
+        values = [safe_decimal(row[col]) for row in result if col in row and row[col] is not None]
+        if not values:
+            return Decimal('0')
+        return min(values)
             
     elif func_name == 'value':
         col = evaluated_params[0]
         values = [row[col] for row in result if col in row and row[col] is not None]
         try:
-            # For numeric values, try to convert to float
-            numeric_values = [float(val) for val in values]
-            return ', '.join(str(val) for val in numeric_values)
-        except ValueError:
+            # For numeric values, try to convert to Decimal
+            decimal_values = [safe_decimal(val) for val in values]
+            return ', '.join(str(val.quantize(Decimal('.01'), rounding=ROUND_HALF_UP)) for val in decimal_values)
+        except:
             # For non-numeric values, return as strings
             return ', '.join(str(val) for val in values)
     
