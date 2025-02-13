@@ -91,9 +91,9 @@ async def process_input(request: Input) -> Output:
                 recommend_list = referral_list + recommend_list[:(3-n_referral)]
 
         # for shot making
-        query_result_stats = final_state["query_result_stats"]
-        stats_str = ''.join(query_result_stats) if isinstance(query_result_stats, list) else str(query_result_stats)
-        kabigon = f"{sql_query}\n\n\n{stats_str}"
+        column_list = final_state["column_list"]
+        column_list_str = ", ".join(str(col) for col in column_list)
+        kabigon = f"{sql_query}\n\n\n{column_list_str}"
         
         # 기존 레코드 저장
         save_record(conversation_id, user_question, answer, sql_query)

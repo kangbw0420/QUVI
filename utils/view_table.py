@@ -155,7 +155,7 @@ def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str
     # raise ValueError(f"날짜를 찾을 수 없습니다. {date_column} 또는 due_dt 컬럼의 조건을 확인해주세요.")
 
 
-def add_view_table(query: str, selected_table: str, user_info: Tuple[str, str], view_com: str, view_date: Tuple[str, str], flags: dict) -> str:
+def add_view_table(query: str, selected_table: str, view_com: str, user_info: Tuple[str, str], view_date: Tuple[str, str], flags: dict) -> str:
     """SQL 쿼리 테이블 뒤에 뷰테이블 함수를 붙임
     Returns:
         str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문'

@@ -20,10 +20,10 @@ from utils.logger import setup_logger
 from utils.check_acct import check_acct_no
 from utils.filter_com import filter_com
 from utils.view_table import extract_view_date, add_view_table
-from utils.orderby import add_order_by
+from utils.orderby import add_order_by, extract_columns
 from utils.modify_stock import modify_stock
 from utils.is_krw import is_krw
-from utils.extract_col import extract_col, transform_data
+from utils.extract_col import transform_data
 from utils.compute.compute_main import compute_fstring
 
 logger = setup_logger('node')
@@ -47,7 +47,7 @@ class GraphState(TypedDict):
     selected_table: str
     selected_api: str
     sql_query: str
-    query_result_stats: str
+    column_list: List[str]
     date_info: Tuple[str, str]
     query_result: dict
     final_answer: str
@@ -138,7 +138,6 @@ async def params(state: GraphState) -> GraphState:
     StateManager.update_state(trace_id, {"sql_query": sql_query})
     return state
 
-
 async def nl2sql(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
     Returns:
@@ -205,19 +204,20 @@ def executor(state: GraphState) -> GraphState:
                 "query_result": [],
                 "sql_query": ""
             })
-        
+
         # stock 종목명 체크 맟 변환
         if selected_table == 'stock':
             query_one_com = modify_stock(query_one_com)
 
         # SELECT절에서 컬럼을 추출하고 그에 맞게 ORDER BY 추가
+        column_list = extract_columns(query_one_com)
         query_ordered = add_order_by(query_one_com, selected_table)
 
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
             view_date = extract_view_date(raw_query, selected_table, flags)
             # 뷰테이블 파라미터를 SQL 쿼리에 추가
-            query = add_view_table(query_ordered, view_com, user_info, view_date, flags)
+            query = add_view_table(query_ordered, selected_table, view_com, user_info, view_date, flags)
             
             # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
             if flags.get("date_changed"):
@@ -235,17 +235,13 @@ def executor(state: GraphState) -> GraphState:
     if not result:
         flags["no_data"] = True
         empty_result = []
-        state.update({
-            "query_result_stats": "nodata",
-            "query_result": empty_result
-        })
-        StateManager.update_state(trace_id, {
-            "query_result_stats": "nodata",
-            "query_result": empty_result
-        })
+        state.update({"query_result": empty_result})
+        StateManager.update_state(trace_id, {"query_result": empty_result})
+        
         return state
 
-    state.update({"query_result": result})
+    
+    state.update({"query_result": result, "column_list": column_list})
     StateManager.update_state(trace_id, {"query_result": result})
     
     return state
@@ -257,14 +253,9 @@ async def respondent(state: GraphState) -> GraphState:
     result = state["query_result"]
     flags = state.get("flags")
     selected_table = state["selected_table"]
-    
-    raw_column_list = extract_col(result)
+    raw_column_list = state["column_list"]
+
     result_for_col, column_list = transform_data(result, raw_column_list)
-    
-    # 샷 제작용
-    column_list_str = ", ".join(column_list)
-    state.update({"query_result_stats": column_list_str})
-    # 샷 제작용
     
     # SQL 쿼리 생성
     if selected_table == "api":
@@ -277,15 +268,12 @@ async def respondent(state: GraphState) -> GraphState:
     final_result = check_acct_no(result, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)
-    state.update({"query_result": final_result})
-    StateManager.update_state(trace_id, {"query_result": final_result})   
     
-    # 날짜가 변경된 경우 안내 메시지 추가
     if flags.get("date_changed"):
         final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
 
-    state.update({"final_answer": final_answer})
-    StateManager.update_state(trace_id, {"final_answer": final_answer})
+    state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
+    StateManager.update_state(trace_id, {"final_answer": final_answer, "query_result": final_result})
     return state
 
 async def referral(state: GraphState) -> GraphState:
