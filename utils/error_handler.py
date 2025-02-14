@@ -33,7 +33,7 @@ class ErrorHandler:
         ErrorCode.DATA_ACCESS_DENIED: " 해당 데이터에 대한 접근 권한이 없습니다.",
         ErrorCode.INVALID_DATE: " 날짜 형식이 올바르지 않습니다.",
         
-        ErrorCode.INVALID_QUERY: " 검색 조건이 올바르지 않습니다.",
+        ErrorCode.INVALID_QUERY: " SQL 쿼리 실행 시 오류가 발생했습니다. 쿼리를 확인하시거나 담당자에게 문의해주세요.",
         ErrorCode.TABLE_NOT_FOUND: " 요청하신 데이터 테이블을 찾을 수 없습니다.",
         
         ErrorCode.COMPANY_ACCESS_DENIED: " 해당 기업의 데이터에 대한 접근 권한이 없습니다.",
@@ -71,8 +71,12 @@ class ErrorHandler:
             return ErrorCode.INVALID_DATE, 400
             
         # 쿼리 관련 에러
-        elif "syntax error" in error_message or "invalid query" in error_message:
-            return ErrorCode.INVALID_QUERY, 400
+        elif "psycopg" in error_message or "invalid query" in error_message:
+            sql_start = error_message.find("[sql:") + 6
+            sql_end = error_message.find("]", sql_start)
+            if sql_end != -1:
+                sql_query = error_message[sql_start:sql_end].strip()
+                return ErrorCode.INVALID_QUERY, 500, sql_query
         elif "table not found" in error_message or "relation does not exist" in error_message:
             return ErrorCode.TABLE_NOT_FOUND, 404
             
@@ -89,11 +93,14 @@ class ErrorHandler:
     @staticmethod
     def format_error_response(error: Exception) -> Dict[str, Any]:
         """에러를 API 응답 형식으로 변환"""
-        error_code, status_code = ErrorHandler.classify_error(error)
+        error_code, status_code, sql_query = ErrorHandler.classify_error(error)
         user_message = ErrorHandler.USER_MESSAGES[error_code]
         
         # 사용자 메시지와 상세 에러를 줄바꿈으로 구분
-        formatted_message = f"{user_message}\n\n{str(error)}"
+        if sql_query:
+            formatted_message = f"SQL 쿼리 실행 시 오류가 발생했습니다. 쿼리를 확인하시거나 담당자에게 문의해주세요.\n\n{sql_query}"
+        else:
+            formatted_message = f"{user_message}\n\n{str(error)}"
         
         return {
             "status": status_code,
