@@ -23,7 +23,8 @@ from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by, extract_col_from_query
 from utils.modify_stock import modify_stock
 from utils.is_krw import is_krw
-from utils.transform_col import transform_data, extract_col_from_dict
+from utils.transform_col import transform_data
+from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
 from utils.compute.compute_main import compute_fstring
 
 logger = setup_logger('node')
@@ -256,6 +257,7 @@ async def respondent(state: GraphState) -> GraphState:
     selected_table = state["selected_table"]
     raw_column_list = state["column_list"]
 
+    # 컬럼과 데이터에서 입출금과 통화 구분
     result_for_col, column_list = transform_data(result, raw_column_list)
     
     # SQL 쿼리 생성

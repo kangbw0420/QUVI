@@ -1,5 +1,6 @@
 import re
 from typing import List
+from utils.extract_data_info import extract_col_from_query
 
 # 컬럼에 따른 ORDER BY 규칙 정의
 COLUMN_ORDER_RULES = {
@@ -58,37 +59,6 @@ def has_order_by(query: str) -> bool:
     # ORDER BY 검색 (대소문자 구분 없이)    
     pattern = r'\bORDER\s+BY\b'
     return bool(re.search(pattern, query, re.IGNORECASE))
-
-def extract_col_from_query(query: str) -> List[str]:
-    """SELECT절에서 컬럼명 추출. alias가 있으면 alias를, 테이블명 접두사가 있으면 제거하고 컬럼명만 반환"""
-    # SELECT와 FROM 사이의 내용 추출
-    select_pattern = re.compile(r'SELECT\s+(.*?)\s+FROM', re.IGNORECASE | re.DOTALL)
-    match = select_pattern.search(query)
-    if not match:
-        return []
-    
-    columns_str = match.group(1).strip()
-    
-    # SELECT * 처리
-    if columns_str == '*':
-        return ['*']
-        
-    # 컬럼들을 분리하고 정리
-    columns = []
-    # alias가 있을 경우 alias를 컬럼명으로 사용
-    column_pattern = re.compile(r'(?:.*?\s+AS\s+)?(["\w]+)(?:\s*,|$)', re.IGNORECASE)
-    
-    # 인식된 컬럼명을 정제
-    for match in column_pattern.finditer(columns_str):
-        col = match.group(1)
-        # 테이블 접두사 제거
-        col = col.split('.')[-1]
-        # 공백과 따옴표 제거
-        col = col.strip().strip('"\'')
-        if col:
-            columns.append(col)
-            
-    return columns
 
 def find_matching_rule(columns: List[str], selected_table: str) -> str:
     """추출된 컬럼 조합에 맞는 ORDER BY 규칙 찾기. *는 테이블별 기본정렬, 알려지지 않은 컬럼은 DESC 정렬"""
