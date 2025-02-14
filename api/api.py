@@ -40,8 +40,8 @@ async def process_input(request: Input) -> Output:
         user_info = (request.user_id, request.use_intt_id)
         
         # last_data 조회
-        last_data = extract_last_data(conversation_id) if check_conversation_id(conversation_id) else None
-        logger.info(f"last_data: {last_data}")
+        # last_data = extract_last_data(conversation_id) if check_conversation_id(conversation_id) else None
+        # logger.info(f"last_data: {last_data}")
 
         # 체인 생성
         chain_id = ChainManager.create_chain(conversation_id, request.user_question)
@@ -58,7 +58,7 @@ async def process_input(request: Input) -> Output:
                 "com_changed": False,
                 "date_changed": False
             },
-            "last_data": last_data if last_data else []
+            # "last_data": last_data if last_data else []
         }
 
         # 그래프 실행
@@ -96,7 +96,7 @@ async def process_input(request: Input) -> Output:
         kabigon = f"{sql_query}\n\n\n{column_list_str}"
         
         # 기존 레코드 저장
-        save_record(conversation_id, user_question, answer, sql_query)
+        # save_record(conversation_id, user_question, answer, sql_query)
         
         # 체인 완료 기록
         ChainManager.complete_chain(chain_id, answer)
