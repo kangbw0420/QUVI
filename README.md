@@ -1,12 +1,12 @@
-## Agent Architecture
+## Agent Architecture(goodbye yadon...)
+yadon --> yadoran: shellder = "1"
+yadon --> commander: shellder = "0"
+
+yadoran --> commander
+
 ```mermaid
 stateDiagram-v2
-    [*] --> yadon
-    
-    yadon --> yadoran: shellder = "1"
-    yadon --> commander: shellder = "0"
-    
-    yadoran --> commander
+    [*] --> commander
     
     commander --> funk: selected_table = "api"
     commander --> killjoy: selected_table = "joy"
