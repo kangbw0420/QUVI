@@ -321,7 +321,7 @@ async def killjoy(state: GraphState) -> GraphState:
         "final_answer": final_answer,
         "query_result": [],
         "sql_query": "",
-        "query_result_stats": ""
+        "column_list": []
     })
     
     StateManager.update_state(trace_id, {"final_answer": final_answer})
