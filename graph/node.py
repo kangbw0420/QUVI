@@ -21,7 +21,7 @@ from utils.check_acct import check_acct_no
 from utils.filter_com import filter_com
 from utils.view_table import extract_view_date, add_view_table
 from utils.orderby import add_order_by, extract_col_from_query
-from utils.modify_stock import modify_stock
+from utils.modify_name import modify_stock, modify_bank
 from utils.is_krw import is_krw
 from utils.transform_col import transform_data
 from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
@@ -173,6 +173,8 @@ def executor(state: GraphState) -> GraphState:
     
     if selected_table == "api":
         query = state.get("sql_query")
+        print("#" * 80)
+        print(query)
         result = execute(query)
         column_list = extract_col_from_dict(result)
     
@@ -213,8 +215,10 @@ def executor(state: GraphState) -> GraphState:
 
         # SELECT절에서 컬럼을 추출하고 그에 맞게 ORDER BY 추가
         column_list = extract_col_from_query(query_one_com)
+        # query_right_bank = modify_bank(query_one_com)
+        # query_ordered = add_order_by(query_right_bank, selected_table)
         query_ordered = add_order_by(query_one_com, selected_table)
-
+        
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
             view_date = extract_view_date(raw_query, selected_table, flags)
@@ -226,6 +230,8 @@ def executor(state: GraphState) -> GraphState:
                 user_question = state["user_question"]
                 state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
             
+            print("#" * 80)
+            print(query)
             result = execute(query)
             state.update({"date_info": view_date})
 
