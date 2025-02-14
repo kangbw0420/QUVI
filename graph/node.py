@@ -126,7 +126,11 @@ async def params(state: GraphState) -> GraphState:
     selected_api = state["selected_api"]
     user_question = state["user_question"]
     company_list = state["access_company_list"]
-    main_com = company_list[0].custNm
+    main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
+    if main_companies:
+        main_com = main_companies[0].custNm
+    else:
+        main_com = company_list[0].custNm
     user_info = state["user_info"]
 
     # SQL 쿼리 생성
@@ -151,8 +155,12 @@ async def nl2sql(state: GraphState) -> GraphState:
     selected_table = state["selected_table"]
     user_question = state["user_question"]
     company_list = state["access_company_list"]
-    main_com = company_list[0].custNm
-    sub_coms = [comp.custNm for comp in company_list[1:]]
+    main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
+    if main_companies:
+        main_com = main_companies[0].custNm
+    else:
+        main_com = company_list[0].custNm
+    sub_coms = [comp.custNm for comp in company_list if comp.custNm != main_com]
 
     # SQL 쿼리 생성
     sql_query = await create_sql(trace_id, selected_table, user_question, main_com, sub_coms, today)
@@ -180,8 +188,12 @@ def executor(state: GraphState) -> GraphState:
     
     else:
         company_list = state["access_company_list"]
-        main_com = company_list[0].custNm
-        sub_coms = [comp.custNm for comp in company_list[1:]]
+        main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
+        if main_companies:
+            main_com = main_companies[0].custNm
+        else:
+            main_com = company_list[0].custNm
+        sub_coms = [comp.custNm for comp in company_list if comp.custNm != main_com]
         
         raw_query = state.get("sql_query")
         if not raw_query:
