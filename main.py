@@ -5,14 +5,16 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
 
 from api.api import api
 from api.data_api import data_api
 from api.llmadmin_api import llmadmin_api
 from api.mapping_api import mapping_api
-from api.voc_api import voc_api
 from api.recommend_api import recommend_api
 from api.stock_api import stock_api
+from api.voc_api import voc_api
 from database.postgresql import connect_postgresql_pool
 from utils.logger import setup_logger
 
@@ -29,7 +31,10 @@ def parse_arguments():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # postgresql 커넥션풀 연결
     connect_postgresql_pool()
+    # InMemory 캐시 초기화
+    FastAPICache.init(InMemoryBackend())
     yield
 
 app = FastAPI(lifespan=lifespan)
