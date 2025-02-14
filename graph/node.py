@@ -20,10 +20,10 @@ from utils.logger import setup_logger
 from utils.check_acct import check_acct_no
 from utils.filter_com import filter_com
 from utils.view_table import extract_view_date, add_view_table
-from utils.orderby import add_order_by, extract_columns
+from utils.orderby import add_order_by, extract_col_from_query
 from utils.modify_stock import modify_stock
 from utils.is_krw import is_krw
-from utils.extract_col import transform_data
+from utils.transform_col import transform_data, extract_col_from_dict
 from utils.compute.compute_main import compute_fstring
 
 logger = setup_logger('node')
@@ -173,6 +173,7 @@ def executor(state: GraphState) -> GraphState:
     if selected_table == "api":
         query = state.get("sql_query")
         result = execute(query)
+        column_list = extract_col_from_dict(result)
     
     else:
         company_list = state["access_company_list"]
@@ -210,7 +211,7 @@ def executor(state: GraphState) -> GraphState:
             query_one_com = modify_stock(query_one_com)
 
         # SELECT절에서 컬럼을 추출하고 그에 맞게 ORDER BY 추가
-        column_list = extract_columns(query_one_com)
+        column_list = extract_col_from_query(query_one_com)
         query_ordered = add_order_by(query_one_com, selected_table)
 
         try:
@@ -235,11 +236,11 @@ def executor(state: GraphState) -> GraphState:
     if not result:
         flags["no_data"] = True
         empty_result = []
-        state.update({"query_result": empty_result})
+        column_list = []
+        state.update({"query_result": empty_result, "column_list": column_list})
         StateManager.update_state(trace_id, {"query_result": empty_result})
         
         return state
-
     
     state.update({"query_result": result, "column_list": column_list})
     StateManager.update_state(trace_id, {"query_result": result})

@@ -59,7 +59,7 @@ def has_order_by(query: str) -> bool:
     pattern = r'\bORDER\s+BY\b'
     return bool(re.search(pattern, query, re.IGNORECASE))
 
-def extract_columns(query: str) -> List[str]:
+def extract_col_from_query(query: str) -> List[str]:
     """SELECT절에서 컬럼명 추출. alias가 있으면 alias를, 테이블명 접두사가 있으면 제거하고 컬럼명만 반환"""
     # SELECT와 FROM 사이의 내용 추출
     select_pattern = re.compile(r'SELECT\s+(.*?)\s+FROM', re.IGNORECASE | re.DOTALL)
@@ -122,7 +122,7 @@ def add_order_by(query: str, selected_table: str) -> str:
         return query
         
     # 쿼리에서 컬럼 추출
-    columns = extract_columns(query)
+    columns = extract_col_from_query(query)
     if not columns:
         return query
         

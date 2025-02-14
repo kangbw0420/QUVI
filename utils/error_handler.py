@@ -29,23 +29,23 @@ class ErrorCode(Enum):
 class ErrorHandler:
     # 프론트엔드에 표시할 사용자 친화적 메시지
     USER_MESSAGES = {
-        ErrorCode.NO_DATA: "요청하신 데이터가 존재하지 않습니다.",
-        ErrorCode.DATA_ACCESS_DENIED: "해당 데이터에 대한 접근 권한이 없습니다.",
-        ErrorCode.INVALID_DATE: "날짜 형식이 올바르지 않습니다.",
+        ErrorCode.NO_DATA: " 요청하신 데이터가 존재하지 않습니다.",
+        ErrorCode.DATA_ACCESS_DENIED: " 해당 데이터에 대한 접근 권한이 없습니다.",
+        ErrorCode.INVALID_DATE: " 날짜 형식이 올바르지 않습니다.",
         
-        ErrorCode.INVALID_QUERY: "검색 조건이 올바르지 않습니다.",
-        ErrorCode.TABLE_NOT_FOUND: "요청하신 데이터 테이블을 찾을 수 없습니다.",
+        ErrorCode.INVALID_QUERY: " 검색 조건이 올바르지 않습니다.",
+        ErrorCode.TABLE_NOT_FOUND: " 요청하신 데이터 테이블을 찾을 수 없습니다.",
         
-        ErrorCode.COMPANY_ACCESS_DENIED: "해당 기업의 데이터에 대한 접근 권한이 없습니다.",
-        ErrorCode.INVALID_COMPANY: "유효하지 않은 회사명입니다.",
+        ErrorCode.COMPANY_ACCESS_DENIED: " 해당 기업의 데이터에 대한 접근 권한이 없습니다.",
+        ErrorCode.INVALID_COMPANY: " 유효하지 않은 회사명입니다.",
         
-        ErrorCode.INVALID_INPUT: "입력하신 내용을 이해할 수 없습니다. 다시 한 번 확인해주세요.",
-        ErrorCode.FUTURE_DATE: "미래 날짜의 데이터는 조회할 수 없습니다.",
+        ErrorCode.INVALID_INPUT: " 입력하신 내용을 이해할 수 없습니다. 다시 한 번 확인해주세요.",
+        ErrorCode.FUTURE_DATE: " 미래 날짜의 데이터는 조회할 수 없습니다.",
         
-        ErrorCode.DATABASE_ERROR: "데이터베이스 연결에 문제가 발생했습니다. 데이터베이스 서버 연결에 문제가 없는지 확인해주세요.",
-        ErrorCode.LLM_ERROR: "AI 모델 처리 중 문제가 발생했습니다. 모델 서버가 제대로 실행 중인지 확인해주세요.",
-        ErrorCode.NETWORK_ERROR: "네트워크 연결에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
-        ErrorCode.UNKNOWN_ERROR: "처리 중 예상치 못한 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
+        ErrorCode.DATABASE_ERROR: " 데이터베이스 연결에 문제가 발생했습니다. 데이터베이스 서버 연결에 문제가 없는지 확인해주세요.",
+        ErrorCode.LLM_ERROR: " AI 모델 처리 중 문제가 발생했습니다. 모델 서버가 제대로 실행 중인지 확인해주세요.",
+        ErrorCode.NETWORK_ERROR: " 네트워크 연결에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        ErrorCode.UNKNOWN_ERROR: " 파악되지 않는 에러입니다. 담당자에게 문의해주세요."
     }
 
     @staticmethod
@@ -92,11 +92,14 @@ class ErrorHandler:
         error_code, status_code = ErrorHandler.classify_error(error)
         user_message = ErrorHandler.USER_MESSAGES[error_code]
         
+        # 사용자 메시지와 상세 에러를 줄바꿈으로 구분
+        formatted_message = f"{user_message}\n\n{str(error)}"
+        
         return {
             "status": status_code,
             "success": False,
             "retCd": status_code,
-            "message": user_message,
+            "message": formatted_message,
             "body": {
                 "error_code": error_code.value,
                 "detail": str(error)
