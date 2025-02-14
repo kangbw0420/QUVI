@@ -3,37 +3,10 @@ from typing import List, Dict, Any
 from decimal import Decimal
 from utils.compute.formatter import format_number
 from utils.compute.computer import parse_function_params, compute_function
-
-def detect_computed_column(error_msg: str, column_list: List[str]) -> tuple[bool, str, str]:
-    """Detect if the error is from trying to access a computed column directly
-    Args:
-        error_msg: The error message containing "Invalid column name: xxx"
-        column_list: List of available columns including computed ones
-    Returns:
-        tuple[bool, str, str]: (is_computed, function_name, column_name)
-    """
-    # Extract the invalid column name from error
-    match = re.search(r"Invalid column name: (\w+)", error_msg)
-    if not match:
-        return False, "", ""
-        
-    invalid_col = match.group(1)
-    
-    # Check if any computed columns exist
-    computed_cols = [col for col in column_list if col in ['sum', 'count', 'average']]
-    if not computed_cols:
-        return False, "", ""
-        
-    # Look for function pattern in the original expression
-    for func in ['sum', 'count', 'average']:
-        if f"{func}({invalid_col})" in error_msg:
-            if func in computed_cols:
-                return True, func, invalid_col
-                
-    return False, "", ""
+from utils.compute.detector import detect_computed_column, split_by_operators, calculate_with_operator
 
 def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
-    """Handle expressions inside curly braces with support for nested functions"""
+    """Handle expressions inside curly braces with support for nested functions and arithmetic operations"""
     expression = match.group(1)
     
     # 단일 함수 호출 패턴
@@ -43,32 +16,37 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
     has_operators = any(op in expression for op in ['+', '-', '*', '/'])
     
     if has_operators:
-        # 모든 함수 호출을 찾아서 평가
-        while True:
-            func_match = re.search(func_pattern, expression)
+        # 수식을 연산자를 기준으로 분리
+        parts = split_by_operators(expression)
+        
+        try:
+            # 첫 번째 부분 계산
+            first_part, _ = parts[0]
+            func_match = re.match(func_pattern, first_part)
             if not func_match:
-                break
+                raise ValueError(f"Invalid expression part: {first_part}")
                 
             func_name, param_str = func_match.groups()
             params = parse_function_params(param_str)
+            current_value = compute_function(func_name, params, result, column_list)
             
-            try:
-                # 함수 결과를 계산
-                value = compute_function(func_name, params, result, column_list)
-                # 결과를 문자열로 변환하여 표현식에 대체
-                expression = expression[:func_match.start()] + str(value) + expression[func_match.end():]
+            # 나머지 부분들 순차적으로 계산
+            for part, operator in parts[1:]:
+                func_match = re.match(func_pattern, part)
+                if not func_match:
+                    raise ValueError(f"Invalid expression part: {part}")
+                    
+                func_name, param_str = func_match.groups()
+                params = parse_function_params(param_str)
+                next_value = compute_function(func_name, params, result, column_list)
                 
-            except Exception as e:
-                return f"Error: {str(e)}"
-        
-        # 모든 함수가 평가된 후의 최종 식을 처리
-        try:
-            # 산술 연산을 위한 가상의 함수 생성
-            calc_params = [expression]
-            final_value = compute_function('value', calc_params, result, column_list)
-            return format_number(final_value, "", None, None)
+                # 연산자를 적용하여 계산
+                current_value = calculate_with_operator(current_value, next_value, operator)
+            
+            return format_number(current_value, "", None, None)
+            
         except Exception as e:
-            return f"Error: {str(e)}"
+            return f"Error in calculation: {str(e)}"
             
     else:
         # 단일 함수 처리
@@ -83,9 +61,9 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
             value = compute_function(func_name, params, result, column_list)
             if isinstance(value, (int, float, Decimal)):
                 return format_number(value,
-                                    params[0] if len(params) == 1 else "",
-                                    func_name,
-                                    params if len(params) > 1 else None)
+                                  params[0] if len(params) == 1 else "",
+                                  func_name,
+                                  params if len(params) > 1 else None)
             return str(value)
         except Exception as e:
             return f"Error: {str(e)}"
