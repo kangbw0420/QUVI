@@ -285,8 +285,8 @@ async def respondent(state: GraphState) -> GraphState:
     fstring_answer = await response(trace_id, user_question, column_list, date_info)
     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
-    result_inout = is_inout(result)
-    final_result = check_acct_no(result_inout, selected_table)
+    # result_inout = is_inout(result)
+    final_result = check_acct_no(result, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)
     
