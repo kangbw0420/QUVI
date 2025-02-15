@@ -4,30 +4,30 @@ from utils.extract_data_info import extract_col_from_query
 
 # 컬럼에 따른 ORDER BY 규칙 정의
 COLUMN_ORDER_RULES = {
-    ('com_nm', 'bank_nm', 'acct_dv', 'acct_no', 'acct_bal_amt',
+    ('bank_nm', 'acct_dv', 'acct_no', 'acct_bal_amt',
      'real_amt', 'acct_bal_upd_dtm'
-     ): 'com_nm DESC, acct_bal_amt DESC',
-    ('com_nm', 'bank_nm', 'acct_no', 'acct_bal_amt', 'real_amt',
+     ): 'acct_bal_amt DESC',
+    ('bank_nm', 'acct_no', 'acct_bal_amt', 'real_amt',
      'curr_cd', 'acct_dv', 'acct_nick_nm', 'acct_bal_upd_dtm'
-     ): 'com_nm DESC, curr_cd DESC, acct_bal_amt DESC',
-    ('com_nm', 'bank_nm', 'acct_no', 'trsc_dt', 'trsc_tm', 'note1',
+     ): 'curr_cd DESC, acct_bal_amt DESC',
+    ('bank_nm', 'acct_no', 'trsc_dt', 'trsc_tm', 'note1',
      'in_out_dv', 'trsc_amt', 'trsc_bal'
-     ): 'com_nm DESC, trsc_dt DESC, trsc_tm DESC',
-    ('com_nm', 'bank_nm', 'acct_no', 'trsc_dt', 'trsc_tm',  'curr_cd',
+     ): 'trsc_dt DESC, trsc_tm DESC',
+    ('bank_nm', 'acct_no', 'trsc_dt', 'trsc_tm',  'curr_cd',
      'note1', 'in_out_dv', 'trsc_amt','trsc_bal'
-     ): 'com_nm DESC, curr_cd DESC, trsc_dt DESC, trsc_tm DESC'
+     ): 'curr_cd DESC, trsc_dt DESC, trsc_tm DESC'
 }
 
 DEFAULT_ORDER_RULES = {
-    "amt": "com_nm DESC, reg_dt DESC",
-    "trsc": "com_nm DESC, trsc_dt DESC",
-    "stock": "com_nm DESC, reg_dt DESC"
+    "amt": "reg_dt DESC",
+    "trsc": "trsc_dt DESC",
+    "stock": "reg_dt DESC"
 }
 
 # 알려진 모든 컬럼들의 집합
 KNOWN_COLUMNS = {
     "amt": [
-        "view_dv", "com_nm", "bank_nm", "acct_no", "curr_cd", "reg_dt", 
+        "view_dv", "bank_nm", "acct_no", "curr_cd", "reg_dt", 
         "acct_bal_amt", "acct_bal_won", "acct_nick_nm", "open_dt", "due_dt", 
         "trmn_yn", "trmn_dt", "acct_bal_upd_dtm", "real_amt", "cntrct_amt", 
         "intr_rate", "acct_dv", "mnth_pay_amt", "mnth_pay_dt", "stock_nm", 
@@ -37,13 +37,13 @@ KNOWN_COLUMNS = {
         "deposit_amt"
     ],
     "trsc": [
-        "view_dv", "com_nm", "bank_nm", "acct_no", "curr_cd", "seq_no", 
+        "view_dv", "bank_nm", "acct_no", "curr_cd", "seq_no", 
         "reg_dt", "trsc_tm", "in_out_dv", "trsc_amt", "trsc_bal", "note1", 
         "acct_dv", "acct_nick_nm", "loan_trsc_amt", "loan_rate", "stock_nm", 
         "item_qunt", "fee_amt", "pres_qunt", "pres_amt"
     ], 
     "stock": [
-        "com_nm", "bank_nm", "acct_no", "curr_cd", "reg_dt", "acct_dv", 
+        "bank_nm", "acct_no", "curr_cd", "reg_dt", "acct_dv", 
         "stock_nm", "bal_qunt", "prchs_price", "prchs_amt", "curr_amt", 
         "valu_gain_loss", "appr_amt", "purchase_amt_foreign", 
         "evaluation_amt_foreign", "return_rate"
