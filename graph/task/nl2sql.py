@@ -27,8 +27,6 @@ async def create_sql(
     trace_id: str, 
     selected_table: str, 
     user_question: str,
-    main_com: str,
-    sub_coms: List[str],
     today: str
 ) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
@@ -39,20 +37,15 @@ async def create_sql(
         TypeError: LLM 응답이 예상된 형식이 아닌 경우.
     """
     try:
-        all_companies = [main_com] + sub_coms
-        all_coms_quoted = [f"'{com}'" for com in all_companies]
-        all_coms_list = ", ".join(all_coms_quoted)
 
         try:
             system_prompt = database_service.get_prompt(
                 node_nm='nl2sql', 
                 prompt_nm=selected_table
             )[0]['prompt'].format(
-                today=today,
-                all_coms=all_coms_list
+                today=today
             )
-
-        except FileNotFoundError as e:
+        except:
             system_prompt = database_service.get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(today=today)
 
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨

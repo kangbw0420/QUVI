@@ -18,11 +18,11 @@ from graph.task.killjoy import kill_joy
 from llm_admin.state_manager import StateManager
 from utils.logger import setup_logger
 from utils.dataframe.group_acct import check_acct_no
-from utils.query.filter_com import filter_com
+from utils.query.filter_com import add_com_condition
 from utils.query.view_table import extract_view_date, add_view_table
 from utils.query.orderby import add_order_by, extract_col_from_query
 from utils.query.modify_name import modify_stock, modify_bank
-from utils.dataframe.is_inout_krw import is_inout, is_krw
+from utils.dataframe.is_inout_krw import is_krw
 from utils.dataframe.transform_col import transform_data
 from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
 from utils.compute.main_compute import compute_fstring
@@ -31,11 +31,8 @@ logger = setup_logger('node')
 
 class ProcessingFlags(TypedDict):
     referral: List[str]
-    residual_com: List[str]
-    selected_com: str
     no_data: bool
     no_access: bool
-    com_changed: bool
     date_changed: bool
     
 class GraphState(TypedDict):
@@ -154,16 +151,9 @@ async def nl2sql(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
-    company_list = state["access_company_list"]
-    main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
-    if main_companies:
-        main_com = main_companies[0].custNm
-    else:
-        main_com = company_list[0].custNm
-    sub_coms = [comp.custNm for comp in company_list if comp.custNm != main_com]
 
     # SQL 쿼리 생성
-    sql_query = await create_sql(trace_id, selected_table, user_question, main_com, sub_coms, today)
+    sql_query = await create_sql(trace_id, selected_table, user_question, today)
     # 상태 업데이트
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
@@ -187,54 +177,44 @@ def executor(state: GraphState) -> GraphState:
         column_list = extract_col_from_dict(result)
     
     else:
+        raw_query = state.get("sql_query")
+        if not raw_query:
+            raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
+        
+        # 쿼리 길어지기 전에 컬럼부터 추출
+        column_list = extract_col_from_query(raw_query)
+        
         company_list = state["access_company_list"]
         main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
         if main_companies:
             main_com = main_companies[0].custNm
         else:
-            main_com = company_list[0].custNm
-        sub_coms = [comp.custNm for comp in company_list if comp.custNm != main_com]
-        
-        raw_query = state.get("sql_query")
-        if not raw_query:
-            raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
-        
-        user_info = state.get("user_info")
-        flags = state.get("flags")
-
+            main_com = company_list[0].custNm        
         # 회사명을 권한 있는 회사로 변환. 이와 함께 권한 없는 조건, 회사 변환 조건이 처리됨
-        query_one_com, view_com, residual_com, selected_com = filter_com(raw_query, main_com, sub_coms, flags)
+        query_com = add_com_condition(raw_query, main_com)
         
-        if selected_com:
-            flags["residual_com"] = residual_com
-            flags["selected_com"] = selected_com
-        
-        if flags["no_access"] == True:
-            # CompanyInfo 객체들에서 회사명만 추출하여 리스트로 만듦
-            accessible_companies = [comp.custNm for comp in company_list]
-            # 회사명들을 쉼표와 공백으로 구분하여 하나의 문자열로 만듦
-            companies_str = ", ".join(accessible_companies)
+        # if flags["no_access"] == True:
             
-            state.update({
-                "final_answer": f"해당 기업의 조회 권한이 없습니다. 조회 가능하신 기업은 {companies_str}입니다.",
-                "query_result": [],
-                "sql_query": ""
-            })
+        #     state.update({
+        #         "final_answer": f"해당 기업의 조회 권한이 없습니다. 결제하세요.",
+        #         "query_result": [],
+        #         "sql_query": ""
+        #     })
 
         # stock 종목명 체크 맟 변환
         if selected_table == 'stock':
-            query_one_com = modify_stock(query_one_com)
-
-        # SELECT절에서 컬럼을 추출하고 그에 맞게 ORDER BY 추가
-        column_list = extract_col_from_query(query_one_com)
-        query_right_bank = modify_bank(query_one_com)
+            query_com = modify_stock(query_com)
+        
+        query_right_bank = modify_bank(query_com)
         query_ordered = add_order_by(query_right_bank, selected_table)
         
+        user_info = state.get("user_info")
+        flags = state.get("flags")
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
             view_date = extract_view_date(raw_query, selected_table, flags)
             # 뷰테이블 파라미터를 SQL 쿼리에 추가
-            query = add_view_table(query_ordered, selected_table, view_com, user_info, view_date, flags)
+            query = add_view_table(query_ordered, selected_table, main_com, user_info, view_date, flags)
             
             # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
             if flags.get("date_changed"):
