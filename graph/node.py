@@ -227,9 +227,8 @@ def executor(state: GraphState) -> GraphState:
 
         # SELECT절에서 컬럼을 추출하고 그에 맞게 ORDER BY 추가
         column_list = extract_col_from_query(query_one_com)
-        # query_right_bank = modify_bank(query_one_com)
-        # query_ordered = add_order_by(query_right_bank, selected_table)
-        query_ordered = add_order_by(query_one_com, selected_table)
+        query_right_bank = modify_bank(query_one_com)
+        query_ordered = add_order_by(query_right_bank, selected_table)
         
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
