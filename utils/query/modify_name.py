@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from database.postgresql import query_execute
 
 class NameModifier:
@@ -13,28 +13,35 @@ class NameModifier:
         self.table_name = f"{name_type}name"
         self.nick_column = f"{name_type}_nick_nm"
 
-    def _extract_name(self, query: str) -> Tuple[Optional[str], bool]:
-        """Extract name value and LIKE operator usage from SQL query
+    def _extract_names(self, query: str) -> Tuple[List[str], str, bool]:
+        """Extract name values and operator type from SQL query
         Args:
             query: SQL query string
         Returns:
-            Tuple[Optional[str], bool]: (name value or None, is LIKE pattern)
-        """
+            Tuple[List[str], str, bool]: ([name values], operator type, is LIKE pattern)
+        """            
         # Equal pattern check
-        equal_pattern = f"{self.column_name}\s*=\s*'([^']*)'+"
+        equal_pattern = f"{self.column_name}\\s*=\\s*'([^']*)'+"
         equal_match = re.search(equal_pattern, query, re.IGNORECASE)
-        
         if equal_match:
-            return equal_match.group(1), False
+            return [equal_match.group(1)], '=', False
+
+        # IN pattern check
+        in_pattern = f"{self.column_name}\\s+IN\\s*\\(([^)]*)\\)"
+        in_match = re.search(in_pattern, query, re.IGNORECASE)
+        if in_match:
+            # Extract values from IN clause and clean them
+            values_str = in_match.group(1)
+            values = [v.strip().strip("'\"") for v in values_str.split(',')]
+            return values, 'IN', False
             
         # LIKE pattern check
-        like_pattern = f"{self.column_name}\s+LIKE\s+'%([^%]+)%'"
+        like_pattern = f"{self.column_name}\\s+LIKE\\s+'%([^%]+)%'"
         like_match = re.search(like_pattern, query, re.IGNORECASE)
-        
         if like_match:
-            return like_match.group(1), True
+            return [like_match.group(1)], 'LIKE', True
             
-        return None, False
+        return [], '', False
 
     def _get_official_name(self, nickname: str) -> Optional[str]:
         """Look up official name from nickname
@@ -65,27 +72,37 @@ class NameModifier:
         Returns:
             str: Modified SQL query with official names
         """
-        # 1. Extract name value from query
-        used_name, is_like_pattern = self._extract_name(query)
-        if not used_name:
+        # 1. Extract names and operator type from query
+        names, operator, is_like = self._extract_names(query)
+        if not names:
             return query
             
-        # 2. & 3. Look up official name
-        modified_name = self._get_official_name(used_name)
-        if not modified_name:
-            return query
-            
-        # 4. Replace name in query
-        if is_like_pattern:
-            pattern = f"{self.column_name}\\s+LIKE\\s+'%{used_name}%'"
-            replacement = f"{self.column_name} LIKE '%{modified_name}%'"
-        else:
-            pattern = f"{self.column_name}\\s*=\\s*'{used_name}'"
-            replacement = f"{self.column_name} = '{modified_name}'"
+        # 2. Look up official names for each name
+        official_names = []
+        for name in names:
+            official_name = self._get_official_name(name)
+            if official_name:
+                official_names.append(official_name)
+            else:
+                official_names.append(name)  # Keep original if no match
+                
+        # 3. Construct replacement based on operator type
+        if operator == 'IN':
+            quoted_names = [f"'{name}'" for name in official_names]
+            names_str = ', '.join(quoted_names)
+            new_condition = f"{self.column_name} IN ({names_str})"
+            pattern = f"{self.column_name}\\s+IN\\s*\\([^)]*\\)"
+        elif operator == 'LIKE':
+            new_condition = f"{self.column_name} LIKE '%{official_names[0]}%'"
+            pattern = f"{self.column_name}\\s+LIKE\\s+'%{names[0]}%'"
+        else:  # Equal operator
+            new_condition = f"{self.column_name} = '{official_names[0]}'"
+            pattern = f"{self.column_name}\\s*=\\s*'{names[0]}'"
         
+        # 4. Replace in query
         modified_query = re.sub(
             pattern,
-            replacement,
+            new_condition,
             query,
             flags=re.IGNORECASE
         )
