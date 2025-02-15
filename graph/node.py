@@ -17,15 +17,15 @@ from graph.task.killjoy import kill_joy
 
 from llm_admin.state_manager import StateManager
 from utils.logger import setup_logger
-from utils.check_acct import check_acct_no
-from utils.filter_com import filter_com
-from utils.view_table import extract_view_date, add_view_table
-from utils.orderby import add_order_by, extract_col_from_query
-from utils.modify_name import modify_stock, modify_bank
-from utils.is_krw import is_krw
-from utils.transform_col import transform_data
+from utils.dataframe.group_acct import check_acct_no
+from utils.query.filter_com import filter_com
+from utils.query.view_table import extract_view_date, add_view_table
+from utils.query.orderby import add_order_by, extract_col_from_query
+from utils.query.modify_name import modify_stock, modify_bank
+from utils.dataframe.is_inout_krw import is_inout, is_krw
+from utils.dataframe.transform_col import transform_data
 from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
-from utils.compute.compute_main import compute_fstring
+from utils.compute.main_compute import compute_fstring
 
 logger = setup_logger('node')
 
@@ -286,7 +286,8 @@ async def respondent(state: GraphState) -> GraphState:
     fstring_answer = await response(trace_id, user_question, column_list, date_info)
     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
-    final_result = check_acct_no(result, selected_table)
+    result_inout = is_inout(result)
+    final_result = check_acct_no(result_inout, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)
     

@@ -1,7 +1,7 @@
 import pytest
 from decimal import Decimal
 import json
-from utils.check_acct import check_acct_no
+from utils.dataframe.group_acct import check_acct_no
 
 # Raw SQL 결과 형태의 테스트 데이터
 test_data = [
