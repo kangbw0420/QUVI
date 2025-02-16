@@ -17,10 +17,10 @@ stateDiagram-v2
     params --> executor
     
     nl2sql --> END: stock = true
-    nl2sql --> executor: else
+    nl2sql --> executor
     
     executor --> nodata: no_data = true
-    executor --> respondent: else
+    executor --> respondent
     
     killjoy --> END
     nodata --> END
