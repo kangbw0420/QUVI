@@ -72,10 +72,8 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("nodata", nodata) # 데이터가 없을 경우 답변 생성
         workflow.add_node("killjoy", killjoy) # 일상 대화 대응
 
-        # Entry point에서 yadon으로 시작
         workflow.set_entry_point("commander")
         # workflow.set_entry_point("yadon")
-
         # 쉘더가 야돈의 꼬리를 물면 야도란으로 진화
         # workflow.add_conditional_edges(
         #     "yadon",
@@ -85,15 +83,23 @@ def make_graph() -> CompiledStateGraph:
         #         "commander": "commander"
         #     }
         # )
-
         # yadoran은 항상 commander로
         # workflow.add_edge("yadoran", "commander")
 
         # selector가 api를 토하면 끝남
         workflow.add_conditional_edges(
             "commander",
-            lambda x: "funk" if x["selected_table"] == "api" else ("killjoy" if x["selected_table"] == "joy" else "nl2sql"),
+            lambda x: (
+                # 권한도 없으면서 증권을 보려 했다면 종료
+                "END" if x["flags"]["stock_sec"] else
+                # api 질문이라면 함수를 고르러
+                "funk" if x["selected_table"] == "api" else
+                # 쓸데없는 질문이라면 정색하러
+                "killjoy" if x["selected_table"] == "joy" else
+                "nl2sql"
+            ),
             {
+                "END": END,
                 "nl2sql": "nl2sql",
                 "funk": "funk",
                 "killjoy": "killjoy"
@@ -101,14 +107,23 @@ def make_graph() -> CompiledStateGraph:
         )
         workflow.add_edge("funk", "params")
         workflow.add_edge("params", "executor")
-        
-        workflow.add_edge("nl2sql", "executor")
+
+        workflow.add_conditional_edges(
+            "nl2sql",
+            lambda x: (
+                # 권한도 없으면서 증권을 보려 했다면 종료
+                "END" if x["flags"]["stock_sec"] else
+                "executor"
+            ),
+            {
+                "END": END,
+                "executor": "executor"
+            }
+        )
         
         workflow.add_conditional_edges(
             "executor",
             lambda x: (
-                # 접근 권한이 없어서 데이터를 못 가져왔으면 종료
-                "END" if x["flags"]["no_access"] else
                 # 데이터가 없었다면 데이터 없었다는 사과문 작성하러
                 "nodata" if x["flags"]["no_data"] else
                 # 그 외의 경우 respondent로

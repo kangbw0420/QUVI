@@ -31,8 +31,8 @@ async def kill_joy(trace_id: str, user_question: str) -> str:
         model="qwen_14b"
     )
 
-    referral_chain = prompt | qwen_high
-    final_answer = referral_chain.invoke({"user_question": user_question})
+    kill_chain = prompt | qwen_high
+    final_answer = kill_chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "killjoy(A)" + "=" * 40)
     print(final_answer)

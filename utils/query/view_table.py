@@ -2,7 +2,7 @@ from typing import Tuple, Optional
 from datetime import datetime, timedelta
 import re
 
-def find_single_date(query: str, date_column: str) -> Optional[Tuple[str, int, int]]:
+def _find_single_date(query: str, date_column: str) -> Optional[Tuple[str, int, int]]:
     """SQL 쿼리에서 단일 날짜 패턴을 찾습니다.
     Returns:
         Optional[Tuple[str, int, int]]: (날짜값, 매치 시작 위치, 매치 끝 위치)
@@ -15,14 +15,10 @@ def find_single_date(query: str, date_column: str) -> Optional[Tuple[str, int, i
         return (match.group(1), match.start(), match.end())
     return None
 
-def get_date_column(selected_table: str) -> str:
-    """테이블 타입에 따른 날짜 컬럼명을 반환합니다.
-    Returns:
-        str: 날짜 컬럼명 ('reg_dt' 또는 'trsc_dt')
-    """
+def _get_date_column(selected_table: str) -> str:
     return 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
 
-def validate_future_date(query: str, date_column: str, flags: dict) -> Tuple[str, Optional[str]]:
+def _validate_future_date(query: str, date_column: str, flags: dict) -> Tuple[str, Optional[str]]:
     """Returns:
         Tuple[str, Optional[str]]: (수정된 쿼리, 수정된 날짜)
         날짜가 수정되지 않았다면 두 번째 요소는 None
@@ -31,7 +27,7 @@ def validate_future_date(query: str, date_column: str, flags: dict) -> Tuple[str
     modified_date = None
     
     # 단일 날짜 패턴 찾기
-    single_date_match = find_single_date(query, date_column)
+    single_date_match = _find_single_date(query, date_column)
     
     if single_date_match:
         date_str, start_pos, end_pos = single_date_match
@@ -41,7 +37,7 @@ def validate_future_date(query: str, date_column: str, flags: dict) -> Tuple[str
             new_condition = f"{date_column} = '{today}'"
             query = query[:start_pos] + new_condition + query[end_pos:]
             modified_date = today
-            flags["date_changed"] = True
+            flags["future_date"] = True
     
     return query, modified_date
 
@@ -52,10 +48,8 @@ def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str
     Raises:
         ValueError: 날짜 형식이 올바르지 않거나 날짜를 찾을 수 없는 경우
     """
-    date_column = get_date_column(selected_table)
-
-    # 미래 날짜 검증 및 수정
-    query, modified_date = validate_future_date(query, date_column, flags)
+    date_column = _get_date_column(selected_table)
+    query, modified_date = _validate_future_date(query, date_column, flags)
     
     # due_dt 패턴 확인
     due_dates = None
@@ -142,7 +136,7 @@ def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str
             return (start_date, end_date)
     
     # 단일 날짜가 있는 경우의 패턴
-    single_date_match = find_single_date(query, date_column)
+    single_date_match = _find_single_date(query, date_column)
     if single_date_match:
         date = modified_date or single_date_match[0]  # modified_date가 None이면 single_date_match[0] 사용
         # due_dates가 있고 date가 due_dates의 끝값보다 큰 경우
@@ -162,11 +156,8 @@ def add_view_table(query: str, selected_table: str, view_com: str, user_info: Tu
             예: "SELECT * FROM aicfo_get_all_amt('user123', 'intt456', '회사', '20250101', '20250131') 
                 WHERE view_dv = '대출' AND reg_dt = '20250120'"
     """
-    # 날짜 컬럼 결정
-    date_column = get_date_column(selected_table)
-    
-    # 미래 날짜 검증 및 수정
-    query, _ = validate_future_date(query, date_column, flags)
+    date_column = _get_date_column(selected_table)
+    query, _ = _validate_future_date(query, date_column, flags)
     
     # FROM 절 위치를 찾습니다
     from_pattern = r'FROM\s+'

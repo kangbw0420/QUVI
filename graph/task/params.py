@@ -1,6 +1,6 @@
 import json
 from typing import Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -36,6 +36,8 @@ async def parameters(
     main_com: str,
     user_info: Tuple[str, str],
     today: str,
+    yoguemjae: str,
+    flags: dict
 ) -> Tuple[str, Tuple[str, str]]:
     """TODO
     1) 프롬프트와 퓨샷도 마찬가지로 하드코딩되어 있습니다.
@@ -94,6 +96,23 @@ async def parameters(
         # from_date와 to_date 형식 변환
         from_date = convert_date_format(output["from_date"])
         to_date = convert_date_format(output["to_date"])
+
+        if yoguemjae == 'muryo':
+            # 날짜 문자열을 datetime 객체로 변환
+            from_date_dt = datetime.strptime(from_date, "%Y%m%d")
+            today_dt = datetime.strptime(today, "%Y-%m-%d")
+            
+            # 날짜 차이 계산 (today - from_date)
+            date_diff = today_dt - from_date_dt
+            
+            # from_date가 오늘보다 2일 이상 이전인 경우
+            if date_diff.days >= 2:
+                # 어제 날짜 계산
+                yesterday = today_dt - timedelta(days=1)
+                # 날짜 형식을 YYYYMMDD로 변환
+                from_date = yesterday.strftime("%Y%m%d")
+                # past_date 플래그를 True로 설정
+                flags["past_date"] = True
 
         # 출력에서 SQL 쿼리 조합
         sql_query = (

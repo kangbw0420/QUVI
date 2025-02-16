@@ -1,6 +1,5 @@
-from datetime import datetime
-from typing import TypedDict, Tuple, List, Dict
-from xmlrpc.client import boolean
+from datetime import datetime, timedelta
+from typing import TypedDict, Tuple, List
 
 from api.dto import CompanyInfo
 from llm_admin.state_manager import StateManager
@@ -29,17 +28,18 @@ from utils.compute.main_compute import compute_fstring
 logger = setup_logger('node')
 
 class ProcessingFlags(TypedDict):
-    referral: List[str]
     no_data: bool
-    no_access: bool
-    date_changed: bool
+    stock_sec: bool
+    future_date: bool
+    past_date: bool
     
 class GraphState(TypedDict):
     chain_id: str
     trace_id: str
     user_info: Tuple[str, str]
     access_company_list: List[CompanyInfo]
-    shellder: boolean
+    yogeumjae: str
+    # shellder: boolean
     user_question: str
     selected_table: str
     selected_api: str
@@ -55,20 +55,15 @@ today = datetime.now().strftime("%Y-%m-%d")
 
 # async def yadon(state: GraphState) -> GraphState:
 #     """last_data 기반으로 질문을 검문하는 노드"""
-    
 #     if state.get("last_data"):
 #         trace_id = state["trace_id"]
 #         user_question = state["user_question"]
 #         last_data = state["last_data"]
-
 #         shellder_result = await shellder(trace_id, user_question, last_data)
-        
 #         shellder_check = shellder_result == "1"
 #         state["shellder"] = shellder_check
-        
 #     else:
-#         state["shellder"] = False
-    
+#         state["shellder"] = False    
 #     return state
 
 # async def yadoran(state: GraphState) -> GraphState:
@@ -77,7 +72,6 @@ today = datetime.now().strftime("%Y-%m-%d")
 #         trace_id = state["trace_id"]
 #         user_question = state["user_question"]
 #         last_data = state["last_data"]
-
 #         new_question = await yadoking(trace_id, user_question, last_data, today)
 #         state["user_question"] = new_question
 #     return state
@@ -86,10 +80,22 @@ async def commander(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택"""
     user_question = state["user_question"]
     trace_id = state["trace_id"]
-    
+    flags = state.get("flags")
+
     selected_table = await command(trace_id, user_question)
 
-    state.update({"selected_table": selected_table})
+    yogeumjae = state["yogeumjae"]
+    if selected_table == 'stock' and yogeumjae in ['muryo', 'stock0']:
+        flags["stock_sec"] = True
+        state.update({
+        "selected_table": selected_table,
+        "final_answer": "해당 질문은 증권 잔고 관련 질문으로 판단되었습니다. 접속하신 계정은 증권 잔고 데이터의 조회 권한이 없습니다.",
+        "query_result": [],
+        "sql_query": "",
+        "column_list": []
+    })
+    else:
+        state.update({"selected_table": selected_table})
     
     StateManager.update_state(trace_id, {
         "user_question": user_question,
@@ -125,13 +131,13 @@ async def params(state: GraphState) -> GraphState:
     else:
         main_com = company_list[0].custNm
     user_info = state["user_info"]
+    flags = state.get("flags")
+    yoguemjae = state["yoguemjae"]
 
-    # SQL 쿼리 생성
     sql_query, date_info = await parameters(
-        trace_id, selected_api, user_question, main_com, user_info, today
+        trace_id, selected_api, user_question, main_com, user_info, today, yoguemjae, flags
     )
 
-    # 상태 업데이트
     state.update({"sql_query": sql_query, "date_info": date_info})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
     return state
@@ -146,9 +152,8 @@ async def nl2sql(state: GraphState) -> GraphState:
     selected_table = state["selected_table"]
     user_question = state["user_question"]
 
-    # SQL 쿼리 생성
     sql_query = await create_sql(trace_id, selected_table, user_question, today)
-    # 상태 업데이트
+
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
     return state
@@ -184,14 +189,6 @@ def executor(state: GraphState) -> GraphState:
             main_com = company_list[0].custNm
         # 회사명을 권한 있는 회사로 변환. 이와 함께 권한 없는 조건, 회사 변환 조건이 처리됨
         query_com = add_com_condition(raw_query, main_com)
-        
-        # if flags["no_access"] == True:
-            
-        #     state.update({
-        #         "final_answer": f"해당 기업의 조회 권한이 없습니다. 결제하세요.",
-        #         "query_result": [],
-        #         "sql_query": ""
-        #     })
 
         # stock 종목명 체크 맟 변환
         if selected_table == 'stock':
@@ -205,11 +202,34 @@ def executor(state: GraphState) -> GraphState:
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
             view_date = extract_view_date(raw_query, selected_table, flags)
+            # 무료 유저가 감히 과거 데이터를 보려 했는지 검증
+            yogeumjae = state["yogeumjae"]
+            if yogeumjae == 'muryo':
+                start_date = view_date[0]
+                # 날짜 문자열을 datetime 객체로 변환
+                start_date_dt = datetime.strptime(start_date, "%Y%m%d")
+                today_dt = datetime.strptime(today, "%Y-%m-%d")
+                
+                # 날짜 차이 계산 (today - start_date)
+                date_diff = today_dt - start_date_dt
+                
+                # start_date가 오늘보다 2일 이상 이전인 경우
+                if date_diff.days >= 2:
+                    yesterday = today_dt - timedelta(days=1)
+                    # 날짜 형식을 YYYYMMDD로 변환
+                    new_start_date = yesterday.strftime("%Y%m%d")
+                    view_date = (new_start_date, view_date[1])
+                    flags["past_date"] = True
+            
             # 뷰테이블 파라미터를 SQL 쿼리에 추가
             query = add_view_table(query_ordered, selected_table, main_com, user_info, view_date, flags)
             
             # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
-            if flags.get("date_changed"):
+            if flags.get("future_date"):
+                user_question = state["user_question"]
+                state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
+            
+            if flags.get("past_date"):
                 user_question = state["user_question"]
                 state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
             
@@ -262,8 +282,11 @@ async def respondent(state: GraphState) -> GraphState:
     if selected_table == "api":
         final_result = is_krw(final_result)
     
-    if flags.get("date_changed"):
+    if flags.get("future_date"):
         final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
+        
+    if flags.get("past_date"):
+        final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 이 질문에 대해서는 조회 날짜 제한이 적용되었습니다."
 
     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
     StateManager.update_state(trace_id, {"final_answer": final_answer, "query_result": final_result})

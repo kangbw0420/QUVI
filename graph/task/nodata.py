@@ -33,8 +33,8 @@ async def no_data(trace_id: str, user_question: str) -> str:
         model="qwen_14b"
     )
 
-    referral_chain = prompt | qwen_llm
-    final_answer = referral_chain.invoke({"user_question": user_question})
+    nodata_chain = prompt | qwen_llm
+    final_answer = nodata_chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "Nodata(A)" + "=" * 40)
     print(final_answer)

@@ -45,13 +45,14 @@ async def process_input(request: Input) -> Output:
         initial_state = {
             "chain_id": chain_id,
             "user_info": user_info,
+            "yogeumjae" : request.yogeumjae,
             "access_company_list": request.access_company_list,
             "user_question": request.user_question,
             "flags": {
                 "no_data": False,
-                "no_access": False,
-                "com_changed": False,
-                "date_changed": False
+                "stock_sec": False,
+                "future_date": False,
+                "past_date": False
             },
             # "last_data": last_data if last_data else []
         }
@@ -67,7 +68,6 @@ async def process_input(request: Input) -> Output:
         # user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
         selected_table = final_state["selected_table"]
-        selected_api = final_state["selected_api"]
 
         if "date_info" not in final_state or not final_state["date_info"]:
             date_info = (None, None)
@@ -76,7 +76,7 @@ async def process_input(request: Input) -> Output:
         
         # recommend_list 갱신
         if selected_table == 'api':
-            recommend_list = api_recommend(selected_api)
+            recommend_list = api_recommend(final_state["selected_api"])
 
         # for shot making
         column_list = final_state["column_list"]
