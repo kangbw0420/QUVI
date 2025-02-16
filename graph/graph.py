@@ -14,7 +14,6 @@ from .node import (
     nl2sql,
     respondent,
     executor,
-    referral,
     nodata,
     killjoy
 )
@@ -70,7 +69,6 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("nl2sql", nl2sql) # SQL 생성
         workflow.add_node("executor", executor) # SQL 실행 및 상태 체크
         workflow.add_node("respondent", respondent) # 답변 생성
-        workflow.add_node("referral", referral) # 복수 회사 질문에 대해 한 회사로만 답변한 경우 나머지 회사로 질의 추천
         workflow.add_node("nodata", nodata) # 데이터가 없을 경우 답변 생성
         workflow.add_node("killjoy", killjoy) # 일상 대화 대응
 
@@ -113,19 +111,15 @@ def make_graph() -> CompiledStateGraph:
                 "END" if x["flags"]["no_access"] else
                 # 데이터가 없었다면 데이터 없었다는 사과문 작성하러
                 "nodata" if x["flags"]["no_data"] else
-                # 복수 회사 조회 질문을 단일 회사 조회 질문으로 바꿨다면 답변도 하고 추천 질문도 만듦
-                "referral" if x["flags"]["com_changed"] else
                 # 그 외의 경우 respondent로
                 "respondent"
             ),
             {
                 "END": END,
                 "nodata": "nodata",
-                "referral": "referral",
                 "respondent": "respondent"
             }
         )
-        workflow.add_edge("referral", "respondent")
         workflow.add_edge("respondent", END)
         workflow.add_edge("nodata", END)
         workflow.add_edge("killjoy", END)

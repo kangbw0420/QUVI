@@ -130,21 +130,15 @@ class FewShotRetriever:
         
         return few_shots
     
-    async def get_recommend(self, query_text: str, collection_name: Optional[str] = None, top_k: int=4) -> List[Dict]:
+    async def get_recommend(self, query_text: str, top_k: int=4) -> List[Dict]:
         """벡터 DB에서 유사한 질문 4개를 검색하고, 조건에 따라 3개를 반환합니다.
-        
-        Args:
-            query_text: 검색할 텍스트
-            collection_name: 검색할 컬렉션 이름
-            top_k: 검색할 문서 수 (기본값 4)
-            
         Returns:
             List[str]: 검색된 문서 중 선별된 3개의 문서 리스트.
             - 입력된 query_text와 동일한 문서가 있는 경우: 해당 문서를 제외한 3개
             - 입력된 query_text와 동일한 문서가 없는 경우: 마지막 문서를 제외한 3개
         """
         # 벡터 DB에서 4개 검색
-        results = await self.query_vector_store(query_text, collection_name, top_k=top_k)
+        results = await self.query_vector_store(query_text, collection_name="hall_of_fame", top_k=top_k)
         
         # document 추출 및 strip() 적용, 띄어쓰기 제거
         query_text_normalized = query_text.replace(" ", "").strip()
@@ -163,6 +157,20 @@ class FewShotRetriever:
         except ValueError:
             # query_text가 없으면 마지막 항목을 제외한 3개 반환
             return documents[:3]
+        
+def api_recommend(selected_api: str):
+    # 자금현황
+    if selected_api == 'aicfo_get_financial_status':
+        return ['수시 잔액 상세', '예적금 잔액 상세', '대출 잔액 상세']
+    # 자금변동현황
+    if selected_api == 'aicfo_get_variation_status':
+        return ['어제 수시입출 계좌 거래내역', '어제 예적금 계좌 거래내역', '어제 외화계좌 거래내역']
+    # 월간자금흐름
+    if selected_api == 'aicfo_get_monthly_flow':
+        return ['2개월 전 자금 흐름', '지난 달 수시입출계좌 출금만 보여줘', '증권 계좌 수익률']
+    # 가용자금
+    if selected_api == 'aicfo_get_available_fund':
+        return ['수시 잔액 상세', '외화 잔액 상세', '달러 잔액 상세']
 
 # Create a singleton instance
 retriever = FewShotRetriever()

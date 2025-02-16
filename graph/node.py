@@ -3,20 +3,20 @@ from typing import TypedDict, Tuple, List, Dict
 from xmlrpc.client import boolean
 
 from api.dto import CompanyInfo
-from graph.task.yadon import shellder
-from graph.task.yadoran import yadoking
+from llm_admin.state_manager import StateManager
+# from graph.task.yadon import shellder
+# from graph.task.yadoran import yadoking
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
 from graph.task.respondent import response
 from graph.task.executor import execute
-from graph.task.referral import question_referral
 from graph.task.funk import func_select
 from graph.task.nodata import no_data
 from graph.task.params import parameters
 from graph.task.killjoy import kill_joy
 
-from llm_admin.state_manager import StateManager
 from utils.logger import setup_logger
+from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
 from utils.dataframe.group_acct import check_acct_no
 from utils.query.filter_com import add_com_condition
 from utils.query.view_table import extract_view_date, add_view_table
@@ -24,7 +24,6 @@ from utils.query.orderby import add_order_by, extract_col_from_query
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.dataframe.is_inout_krw import is_krw
 from utils.dataframe.transform_col import transform_data
-from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
 from utils.compute.main_compute import compute_fstring
 
 logger = setup_logger('node')
@@ -110,11 +109,8 @@ async def funk(state: GraphState) -> GraphState:
 
     return state
 
-
 async def params(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(sql함수에 paramsa만 채워넣음)
-    Returns:
-        GraphState: sql_query가 추가된 상태.
     Raises:
         KeyError: state에 필요한 값이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
@@ -142,8 +138,6 @@ async def params(state: GraphState) -> GraphState:
 
 async def nl2sql(state: GraphState) -> GraphState:
     """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
-    Returns:
-        GraphState: sql_query가 추가된 상태.
     Raises:
         KeyError: state에 필요한 값이 없는 경우.
         ValueError: SQL 쿼리 생성에 실패한 경우.
@@ -161,8 +155,6 @@ async def nl2sql(state: GraphState) -> GraphState:
 
 def executor(state: GraphState) -> GraphState:
     """SQL 쿼리를 실행하고 결과를 분석
-    Returns:
-        GraphState: query_result와 query_result_stats가 추가된 상태.
     Raises:
         ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
     """
@@ -189,7 +181,7 @@ def executor(state: GraphState) -> GraphState:
         if main_companies:
             main_com = main_companies[0].custNm
         else:
-            main_com = company_list[0].custNm        
+            main_com = company_list[0].custNm
         # 회사명을 권한 있는 회사로 변환. 이와 함께 권한 없는 조건, 회사 변환 조건이 처리됨
         query_com = add_com_condition(raw_query, main_com)
         
@@ -275,26 +267,6 @@ async def respondent(state: GraphState) -> GraphState:
 
     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
     StateManager.update_state(trace_id, {"final_answer": final_answer, "query_result": final_result})
-    return state
-
-async def referral(state: GraphState) -> GraphState:
-    """복수 사업장 중 하나만 조회했으니 다른 것도 조회할지 권유하는 노드"""
-    trace_id = state["trace_id"]
-    user_question = state["user_question"]
-    flags = state["flags"]
-
-    # flags에서 selected_com과 residual_com 가져오기
-    selected_com = flags.get("selected_com", "")
-    residual_com = flags.get("residual_com", [])
-
-    referral_list = await question_referral(
-        trace_id=trace_id,
-        user_question=user_question,
-        selected_com=selected_com,
-        residual_com=residual_com
-    )
-
-    flags["referral"] = referral_list
     return state
 
 async def nodata(state: GraphState) -> GraphState:

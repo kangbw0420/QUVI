@@ -7,7 +7,7 @@ from graph.graph import make_graph
 from llm_admin.conversation_manager import check_conversation_id, make_conversation_id, save_record, extract_last_data
 from llm_admin.chain_manager import ChainManager
 from utils.logger import setup_logger
-from utils.retriever import retriever
+from utils.retriever import retriever, api_recommend
 from utils.error_handler import ErrorHandler
 
 logger = setup_logger('api')
@@ -23,12 +23,7 @@ async def process_input(request: Input) -> Output:
     
     try:
         # 노드들의 벡터 DB 검색과 경합을 피하기 위해 초반에 추천질의 벡터 검색
-        recommend_list = await retriever.get_recommend(
-            query_text=request.user_question,
-            collection_name="hall_of_fame",
-            top_k=4
-        )
-        logger.info(recommend_list)
+        recommend_list = await retriever.get_recommend(query_text=request.user_question, top_k=4)
         
         # 세션 확인/생성을 가장 먼저 수행
         conversation_id = (
@@ -69,10 +64,10 @@ async def process_input(request: Input) -> Output:
         # 결과 추출
         answer = final_state["final_answer"]
         raw_data = final_state["query_result"]
-        user_question = final_state["user_question"]
+        # user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
         selected_table = final_state["selected_table"]
-        referral_list = final_state.get("flags", {}).get("referral", [])
+        selected_api = final_state["selected_api"]
 
         if "date_info" not in final_state or not final_state["date_info"]:
             date_info = (None, None)
@@ -80,15 +75,8 @@ async def process_input(request: Input) -> Output:
             date_info = final_state["date_info"]
         
         # recommend_list 갱신
-        if referral_list:
-            # referral_list의 길이 확인
-            n_referral = len(referral_list)
-            if n_referral >= 3:
-                # referral_list가 3개 이상이면 전부 교체
-                recommend_list = referral_list[:3]
-            else:
-                # referral_list가 1개 또는 2개면 나머지를 recommend_list로 채움
-                recommend_list = referral_list + recommend_list[:(3-n_referral)]
+        if selected_table == 'api':
+            recommend_list = api_recommend(selected_api)
 
         # for shot making
         column_list = final_state["column_list"]
