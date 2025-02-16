@@ -8,7 +8,7 @@ yadoran --> commander
 stateDiagram-v2
     [*] --> commander
     
-    commander --> END: stock = true
+    commander --> END: stock_restricted
     commander --> funk: selected_table = "api"
     commander --> killjoy: selected_table = "joy"
     commander --> nl2sql
@@ -16,7 +16,7 @@ stateDiagram-v2
     funk --> params
     params --> executor
     
-    nl2sql --> END: stock = true
+    nl2sql --> END: stock_restricted
     nl2sql --> executor
     
     executor --> nodata: no_data = true
