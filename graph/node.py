@@ -242,7 +242,7 @@ def executor(state: GraphState) -> GraphState:
             
             if flags.get("past_date"):
                 user_question = state["user_question"]
-                state["user_question"] = f"{user_question}..아니다, 기간이면 '어제부터', 시점이면 '어제'를 기준으로 하자"
+                state["user_question"] = f"{user_question}..아니다, 2일 이전 데이터는 보고싶지 않다"
             
             print("#" * 80)
             print(query)
@@ -297,7 +297,7 @@ async def respondent(state: GraphState) -> GraphState:
         final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
         
     if flags.get("past_date"):
-        final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 이 질문에 대해서는 조회 날짜 제한이 적용되었습니다."
+        final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 2일 이전 데이터에 대해서는 조회 제한이 적용된 상황입니다."
 
     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
     StateManager.update_state(trace_id, {"final_answer": final_answer, "query_result": final_result})

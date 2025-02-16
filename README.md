@@ -8,23 +8,26 @@ yadoran --> commander
 stateDiagram-v2
     [*] --> commander
     
+    commander --> END: stock = true
     commander --> funk: selected_table = "api"
     commander --> killjoy: selected_table = "joy"
-    commander --> nl2sql: else
+    commander --> nl2sql
     
     funk --> params
     params --> executor
     
-    nl2sql --> executor
+    nl2sql --> END: stock = true
+    nl2sql --> executor: else
     
-    executor --> END: flags.no_access = true
-    executor --> nodata: flags.no_data = true
+    executor --> nodata: no_data = true
     executor --> respondent: else
     
     killjoy --> END
     nodata --> END
     respondent --> END
 ```
+
+
 
 ## 환경설정
 가상환경 설정 및 dependancy 설치 
