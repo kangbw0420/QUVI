@@ -18,6 +18,7 @@ from utils.logger import setup_logger
 from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
 from utils.dataframe.group_acct import check_acct_no
 from utils.query.filter_com import add_com_condition
+from utils.query.check_viewdv import check_view_dv
 from utils.query.view_table import extract_view_date, add_view_table
 from utils.query.orderby import add_order_by, extract_col_from_query
 from utils.query.modify_name import modify_stock, modify_bank
@@ -80,12 +81,12 @@ async def commander(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택"""
     user_question = state["user_question"]
     trace_id = state["trace_id"]
-    flags = state.get("flags")
 
     selected_table = await command(trace_id, user_question)
 
     yogeumjae = state["yogeumjae"]
     if selected_table == 'stock' and yogeumjae in ['muryo', 'stock0']:
+        flags = state.get("flags")
         flags["stock_sec"] = True
         state.update({
         "selected_table": selected_table,
@@ -153,6 +154,16 @@ async def nl2sql(state: GraphState) -> GraphState:
     user_question = state["user_question"]
 
     sql_query = await create_sql(trace_id, selected_table, user_question, today)
+    
+    yogeumjae = state["yogeumjae"]
+    if check_view_dv(sql_query) == "증권" and yogeumjae in ['muryo', 'stock0']:
+        flags = state.get("flags")
+        flags["stock_sec"] = True
+        state.update({
+        "final_answer": "해당 질문은 증권 잔고 관련 질문으로 판단되었습니다. 접속하신 계정은 증권 잔고 데이터의 조회 권한이 없습니다.",
+        "query_result": [],
+        "column_list": []
+    })
 
     state.update({"sql_query": sql_query,})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
@@ -231,7 +242,7 @@ def executor(state: GraphState) -> GraphState:
             
             if flags.get("past_date"):
                 user_question = state["user_question"]
-                state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
+                state["user_question"] = f"{user_question}..아니다, 기간이면 '어제부터', 시점이면 '어제'를 기준으로 하자"
             
             print("#" * 80)
             print(query)
