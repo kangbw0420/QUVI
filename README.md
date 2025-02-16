@@ -19,12 +19,10 @@ stateDiagram-v2
     
     executor --> END: flags.no_access = true
     executor --> nodata: flags.no_data = true
-    executor --> referral: flags.com_changed = true
     executor --> respondent: else
     
     killjoy --> END
     nodata --> END
-    referral --> respondent
     respondent --> END
 ```
 
