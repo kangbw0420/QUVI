@@ -51,6 +51,15 @@ KNOWN_COLUMNS = {
 }
 
 def has_order_by(query: str) -> bool:
+    # 주석 제거 (-- 스타일과 /* */ 스타일 모두)
+    query = re.sub(r'--.*$', '', query, flags=re.MULTILINE)
+    query = re.sub(r'/\*.*?\*/', '', query, flags=re.DOTALL)
+    
+    # ORDER BY 검색 (대소문자 구분 없이)    
+    pattern = r'\bORDER\s+BY\b'
+    return bool(re.search(pattern, query, re.IGNORECASE))
+
+def has_order_by(query: str) -> bool:
     """SQL 쿼리에 ORDER BY절 존재 여부 확인. 주석은 제거하고 검사"""
     # 주석 제거 (-- 스타일과 /* */ 스타일 모두)
     query = re.sub(r'--.*$', '', query, flags=re.MULTILINE)
@@ -59,6 +68,23 @@ def has_order_by(query: str) -> bool:
     # ORDER BY 검색 (대소문자 구분 없이)    
     pattern = r'\bORDER\s+BY\b'
     return bool(re.search(pattern, query, re.IGNORECASE))
+
+def detect_group_by_aliases(query: str) -> List[str]:
+    """GROUP BY 절을 사용한 쿼리에서 별칭을 추출"""
+    # GROUP BY 있는지 확인
+    group_by_match = re.search(r'\bGROUP\s+BY\b', query, re.IGNORECASE)
+    if not group_by_match:
+        return []
+    
+    # SELECT 절에서 AS로 정의된 별칭 찾기
+    aliases = []
+    select_part = query[:group_by_match.start()]
+    alias_pattern = r'(?:.*?\s+AS\s+)(["\w]+)(?:\s*,|$)'
+    for match in re.finditer(alias_pattern, select_part, re.IGNORECASE):
+        alias = match.group(1).strip('"\'')
+        aliases.append(alias)
+    
+    return aliases
 
 def find_matching_rule(columns: List[str], selected_table: str) -> str:
     """추출된 컬럼 조합에 맞는 ORDER BY 규칙 찾기. *는 테이블별 기본정렬, 알려지지 않은 컬럼은 DESC 정렬"""
@@ -95,9 +121,14 @@ def add_order_by(query: str, selected_table: str) -> str:
     columns = extract_col_from_query(query)
     if not columns:
         return query
-        
-    # ORDER BY 규칙 찾기
-    order_by_clause = find_matching_rule(columns, selected_table)
+    
+    # 별칭(alias) 우선 처리
+    aliases = detect_group_by_aliases(query)
+    if aliases:
+        order_by_clause = f"{aliases[0]} DESC"
+    else:
+        # ORDER BY 규칙 찾기
+        order_by_clause = find_matching_rule(columns, selected_table)
     
     # LIMIT, UNION 위치 찾기 (대소문자 구분 없이)
     query_upper = query.upper()
@@ -121,14 +152,25 @@ def add_order_by(query: str, selected_table: str) -> str:
     before_part = query[:insert_pos].rstrip(';').rstrip()
     after_part = query[insert_pos:].lstrip().rstrip(';')
 
-    # 쿼리 조립
-    result = (
-        before_part
-        + " ORDER BY "
-        + order_by_clause
-        + (" " if after_part else "")  # after_part가 있을 때만 공백 추가
-        + after_part
-    )
+    # GROUP BY가 있는 경우 특별 처리
+    if "GROUP BY" in query.upper():
+        # 쿼리 조립
+        result = (
+            before_part
+            + " ORDER BY "
+            + order_by_clause
+            + (" " if after_part else "")  # after_part가 있을 때만 공백 추가
+            + after_part
+        )
+    else:
+        # 쿼리 조립
+        result = (
+            before_part
+            + " ORDER BY "
+            + order_by_clause
+            + (" " if after_part else "")  # after_part가 있을 때만 공백 추가
+            + after_part
+        )
 
     # 마지막에 세미콜론 추가
     return result + ";"

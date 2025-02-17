@@ -222,7 +222,7 @@ def executor(state: GraphState) -> GraphState:
                 start_date = view_date[0]
                 # 날짜 문자열을 datetime 객체로 변환
                 start_date_dt = datetime.strptime(start_date, "%Y%m%d")
-                today_dt = datetime.strptime(today, "%Y-%m-%d")
+                today_dt = datetime.now().strptime(today, "%Y-%m-%d")
                 
                 # 날짜 차이 계산 (today - start_date)
                 date_diff = today_dt - start_date_dt
