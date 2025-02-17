@@ -18,7 +18,7 @@ from utils.logger import setup_logger
 from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
 from utils.dataframe.group_acct import check_acct_no
 from utils.query.filter_com import add_com_condition
-from utils.query.check_viewdv import check_view_dv
+from utils.query.check_viewdv import check_view_dv, is_all_view_dv
 from utils.query.view_table import extract_view_date, add_view_table
 from utils.query.orderby import add_order_by, extract_col_from_query
 from utils.query.modify_name import modify_stock, modify_bank
@@ -156,7 +156,10 @@ async def nl2sql(state: GraphState) -> GraphState:
     sql_query = await create_sql(trace_id, selected_table, user_question, today)
     
     yogeumjae = state["yogeumjae"]
-    if check_view_dv(sql_query) == "증권" and yogeumjae in ['muryo', 'stock0']:
+    view_dv_list = check_view_dv(sql_query)
+    if ("증권" in view_dv_list and 
+        yogeumjae in ['muryo', 'stock0'] and 
+        not is_all_view_dv(view_dv_list)):
         flags = state.get("flags")
         flags["stock_sec"] = True
         state.update({

@@ -1,4 +1,5 @@
 from typing import List
+from decimal import Decimal, ROUND_HALF_UP
 
 currency_list = [
     "AED", "ARS", "AUD", "BDT", "BHD", "BND", "BRL", "CAD", "CHF", "CLP",
@@ -56,16 +57,17 @@ def format_number(value: float, column: str, func_name: str = '', params: List[s
         if func_name in ['count']:
             return format(int(value), ',')
 
-        # 여기서 float 변환 시도
-        try:
-            float_value = float(value)
-        except (ValueError, TypeError):
-            # float 변환 실패시 원본 값 반환
-            return str(value)
-
+        # Decimal 타입 유지
+        decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
+        
         if should_use_decimals(column, func_name, params):
-            return format(round(float_value, 2), ',.2f')
+            # 소수점 2자리까지
+            formatted = decimal_value.quantize(Decimal('.01'), rounding=ROUND_HALF_UP)
         else:
-            return format(round(float_value), ',')
-    except ValueError:
+            # 정수로
+            formatted = decimal_value.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+            
+        return format(formatted, ',')
+        
+    except (ValueError, TypeError):
         return str(value)
