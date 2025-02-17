@@ -133,10 +133,10 @@ async def params(state: GraphState) -> GraphState:
         main_com = company_list[0].custNm
     user_info = state["user_info"]
     flags = state.get("flags")
-    yoguemjae = state["yoguemjae"]
+    yogeumjae = state["yogeumjae"]
 
     sql_query, date_info = await parameters(
-        trace_id, selected_api, user_question, main_com, user_info, today, yoguemjae, flags
+        trace_id, selected_api, user_question, main_com, user_info, today, yogeumjae, flags
     )
 
     state.update({"sql_query": sql_query, "date_info": date_info})

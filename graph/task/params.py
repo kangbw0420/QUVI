@@ -36,7 +36,7 @@ async def parameters(
     main_com: str,
     user_info: Tuple[str, str],
     today: str,
-    yoguemjae: str,
+    yogeumjae: str,
     flags: dict
 ) -> Tuple[str, Tuple[str, str]]:
     """TODO
@@ -97,7 +97,7 @@ async def parameters(
         from_date = convert_date_format(output["from_date"])
         to_date = convert_date_format(output["to_date"])
 
-        if yoguemjae == 'muryo':
+        if yogeumjae == 'muryo':
             # 날짜 문자열을 datetime 객체로 변환
             from_date_dt = datetime.strptime(from_date, "%Y%m%d")
             today_dt = datetime.strptime(today, "%Y-%m-%d")
