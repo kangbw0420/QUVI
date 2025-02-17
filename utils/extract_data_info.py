@@ -15,20 +15,24 @@ def extract_col_from_query(query: str) -> List[str]:
     if columns_str == '*':
         return ['*']
         
-    # 컬럼들을 분리하고 정리
-    columns = []
-    # alias가 있을 경우 alias를 컬럼명으로 사용
-    column_pattern = re.compile(r'(?:.*?\s+AS\s+)?(["\w]+)(?:\s*,|$)', re.IGNORECASE)
+    # 컬럼들을 분리
+    raw_columns = [col.strip() for col in columns_str.split(',')]
     
-    # 인식된 컬럼명을 정제
-    for match in column_pattern.finditer(columns_str):
-        col = match.group(1)
-        # 테이블 접두사 제거
-        col = col.split('.')[-1]
-        # 공백과 따옴표 제거
-        col = col.strip().strip('"\'')
-        if col:
-            columns.append(col)
+    columns = []
+    for raw_col in raw_columns:
+        # AS를 사용한 별칭이 있는 경우
+        if ' AS ' in raw_col.upper():
+            alias = raw_col.split(' AS ')[-1].strip()
+            columns.append(alias.strip('"\''))
+        else:
+            # 함수를 사용하지 않은 단순 컬럼인 경우
+            if '(' not in raw_col:
+                col = raw_col.split('.')[-1]  # 테이블 접두사 제거
+                columns.append(col.strip('"\''))
+            # SUM 등의 함수가 사용된 경우
+            else:
+                # AS 없이 함수만 사용된 경우 함수 전체를 컬럼명으로
+                columns.append(raw_col.strip('"\''))
             
     return columns
 

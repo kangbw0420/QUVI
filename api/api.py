@@ -68,6 +68,7 @@ async def process_input(request: Input) -> Output:
         # user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
         selected_table = final_state["selected_table"]
+        flags = final_state["flags"]
 
         if "date_info" not in final_state or not final_state["date_info"]:
             date_info = (None, None)
@@ -101,6 +102,7 @@ async def process_input(request: Input) -> Output:
                 "chain_id": chain_id,
                 "recommend": recommend_list,
                 "is_api": selected_table == "api",
+                "is_muryo": flags["stock_sec"] == True or flags["past_date"] == True,
                 "date_info": date_info,
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }

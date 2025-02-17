@@ -20,7 +20,7 @@ from utils.dataframe.group_acct import check_acct_no
 from utils.query.filter_com import add_com_condition
 from utils.query.check_viewdv import check_view_dv, is_all_view_dv
 from utils.query.view_table import extract_view_date, add_view_table
-from utils.query.orderby import add_order_by, extract_col_from_query
+from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.dataframe.is_inout_krw import is_krw
 from utils.dataframe.transform_col import transform_data
@@ -90,7 +90,7 @@ async def commander(state: GraphState) -> GraphState:
         flags["stock_sec"] = True
         state.update({
         "selected_table": selected_table,
-        "final_answer": "해당 질문은 증권 잔고 관련 질문으로 판단되었습니다. 접속하신 계정은 증권 잔고 데이터의 조회 권한이 없습니다.",
+        "final_answer": "해당 질문은 증권 잔고 관련 질문으로 판단되었습니다. 접속하신 계정은 증권 잔고 데이터의 조회 권한이 없습니다.\n결제 후 모든 계좌의 데이터를 조회하실 수 있습니다.\U0001F64F\U0001F64F",
         "query_result": [],
         "sql_query": "",
         "column_list": []
@@ -163,7 +163,7 @@ async def nl2sql(state: GraphState) -> GraphState:
         flags = state.get("flags")
         flags["stock_sec"] = True
         state.update({
-        "final_answer": "해당 질문은 증권 잔고 관련 질문으로 판단되었습니다. 접속하신 계정은 증권 잔고 데이터의 조회 권한이 없습니다.",
+        "final_answer": "해당 질문은 증권 잔고 관련 질문으로 판단되었습니다. 접속하신 계정은 증권 잔고 데이터의 조회 권한이 없습니다.\n결제 후 모든 계좌의 데이터를 조회하실 수 있습니다.\U0001F64F\U0001F64F",
         "query_result": [],
         "column_list": []
     })
@@ -300,7 +300,7 @@ async def respondent(state: GraphState) -> GraphState:
         final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
         
     if flags.get("past_date"):
-        final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 2일 이전 데이터에 대해서는 조회 제한이 적용된 상황입니다."
+        final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 2일 이전 데이터에 대해서는 조회 제한이 적용된 상황입니다.\n결제 후 모든 기간의 데이터를 조회하실 수 있습니다.\U0001F64F\U0001F64F"
 
     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
     StateManager.update_state(trace_id, {"final_answer": final_answer, "query_result": final_result})
