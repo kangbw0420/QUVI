@@ -245,7 +245,7 @@ def executor(state: GraphState) -> GraphState:
             
             if flags.get("past_date"):
                 user_question = state["user_question"]
-                state["user_question"] = f"{user_question}..아니다, 2일 이전 데이터는 보고싶지 않다"
+                state["user_question"] = f"{user_question}..아 잘못 알았다 어제로 보여줘"
             
             print("#" * 80)
             print(query)
@@ -310,8 +310,15 @@ async def nodata(state: GraphState) -> GraphState:
     """데이터가 없음을 설명하는 노드"""
     trace_id = state["trace_id"]
     user_question = state["user_question"]
+    flags = state.get("flags")
 
     final_answer = await no_data(trace_id, user_question)
+
+    if flags.get("future_date"):
+        final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
+        
+    if flags.get("past_date"):
+        final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 2일 이전 데이터에 대해서는 조회 제한이 적용된 상황입니다.\n결제 후 모든 기간의 데이터를 조회하실 수 있습니다.\U0001F64F\U0001F64F"
 
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
