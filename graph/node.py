@@ -5,6 +5,7 @@ from api.dto import CompanyInfo
 from llm_admin.state_manager import StateManager
 # from graph.task.yadon import shellder
 # from graph.task.yadoran import yadoking
+from graph.task.checkpoint import check_joy
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
 from graph.task.respondent import response
@@ -29,6 +30,7 @@ from utils.compute.main_compute import compute_fstring
 logger = setup_logger('node')
 
 class ProcessingFlags(TypedDict):
+    is_joy: bool
     no_data: bool
     stock_sec: bool
     future_date: bool
@@ -76,6 +78,22 @@ today = datetime.now().strftime("%Y-%m-%d")
 #         new_question = await yadoking(trace_id, user_question, last_data, today)
 #         state["user_question"] = new_question
 #     return state
+
+async def checkpoint(state: GraphState) -> GraphState:
+    """사용자 질문에 검색해야 할 table을 선택"""
+    user_question = state["user_question"]
+    trace_id = state["trace_id"]
+    flags = state.get("flags")
+
+    is_joy = await check_joy(trace_id, user_question)
+    if is_joy == 'joy':
+        flags["is_joy"] = True
+    
+    StateManager.update_state(trace_id, {
+        "user_question": user_question
+    })
+
+    return state
 
 async def commander(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택"""

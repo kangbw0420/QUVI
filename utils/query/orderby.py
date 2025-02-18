@@ -59,16 +59,6 @@ def has_order_by(query: str) -> bool:
     pattern = r'\bORDER\s+BY\b'
     return bool(re.search(pattern, query, re.IGNORECASE))
 
-def has_order_by(query: str) -> bool:
-    """SQL 쿼리에 ORDER BY절 존재 여부 확인. 주석은 제거하고 검사"""
-    # 주석 제거 (-- 스타일과 /* */ 스타일 모두)
-    query = re.sub(r'--.*$', '', query, flags=re.MULTILINE)
-    query = re.sub(r'/\*.*?\*/', '', query, flags=re.DOTALL)
-    
-    # ORDER BY 검색 (대소문자 구분 없이)    
-    pattern = r'\bORDER\s+BY\b'
-    return bool(re.search(pattern, query, re.IGNORECASE))
-
 def detect_group_by_aliases(query: str) -> List[str]:
     """GROUP BY 절을 사용한 쿼리에서 별칭을 추출"""
     # GROUP BY 있는지 확인

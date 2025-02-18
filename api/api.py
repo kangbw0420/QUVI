@@ -49,6 +49,7 @@ async def process_input(request: Input) -> Output:
             "access_company_list": request.access_company_list,
             "user_question": request.user_question,
             "flags": {
+                "is_joy": False,
                 "no_data": False,
                 "stock_sec": False,
                 "future_date": False,

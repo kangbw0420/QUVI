@@ -8,6 +8,7 @@ from .node import (
     GraphState,
     # yadon,
     # yadoran,
+    checkpoint,
     commander,
     funk,
     params,
@@ -63,6 +64,7 @@ def make_graph() -> CompiledStateGraph:
         # 노드 추가
         # workflow.add_node("yadon", yadon) # 꼬리가 물렸는지 판단
         # workflow.add_node("yadoran", yadoran) # 꼬리가 물린 후 질문을 변환
+        workflow.add_node("checkpoint", checkpoint)
         workflow.add_node("commander", commander) # 처리 경로를 결정
         workflow.add_node("funk", funk) # api 함수 선택
         workflow.add_node("params", params) # api 함수 파라미터 선택
@@ -72,7 +74,8 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("nodata", nodata) # 데이터가 없을 경우 답변 생성
         workflow.add_node("killjoy", killjoy) # 일상 대화 대응
 
-        workflow.set_entry_point("commander")
+        workflow.set_entry_point("checkpoint")
+        # workflow.set_entry_point("commander")
         # workflow.set_entry_point("yadon")
         # 쉘더가 야돈의 꼬리를 물면 야도란으로 진화
         # workflow.add_conditional_edges(
@@ -87,6 +90,19 @@ def make_graph() -> CompiledStateGraph:
         # workflow.add_edge("yadoran", "commander")
 
         # selector가 api를 토하면 끝남
+
+        workflow.add_conditional_edges(
+            "checkpoint",
+            lambda x: (
+                # 권한도 없으면서 증권을 보려 했다면 종료
+                "killjoy" if x["flags"]["is_joy"] else
+                "commander"
+            ),
+            {
+                "killjoy": "killjoy",
+                "commander": "commander"
+            }
+        )
         workflow.add_conditional_edges(
             "commander",
             lambda x: (
