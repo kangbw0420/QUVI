@@ -2,6 +2,10 @@ from typing import Tuple, Optional
 from datetime import datetime, timedelta
 import re
 
+import sqlglot
+from sqlglot.errors import ParseError
+from sqlglot.expressions import Subquery
+
 def _find_single_date(query: str, date_column: str) -> Optional[Tuple[str, int, int]]:
     """SQL 쿼리에서 단일 날짜 패턴을 찾습니다.
     Returns:
@@ -41,6 +45,24 @@ def _validate_future_date(query: str, date_column: str, flags: dict) -> Tuple[st
     
     return query, modified_date
 
+def has_subquery(query: str) -> bool:
+    """
+    SQL 쿼리에 서브쿼리가 포함되어 있는지 확인합니다.
+    sqlglot 라이브러리를 사용하여 AST를 생성하고, Subquery 노드를 탐색합니다.
+    """
+    try:
+        expression = sqlglot.parse_one(query, dialect='postgres')
+        for node in expression.walk():
+            if isinstance(node, Subquery):
+                return True
+        return False
+    except ParseError:
+        # 파싱 오류 발생 시 안전하게 True 반환 (수정하지 않음)
+        return True
+    except Exception:
+        # 기타 예외 발생 시도 안전하게 True 반환
+        return True
+
 def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str, str]:
     """뷰테이블에 사용될 날짜 튜플 추출
     Returns:
@@ -49,6 +71,22 @@ def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str
         ValueError: 날짜 형식이 올바르지 않거나 날짜를 찾을 수 없는 경우
     """
     date_column = _get_date_column(selected_table)
+    if has_subquery(query):
+        # 서브쿼리 안에서 날짜 조건 찾기
+        between_pattern = f"{date_column}\\s+BETWEEN\\s+'(\\d{{8}})'\\s+AND\\s+'(\\d{{8}})'"
+        between_match = re.search(between_pattern, query, re.IGNORECASE)
+        
+        if between_match:
+            start_date = between_match.group(1)
+            end_date = between_match.group(2)
+            
+            # 미래 날짜 체크
+            today = datetime.now().strftime("%Y%m%d")
+            if end_date > today:
+                end_date = today
+                flags["future_date"] = True
+                
+            return (start_date, end_date)
     query, modified_date = _validate_future_date(query, date_column, flags)
     
     # due_dt 패턴 확인
@@ -156,6 +194,21 @@ def add_view_table(query: str, selected_table: str, view_com: str, user_info: Tu
             예: "SELECT * FROM aicfo_get_all_amt('user123', 'intt456', '회사', '20250101', '20250131') 
                 WHERE view_dv = '대출' AND reg_dt = '20250120'"
     """
+    # 서브쿼리가 있는 경우 처리
+    if has_subquery(query):
+        # 서브쿼리 내의 테이블 이름만 변경
+        table_name = f"aicfo_get_all_{selected_table}"
+        user_id, use_intt_id = user_info
+        
+        # 원래 테이블 이름을 뷰 테이블 함수 호출로 대체
+        view_table_call = f"{table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}')"
+        
+        # 정규식으로 테이블 이름만 교체 (서브쿼리 구조 유지)
+        pattern = r'FROM\s+aicfo_get_all_' + selected_table
+        modified_query = re.sub(pattern, f'FROM {view_table_call}', query, flags=re.IGNORECASE)
+        
+        return modified_query
+    
     date_column = _get_date_column(selected_table)
     query, _ = _validate_future_date(query, date_column, flags)
     

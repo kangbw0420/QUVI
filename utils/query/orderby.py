@@ -2,6 +2,10 @@ import re
 from typing import List
 from utils.extract_data_info import extract_col_from_query
 
+import sqlglot
+from sqlglot.errors import ParseError
+from sqlglot.expressions import Subquery
+
 # 컬럼에 따른 ORDER BY 규칙 정의
 COLUMN_ORDER_RULES = {
     ('bank_nm', 'acct_dv', 'acct_no', 'acct_bal_amt',
@@ -98,14 +102,39 @@ def find_matching_rule(columns: List[str], selected_table: str) -> str:
     # 매칭되는 규칙이 없으면 테이블별 기본값 반환
     return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
 
+def has_subquery(query: str) -> bool:
+    """
+    SQL 쿼리에 서브쿼리가 포함되어 있는지 확인합니다.
+    sqlglot 라이브러리를 사용하여 AST를 생성하고, Subquery 노드를 탐색합니다.
+    """
+    try:
+        expression = sqlglot.parse_one(query, dialect='postgres')
+        for node in expression.walk():
+            if isinstance(node, Subquery):
+                return True
+        return False
+    except ParseError:
+        # 파싱 오류 발생 시 안전하게 True 반환 (수정하지 않음)
+        return True
+    except Exception:
+        # 기타 예외 발생 시도 안전하게 True 반환
+        return True
+
 def add_order_by(query: str, selected_table: str) -> str:
     """SQL 쿼리에 ORDER BY절 추가. 기존 ORDER BY가 있으면 그대로 반환, 없으면 규칙에 따라 ORDER BY 추가
     Returns:
         ORDER BY절이 추가된 SQL 쿼리문 (맨 뒤 세미콜론 포함)
     """
+    # 끝의 세미콜론 제거
+    query = query.rstrip(';')
+    
     # 이미 ORDER BY가 있으면 그대로 반환
     if has_order_by(query):
-        return query
+        return query + ';'
+    
+    # 서브쿼리가 있으면 그대로 반환
+    if has_subquery(query):
+        return query + ';'
         
     # 쿼리에서 컬럼 추출
     columns = extract_col_from_query(query)
