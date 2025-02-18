@@ -95,10 +95,10 @@ def compute_function(func_name: str, params: List[str], result: List[Dict[str, A
     elif func_name == 'min':
         if len(params) != 1:
             raise ValueError("mode function requires exactly one parameter")
-    elif func_name == 'value':
+    elif func_name == 'list':
         if len(params) != 1:
             raise ValueError("average function requires exactly one parameter")
-    elif func_name not in ['sum', 'average', 'sumproduct', 'count', 'unique', 'mode', 'max', 'min', 'value']:
+    elif func_name not in ['sum', 'average', 'sumproduct', 'count', 'unique', 'mode', 'max', 'min', 'list']:
         raise ValueError(f"Unknown function: {func_name}")
     
     evaluated_params = []
@@ -181,7 +181,7 @@ def compute_function(func_name: str, params: List[str], result: List[Dict[str, A
             return Decimal('0')
         return min(values)
             
-    elif func_name == 'value':
+    elif func_name == 'list':
         col = evaluated_params[0]
         values = [row[col] for row in result if col in row and row[col] is not None]
         if not values:
