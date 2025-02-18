@@ -5,7 +5,7 @@ from api.dto import CompanyInfo
 from llm_admin.state_manager import StateManager
 # from graph.task.yadon import shellder
 # from graph.task.yadoran import yadoking
-from graph.task.checkpoint import check_joy
+from graph.task.checkpoint import check_joy # from graph.classifier import check_joy
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
 from graph.task.respondent import response
@@ -85,14 +85,19 @@ async def checkpoint(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     flags = state.get("flags")
 
+    ## check_joy 함수에 trace_id를 처리하는 부분은 없습니다.
     is_joy = await check_joy(trace_id, user_question)
-    if is_joy == 'joy':
+    if is_joy['checkpoint'] == 'joy':
         flags["is_joy"] = True
         state.update({"selected_table": ""})
     
-    StateManager.update_state(trace_id, {
-        "user_question": user_question
-    })
+    StateManager.update_state(
+        trace_id, 
+        {
+            "user_question": user_question,
+            "flags": flags
+        }
+    )
 
     return state
 
