@@ -1,7 +1,8 @@
 import re
 from typing import List, Dict, Any, Union
 from statistics import mode, StatisticsError
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+from utils.compute.formatter import should_use_decimals
 
 def safe_decimal(value: Any) -> Decimal:
     """문자열이나 숫자를 안전하게 Decimal로 변환"""
@@ -35,6 +36,37 @@ def parse_function_params(param_str: str) -> List[str]:
         params.append(current_param.strip())
         
     return params
+
+def _limit_output(items, max_items=20, max_chars=400):
+    """항목 수와 문자 수 제한을 적용하여 출력 제한"""
+    # 단일 항목 특별 처리
+    if len(items) == 1:
+        return items[0]
+        
+    if len(items) <= max_items:
+        result = ', '.join(items)
+        if len(result) <= max_chars:
+            return result
+        
+    # 항목 수 제한 적용
+    displayed_items = items[:max_items]
+    result = ', '.join(displayed_items)
+    
+    # 문자 수 제한도 적용
+    if len(result) > max_chars:
+        # 가능한 많은 항목을 포함하되 최대 길이 제한
+        result = result[:max_chars]
+        # 마지막 항목이 잘리지 않도록 마지막 쉼표 위치 찾기
+        last_comma = result.rfind(', ')
+        if last_comma > 0:
+            result = result[:last_comma]
+    
+    # 생략된 항목 수 표시
+    remaining = len(items) - len(displayed_items)
+    if remaining > 0:
+        result += f'... (외 {remaining}개 항목)'
+    
+    return result
 
 def compute_function(func_name: str, params: List[str], result: List[Dict[str, Any]], column_list: List[str]) -> Union[float, str]:
     """compute a function with its parameters"""
@@ -152,13 +184,42 @@ def compute_function(func_name: str, params: List[str], result: List[Dict[str, A
     elif func_name == 'value':
         col = evaluated_params[0]
         values = [row[col] for row in result if col in row and row[col] is not None]
-        try:
-            # For numeric values, try to convert to Decimal
-            decimal_values = [safe_decimal(val) for val in values]
-            return ', '.join(str(val.quantize(Decimal('.01'), rounding=ROUND_HALF_UP)) for val in decimal_values)
-        except:
-            # For non-numeric values, return as strings
-            return ', '.join(str(val) for val in values)
-    
-    else:
-        raise ValueError(f"Unknown function: {func_name}")
+        if not values:
+            return ""
+        
+        # 첫 번째 값의 타입 확인
+        first_value = values[0]
+        is_numeric = False
+        
+        # 명확한 숫자인지 확인
+        if isinstance(first_value, (int, float)):
+            is_numeric = True
+        elif isinstance(first_value, str):
+            # 문자열이 숫자 형식인지 확인 
+            # (예: "123", "123.45"는 숫자로 간주, "계좌구매"는 텍스트로 간주)
+            try:
+                float(first_value)  # 숫자로 변환 시도
+                is_numeric = True
+            except ValueError:
+                is_numeric = False
+        
+        if is_numeric:
+            # 숫자 값들 처리 - 소수점 처리 후 쉼표로 구분
+            try:
+                decimal_values = [safe_decimal(val) for val in values]
+                if len(decimal_values) == 1:
+                    # 단일 값은 Decimal로 반환하여 format_number 통과하도록
+                    return decimal_values[0]
+                else:
+                    # 여러 값은 쉼표로 구분하여 문자열로 반환
+                    formatted = [str(val.quantize(Decimal('1'), rounding=ROUND_HALF_UP)) for val in decimal_values]
+                    return _limit_output(formatted)
+            except:
+                # 오류 발생시 문자열로 처리
+                return _limit_output([str(val) for val in values])
+        else:
+            # 텍스트 값들은 그대로 쉼표로 구분
+            if len(values) == 1:
+                return str(values[0])
+            else:
+                return _limit_output([str(val) for val in values])

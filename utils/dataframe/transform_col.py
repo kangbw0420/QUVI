@@ -27,7 +27,7 @@ def transform_inout_columns(result: List[Dict[str, Any]], column_list: List[str]
     # 컬럼 리스트 수정
     new_column_list.remove('in_out_dv')
     new_column_list.remove('trsc_amt')
-    new_column_list.extend(['trsc_deposit', 'trsc_withdrawal'])
+    new_column_list.extend(['deposit_amt', 'withdrawal_amt'])
     
     # 각 레코드 변환
     for row in result:
@@ -36,11 +36,11 @@ def transform_inout_columns(result: List[Dict[str, Any]], column_list: List[str]
         amount = new_row.pop('trsc_amt')
         
         if inout_type == '입금':
-            new_row['trsc_deposit'] = amount
-            new_row['trsc_withdrawal'] = None
+            new_row['deposit_amt'] = amount
+            new_row['withdrawal_amt'] = None
         else:  # '출금'
-            new_row['trsc_deposit'] = None
-            new_row['trsc_withdrawal'] = amount
+            new_row['deposit_amt'] = None
+            new_row['withdrawal_amt'] = amount
             
         new_result.append(new_row)
     
