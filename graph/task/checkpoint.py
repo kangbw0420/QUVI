@@ -4,7 +4,7 @@ import httpx
 
 BASE_URL = Config.VECTOR_STORE_DOMAIN
 
-async def check_joy(trace_id: str, query_text: str) -> dict:
+async def check_joy(query_text: str) -> dict:
 
     url = f"{BASE_URL}/checkpoint/{query_text}"
     async with httpx.AsyncClient() as client:

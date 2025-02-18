@@ -80,13 +80,12 @@ today = datetime.now().strftime("%Y-%m-%d")
 #     return state
 
 async def checkpoint(state: GraphState) -> GraphState:
-    """사용자 질문에 검색해야 할 table을 선택"""
+    """금융 관련 질의 fin과 쓸데없는 질의 joy의 임베딩 모델 활용 이진분류"""
     user_question = state["user_question"]
     trace_id = state["trace_id"]
     flags = state.get("flags")
 
-    ## check_joy 함수에 trace_id를 처리하는 부분은 없습니다.
-    is_joy = await check_joy(trace_id, user_question)
+    is_joy = await check_joy(user_question)
     if is_joy['checkpoint'] == 'joy':
         flags["is_joy"] = True
         state.update({"selected_table": ""})
@@ -94,8 +93,7 @@ async def checkpoint(state: GraphState) -> GraphState:
     StateManager.update_state(
         trace_id, 
         {
-            "user_question": user_question,
-            "flags": flags
+            "user_question": user_question
         }
     )
 
