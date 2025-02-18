@@ -1,52 +1,24 @@
-from langchain_core.messages import SystemMessage
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+import json
+from utils.config import Config
+import httpx
 
-from database.database_service import DatabaseService
-from graph.models import qwen_llm
-from utils.retriever import retriever
-from llm_admin.qna_manager import QnAManager
+BASE_URL = Config.VECTOR_STORE_DOMAIN
 
-database_service = DatabaseService()
-qna_manager = QnAManager()
+async def check_joy(trace_id: str, query_text: str) -> dict:
 
-async def check_joy(trace_id: str, user_question: str) -> str:
-    """사용자의 질문으로부터 테이블을 선택
-    Returns:
-        str: 'aicfo_get_cabo_XXXX'의 테이블
-    Raises:
-        ValueError: 질문이 분석 가능한 형식이 아닌 경우.
-    """
-    system_prompt = database_service.get_prompt(node_nm='checkpoint', prompt_nm='system')[0]['prompt']
-
-    few_shots = await retriever.get_few_shots(
-        query_text=user_question, collection_name="shots_checkpoint", top_k=5
-    )
-    few_shot_prompt = []
-    for example in reversed(few_shots):
-        few_shot_prompt.append(("human", example["input"]))
-        few_shot_prompt.append(("ai", example["output"]))
-
-    CHECK_PROMPT = ChatPromptTemplate.from_messages(
-        [
-            SystemMessage(content=system_prompt),
-            *few_shot_prompt,
-            ("human", user_question)
-        ]
-    )
-
-    print("=" * 40 + "selector(Q)" + "=" * 40)
-    qna_id = qna_manager.create_question(
-        trace_id=trace_id,
-        question=CHECK_PROMPT,
-        model="qwen_selector"
-    )
-
-    commander_chain = CHECK_PROMPT | qwen_llm | output_parser
-    is_joy = commander_chain.invoke({"user_question": user_question})
-
-    print("=" * 40 + "selector(A)" + "=" * 40)
-    print(is_joy)
-    qna_manager.record_answer(qna_id, is_joy)
-
-    return is_joy
+    url = f"{BASE_URL}/checkpoint/{query_text}"
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+            results = response.json()
+            """results = 
+            {
+                "text": "안녕하세요.",
+                "checkpoint": 'joy'
+            }
+            """
+            print(f"[SUCCESS] Get Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
+            return results
+        except httpx.HTTPError as e:
+            print(f"[ERROR] Failed to test embedding: {e}")
