@@ -17,8 +17,6 @@ async def check_joy(trace_id: str, user_question: str) -> str:
     Raises:
         ValueError: 질문이 분석 가능한 형식이 아닌 경우.
     """
-    output_parser = StrOutputParser()
-
     system_prompt = database_service.get_prompt(node_nm='checkpoint', prompt_nm='system')[0]['prompt']
 
     few_shots = await retriever.get_few_shots(
