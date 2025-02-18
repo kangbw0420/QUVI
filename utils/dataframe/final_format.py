@@ -1,13 +1,43 @@
 from typing import Dict, Any, List
 
-def check_acct_no(result: List[Dict[str, Any]], selected_table: str) -> List[Dict[str, Any]]:
+def delete_columns(result: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """결과 데이터에서 특정 컬럼들을 제거합니다.
+    Returns:
+        List[Dict[str, Any]]: 지정된 컬럼들이 제거된 결과 리스트
     """
-    선택된 테이블이 trsc인 경우 데이터를 은행명과 계좌번호로 그룹화
-    
-    Args:
-        result: SQL 쿼리 실행 결과 리스트
-        selected_table: 선택된 테이블 ('amt' 또는 'trsc')
+    if not result:
+        return result
         
+    # 제거할 컬럼 목록
+    delete_for_final_result = {'acct_bal_upd_dtm', 'reg_dtm_upd'}
+    
+    # 결과 형식이 그룹화된 데이터인지 확인
+    if isinstance(result, list) and result and isinstance(result[0], dict) and 'data' in result[0]:
+        new_result = []
+        
+        for group in result:
+            if 'data' in group and isinstance(group['data'], list):
+                # 각 그룹의 데이터에서 컬럼 제거
+                new_data = []
+                for item in group['data']:
+                    new_item = {k: v for k, v in item.items() if k not in delete_for_final_result}
+                    new_data.append(new_item)
+                
+                # 새 데이터로 그룹 업데이트
+                new_group = group.copy()
+                new_group['data'] = new_data
+                new_result.append(new_group)
+            else:
+                # 데이터가 없는 그룹은 그대로 추가
+                new_result.append(group)
+                
+        return new_result
+    else:
+        # 일반 리스트 형식인 경우 각 항목에서 컬럼 제거
+        return [{k: v for k, v in item.items() if k not in delete_for_final_result} for item in result]
+
+def check_acct_no(result: List[Dict[str, Any]], selected_table: str) -> List[Dict[str, Any]]:
+    """선택된 테이블이 trsc인 경우 데이터를 은행명과 계좌번호로 그룹화
     Returns:
         List[Dict[str, Any]]:
         - amt/stock 테이블인 경우: 입력값을 그대로 반환
@@ -73,3 +103,13 @@ def check_acct_no(result: List[Dict[str, Any]], selected_table: str) -> List[Dic
             })
     
     return new_result
+
+def final_format(result: List[Dict[str, Any]], selected_table: str) -> List[Dict[str, Any]]:
+    """최종 출력을 위한 데이터 포맷팅 함수
+    1. 특정 컬럼 제거 (delete_columns)
+    2. 계좌번호별 그룹화 (check_acct_no)
+    Returns:
+        List[Dict[str, Any]]: 최종 포맷된 결과 데이터
+    """
+    cleaned_result = delete_columns(result)    
+    return check_acct_no(cleaned_result, selected_table)

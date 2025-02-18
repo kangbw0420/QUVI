@@ -17,7 +17,7 @@ from graph.task.killjoy import kill_joy
 
 from utils.logger import setup_logger
 from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
-from utils.dataframe.group_acct import check_acct_no
+from utils.dataframe.final_format import final_format
 from utils.query.filter_com import add_com_condition
 from utils.query.check_viewdv import check_view_dv, is_all_view_dv
 from utils.query.view_table import extract_view_date, add_view_table
@@ -88,6 +88,7 @@ async def checkpoint(state: GraphState) -> GraphState:
     is_joy = await check_joy(trace_id, user_question)
     if is_joy == 'joy':
         flags["is_joy"] = True
+        state.update({"selected_table": ""})
     
     StateManager.update_state(trace_id, {
         "user_question": user_question
@@ -310,7 +311,7 @@ async def respondent(state: GraphState) -> GraphState:
     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
     # result_inout = is_inout(result)
-    final_result = check_acct_no(result, selected_table)
+    final_result = final_format(result, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)
     
