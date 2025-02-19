@@ -190,25 +190,28 @@ def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str
 def add_view_table(query: str, selected_table: str, view_com: str, user_info: Tuple[str, str], view_date: Tuple[str, str], flags: dict) -> str:
     """SQL 쿼리 테이블 뒤에 뷰테이블 함수를 붙임
     Returns:
-        str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문'
-            예: "SELECT * FROM aicfo_get_all_amt('user123', 'intt456', '회사', '20250101', '20250131') 
-                WHERE view_dv = '대출' AND reg_dt = '20250120'"
+        str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문
     """
     # 서브쿼리가 있는 경우 처리
     if has_subquery(query):
-        # 서브쿼리 내의 테이블 이름만 변경
-        table_name = f"aicfo_get_all_{selected_table}"
         user_id, use_intt_id = user_info
         
-        # 원래 테이블 이름을 뷰 테이블 함수 호출로 대체
-        view_table_call = f"{table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}')"
+        # 모든 테이블 참조를 변환
+        for table_type in ['amt', 'trsc', 'stock']:
+            # 일반 테이블 참조 패턴
+            pattern = fr'FROM\s+aicfo_get_all_{table_type}(\s+[a-zA-Z][a-zA-Z0-9_]*)?' 
+            view_func = f"aicfo_get_all_{table_type}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}')"
+            
+            def replacement(match):
+                alias = match.group(1) or ''  # 별칭이 있으면 사용, 없으면 빈 문자열
+                return f"FROM {view_func}{alias}"
+                
+            # 정규식으로 모든 테이블 참조 교체 (서브쿼리 포함)
+            query = re.sub(pattern, replacement, query, flags=re.IGNORECASE)
         
-        # 정규식으로 테이블 이름만 교체 (서브쿼리 구조 유지)
-        pattern = r'FROM\s+aicfo_get_all_' + selected_table
-        modified_query = re.sub(pattern, f'FROM {view_table_call}', query, flags=re.IGNORECASE)
-        
-        return modified_query
+        return query
     
+    # 이하 기존 로직 (단일 테이블 쿼리 처리)
     date_column = _get_date_column(selected_table)
     query, _ = _validate_future_date(query, date_column, flags)
     
