@@ -26,6 +26,7 @@ WEEKDAYS = {
 async def create_sql(
     trace_id: str, 
     selected_table: str, 
+    main_com: str,
     user_question: str,
     today: str
 ) -> str:
@@ -43,7 +44,7 @@ async def create_sql(
                 node_nm='nl2sql', 
                 prompt_nm=selected_table
             )[0]['prompt'].format(
-                today=today
+                today=today, main_com=main_com
             )
         except:
             system_prompt = database_service.get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(today=today)

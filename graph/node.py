@@ -174,8 +174,14 @@ async def nl2sql(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
+    company_list = state["access_company_list"]
+    main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
+    if main_companies:
+        main_com = main_companies[0].custNm
+    else:
+        main_com = company_list[0].custNm
 
-    sql_query = await create_sql(trace_id, selected_table, user_question, today)
+    sql_query = await create_sql(trace_id, selected_table, main_com, user_question, today)
     
     yogeumjae = state["yogeumjae"]
     view_dv_list = check_view_dv(sql_query)

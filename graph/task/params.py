@@ -21,6 +21,9 @@ WEEKDAYS = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"
 
 
 def convert_date_format(date_str: str) -> str:
+    # 먼저 공백 제거
+    date_str = date_str.strip()
+    
     if len(date_str) == 8 and date_str.isdigit():
         return date_str
     # YYYY-MM-DD 형식 검사 및 변환
@@ -57,7 +60,7 @@ async def parameters(
         )[0]["prompt"]
 
         few_shots = await retriever.get_few_shots(
-            query_text=user_question, collection_name="shots_params_creator", top_k=3
+            query_text=user_question, collection_name="shots_params_creator", top_k=5
         )
         few_shot_prompt = []
         for example in reversed(few_shots):
