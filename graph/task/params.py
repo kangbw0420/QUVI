@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Tuple
 from datetime import datetime, timedelta
 
@@ -42,9 +43,6 @@ async def parameters(
     yogeumjae: str,
     flags: dict
 ) -> Tuple[str, Tuple[str, str]]:
-    """TODO
-    1) 프롬프트와 퓨샷도 마찬가지로 하드코딩되어 있습니다.
-    """
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
         str: 생성된 SQL 쿼리문
@@ -91,8 +89,31 @@ async def parameters(
             trace_id=trace_id, question=prompt, model="qwen_nl2sql"
         )
 
-        chain = prompt | qwen_llm | JsonOutputParser()
-        output = chain.invoke({"user_question": user_question})
+        chain = prompt | qwen_llm 
+        raw_output = chain.invoke({"user_question": user_question})
+        
+        # JSON 형식이 없을 경우의 에러 처리
+        try:
+            # 먼저 JsonOutputParser로 시도
+            json_parser = JsonOutputParser()
+            output = json_parser.parse(raw_output)
+        except Exception as json_error:
+            # JSON 파싱에 실패한 경우, 텍스트에서 JSON 형식 찾기 시도
+            json_pattern = re.search(r'\{.*?\}', raw_output, re.DOTALL)
+            if json_pattern:
+                try:
+                    json_str = json_pattern.group(0)
+                    output = json.loads(json_str)
+                except:
+                    # JSON 형식으로 보이는 패턴이 있지만 파싱 실패
+                    raise ValueError(f"JSON이 있는 거 같은데 파싱이 어려워요..: {raw_output}")
+            else:
+                # JSON 형식이 전혀 없음
+                raise ValueError(f"JSON이 없어요..: {raw_output}")
+
+        # 필수 키 확인
+        if "from_date" not in output or "to_date" not in output:
+            raise ValueError(f"응답에 (from_date, to_date)가 없어요..: {output}")
 
         print(output)
 

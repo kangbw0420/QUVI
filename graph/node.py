@@ -213,7 +213,11 @@ def executor(state: GraphState) -> GraphState:
         print("#" * 80)
         print(query)
         result = execute(query)
-        column_list = extract_col_from_dict(result)
+        if result:
+            column_list = extract_col_from_dict(result)
+        else:
+            # nodata로 가기 전에 flags 참조
+            flags = state.get("flags")
     
     else:
         raw_query = state.get("sql_query")
