@@ -53,9 +53,11 @@ async def parameters(
     user_id, use_intt_id = user_info
 
     try:
+        json_format = '"from_date": from_date, "to_date": to_date'
+        
         system_prompt = database_service.get_prompt(
             node_nm="params", prompt_nm="system"
-        )[0]["prompt"]
+        )[0]["prompt"].format(today=today, json_format=json_format)
 
         few_shots = await retriever.get_few_shots(
             query_text=user_question, collection_name="shots_params_creator", top_k=5
