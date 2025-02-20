@@ -83,7 +83,8 @@ async def process_input(request: Input) -> Output:
         # for shot making
         column_list = final_state["column_list"]
         column_list_str = ", ".join(str(col) for col in column_list)
-        kabigon = f"{sql_query}\n\n\n{column_list_str}"
+        fstring = final_state["yogeumjae"]
+        kabigon = f"{sql_query}\n\n\n{column_list_str}\n\n\n{fstring}"
         
         # 기존 레코드 저장
         # save_record(conversation_id, user_question, answer, sql_query)

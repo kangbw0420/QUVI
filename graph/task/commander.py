@@ -13,7 +13,7 @@ qna_manager = QnAManager()
 async def command(trace_id: str, user_question: str) -> str:
     """사용자의 질문으로부터 테이블을 선택
     Returns:
-        str: 'aicfo_get_cabo_XXXX'의 테이블
+        str: 'aicfo_get_all_XXXX'의 테이블
     Raises:
         ValueError: 질문이 분석 가능한 형식이 아닌 경우.
     """

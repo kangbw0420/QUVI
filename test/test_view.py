@@ -1,112 +1,215 @@
-import sys
 import unittest
 from datetime import datetime
-import os
-from unittest.mock import patch
+from typing import Tuple
 
-# Add the parent directory to sys.path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# view_table.py에서 테스트할 함수 임포트
+from utils.query.view_table import add_view_table, extract_view_date
 
-from utils.query.view_table import has_subquery, add_view_table, extract_view_date
-
-class TestViewTable(unittest.TestCase):
+class ViewTableTest(unittest.TestCase):
     def setUp(self):
-        self.user_info = ('user123', 'intt456')
-        self.view_com = 'TestCompany'
-        self.flags = {'future_date': False, 'past_date': False}
-        self.today = datetime.now().strftime("%Y%m%d")
+        # 테스트에 필요한 공통 변수 설정
+        self.selected_table = "amt"
+        self.view_com = "테스트회사"
+        self.user_info = ("test_user", "test_intt")
+        self.view_date = ("20240101", "20240131")
+        self.flags = {"future_date": False}
         
-    def test_has_subquery(self):
-        # Test a query with subquery
-        query_with_subquery = """
-        SELECT DISTINCT acct_no, bank_nm FROM aicfo_get_all_amt 
-        WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt = '20250219' 
-        AND acct_no NOT IN (
-            SELECT DISTINCT acct_no FROM aicfo_get_all_trsc 
-            WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt > '20241119'
-        );
-        """
-        self.assertTrue(has_subquery(query_with_subquery))
+    def test_simple_query(self):
+        """기본적인 단일 테이블 쿼리 테스트"""
+        query = "SELECT * FROM aicfo_get_all_amt WHERE view_dv = '수시' AND reg_dt = '20240115'"
+        expected = "SELECT * FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') WHERE view_dv = '수시' AND reg_dt = '20240115'"
         
-        # Test a simple query without subquery
-        simple_query = "SELECT * FROM aicfo_get_all_amt WHERE view_dv = '수시';"
-        self.assertFalse(has_subquery(simple_query))
+        result = add_view_table(query, self.selected_table, self.view_com, self.user_info, self.view_date, self.flags)
+        self.assertEqual(result, expected)
         
-    def test_add_view_table_with_subquery(self):
+    def test_query_with_alias(self):
+        """테이블 별칭을 포함한 쿼리 테스트"""
+        query = "SELECT a.acct_no, a.acct_bal_amt FROM aicfo_get_all_amt a WHERE a.view_dv = '예적금' AND a.reg_dt = '20240115'"
+        expected = "SELECT a.acct_no, a.acct_bal_amt FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') a WHERE a.view_dv = '예적금' AND a.reg_dt = '20240115'"
+        
+        result = add_view_table(query, self.selected_table, self.view_com, self.user_info, self.view_date, self.flags)
+        self.assertEqual(result, expected)
+        
+    def test_query_with_subquery(self):
+        """서브쿼리를 포함한 쿼리 테스트"""
         query = """
-        SELECT DISTINCT acct_no, bank_nm FROM aicfo_get_all_amt 
-        WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt = '20250219' 
-        AND acct_no NOT IN (
-            SELECT DISTINCT acct_no FROM aicfo_get_all_trsc 
-            WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt > '20241119'
-        );
+        SELECT main.acct_no, main.acct_bal_amt 
+        FROM aicfo_get_all_amt main
+        WHERE main.acct_no IN (
+            SELECT sub.acct_no 
+            FROM aicfo_get_all_amt sub 
+            WHERE sub.reg_dt = '20240101'
+        ) AND main.reg_dt = '20240131'
         """
-        selected_table = 'amt'
-        view_date = ('20250219', '20250219')
-        
-        modified_query = add_view_table(query, selected_table, self.view_com, 
-                                        self.user_info, view_date, self.flags)
-        
-        print("\nOriginal query:")
-        print(query)
-        print("\nModified query:")
-        print(modified_query)
-        
-        # Check that both table references were properly transformed
-        self.assertIn("aicfo_get_all_amt('intt456', 'user123', 'TestCompany', '20250219', '20250219')", modified_query)
-        self.assertIn("aicfo_get_all_trsc('intt456', 'user123', 'TestCompany', '20250219', '20250219')", modified_query)
-        
-        # Ensure the structure is preserved
-        self.assertIn("acct_no NOT IN", modified_query)
-        self.assertIn("view_dv = '수시'", modified_query)
-        
-    def test_extract_view_date_with_subquery(self):
-        query = """
-        SELECT DISTINCT acct_no, bank_nm FROM aicfo_get_all_amt 
-        WHERE view_dv = '수시' AND curr_cd = 'KRW' AND reg_dt = '20250219' 
-        AND acct_no NOT IN (
-            SELECT DISTINCT acct_no FROM aicfo_get_all_trsc 
-            WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt > '20241119'
-        );
+        expected = """
+        SELECT main.acct_no, main.acct_bal_amt 
+        FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') main
+        WHERE main.acct_no IN (
+            SELECT sub.acct_no 
+            FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') sub 
+            WHERE sub.reg_dt = '20240101'
+        ) AND main.reg_dt = '20240131'
         """
-        selected_table = 'amt'
         
-        view_date = extract_view_date(query, selected_table, self.flags)
+        result = add_view_table(query, self.selected_table, self.view_com, self.user_info, self.view_date, self.flags)
+        # 공백 정규화하여 비교
+        self.assertEqual(' '.join(result.split()), ' '.join(expected.split()))
         
-        print(f"\nExtracted view date: {view_date}")
-        self.assertEqual(view_date, ('20250219', '20250219'))
-        
-    def test_add_view_table_with_complex_subquery(self):
+    def test_query_with_join(self):
+        """JOIN을 포함한 쿼리 테스트"""
         query = """
-        SELECT a.acct_no, a.bank_nm, a.acct_bal_amt
+        SELECT a.acct_no, a.acct_bal_amt, b.trsc_amt
         FROM aicfo_get_all_amt a
-        WHERE a.view_dv = '수시' 
-        AND a.acct_no IN (
-            SELECT t.acct_no 
-            FROM aicfo_get_all_trsc t
-            WHERE t.trsc_dt BETWEEN '20250101' AND '20250131'
-            AND t.in_out_dv = '입금'
-        )
-        ORDER BY a.acct_bal_amt DESC;
+        JOIN aicfo_get_all_trsc b ON a.acct_no = b.acct_no
+        WHERE a.reg_dt = '20240115' AND b.trsc_dt = '20240115'
         """
-        selected_table = 'amt'
-        view_date = ('20250101', '20250131')
+        expected = """
+        SELECT a.acct_no, a.acct_bal_amt, b.trsc_amt
+        FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') a
+        JOIN aicfo_get_all_trsc('test_intt', 'test_user', '테스트회사', '20240101', '20240131') b ON a.acct_no = b.acct_no
+        WHERE a.reg_dt = '20240115' AND b.trsc_dt = '20240115'
+        """
         
-        modified_query = add_view_table(query, selected_table, self.view_com, 
-                                        self.user_info, view_date, self.flags)
+        result = add_view_table(query, self.selected_table, self.view_com, self.user_info, self.view_date, self.flags)
+        # 공백 정규화하여 비교
+        self.assertEqual(' '.join(result.split()), ' '.join(expected.split()))
         
-        print("\nOriginal complex query:")
-        print(query)
-        print("\nModified complex query:")
-        print(modified_query)
+    def test_query_with_join_as_keyword(self):
+        """AS 키워드가 있는 JOIN을 포함한 쿼리 테스트"""
+        query = """
+        SELECT a.acct_no, a.acct_bal_amt, b.trsc_amt
+        FROM aicfo_get_all_amt AS a
+        JOIN aicfo_get_all_trsc AS b ON a.acct_no = b.acct_no
+        WHERE a.reg_dt = '20240115' AND b.trsc_dt = '20240115'
+        """
+        expected = """
+        SELECT a.acct_no, a.acct_bal_amt, b.trsc_amt
+        FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') AS a
+        JOIN aicfo_get_all_trsc('test_intt', 'test_user', '테스트회사', '20240101', '20240131') AS b ON a.acct_no = b.acct_no
+        WHERE a.reg_dt = '20240115' AND b.trsc_dt = '20240115'
+        """
         
-        # Check that both table references were properly transformed with aliases
-        self.assertIn("aicfo_get_all_amt('intt456', 'user123', 'TestCompany', '20250101', '20250131') a", modified_query)
-        self.assertIn("aicfo_get_all_trsc('intt456', 'user123', 'TestCompany', '20250101', '20250131') t", modified_query)
+        result = add_view_table(query, self.selected_table, self.view_com, self.user_info, self.view_date, self.flags)
+        # 공백 정규화하여 비교
+        self.assertEqual(' '.join(result.split()), ' '.join(expected.split()))
         
-        # Ensure the structure is preserved
-        self.assertIn("a.acct_no IN", modified_query)
-        self.assertIn("t.in_out_dv = '입금'", modified_query)
+    def test_query_with_multiple_joins(self):
+        """여러 JOIN을 포함한 쿼리 테스트"""
+        query = """
+        SELECT a.acct_no, a.acct_bal_amt, b.trsc_amt, c.bal_qunt
+        FROM aicfo_get_all_amt a
+        JOIN aicfo_get_all_trsc b ON a.acct_no = b.acct_no
+        JOIN aicfo_get_all_stock c ON a.acct_no = c.acct_no
+        WHERE a.reg_dt = '20240115'
+        """
+        expected = """
+        SELECT a.acct_no, a.acct_bal_amt, b.trsc_amt, c.bal_qunt
+        FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') a
+        JOIN aicfo_get_all_trsc('test_intt', 'test_user', '테스트회사', '20240101', '20240131') b ON a.acct_no = b.acct_no
+        JOIN aicfo_get_all_stock('test_intt', 'test_user', '테스트회사', '20240101', '20240131') c ON a.acct_no = c.acct_no
+        WHERE a.reg_dt = '20240115'
+        """
+        
+        result = add_view_table(query, self.selected_table, self.view_com, self.user_info, self.view_date, self.flags)
+        # 공백 정규화하여 비교
+        self.assertEqual(' '.join(result.split()), ' '.join(expected.split()))
+    
+    def test_query_with_join_and_subquery(self):
+        """JOIN과 서브쿼리를 모두 포함한 복잡한 쿼리 테스트"""
+        query = """
+        SELECT a.acct_no, a.acct_bal_amt, b.trsc_amt,
+            (SELECT AVG(sub.acct_bal_amt) FROM aicfo_get_all_amt sub WHERE sub.reg_dt BETWEEN '20240101' AND '20240131') as avg_bal
+        FROM aicfo_get_all_amt a
+        JOIN aicfo_get_all_trsc b ON a.acct_no = b.acct_no
+        WHERE a.reg_dt = '20240115' AND a.acct_no IN (
+            SELECT DISTINCT c.acct_no FROM aicfo_get_all_trsc c WHERE c.trsc_dt >= '20240101'
+        )
+        """
+        expected = """
+        SELECT a.acct_no, a.acct_bal_amt, b.trsc_amt,
+            (SELECT AVG(sub.acct_bal_amt) FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') sub WHERE sub.reg_dt BETWEEN '20240101' AND '20240131') as avg_bal
+        FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') a
+        JOIN aicfo_get_all_trsc('test_intt', 'test_user', '테스트회사', '20240101', '20240131') b ON a.acct_no = b.acct_no
+        WHERE a.reg_dt = '20240115' AND a.acct_no IN (
+            SELECT DISTINCT c.acct_no FROM aicfo_get_all_trsc('test_intt', 'test_user', '테스트회사', '20240101', '20240131') c WHERE c.trsc_dt >= '20240101'
+        )
+        """
+        
+        result = add_view_table(query, self.selected_table, self.view_com, self.user_info, self.view_date, self.flags)
+        # 공백 정규화하여 비교
+        self.assertEqual(' '.join(result.split()), ' '.join(expected.split()))
+    
+    def test_extract_view_date_simple(self):
+        """기본 날짜 추출 테스트"""
+        query = "SELECT * FROM table WHERE reg_dt = '20240115'"
+        flags = {}
+        result = extract_view_date(query, "amt", flags)
+        self.assertEqual(result, ("20240115", "20240115"))
+        
+    def test_extract_view_date_between(self):
+        """BETWEEN 조건 날짜 추출 테스트"""
+        query = "SELECT * FROM table WHERE reg_dt BETWEEN '20240101' AND '20240131'"
+        flags = {}
+        result = extract_view_date(query, "amt", flags)
+        self.assertEqual(result, ("20240101", "20240131"))
+        
+    def test_extract_view_date_inequality(self):
+        """부등호 조건 날짜 추출 테스트"""
+        query = "SELECT * FROM table WHERE reg_dt >= '20240101' AND reg_dt <= '20240131'"
+        flags = {}
+        result = extract_view_date(query, "amt", flags)
+        self.assertEqual(result, ("20240101", "20240131"))
+        
+    def test_extract_view_date_future(self):
+        """미래 날짜 처리 테스트"""
+        # 현재 날짜보다 1년 뒤 날짜 생성
+        today = datetime.now()
+        future_year = today.year + 1
+        future_date = f"{future_year}0101"
+        
+        query = f"SELECT * FROM table WHERE reg_dt = '{future_date}'"
+        flags = {}
+        result = extract_view_date(query, "amt", flags)
+        
+        # 미래 날짜가 오늘로 조정되었는지 확인
+        self.assertTrue(flags.get("future_date", False))
+        today_str = datetime.now().strftime("%Y%m%d")
+        self.assertEqual(result, (today_str, today_str))
+
+    def test_complex_query_with_different_dates(self):
+        """서로 다른 날짜를 가진 복잡한 쿼리 테스트"""
+        query = """
+        SELECT jan1.acct_no
+         , ( (jan1.total_appr_amt - jan1.deposit_amt) / NULLIF (jan1.deposit_amt, 0) ) * 100 AS return_rate_jan1
+         , ( (today.total_appr_amt - today.deposit_amt) / NULLIF (today.deposit_amt, 0) ) * 100 AS return_rate_today
+         FROM aicfo_get_all_amt jan1
+         JOIN aicfo_get_all_amt today
+         ON jan1.acct_no = today.acct_no
+         WHERE com_nm = '비즈플레이'
+         AND jan1.view_dv = '증권'
+         AND jan1.curr_cd = 'KRW'
+         AND jan1.reg_dt = '20240101'
+         AND today.reg_dt = '20250220'
+         ORDER BY acct_no DESC, return_rate_jan1 DESC, return_rate_today DESC
+        """
+        expected = """
+        SELECT jan1.acct_no
+         , ( (jan1.total_appr_amt - jan1.deposit_amt) / NULLIF (jan1.deposit_amt, 0) ) * 100 AS return_rate_jan1
+         , ( (today.total_appr_amt - today.deposit_amt) / NULLIF (today.deposit_amt, 0) ) * 100 AS return_rate_today
+         FROM aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') jan1
+         JOIN aicfo_get_all_amt('test_intt', 'test_user', '테스트회사', '20240101', '20240131') today
+         ON jan1.acct_no = today.acct_no
+         WHERE com_nm = '비즈플레이'
+         AND jan1.view_dv = '증권'
+         AND jan1.curr_cd = 'KRW'
+         AND jan1.reg_dt = '20240101'
+         AND today.reg_dt = '20250220'
+         ORDER BY acct_no DESC, return_rate_jan1 DESC, return_rate_today DESC
+        """
+        
+        result = add_view_table(query, self.selected_table, self.view_com, self.user_info, self.view_date, self.flags)
+        # 공백 정규화하여 비교
+        self.assertEqual(' '.join(result.split()), ' '.join(expected.split()))
 
 if __name__ == '__main__':
     unittest.main()

@@ -194,24 +194,35 @@ def add_view_table(query: str, selected_table: str, view_com: str, user_info: Tu
     """
     # 서브쿼리가 있는 경우 처리
     if has_subquery(query):
+        # 모든 테이블 참조를 함수 호출로 변환
         user_id, use_intt_id = user_info
         
-        # 모든 테이블 참조를 변환
-        for table_type in ['amt', 'trsc', 'stock']:
-            # 일반 테이블 참조 패턴
-            pattern = fr'FROM\s+aicfo_get_all_{table_type}(\s+[a-zA-Z][a-zA-Z0-9_]*)?' 
-            view_func = f"aicfo_get_all_{table_type}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}')"
-            
-            def replacement(match):
-                alias = match.group(1) or ''  # 별칭이 있으면 사용, 없으면 빈 문자열
-                return f"FROM {view_func}{alias}"
-                
-            # 정규식으로 모든 테이블 참조 교체 (서브쿼리 포함)
-            query = re.sub(pattern, replacement, query, flags=re.IGNORECASE)
+        # 1. 메인 FROM 절 처리 (FROM aicfo_get_all_XX)
+        main_pattern = r'FROM\s+aicfo_get_all_(\w+)(?:\s+(?:AS\s+)?(\w+))?'
+        def replace_main_table(match):
+            table_suffix = match.group(1)
+            table_alias = match.group(2) or ""
+            alias_with_as = f" AS {table_alias}" if table_alias and " AS " in match.group(0) else f" {table_alias}" if table_alias else ""
+            table_name = f"aicfo_get_all_{table_suffix}"
+            view_table = f"{table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}'){alias_with_as}"
+            return f"FROM {view_table}"
         
-        return query
+        modified_query = re.sub(main_pattern, replace_main_table, query, flags=re.IGNORECASE)
+        
+        # 2. JOIN 절 처리 (JOIN aicfo_get_all_XX)
+        join_pattern = r'JOIN\s+aicfo_get_all_(\w+)(?:\s+(?:AS\s+)?(\w+))?'
+        def replace_join_table(match):
+            table_suffix = match.group(1)
+            table_alias = match.group(2) or ""
+            alias_with_as = f" AS {table_alias}" if table_alias and " AS " in match.group(0) else f" {table_alias}" if table_alias else ""
+            table_name = f"aicfo_get_all_{table_suffix}"
+            view_table = f"{table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}'){alias_with_as}"
+            return f"JOIN {view_table}"
+        
+        final_query = re.sub(join_pattern, replace_join_table, modified_query, flags=re.IGNORECASE)
+        
+        return final_query
     
-    # 이하 기존 로직 (단일 테이블 쿼리 처리)
     date_column = _get_date_column(selected_table)
     query, _ = _validate_future_date(query, date_column, flags)
     
@@ -238,5 +249,21 @@ def add_view_table(query: str, selected_table: str, view_com: str, user_info: Tu
     
     # 최종 쿼리 조립 - FROM 이후의 모든 절을 그대로 유지
     final_query = f"{before_from} FROM {view_table_part} {after_from}"
+    
+    # JOIN 절에서도 테이블 이름을 뷰 테이블 함수로 대체
+    # JOIN aicfo_get_all_XXX table_alias 패턴 찾기
+    join_pattern = r'JOIN\s+aicfo_get_all_(\w+)(?:\s+(?:AS\s+)?(\w+))?'
+    
+    def replace_join_table(match):
+        table_suffix = match.group(1)
+        table_alias = match.group(2) or ""
+        # AS 키워드 유지
+        alias_with_as = f" AS {table_alias}" if table_alias and " AS " in match.group(0) else f" {table_alias}" if table_alias else ""
+        join_table_name = f"aicfo_get_all_{table_suffix}"
+        join_view_table = f"{join_table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}'){alias_with_as}"
+        return f"JOIN {join_view_table}"
+    
+    # JOIN 테이블도 치환
+    final_query = re.sub(join_pattern, replace_join_table, final_query, flags=re.IGNORECASE)
     
     return final_query

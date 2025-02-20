@@ -321,6 +321,9 @@ async def respondent(state: GraphState) -> GraphState:
     else:
         date_info = ()
     fstring_answer = await response(trace_id, user_question, column_list, date_info)
+    #debuging
+    state.update({"yogeumjae": fstring_answer})
+    #debuging
     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
     # result_inout = is_inout(result)

@@ -151,8 +151,8 @@ def compute_function(func_name: str, params: List[str], result: List[Dict[str, A
         
     elif func_name == 'unique':
         col = evaluated_params[0]
-        unique_values = set(str(row[col]) for row in result if col in row and row[col] is not None)
-        return ', '.join(sorted(unique_values))
+        unique_values = list(set(str(row[col]) for row in result if col in row and row[col] is not None))
+        return _limit_output(unique_values)
         
     elif func_name == 'mode':
         col = evaluated_params[0]
@@ -165,7 +165,7 @@ def compute_function(func_name: str, params: List[str], result: List[Dict[str, A
                 freq_dict[value] = freq_dict.get(value, 0) + 1
             max_freq = max(freq_dict.values())
             modes = [val for val, freq in freq_dict.items() if freq == max_freq]
-            return ', '.join(sorted(modes))
+            return ', '.join(modes)
             
     elif func_name == 'max':
         col = evaluated_params[0]
