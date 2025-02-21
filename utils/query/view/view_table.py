@@ -1,132 +1,171 @@
-from typing import Tuple
-import re
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Set
+import sqlglot
+from sqlglot import exp
+from sqlglot.errors import ParseError
 
-from utils.query.view.extract_date import get_date_column, validate_future_date
-from utils.query.view.classify_query import has_union, has_subquery
+from utils.query.view.classify_query import QueryClassifier
+from utils.query.view.extract_date import DateExtractor
 
-def add_view_table(query: str, selected_table: str, view_com: str, user_info: Tuple[str, str], view_date: Tuple[str, str], flags: dict) -> str:
-    """SQL 쿼리의 모든 테이블 참조를 뷰테이블 함수로 변환합니다.
-    
-    Returns:
-        str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문
-    """
-    # UNION이 있는 경우 각 부분을 별도로 처리
-    if has_union(query):
-        return _process_union_query(query, selected_table, view_com, user_info, view_date, flags)
-    
-    # UNION이 없는 경우 기존 정규식 기반 방식으로 처리
-    return _add_view_table_regex(query, selected_table, view_com, user_info, view_date, flags)
+@dataclass
+class ViewFunction:
+    """View function parameters and metadata"""
+    base_name: str
+    use_intt_id: str
+    user_id: str
+    view_com: str
+    from_date: str
+    to_date: str
+    alias: Optional[str] = None
 
-def _process_union_query(query: str, selected_table: str, view_com: str, user_info: Tuple[str, str], view_date: Tuple[str, str], flags: dict) -> str:
-    """UNION을 포함하는 쿼리를 처리합니다.
-    각 UNION 부분을 개별적으로 처리한 후 다시 결합합니다.
+class ViewTableTransformer:
+    """SQL query transformer for view table functionality"""
     
-    Returns:
-        str: 처리된 UNION 쿼리
-    """
-    # UNION으로 쿼리 분할
-    parts = re.split(r'\bUNION\b', query, flags=re.IGNORECASE)
-    
-    # 각 부분을 개별적으로 처리
-    processed_parts = []
-    for part in parts:
-        processed_part = _add_view_table_regex(part.strip(), selected_table, view_com, user_info, view_date, flags)
-        processed_parts.append(processed_part)
-    
-    # 처리된 부분을 UNION으로 다시 결합
-    return " UNION ".join(processed_parts)
+    def __init__(self, selected_table: str, user_info: Tuple[str, str], 
+                 view_com: str, view_date: Tuple[str, str], flags: Dict[str, bool]):
+        self.selected_table = selected_table
+        self.use_intt_id, self.user_id = user_info
+        self.view_com = view_com
+        self.from_date, self.to_date = view_date
+        self.flags = flags
+        self.classifier = QueryClassifier()
 
-def _add_view_table_regex(query: str, selected_table: str, view_com: str, user_info: Tuple[str, str], view_date: Tuple[str, str], flags: dict) -> str:
-    """정규식 기반으로 테이블 참조를 뷰테이블 함수로 변환합니다.
-    Returns:
-        str: 뷰 테이블 구조에 맞게 변환된 SQL 쿼리문
-    """
-    user_id, use_intt_id = user_info
-    date_column = get_date_column(selected_table)
-    query, _ = validate_future_date(query, date_column, flags)
-    
-    # 서브쿼리가 있는 경우 처리
-    if has_subquery(query):
-        # 1. 메인 FROM 절 처리 (FROM aicfo_get_all_XX)
-        main_pattern = r'FROM\s+aicfo_get_all_(\w+)(?:\s+(?:AS\s+)?(\w+))?'
-        def replace_main_table(match):
-            table_suffix = match.group(1)
-            table_alias = match.group(2) or ""
-            alias_with_as = f" AS {table_alias}" if table_alias and " AS " in match.group(0) else f" {table_alias}" if table_alias else ""
-            table_name = f"aicfo_get_all_{table_suffix}"
-            view_table = f"{table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}'){alias_with_as}"
-            return f"FROM {view_table}"
+    def transform_query(self, query: str) -> str:
+        """Transform SQL query by adding view table functions"""
+        try:
+            # Parse the query
+            ast = sqlglot.parse_one(query, dialect='postgres')
+            
+            # Get query structure info
+            query_info = self.classifier.classify_query(query)
+            
+            # Handle different query types
+            if query_info.has_union:
+                transformed_ast = self._handle_union_query(ast)
+            else:
+                transformed_ast = self._handle_single_query(ast)
+            
+            return transformed_ast.sql()
+            
+        except ParseError as e:
+            raise ValueError(f"Failed to parse SQL query: {str(e)}")
+
+    def _handle_union_query(self, ast: exp.Union) -> exp.Expression:
+        transformed_left = self._handle_single_query(ast.left)
+        transformed_right = self._handle_single_query(ast.right)
         
-        modified_query = re.sub(main_pattern, replace_main_table, query, flags=re.IGNORECASE)
+        # distinct 속성 대신 DISTINCT 키워드 직접 사용
+        return exp.Union(
+            this=transformed_left,
+            expression=transformed_right
+        )
+
+    def _handle_single_query(self, ast: exp.Expression) -> exp.Expression:
+        """Transform a single SELECT query"""
+        def transform_table(node: exp.Expression) -> exp.Expression:
+            if isinstance(node, exp.Table):
+                if node.name.startswith('aicfo_get_all_'):
+                    view_func = self._create_view_function(
+                        ViewFunction(
+                            base_name=node.name,
+                            use_intt_id=self.use_intt_id,
+                            user_id=self.user_id,
+                            view_com=self.view_com,
+                            from_date=self.from_date,
+                            to_date=self.to_date,
+                            alias=node.alias
+                        )
+                    )
+                    return view_func
+            return node
+
+        # Transform the AST
+        transformed_ast = ast.transform(transform_table)
         
-        # 2. JOIN 절 처리 (JOIN aicfo_get_all_XX)
-        join_pattern = r'JOIN\s+aicfo_get_all_(\w+)(?:\s+(?:AS\s+)?(\w+))?'
-        def replace_join_table(match):
-            table_suffix = match.group(1)
-            table_alias = match.group(2) or ""
-            alias_with_as = f" AS {table_alias}" if table_alias and " AS " in match.group(0) else f" {table_alias}" if table_alias else ""
-            table_name = f"aicfo_get_all_{table_suffix}"
-            view_table = f"{table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}'){alias_with_as}"
-            return f"JOIN {view_table}"
+        # Handle subqueries if present
+        if self.classifier.has_subquery(ast.sql()):
+            transformed_ast = self._handle_subqueries(transformed_ast)
         
-        final_query = re.sub(join_pattern, replace_join_table, modified_query, flags=re.IGNORECASE)
+        return transformed_ast
+
+    def _handle_subqueries(self, ast: exp.Expression) -> exp.Expression:
+        """Handle subqueries in the AST"""
+        def transform_subquery(node: exp.Expression) -> exp.Expression:
+            if isinstance(node, exp.Subquery):
+                subquery_ast = self._handle_single_query(node.this)
+                return exp.Subquery(this=subquery_ast)
+            return node
+
+        return ast.transform(transform_subquery)
+
+    def _create_view_function(self, view_func: ViewFunction) -> exp.Expression:
+        """Create a view function call expression"""
+        func_call = exp.Anonymous(
+            this=view_func.base_name,
+            expressions=[
+                exp.Literal.string(view_func.use_intt_id),
+                exp.Literal.string(view_func.user_id),
+                exp.Literal.string(view_func.view_com),
+                exp.Literal.string(view_func.from_date),
+                exp.Literal.string(view_func.to_date)
+            ]
+        )
         
-        return final_query
+        if view_func.alias:
+            return exp.Alias(this=func_call, alias=view_func.alias)
+        return func_call
+
+    @staticmethod
+    def _validate_query(query: str) -> bool:
+        """Validate if the query can be transformed"""
+        try:
+            sqlglot.parse_one(query, dialect='postgres')
+            return True
+        except ParseError:
+            return False
+
+class ViewTableBuilder:
+    """Helper class for building view table queries"""
     
-    # FROM 절 위치를 찾습니다
-    from_pattern = r'FROM\s+'
-    match = re.search(from_pattern, query, re.IGNORECASE)
-    
-    if not match:
-        raise ValueError("유효한 FROM 절을 찾을 수 없습니다.")
-    
-    # 실제 테이블명 조합
-    table_name = f"aicfo_get_all_{selected_table}"
-    
-    # 쿼리를 FROM 위치를 기준으로 나눕니다
-    before_from = query[:match.start()].strip()  # SELECT 부분
-    after_from = query[match.end():].strip()     # FROM 이후의 모든 부분
-    
-    # 테이블명 추출 패턴
-    table_pattern = r'^(aicfo_get_all_\w+)(?:\s+(?:AS\s+)?(\w+))?'
-    table_match = re.search(table_pattern, after_from, re.IGNORECASE)
-    
-    if table_match:
-        existing_table = table_match.group(1)
-        alias = table_match.group(2) or ""
-        alias_with_as = f" AS {alias}" if alias and "AS" in table_match.group(0) else f" {alias}" if alias else ""
+    @staticmethod
+    def transform_query(query: str, selected_table: str, view_com: str, 
+                       user_info: Tuple[str, str], view_date: Tuple[str, str], 
+                       flags: Dict[str, bool]) -> str:
+        """Main entry point for transforming queries with view tables
         
-        # 기존 테이블명을 제거하고 새 문자열을 구성
-        after_from_no_table = after_from[table_match.end():].strip()
+        Args:
+            query: Original SQL query
+            selected_table: Target table type ('amt', 'stock', 'trsc')
+            view_com: Company view name
+            user_info: Tuple of (use_intt_id, user_id)
+            view_date: Tuple of (from_date, to_date)
+            flags: Dictionary for tracking transformation flags
+            
+        Returns:
+            Transformed SQL query with view table functions
+        """
+        transformer = ViewTableTransformer(
+            selected_table=selected_table,
+            user_info=user_info,
+            view_com=view_com,
+            view_date=view_date,
+            flags=flags
+        )
         
-        # 뷰 테이블 함수 호출 형식으로 변환
-        view_table_part = f"{existing_table}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}'){alias_with_as}"
+        # Transform the query
+        transformed_query = transformer.transform_query(query)
         
-        # 최종 쿼리 조립
-        final_query = f"{before_from} FROM {view_table_part} {after_from_no_table}"
-    else:
-        # 테이블명이 매치되지 않는 경우, 기본 테이블명으로 가정
-        # 뷰 테이블 함수 호출 형식으로 변환
-        view_table_part = f"{table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}')"
-        
-        # 최종 쿼리 조립 - FROM 이후의 모든 절을 그대로 유지
-        after_from_no_table = re.sub(r'^[\w.]+\s*', '', after_from)  # 기존 테이블명 제거
-        final_query = f"{before_from} FROM {view_table_part} {after_from_no_table}"
-    
-    # JOIN 절에서도 테이블 이름을 뷰 테이블 함수로 대체
-    # JOIN aicfo_get_all_XXX table_alias 패턴 찾기
-    join_pattern = r'JOIN\s+aicfo_get_all_(\w+)(?:\s+(?:AS\s+)?(\w+))?'
-    
-    def replace_join_table(match):
-        table_suffix = match.group(1)
-        table_alias = match.group(2) or ""
-        # AS 키워드 유지
-        alias_with_as = f" AS {table_alias}" if table_alias and " AS " in match.group(0) else f" {table_alias}" if table_alias else ""
-        join_table_name = f"aicfo_get_all_{table_suffix}"
-        join_view_table = f"{join_table_name}('{use_intt_id}', '{user_id}', '{view_com}', '{view_date[0]}', '{view_date[1]}'){alias_with_as}"
-        return f"JOIN {join_view_table}"
-    
-    # JOIN 테이블도 치환
-    final_query = re.sub(join_pattern, replace_join_table, final_query, flags=re.IGNORECASE)
-    
-    return final_query
+        return transformed_query
+
+def add_view_table(query: str, selected_table: str, view_com: str,
+                  user_info: Tuple[str, str], view_date: Tuple[str, str],
+                  flags: Dict[str, bool]) -> str:
+    """Legacy interface wrapper for view table transformation"""
+    return ViewTableBuilder.transform_query(
+        query=query,
+        selected_table=selected_table,
+        view_com=view_com,
+        user_info=user_info,
+        view_date=view_date,
+        flags=flags
+    )

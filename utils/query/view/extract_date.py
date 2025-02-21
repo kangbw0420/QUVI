@@ -1,190 +1,210 @@
-import re
-from typing import Tuple, Optional
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import List, Tuple, Optional, Set
+import sqlglot
+from sqlglot import exp
+from sqlglot.errors import ParseError
 
-from utils.query.view.classify_query import has_subquery
+@dataclass
+class DateRange:
+    """날짜 범위 정보"""
+    from_date: str
+    to_date: str
+    source_column: str  # reg_dt or trsc_dt
+    is_between: bool = False
+    is_single_date: bool = False
 
-def _find_single_date(query: str, date_column: str) -> Optional[Tuple[str, int, int]]:
-    """SQL 쿼리에서 단일 날짜 패턴을 찾습니다.
-    Returns:
-        Optional[Tuple[str, int, int]]: (날짜값, 매치 시작 위치, 매치 끝 위치)
-        매치가 없으면 None
-    """
-    single_date_pattern = f"{date_column}\\s*=\\s*'(\\d{{8}})'"
-    match = re.search(single_date_pattern, query, re.IGNORECASE)
-    
-    if match:
-        return (match.group(1), match.start(), match.end())
-    return None
+@dataclass
+class DateCondition:
+    """SQL의 날짜 조건절 정보"""
+    column: str
+    operator: str  # =, >, <, >=, <=, BETWEEN
+    value: str
+    secondary_value: Optional[str] = None  # BETWEEN의 두 번째 값
 
-def get_date_column(selected_table: str) -> str:
-    return 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
+class DateExtractor:
+    def __init__(self, selected_table: str, today: str):
+        """
+        Args:
+            selected_table: 'amt', 'stock', 또는 'trsc'
+            today: 'YYYY-MM-DD' 형식의 오늘 날짜
+        """
+        self.selected_table = selected_table
+        self.date_column = 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
+        self.today = datetime.strptime(today, "%Y-%m-%d")
+        self.today_str = self.today.strftime("%Y%m%d")
+        self.flags = {
+            'future_date': False,
+            'past_date': False
+        }
 
-def validate_future_date(query: str, date_column: str, flags: dict) -> Tuple[str, Optional[str]]:
-    """Returns:
-        Tuple[str, Optional[str]]: (수정된 쿼리, 수정된 날짜)
-        날짜가 수정되지 않았다면 두 번째 요소는 None
-    """
-    today = datetime.now().strftime("%Y%m%d")
-    modified_date = None
-    
-    # 단일 날짜 패턴 찾기
-    single_date_match = _find_single_date(query, date_column)
-    
-    if single_date_match:
-        date_str, start_pos, end_pos = single_date_match
-        # 날짜가 오늘보다 미래인 경우
-        if date_str > today:
-            # 날짜를 오늘 날짜로 변경
-            new_condition = f"{date_column} = '{today}'"
-            query = query[:start_pos] + new_condition + query[end_pos:]
-            modified_date = today
-            flags["future_date"] = True
-    
-    return query, modified_date
+    def extract_dates(self, query: str) -> Tuple[str, str]:
+        """쿼리에서 날짜 범위를 추출하고 검증"""
+        try:
+            # 쿼리 파싱
+            ast = sqlglot.parse_one(query, dialect='postgres')
+            
+            # 날짜 조건 추출
+            date_conditions = self._extract_date_conditions(ast)
+            
+            # due_dt 조건 추출 및 처리
+            due_date_conditions = self._extract_due_date_conditions(ast)
+            
+            # 날짜 범위 결정
+            date_range = self._determine_date_range(date_conditions, due_date_conditions)
+            
+            return date_range.from_date, date_range.to_date
+            
+        except ParseError:
+            # 파싱 실패시 오늘 날짜 반환
+            return self.today_str, self.today_str
 
+    def _extract_date_conditions(self, ast: exp.Expression) -> List[DateCondition]:
+        """AST에서 날짜 조건 추출"""
+        conditions = []
+        
+        def extract_from_node(node: exp.Expression):
+            # BETWEEN 조건 처리
+            if (isinstance(node, exp.Between) and
+                isinstance(node.this, exp.Column) and
+                node.this.name == self.date_column):
+                conditions.append(DateCondition(
+                    column=self.date_column,
+                    operator='BETWEEN',
+                    value=node.expressions[0].this,  # low 대신 expressions[0]
+                    secondary_value=node.expressions[1].this  # high 대신 expressions[1]
+                ))
+
+            # 비교 연산자 조건 처리
+            elif isinstance(node, (exp.EQ, exp.GT, exp.LT, exp.GTE, exp.LTE)):
+                if (isinstance(node.this, exp.Column) and 
+                    node.this.name == self.date_column):
+                    conditions.append(DateCondition(
+                        column=self.date_column,
+                        operator=node.__class__.__name__,  # op 대신 클래스 이름
+                        value=node.expression.this
+                    ))
+
+        # AST 순회하며 조건 수집
+        for node in ast.walk():
+            extract_from_node(node)
+            
+        return conditions
+
+    def _extract_due_date_conditions(self, ast: exp.Expression) -> List[DateCondition]:
+        """AST에서 due_dt 조건 추출"""
+        conditions = []
+        
+        def extract_from_node(node: exp.Expression):
+            if (isinstance(node, exp.Between) and 
+                isinstance(node.this, exp.Column) and 
+                node.this.name == 'due_dt'):
+                conditions.append(DateCondition(
+                    column='due_dt',
+                    operator='BETWEEN',
+                    value=node.low.values[0],
+                    secondary_value=node.high.values[0]
+                ))
+            elif (isinstance(node, exp.Condition) and 
+                  isinstance(node.left, exp.Column) and 
+                  node.left.name == 'due_dt'):
+                conditions.append(DateCondition(
+                    column='due_dt',
+                    operator=node.op,
+                    value=node.right.values[0]
+                ))
+
+        for node in ast.walk():
+            extract_from_node(node)
+            
+        return conditions
+
+    def _determine_date_range(self, 
+                            date_conditions: List[DateCondition],
+                            due_date_conditions: List[DateCondition]) -> DateRange:
+        """날짜 조건들로부터 최종 날짜 범위 결정"""
+        
+        def normalize_date(date_str: str) -> str:
+            """날짜 문자열을 YYYYMMDD 형식으로 정규화"""
+            date_str = date_str.strip("'")
+            return date_str if len(date_str) == 8 else date_str.replace("-", "")
+
+        def validate_future_date(date_str: str) -> str:
+            """미래 날짜를 오늘 날짜로 조정"""
+            date_str = normalize_date(date_str)
+            if date_str > self.today_str:
+                self.flags['future_date'] = True
+                return self.today_str
+            return date_str
+
+        # 조건이 없는 경우 오늘 날짜 반환
+        if not date_conditions and not due_date_conditions:
+            return DateRange(self.today_str, self.today_str, self.date_column)
+
+        dates = []
+        
+        # 일반 날짜 조건 처리
+        for condition in date_conditions:
+            if condition.operator == 'BETWEEN':
+                dates.append(validate_future_date(condition.value))
+                dates.append(validate_future_date(condition.secondary_value))
+            else:
+                dates.append(validate_future_date(condition.value))
+
+        # due_dt 조건 처리
+        due_dates = []
+        for condition in due_date_conditions:
+            if condition.operator == 'BETWEEN':
+                due_dates.extend([
+                    normalize_date(condition.value),
+                    normalize_date(condition.secondary_value)
+                ])
+            else:
+                due_dates.append(normalize_date(condition.value))
+
+        # 날짜 범위 결정
+        if dates:
+            from_date = min(dates)
+            to_date = min(max(dates), self.today_str)
+        else:
+            from_date = to_date = self.today_str
+
+        # due_dt 제약 적용
+        if due_dates:
+            due_from = min(due_dates)
+            due_to = max(due_dates)
+            # due_dt 범위가 더 제한적인 경우 적용
+            if due_to < to_date:
+                from_date = due_from
+                to_date = due_to
+
+        return DateRange(
+            from_date=from_date,
+            to_date=to_date,
+            source_column=self.date_column,
+            is_between=len(dates) > 1 or len(due_dates) > 1,
+            is_single_date=from_date == to_date
+        )
+
+    def check_past_date_access(self, from_date: str) -> bool:
+        """무료 계정의 과거 데이터 접근 제한 체크"""
+        from_dt = datetime.strptime(from_date, "%Y%m%d")
+        date_diff = self.today - from_dt
+        
+        if date_diff.days >= 2:
+            self.flags['past_date'] = True
+            return True
+        return False
+
+# Usage example
 def extract_view_date(query: str, selected_table: str, flags: dict) -> Tuple[str, str]:
-    """뷰테이블에 사용될 날짜 튜플 추출
-    Returns:
-        Tuple[str, str]: (시작일, 종료일) 형식의 튜플
-    Raises:
-        ValueError: 날짜 형식이 올바르지 않거나 날짜를 찾을 수 없는 경우
-    """
-    date_column = get_date_column(selected_table)
-    today = datetime.now().strftime("%Y%m%d")
+    """기존 인터페이스와 호환되는 래퍼 함수"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    extractor = DateExtractor(selected_table, today)
     
-    # Check for future dates in BETWEEN clauses first
-    between_pattern = f"{date_column}\\s+BETWEEN\\s+'(\\d{{8}})'\\s+AND\\s+'(\\d{{8}})'"
-    between_match = re.search(between_pattern, query, re.IGNORECASE)
+    from_date, to_date = extractor.extract_dates(query)
     
-    if between_match:
-        start_date = between_match.group(1)
-        end_date = between_match.group(2)
-        
-        # Check if end_date is in the future
-        if end_date > today:
-            end_date = today
-            flags["future_date"] = True
-            
-        return (start_date, end_date)
+    # Update flags
+    flags.update(extractor.flags)
     
-    # Check subqueries for future dates
-    if has_subquery(query):
-        # Look for any date pattern in the full query
-        date_patterns = [
-            r"'(\d{8})'",  # Any date in quotes
-            r"BETWEEN\s+'(\d{8})'\s+AND\s+'(\d{8})'"  # BETWEEN pattern
-        ]
-        
-        for pattern in date_patterns:
-            matches = re.finditer(pattern, query, re.IGNORECASE)
-            for match in matches:
-                if len(match.groups()) == 1:
-                    date = match.group(1)
-                    if date > today:
-                        flags["future_date"] = True
-                        break
-                elif len(match.groups()) == 2:
-                    end_date = match.group(2)
-                    if end_date > today:
-                        flags["future_date"] = True
-                        break
-    
-    # Continue with existing logic for single date validation
-    query, modified_date = validate_future_date(query, date_column, flags)
-    
-    # due_dt 패턴 확인
-    due_dates = None
-    due_between_pattern = "due_dt\\s+BETWEEN\\s+'(\\d{8})'\\s+AND\\s+'(\\d{8})'"
-    due_between_match = re.search(due_between_pattern, query, re.IGNORECASE)
-    
-    if due_between_match:
-        due_dates = (due_between_match.group(1), due_between_match.group(2))
-    else:
-        # due_dt의 부등호 패턴
-        due_inequality_patterns = [
-            (r"due_dt\s*>=\s*'(\d{8})'", r"due_dt\s*<=\s*'(\d{8})'"),
-            (r"due_dt\s*>\s*'(\d{8})'", r"due_dt\s*<\s*'(\d{8})'"),
-        ]
-        
-        for start_pattern, end_pattern in due_inequality_patterns:
-            start_match = re.search(start_pattern, query, re.IGNORECASE)
-            end_match = re.search(end_pattern, query, re.IGNORECASE)
-            
-            if start_match and end_match:
-                due_dates = (start_match.group(1), end_match.group(1))
-                break
-            elif end_match:
-                due_date = end_match.group(1)
-                due_dates = (due_date, due_date)
-                break
-    
-    if not due_dates:
-        # due_dt 단일 날짜 패턴 확인
-        due_single_pattern = r"due_dt\s*=\s*'(\d{8})'"
-        due_single_match = re.search(due_single_pattern, query, re.IGNORECASE)
-        if due_single_match:
-            due_date = due_single_match.group(1)
-            due_dates = (due_date, due_date)
-    
-    # date_column(reg_dt/trsc_dt) 패턴 확인
-    between_pattern = f"{date_column}\\s+BETWEEN\\s+'(\\d{{8}})'\\s+AND\\s+'(\\d{{8}})'"
-    between_match = re.search(between_pattern, query, re.IGNORECASE)
-    
-    if between_match:
-        start_date = between_match.group(1)
-        end_date = between_match.group(2)
-        
-        # due_dates가 있고 end_date가 due_dates의 끝값보다 큰 경우
-        if due_dates and end_date > due_dates[1]:
-            return due_dates
-        return (start_date, end_date)
-    
-    # 부등호를 사용한 날짜 범위 패턴
-    inequality_patterns = [
-        (f"{date_column}\\s*>=\\s*'(\\d{{8}})'", f"{date_column}\\s*<=\\s*'(\\d{{8}})'"),
-        (f"{date_column}\\s*>\\s*'(\\d{{8}})'", f"{date_column}\\s*<\\s*'(\\d{{8}})'"),
-    ]
-    
-    for start_pattern, end_pattern in inequality_patterns:
-        start_match = re.search(start_pattern, query, re.IGNORECASE)
-        end_match = re.search(end_pattern, query, re.IGNORECASE)
-        
-        if start_match and end_match:
-            start_date = start_match.group(1)
-            end_date = end_match.group(1)
-            
-            # due_dates가 있고 end_date가 due_dates의 끝값보다 큰 경우
-            if due_dates and end_date > due_dates[1]:
-                return due_dates
-            return (start_date, end_date)
-            
-        elif start_match:
-            start_date = start_match.group(1)
-            end_date = datetime.now().strftime("%Y%m%d")
-            
-            # due_dates가 있고 현재 날짜가 due_dates의 끝값보다 큰 경우
-            if due_dates and end_date > due_dates[1]:
-                return due_dates
-            return (start_date, end_date)
-            
-        elif end_match:
-            end_date = end_match.group(1)
-            start_date = (datetime.now() - timedelta(days=7)).strftime("%Y%m%d")
-            
-            # due_dates가 있고 end_date가 due_dates의 끝값보다 큰 경우
-            if due_dates and end_date > due_dates[1]:
-                return due_dates
-            return (start_date, end_date)
-    
-    # 단일 날짜가 있는 경우의 패턴
-    single_date_match = _find_single_date(query, date_column)
-    if single_date_match:
-        date = modified_date or single_date_match[0]  # modified_date가 None이면 single_date_match[0] 사용
-        # due_dates가 있고 date가 due_dates의 끝값보다 큰 경우
-        if due_dates and date > due_dates[1]:
-            return due_dates
-        return (date, date)
-    
-    today = datetime.now().strftime("%Y%m%d")
-    return (today, today)
+    return from_date, to_date
