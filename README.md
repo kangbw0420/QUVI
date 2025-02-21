@@ -6,7 +6,7 @@ yadoran --> commander
 
 ```mermaid
 stateDiagram-v2
-    [*] --> commander
+    [*] --> checkpoint
 
     checkpoint --> commander: utterance = "fin"
     checkpoint --> killjoy: utterance = "joy"
