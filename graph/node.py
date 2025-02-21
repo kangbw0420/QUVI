@@ -20,8 +20,7 @@ from utils.extract_data_info import extract_col_from_query, extract_col_from_dic
 from utils.dataframe.final_format import final_format
 from utils.query.filter_com import add_com_condition
 from utils.query.check_viewdv import check_view_dv, is_all_view_dv
-from utils.query.view.view_table import add_view_table
-from utils.query.view.extract_date import extract_view_date
+from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.dataframe.is_inout_krw import is_krw
@@ -248,7 +247,8 @@ def executor(state: GraphState) -> GraphState:
         flags = state.get("flags")
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
-            view_date = extract_view_date(raw_query, selected_table, flags)
+            query, view_date = view_table(query_ordered, selected_table, main_com, user_info, flags)
+            
             # 무료 유저가 감히 과거 데이터를 보려 했는지 검증
             yogeumjae = state["yogeumjae"]
             if yogeumjae == 'muryo':
@@ -264,9 +264,6 @@ def executor(state: GraphState) -> GraphState:
                     new_start_date = yesterday.strftime("%Y%m%d")
                     view_date = (new_start_date, view_date[1])
                     flags["past_date"] = True
-            
-            # 뷰테이블 파라미터를 SQL 쿼리에 추가
-            query = add_view_table(query_ordered, selected_table, main_com, user_info, view_date, flags)
             
             # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
             if flags.get("future_date"):
