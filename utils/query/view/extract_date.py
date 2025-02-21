@@ -71,8 +71,8 @@ class DateExtractor:
                 conditions.append(DateCondition(
                     column=self.date_column,
                     operator='BETWEEN',
-                    value=node.expressions[0].this,  # low 대신 expressions[0]
-                    secondary_value=node.expressions[1].this  # high 대신 expressions[1]
+                    value=node.args["low"].this,
+                    secondary_value=node.args['high'].this
                 ))
 
             # 비교 연산자 조건 처리
@@ -102,8 +102,8 @@ class DateExtractor:
                 conditions.append(DateCondition(
                     column='due_dt',
                     operator='BETWEEN',
-                    value=node.expressions[0].this,  # low 대신 expressions[0]
-                    secondary_value=node.expressions[1].this  # high 대신 expressions[1]
+                    value=node.args['low'].this,
+                    secondary_value=node.args['high'].this
                 ))
 
             # 비교 연산자 조건 처리
