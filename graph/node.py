@@ -20,7 +20,8 @@ from utils.extract_data_info import extract_col_from_query, extract_col_from_dic
 from utils.dataframe.final_format import final_format
 from utils.query.filter_com import add_com_condition
 from utils.query.check_viewdv import check_view_dv, is_all_view_dv
-from utils.query.view_table import extract_view_date, add_view_table
+from utils.query.view.view_table import add_view_table
+from utils.query.view.extract_date import extract_view_date
 from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.dataframe.is_inout_krw import is_krw
