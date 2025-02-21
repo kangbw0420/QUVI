@@ -7,10 +7,12 @@ yadoran --> commander
 ```mermaid
 stateDiagram-v2
     [*] --> commander
+
+    checkpoint --> commander: utterance = "fin"
+    checkpoint --> killjoy: utterance = "joy"
     
     commander --> END: stock_restricted
     commander --> funk: selected_table = "api"
-    commander --> killjoy: selected_table = "joy"
     commander --> nl2sql
     
     funk --> params
