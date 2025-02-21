@@ -57,7 +57,8 @@ class ViewTableTransformer:
         # distinct 속성 대신 DISTINCT 키워드 직접 사용
         return exp.Union(
             this=transformed_left,
-            expression=transformed_right
+            expression=transformed_right,
+            all=True  # UNION ALL 유지
         )
 
     def _handle_single_query(self, ast: exp.Expression) -> exp.Expression:

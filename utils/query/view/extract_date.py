@@ -96,23 +96,25 @@ class DateExtractor:
         conditions = []
         
         def extract_from_node(node: exp.Expression):
-            if (isinstance(node, exp.Between) and 
-                isinstance(node.this, exp.Column) and 
+            if (isinstance(node, exp.Between) and
+                isinstance(node.this, exp.Column) and
                 node.this.name == 'due_dt'):
                 conditions.append(DateCondition(
                     column='due_dt',
                     operator='BETWEEN',
-                    value=node.low.values[0],
-                    secondary_value=node.high.values[0]
+                    value=node.expressions[0].this,  # low 대신 expressions[0]
+                    secondary_value=node.expressions[1].this  # high 대신 expressions[1]
                 ))
-            elif (isinstance(node, exp.Condition) and 
-                  isinstance(node.left, exp.Column) and 
-                  node.left.name == 'due_dt'):
-                conditions.append(DateCondition(
-                    column='due_dt',
-                    operator=node.op,
-                    value=node.right.values[0]
-                ))
+
+            # 비교 연산자 조건 처리
+            elif isinstance(node, (exp.EQ, exp.GT, exp.LT, exp.GTE, exp.LTE)):
+                if (isinstance(node.this, exp.Column) and 
+                    node.this.name == 'due_dt'):
+                    conditions.append(DateCondition(
+                        column='due_dt',
+                        operator=node.__class__.__name__,  # op 대신 클래스 이름
+                        value=node.expression.this
+                    ))
 
         for node in ast.walk():
             extract_from_node(node)

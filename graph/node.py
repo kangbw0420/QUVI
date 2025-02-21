@@ -55,7 +55,7 @@ class GraphState(TypedDict):
     flags: ProcessingFlags
     # last_data: List[Dict[str, str]] # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
     
-today = datetime.now().strftime("%Y-%m-%d")
+today = datetime.now()
 
 # async def yadon(state: GraphState) -> GraphState:
 #     """last_data 기반으로 질문을 검문하는 노드"""
@@ -255,14 +255,11 @@ def executor(state: GraphState) -> GraphState:
                 start_date = view_date[0]
                 # 날짜 문자열을 datetime 객체로 변환
                 start_date_dt = datetime.strptime(start_date, "%Y%m%d")
-                today_dt = datetime.now().strptime(today, "%Y-%m-%d")
-                
-                # 날짜 차이 계산 (today - start_date)
-                date_diff = today_dt - start_date_dt
+                date_diff = today - start_date_dt
                 
                 # start_date가 오늘보다 2일 이상 이전인 경우
                 if date_diff.days >= 2:
-                    yesterday = today_dt - timedelta(days=1)
+                    yesterday = today - timedelta(days=1)
                     # 날짜 형식을 YYYYMMDD로 변환
                     new_start_date = yesterday.strftime("%Y%m%d")
                     view_date = (new_start_date, view_date[1])

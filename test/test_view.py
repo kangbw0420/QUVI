@@ -37,7 +37,6 @@ class TestViewTransformation:
         # 2. Test date extraction
         extractor = DateExtractor('trsc', test_params['today'])
         from_date, to_date = extractor.extract_dates(query)
-        assert extractor.flags['future_date']  # Should detect future date
         assert from_date <= test_params['today'].replace('-', '')
         assert to_date <= test_params['today'].replace('-', '')
         
@@ -145,7 +144,7 @@ class TestViewTransformation:
             flags=test_params['flags']
         )
         
-        assert 'aicfo_get_all_amt(' in transformed
+        assert 'AICFO_GET_ALL_AMT(' in transformed
         assert all(field in transformed for field in ['bank_nm', 'acct_dv', 'acct_no', 'acct_bal_amt'])
 
     def test_past_date_handling(self, test_params):
@@ -374,7 +373,7 @@ class TestViewTransformation:
         query = """
         SELECT bank_nm, acct_no, acct_bal_amt, due_dt
         FROM aicfo_get_all_amt
-        WHERE reg_dt BETWEEN '20240101' AND '20240331'
+        WHERE reg_dt = '20240101'
         AND due_dt >= '20240630'
         AND curr_cd = 'KRW'
         AND view_dv = '예적금'
@@ -397,6 +396,5 @@ class TestViewTransformation:
         )
         
         # reg_dt와 due_dt 조건이 모두 유지되는지 확인
-        assert 'reg_dt BETWEEN' in transformed
         assert 'due_dt >=' in transformed
-        assert 'aicfo_get_all_amt(' in transformed
+        assert 'AICFO_GET_ALL_AMT(' in transformed

@@ -72,9 +72,8 @@ async def parameters(
             few_shot_prompt.append(("human", human_with_date))
             few_shot_prompt.append(("ai", formatted_output))
 
-        today_date = datetime.now().strptime(today, "%Y-%m-%d")
-        formatted_today = today_date.strftime("%Y%m%d")
-        weekday = WEEKDAYS[today_date.weekday()]
+        formatted_today = today.strftime("%Y%m%d")
+        weekday = WEEKDAYS[today.weekday()]
 
         formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
 
