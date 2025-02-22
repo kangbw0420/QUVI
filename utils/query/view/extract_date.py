@@ -70,13 +70,11 @@ class DateExtractor:
         
         def extract_from_node(node: exp.Expression):
             if isinstance(node, exp.Between):
-                if (isinstance(node.this, exp.Column) and 
+                if (isinstance(node.this, exp.Column) and
                     (node.this.name == 'reg_dt' or node.this.name == 'trsc_dt')):
                     low_value = str(node.args["low"].this).strip("'")
                     high_value = str(node.args["high"].this).strip("'")
-                    
-                    print(f"DEBUG: Found BETWEEN condition on {node.this.name}: {low_value} AND {high_value}")
-                    
+
                     if date_pattern.match(low_value) and date_pattern.match(high_value):
                         conditions.append(DateCondition(
                             column=node.this.name,
@@ -89,8 +87,6 @@ class DateExtractor:
                     (node.this.name == 'reg_dt' or node.this.name == 'trsc_dt')):
                     value = str(node.expression.this).strip("'")
                     op_name = node.__class__.__name__
-                    
-                    print(f"DEBUG: Found {op_name} condition on {node.this.name}: {value}")
                     
                     if date_pattern.match(value):
                         conditions.append(DateCondition(
@@ -143,102 +139,82 @@ class DateExtractor:
         return conditions
 
     def _determine_date_range(self, date_conditions: List[DateCondition], due_date_conditions: List[DateCondition]) -> DateRange:
-        """날짜 조건들로부터 최종 날짜 범위 결정"""
+        """단일 날짜 조건으로부터 날짜 범위 결정"""
         
-        def normalize_date(date_str: str) -> str:
-            """날짜 문자열을 YYYYMMDD 형식으로 정규화"""
-            date_str = str(date_str).strip("'")
-            return date_str if len(date_str) == 8 else date_str.replace("-", "")
+        def add_days(date_str: str, days: int) -> str:
+            """날짜 문자열에 일수를 더하거나 뺌"""
+            try:
+                date_obj = datetime.strptime(date_str, "%Y%m%d")
+                new_date = date_obj + timedelta(days=days)
+                return new_date.strftime("%Y%m%d")
+            except Exception as e:
+                print(f"DEBUG: Error adding days to date: {e}")
+                return date_str
 
-        # 조건이 없는 경우 오늘 날짜 반환
+        # 조건이 없는 경우 오늘 날짜
         if not date_conditions and not due_date_conditions:
             return DateRange(self.today_str, self.today_str, self.date_column)
 
-        # 컬럼별 범위 추적
-        date_ranges = {}
-        
-        # 컬럼 및 연산자별 조건 처리
-        for condition in date_conditions:
-            col = condition.column
-            if col not in date_ranges:
-                date_ranges[col] = {
-                    'min_date': "99991231",  # 초기값: 먼 미래
-                    'max_date': "19700101"   # 초기값: 먼 과거
-                }
-                
-            value = normalize_date(condition.value)
-            
-            if condition.operator == 'BETWEEN':
-                second_value = normalize_date(condition.secondary_value)
-                date_ranges[col]['min_date'] = min(date_ranges[col]['min_date'], value)
-                date_ranges[col]['max_date'] = max(date_ranges[col]['max_date'], second_value)
-                
-            elif condition.operator in ('EQ', '='):
-                # 동일한 날짜
-                date_ranges[col]['min_date'] = min(date_ranges[col]['min_date'], value)
-                date_ranges[col]['max_date'] = max(date_ranges[col]['max_date'], value)
-                
-            elif condition.operator in ('GT', '>'):
-                # 다음 날짜부터
-                next_day = self._add_days(value, 1)
-                date_ranges[col]['min_date'] = min(date_ranges[col]['min_date'], next_day)
-                
-            elif condition.operator in ('GTE', '>='):
-                # 해당 날짜부터
-                date_ranges[col]['min_date'] = min(date_ranges[col]['min_date'], value)
-                
-            elif condition.operator in ('LT', '<'):
-                # 전날까지
-                prev_day = self._add_days(value, -1)
-                date_ranges[col]['max_date'] = max(date_ranges[col]['max_date'], prev_day)
-                
-            elif condition.operator in ('LTE', '<='):
-                # 해당 날짜까지
-                date_ranges[col]['max_date'] = max(date_ranges[col]['max_date'], value)
-        
-        # 모든 컬럼의 날짜 범위 확인 및 결합
-        all_min_dates = []
-        all_max_dates = []
-        
-        for col, range_data in date_ranges.items():
-            # 범위가 유효한지 확인 (min <= max)
-            if range_data['min_date'] <= range_data['max_date']:
-                all_min_dates.append((range_data['min_date'], col))
-                all_max_dates.append((range_data['max_date'], col))
+        # 첫 번째 date_condition만 사용
+        condition = date_conditions[0] if date_conditions else None
+        if not condition:
+            return DateRange(self.today_str, self.today_str, self.date_column)
 
-        # 최종 날짜 범위 및 소스 컬럼 선택
-        if all_min_dates:
-            # 가장 늦은 시작 날짜와 가장 빠른 종료 날짜를 사용
-            # (가장 제한적인 범위)
-            all_min_dates.sort()  # 날짜 오름차순 정렬
-            all_max_dates.sort(reverse=True)  # 날짜 내림차순 정렬
+        # 조건 유형에 따라 날짜 범위 결정
+        if condition.operator in ('EQ', '='):
+            # 단일 날짜면 시작과 끝 날짜 모두 같은 값
+            return DateRange(
+                from_date=condition.value,
+                to_date=condition.value,
+                source_column=condition.column,
+                is_single_date=True
+            )
             
-            from_date, from_col = all_min_dates[-1]  # 가장 늦은 시작 날짜
-            to_date, to_col = all_max_dates[-1]  # 가장 빠른 종료 날짜
+        elif condition.operator == 'BETWEEN':
+            # BETWEEN은 value와 secondary_value 사용
+            return DateRange(
+                from_date=condition.value,
+                to_date=condition.secondary_value,
+                source_column=condition.column,
+                is_between=True
+            )
             
-            # 범위 확인: 시작 날짜가 종료 날짜보다 늦으면 단일 날짜 사용
-            if from_date > to_date:
-                from_date = to_date = self.today_str
-                source_column = self.date_column
-            else:
-                # 더 많은 조건이 있는 컬럼을 소스로 선택
-                from_col_count = sum(1 for c in date_conditions if c.column == from_col)
-                to_col_count = sum(1 for c in date_conditions if c.column == to_col)
-                
-                source_column = from_col if from_col_count >= to_col_count else to_col
-        else:
-            from_date = to_date = self.today_str
-            source_column = self.date_column
-        
-        print(f"DEBUG: Final date range determined: {from_date} to {to_date}")
-        
-        return DateRange(
-            from_date=from_date,
-            to_date=to_date,
-            source_column=source_column,
-            is_between=len(date_ranges) > 0,
-            is_single_date=from_date == to_date
-        )
+        elif condition.operator in ('GT', '>'):
+            # 다음 날부터 오늘까지
+            from_date = add_days(condition.value, 1)
+            return DateRange(
+                from_date=from_date,
+                to_date=self.today_str,
+                source_column=condition.column
+            )
+            
+        elif condition.operator in ('GTE', '>='):
+            # 해당 날짜부터 오늘까지
+            return DateRange(
+                from_date=condition.value,
+                to_date=self.today_str,
+                source_column=condition.column
+            )
+            
+        elif condition.operator in ('LT', '<'):
+            # 처음부터 전날까지
+            to_date = add_days(condition.value, -1)
+            return DateRange(
+                from_date="19700101",
+                to_date=to_date,
+                source_column=condition.column
+            )
+            
+        elif condition.operator in ('LTE', '<='):
+            # 처음부터 해당 날짜까지
+            return DateRange(
+                from_date="19700101",
+                to_date=condition.value,
+                source_column=condition.column
+            )
+            
+        # 기본값은 오늘 날짜
+        return DateRange(self.today_str, self.today_str, self.date_column)
 
     def _add_days(self, date_str: str, days: int) -> str:
         """날짜 문자열에 일수를 더하거나 뺌"""

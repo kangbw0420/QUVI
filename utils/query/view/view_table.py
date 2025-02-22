@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple
 import sqlglot
 from sqlglot import exp
 from sqlglot.errors import ParseError
+from datetime import datetime, timedelta
 
 from utils.query.view.classify_query import QueryClassifier
 from utils.query.view.extract_date import DateExtractor
@@ -224,19 +225,33 @@ class ViewTableTransformer:
                 print(has_date_condition)
                 
                 if has_date_condition:
-                    # 서브쿼리 자체 날짜 조건이 있는 경우
-                    from_date = self.date_extractor.today_str
-                    to_date = self.date_extractor.today_str
+                    condition = conditions[0]
                     
-                    # 날짜 범위 저장 - 서브쿼리의 고유 날짜 설정
+                    if condition.operator in ('GT', '>'):
+                        # value의 다음날부터 today_str까지
+                        from_date = (datetime.strptime(condition.value, "%Y%m%d") + timedelta(days=1)).strftime("%Y%m%d")
+                        to_date = self.date_extractor.today_str
+                    elif condition.operator in ('GTE', '>='):
+                        # value부터 today_str까지
+                        from_date = condition.value
+                        to_date = self.date_extractor.today_str
+                    elif condition.operator == 'BETWEEN':
+                        from_date = condition.value
+                        to_date = condition.secondary_value
+                    elif condition.operator in ('EQ', '='):
+                        from_date = condition.value
+                        to_date = condition.value
+                    else:
+                        # LT, LTE 등 다른 조건들 처리
+                        from_date = "19700101"
+                        to_date = condition.value
+
                     self.date_ranges[subquery_id] = (from_date, to_date)
-                    print(f"잘했죠?? {self.date_ranges[subquery_id]}")
                 else:
                     # 서브쿼리에 날짜 조건이 없는 경우, 부모 쿼리의 날짜 범위 사용
                     parent_query_id = "main"  # 기본값, 서브 쿼리 안에 또 서브 쿼리가 있다면 부모 쿼리 ID를 전달받아야 함
-                    parent_from_date, parent_to_date = self.date_ranges.get(parent_query_id, 
-                        (self.date_extractor.today_str, self.date_extractor.today_str))
-                    
+                    parent_dates = self.date_ranges.get(parent_query_id)
+                    parent_from_date, parent_to_date = parent_dates
                     self.date_ranges[subquery_id] = (parent_from_date, parent_to_date)
                 
                 # 미래 날짜 처리

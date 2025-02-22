@@ -23,19 +23,12 @@ class TestQueryViewFunctionality:
     def test_subquery_with_dates(self, test_env):
         """Test query containing subquery with date conditions"""
         query = """
-            SELECT bank_nm, acct_dv, acct_no, acct_bal_amt
-            FROM aicfo_get_all_amt
-            WHERE reg_dt = '20240222'
-            AND acct_no NOT IN (
-                SELECT DISTINCT acct_no
-                FROM aicfo_get_all_trsc
-                WHERE trsc_dt BETWEEN '20241101' AND '20241130'
-            )
+            SELECT DISTINCT bank_nm, acct_no, acct_bal_amt FROM aicfo_get_all_amt WHERE view_dv = '수시' AND curr_cd = 'KRW' AND reg_dt = '20250222' AND acct_no NOT IN (SELECT DISTINCT acct_no FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt > '20241122')
         """
         
         transformed_query, date_ranges = test_env.transform_query(query)
         
-        assert date_ranges["main"] == ("20240222", "20240222")
+        assert date_ranges["main"] == ("20240223", "20250222")
         assert date_ranges["subquery_1"] == ("20241101", "20241130")
         assert all(date in transformed_query for date in ['20240222', '20241101', '20241130'])
 
