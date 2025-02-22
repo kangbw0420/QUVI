@@ -228,29 +228,16 @@ class ViewTableTransformer:
                     from_date = self.date_extractor.today_str
                     to_date = self.date_extractor.today_str
                     
-                    # 특별히 trsc_dt > 'YYYYMMDD' 형태의 조건 처리
-                    for condition in conditions:
-                        if condition.column == 'trsc_dt' and condition.operator in ('GT', '>'):
-                            value = str(condition.value).strip("'")
-                            # 날짜 형식 정규화
-                            if len(value) != 8:
-                                value = value.replace("-", "")
-                            # 다음 날짜 계산 (GT는 초과이므로 +1일)
-                            from_date = self.date_extractor._add_days(value, 1)
-                            break
-                    
                     # 날짜 범위 저장 - 서브쿼리의 고유 날짜 설정
                     self.date_ranges[subquery_id] = (from_date, to_date)
-                    print(f"DEBUG: Set subquery date range from its own conditions: {from_date} to {to_date}")
-                    print(self.date_ranges[subquery_id])
+                    print(f"잘했죠?? {self.date_ranges[subquery_id]}")
                 else:
                     # 서브쿼리에 날짜 조건이 없는 경우, 부모 쿼리의 날짜 범위 사용
-                    parent_query_id = "main"  # 기본값, 실제로는 부모 쿼리 ID를 전달받아야 함
+                    parent_query_id = "main"  # 기본값, 서브 쿼리 안에 또 서브 쿼리가 있다면 부모 쿼리 ID를 전달받아야 함
                     parent_from_date, parent_to_date = self.date_ranges.get(parent_query_id, 
                         (self.date_extractor.today_str, self.date_extractor.today_str))
                     
                     self.date_ranges[subquery_id] = (parent_from_date, parent_to_date)
-                    print(f"DEBUG: Using parent query date range for subquery: {parent_from_date} to {parent_to_date}")
                 
                 # 미래 날짜 처리
                 if from_date > self.date_extractor.today_str:
@@ -261,6 +248,7 @@ class ViewTableTransformer:
                 
                 # 서브쿼리 날짜 범위 얻기
                 subquery_from_date, subquery_to_date = self.date_ranges[subquery_id]
+                print(f"맞죠??? {subquery_from_date, subquery_to_date}")
                 
                 # 서브쿼리 SQL 문자열 가져오기
                 subquery_sql = node.this.sql(dialect='postgres')
