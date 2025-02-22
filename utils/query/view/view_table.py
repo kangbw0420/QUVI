@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 import sqlglot
@@ -138,17 +139,14 @@ class ViewTableTransformer:
 
     def _handle_single_query(self, ast: exp.Expression, query_id: str) -> exp.Expression:
         """단일 SELECT 쿼리 처리
-        
         Args:
             ast: SQL AST의 Select 노드
             query_id: 쿼리 식별자
-            
         Returns:
             변환된 Select 노드
         """
         # 현재 AST 노드에 대해서만 날짜 조건을 추출
         sql_query = ast.sql(dialect='postgres')
-        print(f"DEBUG: Processing query for ID {query_id}: {sql_query[:100]}...")
         from_date, to_date = self.date_extractor.extract_dates(sql_query, ast)
         print(f"DEBUG: Extracted dates for query ID {query_id}: {from_date}, {to_date}")
         
@@ -206,7 +204,6 @@ class ViewTableTransformer:
     def _handle_subqueries(self, ast: exp.Expression) -> exp.Expression:
         """AST 내의 서브쿼리 처리"""
         def transform_subquery(node: exp.Expression) -> exp.Expression:
-            """서브쿼리 노드 변환"""
             if isinstance(node, exp.Subquery):
                 # 서브쿼리에 고유 ID 부여
                 self.query_counter += 1
@@ -214,17 +211,17 @@ class ViewTableTransformer:
                 
                 # 서브쿼리 SQL 추출
                 subquery_sql = node.this.sql(dialect='postgres')
-                print(f"DEBUG: Processing subquery with ID: {subquery_id}, SQL: {subquery_sql[:100]}...")
                 
                 # 서브쿼리만의 날짜 조건 추출
                 conditions = self.date_extractor._extract_date_conditions(node.this)
-                print(f"DEBUG: Extracted conditions for subquery {subquery_id}: {conditions}")
+                print(f"DEBUG: 서브쿼리 조건임!! {subquery_id}: {conditions}")
                 
                 # 서브쿼리에서 날짜 조건이 있는지 확인
                 has_date_condition = any(
                     condition.column in ['reg_dt', 'trsc_dt'] 
                     for condition in conditions
                 )
+                print(has_date_condition)
                 
                 if has_date_condition:
                     # 서브쿼리 자체 날짜 조건이 있는 경우
@@ -245,6 +242,7 @@ class ViewTableTransformer:
                     # 날짜 범위 저장 - 서브쿼리의 고유 날짜 설정
                     self.date_ranges[subquery_id] = (from_date, to_date)
                     print(f"DEBUG: Set subquery date range from its own conditions: {from_date} to {to_date}")
+                    print(self.date_ranges[subquery_id])
                 else:
                     # 서브쿼리에 날짜 조건이 없는 경우, 부모 쿼리의 날짜 범위 사용
                     parent_query_id = "main"  # 기본값, 실제로는 부모 쿼리 ID를 전달받아야 함
@@ -261,33 +259,31 @@ class ViewTableTransformer:
                     from_date = self.date_extractor.today_str
                     self.date_ranges[subquery_id] = (from_date, to_date)
                 
-                # 최종 날짜 값 캡처
+                # 서브쿼리 날짜 범위 얻기
                 subquery_from_date, subquery_to_date = self.date_ranges[subquery_id]
                 
-                # 서브쿼리 내의 테이블 참조 변환
-                def transform_table_only(n: exp.Expression) -> exp.Expression:
-                    if isinstance(n, exp.Table):
-                        if n.name.startswith('aicfo_get_all_'):
-                            view_func = self._create_view_function(
-                                ViewFunction(
-                                    base_name=n.name,
-                                    use_intt_id=self.use_intt_id,
-                                    user_id=self.user_id,
-                                    view_com=self.view_com,
-                                    from_date=subquery_from_date,
-                                    to_date=subquery_to_date,
-                                    alias=n.alias,
-                                    query_id=subquery_id
-                                )
-                            )
-                            return view_func
-                    return n
+                # 서브쿼리 SQL 문자열 가져오기
+                subquery_sql = node.this.sql(dialect='postgres')
                 
-                # 테이블 참조 변환한 서브쿼리 생성
-                transformed_subquery = node.this.transform(transform_table_only)
+                # 함수 호출 패턴에서 날짜 부분 직접 교체
+                pattern = r"AICFO_GET_ALL_\w+\('[^']*', '[^']*', '[^']*', '(\d+)', '(\d+)'\)"
+                replacement = lambda m: m.group(0).replace(
+                    f"'{m.group(1)}', '{m.group(2)}'", 
+                    f"'{subquery_from_date}', '{subquery_to_date}'"
+                )
+                modified_sql = re.sub(pattern, replacement, subquery_sql)
                 
-                return exp.Subquery(this=transformed_subquery)
-                    
+                if modified_sql != subquery_sql:
+                    print(f"DEBUG: Modified subquery SQL: {modified_sql}")
+                    try:
+                        # 수정된 SQL 파싱해서 새 서브쿼리 생성
+                        modified_subquery = sqlglot.parse_one(modified_sql, dialect='postgres')
+                        return exp.Subquery(this=modified_subquery)
+                    except Exception as e:
+                        print(f"DEBUG: Error parsing modified SQL: {e}")
+                
+                # 기존 방식으로도 시도
+                return node
             return node
 
         # AST를 순회하며 서브쿼리 변환
@@ -301,11 +297,9 @@ class ViewTableTransformer:
         Returns:
             함수 호출 AST 노드
         """
-        # 함수 호출 표현식 생성
         func_call = exp.Anonymous(
             this=view_func.base_name,
             expressions=[
-                # 함수 매개변수: use_intt_id, user_id, view_com, from_date, to_date
                 exp.Literal.string(view_func.use_intt_id),
                 exp.Literal.string(view_func.user_id),
                 exp.Literal.string(view_func.view_com),
@@ -322,8 +316,6 @@ class ViewTableTransformer:
     @staticmethod
     def _validate_query(query: str) -> bool:
         """쿼리가 변환 가능한지 검증
-        Args:
-            query: SQL 쿼리 문자열
         Returns:
             bool: 변환 가능 여부
         """
@@ -332,3 +324,30 @@ class ViewTableTransformer:
             return True
         except ParseError:
             return False
+
+def view_table(query_ordered: str, selected_table: str, 
+               main_com: str, user_info: Tuple[str, str], flags: dict) -> Tuple[str, Dict[str, Tuple[str, str]]]:
+    """
+    view_table을 적용하여 최종 변환된 날짜정보와 쿼리를 반환
+    
+    Args:
+        query_ordered: ORDER BY가 추가된 SQL 쿼리
+        selected_table: 선택된 테이블 (amt, trsc, stock 등)
+        main_com: 메인 회사명
+        user_info: (user_id, use_intt_id) 튜플
+        flags: 상태 플래그 딕셔너리 (미래 날짜 등)
+        
+    Returns:
+        Tuple[str, Tuple[str, str]]: 변환된 SQL 쿼리와 메인 쿼리의 날짜 범위
+    """
+    transformer = ViewTableTransformer(
+        selected_table=selected_table,
+        user_info=user_info,
+        view_com=main_com,
+        flags=flags
+    )
+    
+    # 쿼리 변환 및 날짜 정보 추출
+    transformed_query, date_ranges = transformer.transform_query(query_ordered)
+
+    return transformed_query, date_ranges

@@ -8,7 +8,6 @@ import re
 
 @dataclass
 class DateRange:
-    """날짜 범위 정보"""
     from_date: str
     to_date: str
     source_column: str  # reg_dt or trsc_dt
@@ -17,29 +16,24 @@ class DateRange:
 
 @dataclass
 class DateCondition:
-    """SQL의 날짜 조건절 정보"""
     column: str
     operator: str  # =, >, <, >=, <=, BETWEEN
     value: str
     secondary_value: Optional[str] = None  # BETWEEN의 두 번째 값
 
 class DateExtractor:
-    """SQL 쿼리에서 날짜 정보를 추출하는 클래스"""
-    
     def __init__(self, selected_table: str = None):
         self.selected_table = selected_table
         self.date_column = 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
         self.today = datetime.now()
         self.today_str = self.today.strftime("%Y%m%d")
-        print(f"DEBUG: DateExtractor initialized with date_column={self.date_column}, today={self.today_str}")
+        print(f"DEBUG: DateExtractor!!!!! with date_column={self.date_column}, today={self.today_str}")
 
     def extract_dates(self, query: str, node_scope=None) -> Tuple[str, str]:
         """쿼리에서 날짜 범위를 추출하고 검증, node_scope 매개변수 추가
-        
         Args:
             query: SQL 쿼리 문자열
             node_scope: 특정 AST 노드 내에서만 조건을 추출하기 위한 범위 제한
-            
         Returns:
             Tuple[str, str]: (from_date, to_date) 형식의 날짜 범위
         """
@@ -48,20 +42,20 @@ class DateExtractor:
             
             # 특정 노드 범위가 지정된 경우 해당 노드만 사용
             if node_scope:
-                print(f"DEBUG: Using specific node scope")
+                print("특정 노드 범위 있음")
                 date_conditions = self._extract_date_conditions(node_scope)
                 due_date_conditions = self._extract_due_date_conditions(node_scope)
             else:
                 # 전체 쿼리에서 날짜 조건 추출
-                print(f"DEBUG: Using full query scope")
+                print("특정 노드 범위 없음. 전체 쿼리 사용")
                 date_conditions = self._extract_date_conditions(ast)
                 due_date_conditions = self._extract_due_date_conditions(ast)
             
-            print(f"DEBUG: Extracted date conditions: {date_conditions}")
-            print(f"DEBUG: Extracted due date conditions: {due_date_conditions}")
+            print(f"DEBUG: 날짜 찾음: {date_conditions}")
+            print(f"DEBUG: due date가 있는가?: {due_date_conditions}")
             
             date_range = self._determine_date_range(date_conditions, due_date_conditions)
-            print(f"DEBUG: Determined date range: {date_range}")
+            print(f"DEBUG: 날짜 범위 결정: {date_range}")
             
             return date_range.from_date, date_range.to_date
             

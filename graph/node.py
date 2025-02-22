@@ -247,24 +247,42 @@ def executor(state: GraphState) -> GraphState:
         flags = state.get("flags")
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
-            query, view_date = view_table(query_ordered, selected_table, main_com, user_info, flags)
-            
+            query, view_dates = view_table(query_ordered, selected_table, main_com, user_info, flags)
+                        
             # 무료 유저가 감히 과거 데이터를 보려 했는지 검증
             yogeumjae = state["yogeumjae"]
             if yogeumjae == 'muryo':
-                start_date = view_date[0]
-                # 날짜 문자열을 datetime 객체로 변환
-                start_date_dt = datetime.strptime(start_date, "%Y%m%d")
-                date_diff = today - start_date_dt
+                from_dates = [date_tuple[0] for date_tuple in view_dates.values()]
                 
-                # start_date가 오늘보다 2일 이상 이전인 경우
-                if date_diff.days >= 2:
+                # 하나라도 2일 이상 이전 데이터를 조회하려는지 확인
+                past_data_requested = False
+                for from_date in from_dates:
+                    # 날짜 문자열을 datetime 객체로 변환
+                    try:
+                        from_date_dt = datetime.strptime(from_date, "%Y%m%d")
+                        date_diff = today - from_date_dt
+                        
+                        # from_date가 오늘보다 2일 이상 이전인 경우
+                        if date_diff.days >= 2:
+                            past_data_requested = True
+                            break
+                    except ValueError:
+                        # 날짜 형식이 잘못된 경우 무시
+                        continue
+                
+                # 과거 데이터 요청이 있으면 모든 from_date를 어제로 변경
+                if past_data_requested:
                     yesterday = today - timedelta(days=1)
-                    # 날짜 형식을 YYYYMMDD로 변환
-                    new_start_date = yesterday.strftime("%Y%m%d")
-                    view_date = (new_start_date, view_date[1])
+                    yesterday_str = yesterday.strftime("%Y%m%d")
+                    
+                    # 모든 날짜 범위의 from_date를 어제로 변경
+                    for key in view_dates:
+                        old_from_date, to_date = view_dates[key]
+                        view_dates[key] = (yesterday_str, to_date)
+                    
+                    # past_date 플래그를 True로 설정
                     flags["past_date"] = True
-            
+
             # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
             if flags.get("future_date"):
                 user_question = state["user_question"]
@@ -277,7 +295,7 @@ def executor(state: GraphState) -> GraphState:
             print("#" * 80)
             print(query)
             result = execute(query)
-            state.update({"date_info": view_date})
+            state.update({"date_info": view_dates["main"]})
 
         except Exception as e:
             logger.error(f"Error in view table processing: {str(e)}")
