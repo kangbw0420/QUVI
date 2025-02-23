@@ -23,6 +23,7 @@ from utils.query.filter_com import add_com_condition
 from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
+from utils.query.ever_note import ever_note
 from utils.dataframe.is_inout_krw import is_krw
 from utils.dataframe.transform_col import transform_data
 from utils.compute.main_compute import compute_fstring
@@ -47,7 +48,7 @@ class GraphState(TypedDict):
     selected_table: str
     selected_api: str
     sql_query: str
-    column_list: List[str]
+    column_list: List[str] # debug: 회사 내려오는 방식 변경되면 수정
     date_info: Tuple[str, str]
     query_result: dict
     final_answer: str
@@ -90,12 +91,7 @@ async def checkpoint(state: GraphState) -> GraphState:
         flags["is_joy"] = True
         state.update({"selected_table": ""})
     
-    StateManager.update_state(
-        trace_id, 
-        {
-            "user_question": user_question
-        }
-    )
+    StateManager.update_state(trace_id, {"user_question": user_question})
 
     return state
 
@@ -176,12 +172,15 @@ async def nl2sql(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
+    
+    # debug: 회사 내려오는 방식 변경되면 수정
     company_list = state["access_company_list"]
     main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
     if main_companies:
         main_com = main_companies[0].custNm
     else:
         main_com = company_list[0].custNm
+    # debug: 회사 내려오는 방식 변경되면 수정
 
     sql_query = await create_sql(trace_id, selected_table, main_com, user_question, today)
     
@@ -202,7 +201,7 @@ async def nl2sql(state: GraphState) -> GraphState:
     StateManager.update_state(trace_id, {"sql_query": sql_query})
     return state
 
-def executor(state: GraphState) -> GraphState:
+async def executor(state: GraphState) -> GraphState:
     """SQL 쿼리를 실행하고 결과를 분석
     Raises:
         ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
@@ -235,7 +234,7 @@ def executor(state: GraphState) -> GraphState:
             main_com = main_companies[0].custNm
         else:
             main_com = company_list[0].custNm
-        # 회사명을 권한 있는 회사로 변환. 이와 함께 권한 없는 조건, 회사 변환 조건이 처리됨
+        # 회사명을 권한 있는 회사로 변환
         query_com = add_com_condition(raw_query, main_com)
 
         # stock 종목명 체크 맟 변환
@@ -295,6 +294,15 @@ def executor(state: GraphState) -> GraphState:
             print("#" * 80)
             print(query)
             result = execute(query)
+
+            # If no results found and it's a trsc query, try vector search for note1
+            if not result and selected_table == 'trsc':
+                modified_query = await ever_note(query, main_com)
+                if modified_query != query:  # Only retry if query was modified
+                    print("Retrying with modified note1 conditions:")
+                    print(modified_query)
+                    result = execute(modified_query)
+            
             state.update({"date_info": view_dates["main"]})
 
         except Exception as e:

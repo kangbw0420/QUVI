@@ -157,6 +157,26 @@ class FewShotRetriever:
         except ValueError:
             # query_text가 없으면 마지막 항목을 제외한 3개 반환
             return documents[:3]
+    
+    async def get_evernote(self, note_str: str, main_com: str, top_k: int = 1) -> List[str]:
+        """Search for similar note1 values using vector similarity
+        Returns:
+            List[str]: List of similar note values, ordered by similarity
+        """
+        try:
+            results = await self.query_vector_store(note_str, collection_name=f"note_{main_com}", top_k=top_k)
+            
+            # Extract and return the note strings
+            similar_notes = []
+            if results and len(results) > 0:
+                for result in results:
+                    if 'document' in result:
+                        similar_notes.append(result['document'])
+                        
+            return similar_notes
+        except Exception as e:
+            print(f"Error in get_evernote: {e}")
+            return []
         
 def api_recommend(selected_api: str):
     # 자금현황

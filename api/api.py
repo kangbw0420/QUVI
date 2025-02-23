@@ -44,7 +44,7 @@ async def process_input(request: Input) -> Output:
             "chain_id": chain_id,
             "user_info": user_info,
             "yogeumjae" : "debug",
-            "access_company_list": request.access_company_list,
+            "access_company_list": request.access_company_list, # debug: 회사 내려오는 방식 변경되면 수정
             "user_question": request.user_question,
             "flags": {
                 "is_joy": False,
@@ -67,7 +67,7 @@ async def process_input(request: Input) -> Output:
         # user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
         selected_table = final_state["selected_table"]
-        flags = final_state["flags"]
+        # flags = final_state["flags"]
 
         if "date_info" not in final_state or not final_state["date_info"]:
             date_info = (None, None)
