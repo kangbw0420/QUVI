@@ -14,7 +14,7 @@ class Input(BaseModel):
     session_id: str = 'default_session'
     use_intt_id: str
     access_company_list: List[CompanyInfo]
-    yogeumjae: str = 'stock1' # 'muryo', 'stock0', 'stock1'
+    # yogeumjae: str = 'stock1' # 'muryo', 'stock0', 'stock1'
 
 class Output(BaseModel):
     status: int# 200

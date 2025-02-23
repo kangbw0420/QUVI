@@ -1,10 +1,9 @@
 import traceback
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from api.dto import Input, Output
-
 from graph.graph import make_graph
-from llm_admin.conversation_manager import check_conversation_id, make_conversation_id, save_record, extract_last_data
+from llm_admin.conversation_manager import check_conversation_id, make_conversation_id, save_record, extract_last_data # 야돈 휴식 중 
 from llm_admin.chain_manager import ChainManager
 from utils.logger import setup_logger
 from utils.retriever import retriever, api_recommend
@@ -30,7 +29,6 @@ async def process_input(request: Input) -> Output:
             request.session_id if check_conversation_id(request.session_id)
             else make_conversation_id(request.user_id)
         )
-        logger.info(f"conversation_id: {conversation_id}")
 
         user_info = (request.user_id, request.use_intt_id)
         
@@ -45,15 +43,15 @@ async def process_input(request: Input) -> Output:
         initial_state = {
             "chain_id": chain_id,
             "user_info": user_info,
-            "yogeumjae" : request.yogeumjae,
+            "yogeumjae" : "debug",
             "access_company_list": request.access_company_list,
             "user_question": request.user_question,
             "flags": {
                 "is_joy": False,
                 "no_data": False,
-                "stock_sec": False,
                 "future_date": False,
-                "past_date": False
+                # "stock_sec": False,
+                # "past_date": False
             },
             # "last_data": last_data if last_data else []
         }
@@ -104,7 +102,7 @@ async def process_input(request: Input) -> Output:
                 "chain_id": chain_id,
                 "recommend": recommend_list,
                 "is_api": selected_table == "api",
-                "is_muryo": flags["stock_sec"] == True or flags["past_date"] == True,
+                # "is_muryo": flags["stock_sec"] == True or flags["past_date"] == True,
                 "date_info": date_info,
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
             }

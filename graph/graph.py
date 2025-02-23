@@ -94,7 +94,6 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_conditional_edges(
             "checkpoint",
             lambda x: (
-                # 권한도 없으면서 증권을 보려 했다면 종료
                 "killjoy" if x["flags"]["is_joy"] else
                 "commander"
             ),
@@ -106,36 +105,31 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_conditional_edges(
             "commander",
             lambda x: (
-                # 권한도 없으면서 증권을 보려 했다면 종료
-                "END" if x["flags"]["stock_sec"] else
-                # api 질문이라면 함수를 고르러
+                # "END" if x["flags"]["stock_sec"] else
                 "funk" if x["selected_table"] == "api" else
-                # 쓸데없는 질문이라면 정색하러
-                "killjoy" if x["selected_table"] == "joy" else
                 "nl2sql"
             ),
             {
-                "END": END,
+                # "END": END,
                 "nl2sql": "nl2sql",
-                "funk": "funk",
-                "killjoy": "killjoy"
+                "funk": "funk"
             }
         )
         workflow.add_edge("funk", "params")
         workflow.add_edge("params", "executor")
 
-        workflow.add_conditional_edges(
-            "nl2sql",
-            lambda x: (
-                # 권한도 없으면서 증권을 보려 했다면 종료
-                "END" if x["flags"]["stock_sec"] else
-                "executor"
-            ),
-            {
-                "END": END,
-                "executor": "executor"
-            }
-        )
+        workflow.add_edge("nl2sql", "executor")
+        # workflow.add_conditional_edges(
+        #     "nl2sql",
+        #     lambda x: (
+        #         "END" if x["flags"]["stock_sec"] else
+        #         "executor"
+        #     ),
+        #     {
+        #         "END": END,
+        #         "executor": "executor"
+        #     }
+        # )
         
         workflow.add_conditional_edges(
             "executor",
@@ -146,7 +140,6 @@ def make_graph() -> CompiledStateGraph:
                 "respondent"
             ),
             {
-                "END": END,
                 "nodata": "nodata",
                 "respondent": "respondent"
             }
