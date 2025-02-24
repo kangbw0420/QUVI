@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from api.dto import PostgreToVectorData, VectorDataQuery, PromptInput, FewshotInput
+from api.dto import VectorDataQuery, PromptInput, FewshotInput
 from database.database_service import DatabaseService
 
 data_api = APIRouter(tags=["data"])
@@ -10,7 +10,7 @@ data_api = APIRouter(tags=["data"])
 @data_api.get("/prompt/getAll")
 def get_all_prompt():
     """
-    전체 Prompt 데이터 리스트를 조회합니다.
+    전체 Prompt 데이터를 전체 조회합니다.
     """
     try:
         result = DatabaseService.get_all_prompt()
@@ -20,14 +20,15 @@ def get_all_prompt():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Prompt 데이터 조회
-@data_api.get("/prompt/get/{node_nm}/{prompt_nm}")
-def get_prompt(node_nm:str, prompt_nm: str):
+# Prompt 데이터 단건 조회
+@data_api.get("/prompt/get/{nodeNm}/{promptNm}")
+def get_prompt(nodeNm: str, promptNm: str):
     """
-    지정된 이름의 Prompt 데이터를 조회합니다.
+    전체 Prompt 데이터를 단건 조회합니다.
     """
     try:
-        result = DatabaseService.get_prompt(node_nm, prompt_nm)
+        database_service = DatabaseService()
+        result = database_service.get_prompt(nodeNm, promptNm)
 
         return {"data": result}
     except Exception as e:
@@ -57,11 +58,14 @@ def add_prompt(prompt: PromptInput):
 # Prompt 데이터 삭제
 @data_api.delete("/prompt/delete")
 def delete_prompt(prompt: PromptInput):
+# @data_api.delete("/prompt/delete/{nodeNm}/{promptNm}")
+# def delete_prompt(nodeNm: str, promptNm: str):
     """
     Prompt 데이터를 삭제합니다.
     """
     try:
         success = DatabaseService.delete_prompt(prompt.node_nm, prompt.prompt_nm)
+        # success = DatabaseService.delete_prompt(nodeNm, promptNm)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete prompt data")
 
@@ -90,11 +94,12 @@ def query_fewshot(data: VectorDataQuery):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Few-shot 전체 데이터 조회
+# Few-shot 데이터 전체 조회
 @data_api.post("/fewshot/getAll")
+# @data_api.get("/fewshot/getAll")
 def getAll_fewshot():
     """
-    Few-shot 전체 데이터를 조회합니다.
+    Few-shot 데이터를 전체 조회합니다.
     """
     try:
         result = DatabaseService.get_all_fewshot_vector()
@@ -104,14 +109,17 @@ def getAll_fewshot():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Few-shot 데이터 조회
+# Few-shot 데이터 단건 조회
 @data_api.get("/fewshot/get/{title}")
 def get_fewshot(title: str):
+# @data_api.get("/fewshot/get/{collectionName}")
+# def get_fewshot(collectionName: str):
     """
-    Few-shot 데이터를 조회합니다.
+    Few-shot 데이터를 단건 조회합니다.
     """
     try:
         result = DatabaseService.get_fewshot_vector(title)
+        # result = DatabaseService.get_fewshot_vector(collectionName)
 
         return {"data": result}
     except Exception as e:
@@ -120,6 +128,7 @@ def get_fewshot(title: str):
 
 # Few-shot 전체 데이터 조회
 @data_api.post("/fewshot/getAllRDB")
+# @data_api.get("/fewshot/getAllRDB")
 def getAllRDB_fewshot():
     """
     RDB 에서 Few-shot 전체 데이터를 조회합니다.
@@ -156,11 +165,14 @@ def add_fewshot(data: FewshotInput):
 # Few-shot 데이터 전체 삭제
 @data_api.delete("/fewshot/delete")
 def delete_fewshot(data: FewshotInput):
+# @data_api.delete("/fewshot/delete/{collectionName}")
+# def delete_fewshot(collectionName: str):
     """
     벡터 데이터를 삭제하고 임베딩 시스템에서 제거합니다.
     """
     try:
         success = DatabaseService.collection_delete_fewshot(data.title)
+        # success = DatabaseService.collection_delete_fewshot(collectionName)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete fewshot data")
 

@@ -3,11 +3,14 @@ import uuid
 
 from fastapi import HTTPException
 
-from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest, VocRequest, StockRequest
-from database.postgresql import get_all_prompt, get_prompt, insert_prompt, delete_prompt, get_all_data_rdb, \
-    get_data_rdb, insert_vector_data, update_vector_data, delete_data_rdb, get_all_mapping, insert_mapping, \
+from api.dto import PostgreToVectorData, VectorDataQuery, DocumentRequest, MappingRequest, VocRequest, RecommendRequest, \
+    RecommendCtgryRequest, StockRequest
+from database.postgresql import get_all_prompt, get_prompt, insert_prompt, delete_prompt, get_all_fewshot_rdb, \
+    get_fewshot_rdb, insert_fewshot_rdb, delete_fewshot_rdb, get_all_mapping, get_mapping, insert_mapping, \
     update_mapping, delete_mapping, get_all_voc, get_voc, insert_voc, update_voc, delete_voc, answer_voc, \
-    get_home_recommend, get_all_stock, insert_stock, delete_stock
+    get_home_recommend, get_all_recommend, get_recommend, insert_recommend, update_recommend, delete_recommend, \
+    get_all_recommend_ctgry, get_recommend_ctgry, insert_recommend_ctgry, update_recommend_ctgry, \
+    delete_recommend_ctgry, get_all_stock, insert_stock, delete_stock
 from database.vector_db import EmbeddingAPIClient
 
 
@@ -43,22 +46,22 @@ class DatabaseService:
         )
 
 
-    def get_all_fewshot_rdb():
-        return get_all_data_rdb()
-
-
-    def get_fewshot_rdb(data: PostgreToVectorData):
-        return get_data_rdb(data)
-
-
     def get_all_fewshot_vector():
         return EmbeddingAPIClient.getAll_embedding()
 
 
-    def get_fewshot_vector(title: str):
+    def get_fewshot_vector(collectionName: str):
         return EmbeddingAPIClient.get_embedding(
-            collection_name = title
+            collection_name = collectionName
         )
+
+
+    def get_all_fewshot_rdb():
+        return get_all_fewshot_rdb()
+
+
+    def get_fewshot_rdb(data: PostgreToVectorData):
+        return get_fewshot_rdb(data)
 
 
     def add_fewshot(title: str, content: str):
@@ -89,10 +92,10 @@ class DatabaseService:
             # SQL goes to metadata
             metadatas.append(metadata)
 
-            success = insert_vector_data(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
+            success = insert_fewshot_rdb(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
             if not success:
-                raise HTTPException(status_code=500, detail="Failed to insert vector data")
-        print("Successfully inserted rdb data")
+                raise HTTPException(status_code=500, detail="Failed to insert Fewshot rdb data")
+        print("Successfully inserted Fewshot rdb data")
 
         EmbeddingAPIClient.add_embedding(
             collection_name=title,
@@ -100,7 +103,7 @@ class DatabaseService:
             documents=documents,
             metadatas=metadatas
         )
-        print("Successfully inserted vector data")
+        print("Successfully inserted Fewshot vector data")
 
         return success
 
@@ -132,10 +135,10 @@ class DatabaseService:
             # SQL goes to metadata
             metadatas.append(metadata)
 
-            success = insert_vector_data(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
+            success = insert_fewshot_rdb(PostgreToVectorData(title=title, shot=json.dumps(shot, ensure_ascii=False), id=doc_id))
             if not success:
-                raise HTTPException(status_code=500, detail="Failed to insert vector data")
-        print("Successfully inserted rdb data")
+                raise HTTPException(status_code=500, detail="Failed to insert Fewshot rdb data")
+        print("Successfully inserted Fewshot rdb data")
 
         EmbeddingAPIClient.add_embedding(
             collection_name=title,
@@ -143,42 +146,21 @@ class DatabaseService:
             documents=documents,
             metadatas=metadatas
         )
-        print("Successfully inserted vector data")
+        print("Successfully inserted Fewshot vector data")
 
-        return success
-
-
-    def update_fewshot(data : PostgreToVectorData):
-        success = update_vector_data(data)
-        if success:
-            EmbeddingAPIClient.update_embedding(
-                collection_name=data.collection_name,
-                item_id=data.item_id,
-                document=data.document
-            )
         return success
 
 
     def collection_delete_fewshot(title: str):
-        success = delete_data_rdb(title)
-        print(f"Successfully deleted rdb data")
+        success = delete_fewshot_rdb(title)
+        print(f"Successfully deleted Fewshot rdb data")
 
         EmbeddingAPIClient.collection_delete_embedding(
             collection_name=title,
         )
-        print(f"Successfully deleted vector data")
+        print(f"Successfully deleted Fewshot vector data")
 
         return success
-
-
-    # def delete_few_shot(data: PostgreToVectorData):
-    #     success = delete_data_rdb(data)
-    #     if success:
-    #         EmbeddingAPIClient.delete_embedding(
-    #             collection_name=data.collection_name,
-    #             item_id=data.item_id,
-    #         )
-    #     return success
 
 
     def restore_fewshot(data: PostgreToVectorData):
@@ -231,6 +213,10 @@ class DatabaseService:
         return get_all_mapping()
 
 
+    def get_mapping(idx: int):
+        return get_mapping(idx)
+
+
     def insert_mapping(data: MappingRequest):
         return insert_mapping(data)
 
@@ -279,6 +265,47 @@ class DatabaseService:
         return get_home_recommend()
 
 
+    def get_all_recommend():
+        return get_all_recommend()
+
+
+    def get_recommend(seq: int):
+        return get_recommend(seq)
+
+
+    def insert_recommend(data: RecommendRequest):
+        return insert_recommend(data)
+
+
+    def update_recommend(data: RecommendRequest):
+        return update_recommend(data)
+
+
+    def delete_recommend(seq: int):
+        return delete_recommend(seq)
+
+
+
+
+    def get_all_recommend_ctgry():
+        return get_all_recommend_ctgry()
+
+
+    def get_recommend_ctgry(ctgryCd: str):
+        return get_recommend_ctgry(ctgryCd)
+
+
+    def insert_recommend_ctgry(data: RecommendCtgryRequest):
+        return insert_recommend_ctgry(data)
+
+
+    def update_recommend_ctgry(data: RecommendCtgryRequest):
+        return update_recommend_ctgry(data)
+
+
+    def delete_recommend_ctgry(ctgryCd: str):
+        return delete_recommend_ctgry(ctgryCd)
+
 
 
     #####  /stock  #####
@@ -287,8 +314,13 @@ class DatabaseService:
         return get_all_stock()
 
 
+    def get_stock(stockCd: str):
+        return get_stock(stockCd)
+
+
     def insert_stock(data: StockRequest):
         return insert_stock(data)
+
 
     def insert_stock_list(data: StockRequest):
         for stockNickNm in data.stockNickNmList:

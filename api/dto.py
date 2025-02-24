@@ -17,11 +17,11 @@ class Input(BaseModel):
     # yogeumjae: str = 'stock1' # 'muryo', 'stock0', 'stock1'
 
 class Output(BaseModel):
-    status: int# 200
-    success: bool# True
-    retCd: int # 200 
-    message: str# 질답 성공
-    body: dict # 본문
+    status: int     # 200
+    success: bool   # True
+    retCd: int      # 200
+    message: str    # 질답 성공
+    body: dict      # 본문
 
 
 class PostgreToVectorData(BaseModel):
@@ -65,6 +65,7 @@ class MappingRequest(BaseModel):
 class VocRequest(BaseModel):
     seq: int = 0
     userId: str = ""
+    useInttId: str = ""
     companyId: str = ""
     channel: str = ""
     utteranceContents: str = ""
@@ -74,6 +75,19 @@ class VocRequest(BaseModel):
     imageUrl: str = ""
     content: str = ""
     answer: str = ""
+
+class RecommendRequest(BaseModel):
+    seq: int = 0
+    ctgryCd: str = ""
+    recommendQuest: str = ""
+    orderBy: int = 0
+    useYn: str = "Y"
+
+class RecommendCtgryRequest(BaseModel):
+    ctgryCd: str = ""
+    ctgryNm: str = ""
+    imgPath: str = ""
+    orderBy: int = 0
 
 class StockRequest(BaseModel):
     stockCd: str = ""

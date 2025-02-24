@@ -1,8 +1,12 @@
-import psycopg2.pool
+import threading
+import time
+
 from psycopg2 import OperationalError, InterfaceError
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import SimpleConnectionPool, ThreadedConnectionPool
 
-from api.dto import PostgreToVectorData, MappingRequest, VocRequest, StockRequest
+from api.dto import PostgreToVectorData, MappingRequest, VocRequest, RecommendRequest, RecommendCtgryRequest, \
+    StockRequest
 from utils.config import Config
 
 
@@ -20,7 +24,8 @@ class PostgreSQL:
 # PostgreSQL 연결 풀 생성
 def connect_postgresql_pool():
     if PostgreSQL.pool_data is None:
-        PostgreSQL.pool_data = psycopg2.pool.SimpleConnectionPool(
+        # PostgreSQL.pool_data = SimpleConnectionPool(
+        PostgreSQL.pool_data = ThreadedConnectionPool(
             minconn=1,
             maxconn=10,
             host=Config.DB_HOST,
@@ -30,7 +35,8 @@ def connect_postgresql_pool():
             password=Config.DB_PASSWORD
         )
     if PostgreSQL.pool_prompt is None:
-        PostgreSQL.pool_prompt = psycopg2.pool.SimpleConnectionPool(
+        # PostgreSQL.pool_prompt = SimpleConnectionPool(
+        PostgreSQL.pool_prompt = ThreadedConnectionPool(
             minconn=1,
             maxconn=10,
             host=Config.DB_HOST_PROMPT,
@@ -40,12 +46,12 @@ def connect_postgresql_pool():
             password=Config.DB_PASSWORD_PROMPT
         )
 
-
 # PostgreSQL 연결 풀 초기화
 connect_postgresql_pool()
 
 
-def get_connection(pool: psycopg2.pool.SimpleConnectionPool):
+# def get_connection(pool: SimpleConnectionPool):
+def get_connection(pool: ThreadedConnectionPool):
     """끊어진 연결이 있으면 감지하고, 새로 연결을 가져옴"""
     if pool is None:
         connect_postgresql_pool()
@@ -53,12 +59,32 @@ def get_connection(pool: psycopg2.pool.SimpleConnectionPool):
     conn = pool.getconn()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT 1")  # 연결 상태 체크
+            cursor.execute("SELECT NOW();")  # 연결 상태 체크
+            print(cursor.fetchone())
         return conn
     except (OperationalError, InterfaceError):
         print("Connection Failed. Retry...")
         pool.putconn(conn, close=True)  # 기존 연결 폐기
         return pool.getconn()  # 새 연결 가져오기
+
+
+def expire_connections():
+    """ 일정 시간이 지나면 연결을 다시 맺도록 만듦 """
+    while True:
+        time.sleep(300) # 5분마다
+        try:
+            for _ in range(PostgreSQL.pool_data.maxconn):
+                conn = PostgreSQL.pool_data.getconn()
+                PostgreSQL.pool_data.putconn(conn, close=True)  # 강제 종료 후 다시 연결
+            for _ in range(PostgreSQL.pool_prompt.maxconn):
+                conn = PostgreSQL.pool_prompt.getconn()
+                PostgreSQL.pool_prompt.putconn(conn, close=True)  # 강제 종료 후 다시 연결
+            print("Connection pool refreshed")
+        except Exception as e:
+            print(f"Connection pool refresh error : {e}")
+
+# 백그라운드에서 실행
+threading.Thread(target=expire_connections, daemon=True).start()
 
 
 # 쿼리를 실행하는 일반 함수
@@ -193,7 +219,7 @@ def delete_prompt(node_nm: str, prompt_nm: str):
 
 
 # 벡터 전체 데이터를 가져오는 함수
-def get_all_data_rdb():
+def get_all_fewshot_rdb():
     query = """
         SELECT *
         FROM vector_data
@@ -207,12 +233,12 @@ def get_all_data_rdb():
 
 
 # 벡터 데이터를 가져오는 함수
-def get_data_rdb(title: str):
+def get_fewshot_rdb(title: str):
     query = """
         SELECT *
         FROM vector_data
-        WHERE title = %s
-        AND del_yn = 'N'
+        WHERE del_yn = 'N'
+        AND title = %s
     """
     return query_execute(
         query,
@@ -222,7 +248,7 @@ def get_data_rdb(title: str):
 
 
 # 새 벡터 데이터를 삽입하는 함수
-def insert_vector_data(data: PostgreToVectorData):
+def insert_fewshot_rdb(data: PostgreToVectorData):
     query = """
         INSERT INTO vector_data (
             title,
@@ -242,39 +268,8 @@ def insert_vector_data(data: PostgreToVectorData):
     )
 
 
-# 벡터 데이터 업데이트 함수
-def update_vector_data(data: PostgreToVectorData):
-    # 기존 데이터 가져오기
-    select_query = """
-        SELECT *
-        FROM vector_data
-        WHERE idx = %s
-        AND del_yn = 'N'
-    """
-    get_data = query_execute(
-        select_query,
-        params=(data.item_id,),
-        use_prompt_db=True
-    )
-
-    if get_data:
-        get_data = get_data[0]  # 첫 번째 결과를 가져옴
-        # 텍스트나 컬렉션명이 다를 경우 업데이트
-        if (get_data["data"] != data.document or get_data["document"] != data.collection_name):
-            update_query = """
-                UPDATE vector_data
-                SET data = %s, document = %s, del_yn = 'Y'
-                WHERE idx = %s
-            """
-            return query_execute(
-                update_query,
-                params=(data.document, data.collection_name, data.item_id),
-                use_prompt_db=True
-            )
-
-
 # 벡터 데이터 삭제 처리 함수
-def delete_data_rdb(title: str):
+def delete_fewshot_rdb(title: str):
     update_query = """
         UPDATE vector_data
         SET del_yn = 'Y'
@@ -305,6 +300,20 @@ def get_all_mapping():
     return query_execute(
         query,
         params=(),
+        use_prompt_db=True
+    )
+
+
+# 컬럼명 관리 데이터 단건 조회
+def get_mapping(idx: int):
+    query = """
+        SELECT *
+        FROM title_mapping
+        WHERE idx = %s
+    """
+    return query_execute(
+        query,
+        params=(idx,),
         use_prompt_db=True
     )
 
@@ -409,11 +418,12 @@ def get_voc(seq: int):
     )
 
 
-# VOC 관리 데이터 추가
+# VOC 데이터 추가
 def insert_voc(data: VocRequest):
     query = """
         INSERT INTO voc_list (
             user_id,
+            use_intt_id,
             company_id,
             channel,
             utterance_contents,
@@ -430,18 +440,19 @@ def insert_voc(data: VocRequest):
             %s,
             %s,
             %s,
+            %s,
             %s
         )
         RETURNING seq
     """
     return query_execute(
         query,
-        params=(data.userId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.chainId, data.type, data.content),
+        params=(data.userId, data.useInttId, data.companyId, data.channel, data.utteranceContents, data.conversationId, data.chainId, data.type, data.content),
         use_prompt_db=True
     )
 
 
-# VOC 관리 데이터 수정
+# VOC 데이터 수정
 def update_voc(data: VocRequest):
     query = """
         UPDATE voc_list
@@ -457,7 +468,7 @@ def update_voc(data: VocRequest):
     )
 
 
-# VOC 관리 데이터 삭제
+# VOC 데이터 삭제
 def delete_voc(seq: int):
     query = """
         DELETE
@@ -467,12 +478,12 @@ def delete_voc(seq: int):
     """
     return query_execute(
         query,
-        params=(seq),
+        params=(seq,),
         use_prompt_db=True
     )
 
 
-# VOC 관리 데이터 답변 저장
+# VOC 데이터의 답변 업데이트
 def answer_voc(data: VocRequest):
     query = """
         UPDATE voc_list
@@ -498,16 +509,188 @@ def get_home_recommend():
             r.ctgry_cd AS ctgryCd,
             r.ctgry_nm AS ctgryNm,
             r.img_path AS imgPath,
-            STRING_AGG(c.recommend_quest, '|' ORDER BY c.recommend_quest) AS recommendQuest
+            STRING_AGG(c.recommend_quest, '|' ORDER BY c.order_by) AS recommendQuest
         FROM ctgry_code r
         LEFT JOIN recommend_quest c
-        ON (r.ctgry_cd = c.ctgry_code)
+        ON (r.ctgry_cd = c.ctgry_cd)
         GROUP BY r.ctgry_cd, r.ctgry_nm, r.img_path
         ORDER BY r.order_by ASC
     """
     return query_execute(
         query,
         params=(),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 데이터 전체 조회
+def get_all_recommend():
+    query = """
+        SELECT *
+        FROM recommend_quest
+        ORDER BY order_by ASC
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 데이터 단건 조회
+def get_recommend(seq: int):
+    query = """
+        SELECT *
+        FROM recommend_quest
+        WHERE recommend_quest_seq = %s
+    """
+    return query_execute(
+        query,
+        params=(seq,),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 데이터 추가
+def insert_recommend(data: RecommendRequest):
+    query = """
+        INSERT INTO recommend_quest (
+            ctgry_cd,
+            recommend_quest,
+            order_by,
+            use_yn
+        ) 
+        VALUES (
+            %s,
+            %s,
+            (SELECT COALESCE(MAX(order_by), 0) FROM recommend_quest WHERE ctgry_cd = %s) + 1,
+            %s
+        )
+    """
+    return query_execute(
+        query,
+        params=(data.ctgryCd, data.recommendQuest, data.ctgryCd, data.useYn),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 데이터 수정
+def update_recommend(data: RecommendRequest):
+    query = """
+        UPDATE recommend_quest
+        SET
+            ctgry_cd = %s,
+            recommend_quest = %s,
+            order_by = %s,
+            use_yn = %s
+        WHERE
+            recommend_quest_seq = %s
+    """
+    return query_execute(
+        query,
+        params=(data.ctgryCd, data.recommendQuest, data.orderBy, data.useYn, data.seq),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 데이터 삭제
+def delete_recommend(seq: int):
+    query = """
+        DELETE
+        FROM recommend_quest
+        WHERE
+            recommend_quest_seq = %s
+    """
+    return query_execute(
+        query,
+        params=(seq,),
+        use_prompt_db=True
+    )
+
+
+
+
+# 추천질의 카테고리 데이터 전체 조회
+def get_all_recommend_ctgry():
+    query = """
+        SELECT *
+        FROM ctgry_code
+        ORDER BY order_by ASC
+    """
+    return query_execute(
+        query,
+        params=(),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 카테고리 데이터 단건 조회
+def get_recommend_ctgry(ctgryCd: str):
+    query = """
+        SELECT *
+        FROM ctgry_code
+        WHERE ctgry_cd = %s
+    """
+    return query_execute(
+        query,
+        params=(ctgryCd,),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 카테고리 데이터 추가
+def insert_recommend_ctgry(data: RecommendCtgryRequest):
+    query = """
+        INSERT INTO ctgry_code (
+            ctgry_cd,
+            ctgry_nm,
+            img_path,
+            order_by
+        ) 
+        VALUES (
+            %s,
+            %s,
+            %s,
+            (SELECT COALESCE(MAX(order_by), 0) FROM ctgry_code) + 1
+        )
+    """
+    return query_execute(
+        query,
+        params=(data.ctgryCd, data.ctgryNm, data.imgPath),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 카테고리 데이터 수정
+def update_recommend_ctgry(data: RecommendCtgryRequest):
+    query = """
+        UPDATE ctgry_code
+        SET
+            ctgry_nm = %s,
+            img_path = %s,
+            order_by = %s,
+            updated_at = NOW()
+        WHERE
+            ctgry_cd = %s
+    """
+    return query_execute(
+        query,
+        params=(data.ctgryNm, data.imgPath, data.orderBy, data.ctgryCd),
+        use_prompt_db=True
+    )
+
+
+# 추천질의 카테고리 데이터 삭제
+def delete_recommend_ctgry(ctgryCd: str):
+    query = """
+        DELETE
+        FROM ctgry_code
+        WHERE
+            ctgry_cd = %s
+    """
+    return query_execute(
+        query,
+        params=(ctgryCd,),
         use_prompt_db=True
     )
 
@@ -528,6 +711,24 @@ def get_all_stock():
     return query_execute(
         query,
         params=(),
+        use_prompt_db=True
+    )
+
+
+# 주식명 유의어 데이터 단건 조회
+def get_stock(stockCd: str):
+    query = """
+        SELECT
+            stock_cd,
+            stock_nm,
+            STRING_AGG(stock_nick_nm, ',') AS stock_nick_nm
+        FROM stockname
+        WHERE stock_cd = %s
+        GROUP BY stock_cd, stock_nm
+    """
+    return query_execute(
+        query,
+        params=(stockCd,),
         use_prompt_db=True
     )
 
