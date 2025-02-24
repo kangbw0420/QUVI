@@ -6,18 +6,15 @@ from utils.compute.computer import parse_function_params, compute_function
 from utils.compute.detector import detect_computed_column, split_by_operators, calculate_with_operator
 
 def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
-    """Handle expressions inside curly braces with support for nested functions and arithmetic operations"""
     expression = match.group(1)
-    
-    # 단일 함수 호출 패턴
     func_pattern = r'(\w+(?:\.\w+)?)\((.*?)\)'
     
-    # 연산자가 있는지 확인
     has_operators = any(op in expression for op in ['+', '-', '*', '/'])
     
     if has_operators:
         # 수식을 연산자를 기준으로 분리
         parts = split_by_operators(expression)
+        all_params = []  # 전체 연산에 사용된 모든 파라미터 수집
         
         try:
             # 첫 번째 부분 계산
@@ -28,6 +25,7 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
                 
             func_name, param_str = func_match.groups()
             params = parse_function_params(param_str)
+            all_params.extend(params)  # 파라미터 수집
             current_value = compute_function(func_name, params, result, column_list)
             
             # 나머지 부분들 순차적으로 계산
@@ -38,12 +36,14 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
                     
                 func_name, param_str = func_match.groups()
                 params = parse_function_params(param_str)
+                all_params.extend(params)  # 파라미터 수집
                 next_value = compute_function(func_name, params, result, column_list)
                 
                 # 연산자를 적용하여 계산
                 current_value = calculate_with_operator(current_value, next_value, operator)
             
-            return format_number(current_value, "", None, None)
+            # 수집된 모든 파라미터 전달
+            return format_number(current_value, "", func_name, all_params)
             
         except Exception as e:
             return f"Error in calculation: {str(e)}"
@@ -63,7 +63,7 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
                 return format_number(value,
                                   params[0] if len(params) == 1 else "",
                                   func_name,
-                                  params if len(params) > 1 else None)
+                                  params)  # 여기도 params 전달 추가
             return str(value)
         except Exception as e:
             return f"Error: {str(e)}"
