@@ -36,6 +36,10 @@ class ProcessingFlags(TypedDict):
     future_date: bool
     # stock_sec: bool
     # past_date: bool
+
+class VectorNotes(TypedDict):
+    origin_note: str
+    vector_notes: List[str]
     
 class GraphState(TypedDict):
     chain_id: str
@@ -52,6 +56,7 @@ class GraphState(TypedDict):
     date_info: Tuple[str, str]
     query_result: dict
     final_answer: str
+    vector_notes: VectorNotes
     flags: ProcessingFlags
     # last_data: List[Dict[str, str]] # 이전 3개 그래프의 사용자 질문, 답변, SQL 쿼리
     
@@ -297,8 +302,27 @@ async def executor(state: GraphState) -> GraphState:
 
             # If no results found and it's a trsc query, try vector search for note1
             if not result and selected_table == 'trsc':
-                modified_query = await ever_note(query, main_com)
-                if modified_query != query:  # Only retry if query was modified
+                evernote_result = await ever_note(query, main_com)
+                
+                # Get original and similar notes from the result
+                origin_note = evernote_result.get("origin_note", [])
+                vector_notes = evernote_result.get("vector_notes", [])
+                modified_query = evernote_result.get("query", query)
+                
+                # Store vector notes in state
+                vector_notes_data = {
+                    "origin_note": origin_note,
+                    "vector_notes": vector_notes
+                }
+                state.update({"vector_notes": vector_notes_data})
+                
+                # Update user question to mention the similar notes
+                if vector_notes:
+                    vector_note_str = ", ".join(vector_notes)
+                    state["user_question"] = f"{user_question}..아니다, {vector_note_str}에 대해 모두 찾아줘"
+                
+                # Try executing the modified query if available
+                if modified_query and modified_query != query:
                     print("Retrying with modified note1 conditions:")
                     print(modified_query)
                     result = execute(modified_query)
@@ -351,9 +375,20 @@ async def respondent(state: GraphState) -> GraphState:
     if selected_table == "api":
         final_result = is_krw(final_result)
     
-    if flags.get("future_date"):
-        final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
+    if "vector_notes" in state and state["vector_notes"]:
+        vector_notes_data = state["vector_notes"]
+        origin_note = vector_notes_data.get("origin_note", [])
+        vector_notes = vector_notes_data.get("vector_notes", [])
         
+        # Create a message about the vector search
+        if origin_note and vector_notes:
+            # Format the origin note and vector notes as strings
+            origin_note_str = "', '".join(origin_note)
+            vector_note_str = "', '".join(vector_notes)
+            
+            # Add explanation to the final answer
+            final_answer = f"요청하신 거래내역('{origin_note_str}')을 찾기 위해 유사한 노트('{vector_note_str}')로 검색한 결과입니다. " + final_answer
+
     # if flags.get("past_date"):
     #     final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 2일 이전 데이터에 대해서는 조회 제한이 적용된 상황입니다.\n결제 후 모든 기간의 데이터를 조회하실 수 있습니다.\U0001F64F\U0001F64F"
 
