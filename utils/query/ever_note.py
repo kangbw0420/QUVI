@@ -45,6 +45,7 @@ async def ever_note(query: str, main_com: str) -> str:
             return query
             
         # Process unique note values to avoid duplicate vector searches
+        max_retries = 1
         for condition in note_conditions:
             note_str = condition['value']
             
@@ -52,20 +53,33 @@ async def ever_note(query: str, main_com: str) -> str:
             if note_str in processed_notes:
                 vector_note = processed_notes[note_str]
             else:
-                try:
-                    # Vector search with timeout
-                    similar_notes = await asyncio.wait_for(
-                        retriever.get_evernote(note_str, main_com),
-                        timeout=5.0
-                    )
-                    
-                    # Cache the result
-                    vector_note = similar_notes[0] if similar_notes else None
-                    processed_notes[note_str] = vector_note
-                    
-                except (asyncio.TimeoutError, Exception) as e:
-                    print(f"Vector search error for note1 '{note_str}': {str(e)}")
-                    continue
+                vector_note = None
+                retry_count = 0
+                
+                # Try vector search with retry logic
+                while retry_count < max_retries and vector_note is None:
+                    try:
+                        # Vector search with timeout
+                        similar_notes = await asyncio.wait_for(
+                            retriever.get_evernote(note_str, main_com),
+                            timeout=5.0
+                        )
+                        
+                        # Get first result if available
+                        vector_note = similar_notes[0] if similar_notes else None
+                        
+                    except (asyncio.TimeoutError, Exception) as e:
+                        print(f"Vector search error for note1 '{note_str}': {str(e)}")
+                        # Increment retry counter
+                        retry_count += 1
+                        
+                        if retry_count >= max_retries:
+                            # Maximum retries reached, proceed with original note value
+                            print(f"Maximum retries ({max_retries}) reached for '{note_str}', using original")
+                            break
+                
+                # Cache the result (even if None)
+                processed_notes[note_str] = vector_note
             
             # Skip if no vector match found
             if not vector_note:

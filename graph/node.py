@@ -347,7 +347,6 @@ async def respondent(state: GraphState) -> GraphState:
     #debuging
     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
-    # result_inout = is_inout(result)
     final_result = final_format(result, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)

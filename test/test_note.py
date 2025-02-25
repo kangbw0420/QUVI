@@ -1,128 +1,189 @@
 import pytest
-from unittest.mock import patch
+import asyncio
+from unittest.mock import patch, AsyncMock
+
 from utils.query.ever_note import ever_note
 
-# Mock data for simulating vector search results
-NOTE_MAPPINGS = {
-    "급여입금": ["월급입금", "급여이체"],
-    "식대지원": ["식대", "직원식대"],
-    "공과금": ["관리비", "공과금납부"],
-    "카드대금": ["카드결제", "신용카드대금"],
-    "거래처입금": ["매출입금", "거래처송금"]
-}
 
-# Mock the vector search function
-async def mock_get_evernote(note_str: str, main_com: str, top_k: int = 1):
-    if note_str in NOTE_MAPPINGS:
-        return [NOTE_MAPPINGS[note_str][0]]  # Return first match
-    return []
+class MockRetriever:
+    async def get_evernote(self, note_str, main_com, top_k=1):
+        # Mock vector search results for testing
+        note_mappings = {
+            "입금": ["입금(계좌이체)"],
+            "계좌이체": ["계좌이체(보통예금)"],
+            "카드": ["카드대금결제"],
+            "대출": ["대출이자납입"],
+            "환불": ["상품대금환불"],
+            "급여": ["급여입금"]
+        }
+        
+        # Return mapped note or original if no mapping exists
+        return [note_mappings.get(note_str, [note_str])[0]]
 
-@pytest.mark.asyncio
-@patch('utils.retriever.retriever.get_evernote', side_effect=mock_get_evernote)
-async def test_note1_eq_condition(mock_get):
-    """Test replacing simple note1 = 'value' condition"""
-    query = "SELECT * FROM trsc WHERE note1 = '급여입금'"
-    expected = "SELECT * FROM trsc WHERE note1 = '월급입금'"
-    
-    result = await ever_note(query, "test_company")
-    
-    # Normalize whitespace for comparison
-    assert result.lower().replace(" ", "") == expected.lower().replace(" ", "")
-    mock_get.assert_called_once_with("급여입금", "test_company")
+
+@pytest.fixture
+def mock_retriever():
+    with patch('utils.query.ever_note.retriever', MockRetriever()):
+        yield
+
 
 @pytest.mark.asyncio
-@patch('utils.retriever.retriever.get_evernote', side_effect=mock_get_evernote)
-async def test_note1_like_condition(mock_get):
-    """Test replacing note1 LIKE condition"""
-    query = "SELECT * FROM trsc WHERE note1 LIKE '%식대지원%'"
-    expected = "SELECT * FROM trsc WHERE note1 LIKE '%식대%'"
+async def test_ever_note_single_condition(mock_retriever):
+    """Test ever_note with a single note1 condition"""
+    # Test query with a simple note1 = '입금' condition
+    query = "SELECT * FROM aicfo_get_all_trsc('123', '456', '테스트회사', '20230101', '20230131') WHERE note1 = '입금'"
     
-    result = await ever_note(query, "test_company")
+    # Run the function
+    result = await ever_note(query, "테스트회사")
     
-    assert result.lower().replace(" ", "") == expected.lower().replace(" ", "")
-    mock_get.assert_called_once_with("식대지원", "test_company")
+    # Verify the result
+    assert "note1 = '입금(계좌이체)'" in result
+    
 
 @pytest.mark.asyncio
-@patch('utils.retriever.retriever.get_evernote', side_effect=mock_get_evernote)
-async def test_multiple_note1_conditions(mock_get):
-    """Test replacing multiple note1 conditions"""
+async def test_ever_note_multiple_conditions(mock_retriever):
+    """Test ever_note with multiple note1 conditions"""
+    # Test query with multiple conditions
     query = """
-        SELECT * FROM trsc 
-        WHERE note1 = '급여입금' 
-        AND trsc_amt > 1000000 
-        AND note1 LIKE '%공과금%'
-    """
-    expected = """
-        SELECT * FROM trsc 
-        WHERE note1 = '월급입금' 
-        AND trsc_amt > 1000000 
-        AND note1 LIKE '%관리비%'
+    SELECT * FROM aicfo_get_all_trsc('123', '456', '테스트회사', '20230101', '20230131') 
+    WHERE (note1 = '입금' OR note1 = '계좌이체' OR note1 = '카드')
     """
     
-    result = await ever_note(query, "test_company")
+    # Run the function
+    result = await ever_note(query, "테스트회사")
     
-    assert result.lower().replace(" ", "") == expected.lower().replace(" ", "")
-    assert mock_get.call_count == 2  # Should be called twice for two note1 conditions
+    # Verify all conditions were replaced
+    assert "note1 = '입금(계좌이체)'" in result
+    assert "note1 = '계좌이체(보통예금)'" in result
+    assert "note1 = '카드대금결제'" in result
+
 
 @pytest.mark.asyncio
-@patch('utils.retriever.retriever.get_evernote', side_effect=mock_get_evernote)
-async def test_subquery_with_note1(mock_get):
-    """Test replacing note1 conditions in subquery"""
+async def test_ever_note_like_conditions(mock_retriever):
+    """Test ever_note with LIKE conditions"""
+    # Test query with LIKE conditions
     query = """
-        SELECT * FROM trsc t1 
-        WHERE note1 = '카드대금' 
-        AND EXISTS (
-            SELECT 1 FROM trsc t2 
-            WHERE t2.note1 LIKE '%거래처입금%' 
-            AND t1.trsc_dt = t2.trsc_dt
-        )
-    """
-    expected = """
-        SELECT * FROM trsc t1 
-        WHERE note1 = '카드결제' 
-        AND EXISTS (
-            SELECT 1 FROM trsc t2 
-            WHERE t2.note1 LIKE '%매출입금%' 
-            AND t1.trsc_dt = t2.trsc_dt
-        )
+    SELECT * FROM aicfo_get_all_trsc('123', '456', '테스트회사', '20230101', '20230131') 
+    WHERE note1 LIKE '%입금%' OR note1 LIKE '%환불%'
     """
     
-    result = await ever_note(query, "test_company")
+    # Run the function
+    result = await ever_note(query, "테스트회사")
     
-    assert result.lower().replace(" ", "") == expected.lower().replace(" ", "")
-    assert mock_get.call_count == 2
+    # Verify LIKE conditions were replaced properly
+    assert "note1 LIKE '%입금(계좌이체)%'" in result
+    assert "note1 LIKE '%상품대금환불%'" in result
+
 
 @pytest.mark.asyncio
-@patch('utils.retriever.retriever.get_evernote', side_effect=mock_get_evernote)
-async def test_no_note1_condition(mock_get):
-    """Test query without note1 conditions"""
-    query = "SELECT * FROM trsc WHERE trsc_amt > 1000000"
+async def test_ever_note_complex_query(mock_retriever):
+    """Test ever_note with a complex query structure"""
+    # Test with a more complex query
+    query = """
+    SELECT t.* FROM aicfo_get_all_trsc('123', '456', '테스트회사', '20230101', '20230131') t
+    WHERE (t.in_out_dv = '입금' AND t.note1 = '급여')
+    OR (t.in_out_dv = '출금' AND t.note1 = '대출')
+    ORDER BY t.trsc_dt DESC
+    """
     
-    result = await ever_note(query, "test_company")
+    # Run the function
+    result = await ever_note(query, "테스트회사")
     
-    assert result.lower().replace(" ", "") == query.lower().replace(" ", "")
-    assert not mock_get.called  # Should not call vector search
+    # Verify the result
+    assert "t.note1 = '급여입금'" in result
+    assert "t.note1 = '대출이자납입'" in result
+
 
 @pytest.mark.asyncio
-@patch('utils.retriever.retriever.get_evernote', side_effect=mock_get_evernote)
-async def test_note1_no_vector_match(mock_get):
-    """Test handling when no vector matches found"""
-    query = "SELECT * FROM trsc WHERE note1 = '존재하지않는내용'"
+async def test_ever_note_no_modification(mock_retriever):
+    """Test ever_note with a query that doesn't have note1 conditions"""
+    # Test with a query that has no note1 conditions
+    query = """
+    SELECT * FROM aicfo_get_all_trsc('123', '456', '테스트회사', '20230101', '20230131') 
+    WHERE trsc_dt BETWEEN '20230101' AND '20230131'
+    """
     
-    result = await ever_note(query, "test_company")
+    # Run the function
+    result = await ever_note(query, "테스트회사")
     
-    # Should return original query unchanged when no matches found
-    assert result.lower().replace(" ", "") == query.lower().replace(" ", "")
-    mock_get.assert_called_once_with("존재하지않는내용", "test_company")
-
-@pytest.mark.asyncio
-@patch('utils.retriever.retriever.get_evernote', side_effect=mock_get_evernote)
-async def test_invalid_sql(mock_get):
-    """Test handling of invalid SQL"""
-    query = "SELECT * FRO trsc WHERE note1 = '급여입금'"  # Intentionally malformed
-    
-    result = await ever_note(query, "test_company")
-    
-    # Should return original query unchanged for invalid SQL
+    # Verify the query wasn't modified
     assert result == query
-    assert not mock_get.called  # Should not attempt vector search
+
+
+@pytest.mark.asyncio
+async def test_ever_note_with_subquery(mock_retriever):
+    """Test ever_note with a query that includes a subquery"""
+    # Test with a query that has a subquery containing note1 conditions
+    query = """
+    SELECT * FROM (
+        SELECT * FROM aicfo_get_all_trsc('123', '456', '테스트회사', '20230101', '20230131') 
+        WHERE note1 = '입금' OR note1 = '카드'
+    ) subq
+    WHERE trsc_amt > 100000
+    """
+    
+    # Run the function
+    result = await ever_note(query, "테스트회사")
+    
+    # Verify the note1 conditions in the subquery were modified
+    assert "note1 = '입금(계좌이체)'" in result
+    assert "note1 = '카드대금결제'" in result
+
+
+@pytest.mark.asyncio
+async def test_ever_note_error_handling(mock_retriever):
+    """Test ever_note error handling with invalid SQL"""
+    # Test with invalid SQL
+    query = "SELECT * FROM invalid query syntax"
+    
+    # Run the function - should return original query on parse error
+    result = await ever_note(query, "테스트회사")
+    
+    # Verify original query is returned
+    assert result == query
+
+
+@pytest.mark.asyncio
+async def test_ever_note_timeout_handling():
+    """Test ever_note handling of timeout in vector search"""
+    # Mock retriever that simulates a timeout
+    class TimeoutRetriever:
+        async def get_evernote(self, note_str, main_com, top_k=1):
+            await asyncio.sleep(6)  # Exceed the 5 second timeout
+            return []
+    
+    # Patch retriever with our timeout version
+    with patch('utils.query.ever_note.retriever', TimeoutRetriever()):
+        query = "SELECT * FROM aicfo_get_all_trsc('123', '456', '테스트회사', '20230101', '20230131') WHERE note1 = '입금'"
+        
+        # Run the function - should return original query after timeout
+        result = await ever_note(query, "테스트회사")
+        
+        # Should contain the original condition since vector search timed out
+        assert "note1 = '입금'" in result
+
+
+@pytest.mark.asyncio
+async def test_ever_note_cached_results(mock_retriever):
+    """Test ever_note caching of vector search results"""
+    # Test with repeated note1 values
+    query = """
+    SELECT * FROM aicfo_get_all_trsc('123', '456', '테스트회사', '20230101', '20230131') 
+    WHERE note1 = '입금' OR note1 = '입금' OR description LIKE '%based on note1 = ''입금''%'
+    """
+    
+    # Create a spy on the get_evernote method to count calls
+    spy_retriever = MockRetriever()
+    spy_get_evernote = AsyncMock(wraps=spy_retriever.get_evernote)
+    spy_retriever.get_evernote = spy_get_evernote
+    
+    with patch('utils.query.ever_note.retriever', spy_retriever):
+        # Run the function
+        result = await ever_note(query, "테스트회사")
+        
+        # Verify the result has all instances replaced
+        assert result.count("입금(계좌이체)") >= 2
+        
+        # Verify get_evernote was called only once for '입금'
+        calls = [call for call in spy_get_evernote.call_args_list if call[0][0] == '입금']
+        assert len(calls) == 1

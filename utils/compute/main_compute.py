@@ -76,21 +76,23 @@ def handle_computed_column(match: re.Match, result: List[Dict[str, Any]], column
         return handle_math_expression(match, result, column_list)
     except ValueError as e:
         error_msg = str(e)
+        # 계산된 값들이 내려오는 경우 value(func_name) 처리
         is_computed, func_name, _ = detect_computed_column(error_msg, column_list)
         
         if is_computed:
-            # Replace function(column_name) with value(function_name)
             modified_expression = f"value({func_name})"
             modified_match = type('Match', (), {'group': lambda x: modified_expression})()
             return handle_math_expression(modified_match, result, column_list)
         raise
 
 def compute_fstring(fstring_answer: str, result: List[Dict[str, Any]], column_list: List[str]) -> str:
+    # 작은 따옴표와 큰 따옴표 문구에 모두 대응. 괄호 내부만 뽑아냄
     if fstring_answer.startswith('f"') and fstring_answer.endswith('"'):
         fstring_answer = fstring_answer[2:-1]
     elif fstring_answer.startswith("f'") and fstring_answer.endswith("'"):
         fstring_answer = fstring_answer[2:-1]
 
+    # 중괄호 안에 있는 걸 찾아내기
     pattern = r'\{([^}]+)\}'
     processed_answer = re.sub(pattern, lambda m: handle_computed_column(m, result, column_list), fstring_answer)
     
