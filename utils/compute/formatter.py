@@ -19,7 +19,9 @@ string_columns = {
     'acct_dv',  # 계좌구분
     'stock_nm'  # 주식명
     'KRW_p_day',
-    'p_day'
+    'p_day',
+    'reg_dt',
+    'trsc_dt'
 }
 
 def should_use_decimals(column: str, func_name: str, params: List[str] = None) -> bool:
