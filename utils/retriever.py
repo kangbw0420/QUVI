@@ -3,6 +3,7 @@ import json
 import httpx
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
+import requests
 
 from utils.config import Config
 from utils.logger import setup_logger
@@ -190,36 +191,35 @@ class FewShotRetriever:
                 'top_k': top_k
             }
             
-            start_time = time.time()
             logger.debug(f"Request payload for note similarity: {json.dumps(request_payload, ensure_ascii=False, indent=2)}")
             
             # Call the /pick endpoint
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.base_url}/pick",
-                    json=request_payload,
-                    timeout=10.0
-                )
+            response = requests.post(
+                f"{self.base_url}/pick",
+                json=request_payload,
+                timeout=10.0
+            )
+
+            response.raise_for_status()
+            data = response.json()
                 
-                process_time = (time.time() - start_time) * 1000
-                logger.info(f"Completed note similarity search - {process_time:.2f}ms")
-                
-                response.raise_for_status()
-                data = response.json()
-                
-                # Extract similar notes from response in the format described
-                if isinstance(data, dict) and "results" in data:
-                    for result_item in data["results"]:
-                        if result_item.get("target") == note_str and "results" in result_item:
-                            for candidate_result in result_item["results"]:
-                                candidate = candidate_result.get("candidate")
+            # Extract similar notes from response in the format described
+            if isinstance(data, dict) and "results" in data:
+                for result_item in data["results"]:
+                    if isinstance(result_item, dict) and result_item.get("target") == note_str and "candidates" in result_item:
+                        # The 'candidates' field contains a list of objects with 'candidate' and 'score' fields
+                        for candidate_obj in result_item["candidates"]:
+                            if isinstance(candidate_obj, dict) and "candidate" in candidate_obj:
+                                candidate = candidate_obj["candidate"]
                                 if candidate and candidate not in similar_notes:
                                     similar_notes.append(candidate)
-                
-                return similar_notes
+            
+            logger.info(f"Found similar notes: {similar_notes}")
+            
+            return similar_notes
                 
         except Exception as e:
-            logger.error(f"Error in get_evernote: {e}")
+            logger.error(f"Error in get_evernote_sync: {e}")
             return []
         
 def api_recommend(selected_api: str):

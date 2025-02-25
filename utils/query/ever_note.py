@@ -107,7 +107,8 @@ async def ever_note(query: str, main_com: str) -> Dict[str, Any]:
         logger.info(f"Executing note query: {note_query}")
         try:
             # Execute query to get all available notes
-            available_notes = execute(note_query)
+            note_results = execute(note_query)
+            available_notes = [note['everery_note'] for note in note_results] if note_results else []
             
             if not available_notes:
                 logger.info("No notes found in aicfo_get_all_note result")
