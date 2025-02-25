@@ -302,7 +302,7 @@ async def executor(state: GraphState) -> GraphState:
 
             # If no results found and it's a trsc query, try vector search for note1
             if not result and selected_table == 'trsc':
-                evernote_result = await ever_note(query, main_com)
+                evernote_result = await ever_note(query)
                 
                 # Get original and similar notes from the result
                 origin_note = evernote_result.get("origin_note", [])
