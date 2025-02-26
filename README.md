@@ -23,6 +23,9 @@ stateDiagram-v2
     
     executor --> nodata: no_data = true
     executor --> respondent
+
+    executor --> note_embedding: no_data + note
+    note_embedding --> executor: modified_note
     
     killjoy --> END
     nodata --> END
