@@ -118,18 +118,18 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_edge("funk", "params")
         workflow.add_edge("params", "executor")
 
-        workflow.add_edge("nl2sql", "executor")
-        # workflow.add_conditional_edges(
-        #     "nl2sql",
-        #     lambda x: (
-        #         "END" if x["flags"]["stock_sec"] else
-        #         "executor"
-        #     ),
-        #     {
-        #         "END": END,
-        #         "executor": "executor"
-        #     }
-        # )
+        workflow.add_conditional_edges(
+            "nl2sql",
+            lambda x: (
+                # 다양한 적요 찾은 이후 그거 한 줄 답변으로 작성하기가 힘듭니다
+                "END" if x["vector_notes"] else
+                "executor"
+            ),
+            {
+                "END": END,
+                "executor": "executor"
+            }
+        )
         
         workflow.add_conditional_edges(
             "executor",

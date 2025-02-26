@@ -304,9 +304,11 @@ async def executor(state: GraphState) -> GraphState:
                 
                 # Update user question to mention the similar notes
                 if vector_notes:
-                    vector_note_str = ", ".join(vector_notes)
-                    user_question = state["user_question"]
-                    state["user_question"] = f"{user_question}..아니다, {vector_note_str}에 대해 모두 찾아줘"
+                    origin_note_str = "', '".join(origin_note)
+                    vector_note_str = "', '".join(vector_notes)
+                    
+                    final_answer = f"요청하신 거래내역('{origin_note_str}' 노트)을 찾기 위해 유사한 노트('{vector_note_str}')로 검색한 결과입니다."
+                    state.update({"final_answer": final_answer})
                 
                 # Try executing the modified query if available
                 if modified_query and modified_query != query:
@@ -340,7 +342,6 @@ async def respondent(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     result = state["query_result"]
-    flags = state.get("flags")
     selected_table = state["selected_table"]
     raw_column_list = state["column_list"]
 
@@ -361,20 +362,6 @@ async def respondent(state: GraphState) -> GraphState:
     final_result = final_format(result, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)
-    
-    if "vector_notes" in state and state["vector_notes"]:
-        vector_notes_data = state["vector_notes"]
-        origin_note = vector_notes_data.get("origin_note", [])
-        vector_notes = vector_notes_data.get("vector_notes", [])
-        
-        # Create a message about the vector search
-        if origin_note and vector_notes:
-            # Format the origin note and vector notes as strings
-            origin_note_str = "', '".join(origin_note)
-            vector_note_str = "', '".join(vector_notes)
-            
-            # Add explanation to the final answer
-            final_answer = f"요청하신 거래내역('{origin_note_str}' 노트)을 찾기 위해 유사한 노트('{vector_note_str}')로 검색한 결과입니다.\n\n" + final_answer
 
     # if flags.get("past_date"):
     #     final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 2일 이전 데이터에 대해서는 조회 제한이 적용된 상황입니다.\n결제 후 모든 기간의 데이터를 조회하실 수 있습니다.\U0001F64F\U0001F64F"
