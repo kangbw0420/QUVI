@@ -192,15 +192,14 @@ def compute_function(func_name: str, params: List[str], result: List[Dict[str, A
         is_numeric = False
         
         # 명확한 숫자인지 확인
-        if isinstance(first_value, (int, float)):
+        if isinstance(first_value, (int, float, Decimal)):
             is_numeric = True
         elif isinstance(first_value, str):
             # 문자열이 숫자 형식인지 확인 
-            # (예: "123", "123.45"는 숫자로 간주, "계좌구매"는 텍스트로 간주)
             try:
-                float(first_value)  # 숫자로 변환 시도
+                first_value + 0
                 is_numeric = True
-            except ValueError:
+            except (TypeError, ValueError):
                 is_numeric = False
         
         if is_numeric:
