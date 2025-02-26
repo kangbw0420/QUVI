@@ -317,6 +317,7 @@ async def executor(state: GraphState) -> GraphState:
                     print("Retrying with modified note1 conditions:")
                     print(modified_query)
                     result = execute(modified_query)
+                    result = final_format(result, selected_table)
             
             state.update({"date_info": view_dates["main"]})
 
