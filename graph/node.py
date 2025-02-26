@@ -305,6 +305,7 @@ async def executor(state: GraphState) -> GraphState:
                 # Update user question to mention the similar notes
                 if vector_notes:
                     vector_note_str = ", ".join(vector_notes)
+                    user_question = state["user_question"]
                     state["user_question"] = f"{user_question}..아니다, {vector_note_str}에 대해 모두 찾아줘"
                 
                 # Try executing the modified query if available
