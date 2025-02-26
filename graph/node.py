@@ -45,7 +45,7 @@ class GraphState(TypedDict):
     chain_id: str
     trace_id: str
     user_info: Tuple[str, str]
-    access_company_list: List[CompanyInfo]
+    company_id: str
     yogeumjae: str # debugging: 이제 필요 없지만 fstring을 전달하기 위한 흔적 기관
     # shellder: boolean
     user_question: str
@@ -147,21 +147,17 @@ async def params(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     selected_api = state["selected_api"]
     user_question = state["user_question"]
-    company_list = state["access_company_list"]
-    main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
-    if main_companies:
-        main_com = main_companies[0].custNm
-    else:
-        main_com = company_list[0].custNm
+    company_id = state["company_id"]
+
     user_info = state["user_info"]
 
     # flags = state.get("flags")
     # yogeumjae = state["yogeumjae"]
     # sql_query, date_info = await parameters(
-    #     trace_id, selected_api, user_question, main_com, user_info, today, yogeumjae, flags
+    #     trace_id, selected_api, user_question, company_id, user_info, today, yogeumjae, flags
     # )
     sql_query, date_info = await parameters(
-        trace_id, selected_api, user_question, main_com, user_info, today
+        trace_id, selected_api, user_question, company_id, user_info, today
     )
 
     state.update({"sql_query": sql_query, "date_info": date_info})
@@ -179,15 +175,9 @@ async def nl2sql(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     
     # debug: 회사 내려오는 방식 변경되면 수정
-    company_list = state["access_company_list"]
-    main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
-    if main_companies:
-        main_com = main_companies[0].custNm
-    else:
-        main_com = company_list[0].custNm
-    # debug: 회사 내려오는 방식 변경되면 수정
+    company_id = state["company_id"]
 
-    sql_query = await create_sql(trace_id, selected_table, main_com, user_question, today)
+    sql_query = await create_sql(trace_id, selected_table, company_id, user_question, today)
     
     # yogeumjae = state["yogeumjae"]
     # view_dv_list = check_view_dv(sql_query)
@@ -233,14 +223,10 @@ async def executor(state: GraphState) -> GraphState:
         # 쿼리 길어지기 전에 컬럼부터 추출
         column_list = extract_col_from_query(raw_query)
         
-        company_list = state["access_company_list"]
-        main_companies = [comp for comp in company_list if comp.isMainYn == 'Y']
-        if main_companies:
-            main_com = main_companies[0].custNm
-        else:
-            main_com = company_list[0].custNm
+        company_id = state["company_id"]
+
         # 회사명을 권한 있는 회사로 변환
-        query_com = add_com_condition(raw_query, main_com)
+        query_com = add_com_condition(raw_query, company_id)
 
         # stock 종목명 체크 맟 변환
         if selected_table == 'stock':
@@ -253,7 +239,7 @@ async def executor(state: GraphState) -> GraphState:
         flags = state.get("flags")
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
-            query, view_dates = view_table(query_ordered, selected_table, main_com, user_info, flags)
+            query, view_dates = view_table(query_ordered, selected_table, company_id, user_info, flags)
                         
             # # 무료 유저가 감히 과거 데이터를 보려 했는지 검증
             # yogeumjae = state["yogeumjae"]

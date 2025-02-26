@@ -16,14 +16,14 @@ def normalize_query(query: str) -> str:
     query = re.sub(r',\s*', ', ', query)
     return query.strip()
     
-def add_com_condition(query: str, main_com: str) -> str:
+def add_com_condition(query: str, company_id: str) -> str:
     """회사명 조건이 없는 SQL 쿼리에 회사명 조건 추가"""
     # WHERE 절 찾기
     
     if ' UNION ' in query.upper():
         parts = query.split(' UNION ')
-        filtered_parts = [add_com_condition(part.strip(), main_com)[0] for part in parts]
-        return ' UNION '.join(filtered_parts), main_com, [], ""
+        filtered_parts = [add_com_condition(part.strip(), company_id)[0] for part in parts]
+        return ' UNION '.join(filtered_parts), company_id, [], ""
 
     # 쿼리 표준화
     query = normalize_query(query)
@@ -34,7 +34,7 @@ def add_com_condition(query: str, main_com: str) -> str:
         # WHERE 절이 있으면 AND 조건으로 추가
         position = where_match.end()
         return (
-            f"{query[:position]} com_nm = '{main_com}' AND {query[position:].lstrip()}"
+            f"{query[:position]} com_nm = '{company_id}' AND {query[position:].lstrip()}"
         )
     else:
         # WHERE 절이 없으면 WHERE 절 생성
@@ -51,9 +51,9 @@ def add_com_condition(query: str, main_com: str) -> str:
             # 가장 앞에 있는 절의 위치에 WHERE 절 삽입
             insert_position = min(positions)
             return (
-                f"{query[:insert_position].rstrip()} WHERE com_nm = '{main_com}' "
+                f"{query[:insert_position].rstrip()} WHERE com_nm = '{company_id}' "
                 f"{query[insert_position:].lstrip()}"
             )
         else:
             # 끝에 WHERE 절 추가
-            return f"{query.rstrip()} WHERE com_nm = '{main_com}'"
+            return f"{query.rstrip()} WHERE com_nm = '{company_id}'"

@@ -17,7 +17,6 @@ graph = make_graph()
 @api.post("/process")
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
-    logger.info(f"access_company_list: {request.access_company_list}")
     chain_id = None
     
     try:
@@ -44,7 +43,7 @@ async def process_input(request: Input) -> Output:
             "chain_id": chain_id,
             "user_info": user_info,
             "yogeumjae" : "debug",
-            "access_company_list": request.access_company_list, # debug: 회사 내려오는 방식 변경되면 수정
+            "company_id": request.company_id,
             "user_question": request.user_question,
             "flags": {
                 "is_joy": False,

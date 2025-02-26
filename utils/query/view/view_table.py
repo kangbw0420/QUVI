@@ -329,14 +329,14 @@ class ViewTableTransformer:
             return False
 
 def view_table(query_ordered: str, selected_table: str, 
-               main_com: str, user_info: Tuple[str, str], flags: dict) -> Tuple[str, Dict[str, Tuple[str, str]]]:
+               company_id: str, user_info: Tuple[str, str], flags: dict) -> Tuple[str, Dict[str, Tuple[str, str]]]:
     """
     view_table을 적용하여 최종 변환된 날짜정보와 쿼리를 반환
     
     Args:
         query_ordered: ORDER BY가 추가된 SQL 쿼리
         selected_table: 선택된 테이블 (amt, trsc, stock 등)
-        main_com: 메인 회사명
+        company_id: 메인 회사명
         user_info: (user_id, use_intt_id) 튜플
         flags: 상태 플래그 딕셔너리 (미래 날짜 등)
         
@@ -346,7 +346,7 @@ def view_table(query_ordered: str, selected_table: str,
     transformer = ViewTableTransformer(
         selected_table=selected_table,
         user_info=user_info,
-        view_com=main_com,
+        view_com=company_id,
         flags=flags
     )
     

@@ -13,7 +13,7 @@ class Input(BaseModel):
     user_id: str = 'daquv03'
     session_id: str = 'default_session'
     use_intt_id: str
-    access_company_list: List[CompanyInfo]
+    company_id: str
     # yogeumjae: str = 'stock1' # 'muryo', 'stock0', 'stock1'
 
 class Output(BaseModel):

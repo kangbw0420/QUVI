@@ -16,7 +16,7 @@ from llm_admin.qna_manager import QnAManager
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-SQL_TEMPLATE = """SELECT * FROM sql_func('use_intt_id', 'user_id', 'main_com', 'from_date', 'to_date')"""
+SQL_TEMPLATE = """SELECT * FROM sql_func('use_intt_id', 'user_id', 'company_id', 'from_date', 'to_date')"""
 
 WEEKDAYS = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}
 
@@ -35,7 +35,7 @@ async def parameters(
     trace_id: str,
     selected_api: str,
     user_question: str,
-    main_com: str,
+    company_id: str,
     user_info: Tuple[str, str],
     today: str,
     # yogeumjae: str,
@@ -142,7 +142,7 @@ async def parameters(
             SQL_TEMPLATE.replace("sql_func", selected_api)
             .replace("use_intt_id", use_intt_id)
             .replace("user_id", user_id)
-            .replace("main_com", main_com)
+            .replace("company_id", company_id)
             .replace("from_date", from_date)
             .replace("to_date", to_date)
         )
