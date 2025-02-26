@@ -33,6 +33,7 @@ logger = setup_logger('node')
 class ProcessingFlags(TypedDict):
     is_joy: bool
     no_data: bool
+    note_changed: bool
     future_date: bool
     # stock_sec: bool
     # past_date: bool
@@ -309,6 +310,7 @@ async def executor(state: GraphState) -> GraphState:
                     
                     final_answer = f"요청하신 거래내역('{origin_note_str}' 노트)을 찾기 위해 유사한 노트('{vector_note_str}')로 검색한 결과입니다."
                     state.update({"final_answer": final_answer})
+                    flags["note_changed"] = True
                 
                 # Try executing the modified query if available
                 if modified_query and modified_query != query:

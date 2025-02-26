@@ -48,6 +48,7 @@ async def process_input(request: Input) -> Output:
             "flags": {
                 "is_joy": False,
                 "no_data": False,
+                "note_changed": False,
                 "future_date": False,
                 # "stock_sec": False,
                 # "past_date": False
