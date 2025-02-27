@@ -90,8 +90,8 @@ class ErrorHandler:
             return ErrorCode.NETWORK_ERROR, 503, None
         
         # Safeguard 관련 에러 (새로 추가)
-        elif "safeguard_limit_exceeded" in error_message:
-            return ErrorCode.UNKNOWN_ERROR, 500, None
+        elif "query_result" in error_message:
+            return ErrorCode.QUERY_SAFE_ERROR, 500, None
                 
         return ErrorCode.UNKNOWN_ERROR, 500, None
 
@@ -100,14 +100,14 @@ class ErrorHandler:
         """에러를 API 응답 형식으로 변환"""
         
         # Check for safeguard limit exceeded error
-        if "safeguard_limit_exceeded" in str(error).lower():
+        if "query_result" in str(error).lower():
             return {
                 "status": 500,
                 "success": False,
                 "retCd": 500,
                 "message": "죄송합니다. 지금의 저는 이 질문에 답하기에 적합한 쿼리를 만들 수 없습니다. 그러나 저는 꾸준히 학습 중입니다. 곧 이 질문에 답할 수 있는 AICFO가 되어 도움을 드리겠습니다.",
                 "body": {
-                    "error_code": "QUERY_SAFEGUARD_LIMIT",
+                    "error_code": "QUERY_SAFE_LIMIT",
                     "detail": str(error)
                 }
             }
