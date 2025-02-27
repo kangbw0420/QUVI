@@ -26,9 +26,9 @@ stateDiagram-v2
     executor --> note_embedding: no_data + note
     executor --> safeguard: query_error
 
-    note_embedding --> executor: similar_note
     safeguard --> executor: safe_query
     
+    note_embedding --> END
     killjoy --> END
     nodata --> END
     respondent --> END

@@ -198,7 +198,7 @@ class FewShotRetriever:
                                 candidate = candidate_obj["candidate"]
                                 score = candidate_obj["score"]
                                 
-                                if score >= threshold and candidate not in [item["candidate"] for item in similar_notes]:
+                                if score >= threshold and candidate not in similar_notes:
                                     similar_notes.append(candidate)
             
             logger.info(f"Found similar notes: {similar_notes}")
