@@ -14,8 +14,8 @@ async def guard_query(
     user_question: str,
     selected_table: str,
     flags: dict,
-    sql_error: str,
-    today: str
+    today: str,
+    sql_error: str = ""
     ) -> str:
     """에러가 발생했거나 날짜가 틀릴 수 있는 쿼리를 체크
     Returns:
