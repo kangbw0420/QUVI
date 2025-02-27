@@ -10,8 +10,7 @@ stateDiagram-v2
 
     checkpoint --> commander: utterance = "fin"
     checkpoint --> killjoy: utterance = "joy"
-    
-    commander --> END: stock_restricted
+
     commander --> funk: selected_table = "api"
     commander --> nl2sql
     
