@@ -44,7 +44,7 @@ async def create_sql(
                 node_nm='nl2sql', 
                 prompt_nm=selected_table
             )[0]['prompt'].format(
-                today=today, main_com=company_id
+                today=today
             )
         except:
             system_prompt = database_service.get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(today=today)
@@ -88,7 +88,7 @@ async def create_sql(
 
         chain = prompt | nl2sql
         output = chain.invoke(
-            {"user_question": formatted_question}
+            {"user_question": formatted_question, "main_com": company_id}
         )
 
         # 출력에서 SQL 쿼리 추출
