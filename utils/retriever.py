@@ -1,7 +1,7 @@
 import time
 import json
 import httpx
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from dotenv import load_dotenv
 import requests
 
@@ -159,28 +159,14 @@ class FewShotRetriever:
             # query_text가 없으면 마지막 항목을 제외한 3개 반환
             return documents[:3]
     
-    async def get_evernote(self, note_str: str, available_notes: List[str], top_k: int = 3) -> List[str]:
-        """Search for similar notes in a list of available notes using vector similarity
-        Returns:
-            List[str]: List of similar note values, ordered by similarity
-        """
+    async def get_evernote(self, note_str: str, available_notes: List[str], top_k: int = 10, threshold: float = 0.5) -> List[str]:
         try:
             if not available_notes:
                 logger.warning("No available notes provided to get_evernote")
                 return []
-                
-            # If note_str is already in available_notes, include it in results and remove it from available_notes
+
             similar_notes = []
-            if note_str in available_notes:
-                similar_notes.append(note_str)
-                # Remove it from available_notes to avoid duplication
-                available_notes = [note for note in available_notes if note != note_str]
             
-            # If we already have top_k notes, return them
-            if len(similar_notes) >= top_k:
-                return similar_notes[:top_k]
-                
-            # Format request payload according to the /pick endpoint format
             request_payload = {
                 'pickItems': [
                     {
@@ -192,8 +178,7 @@ class FewShotRetriever:
             }
             
             logger.debug(f"Request payload for note similarity: {json.dumps(request_payload, ensure_ascii=False, indent=2)}")
-            
-            # Call the /pick endpoint
+
             response = requests.post(
                 f"{self.base_url}/pick",
                 json=request_payload,
@@ -209,9 +194,11 @@ class FewShotRetriever:
                     if isinstance(result_item, dict) and result_item.get("target") == note_str and "candidates" in result_item:
                         # The 'candidates' field contains a list of objects with 'candidate' and 'score' fields
                         for candidate_obj in result_item["candidates"]:
-                            if isinstance(candidate_obj, dict) and "candidate" in candidate_obj:
+                            if isinstance(candidate_obj, dict) and "candidate" in candidate_obj and "score" in candidate_obj:
                                 candidate = candidate_obj["candidate"]
-                                if candidate and candidate not in similar_notes:
+                                score = candidate_obj["score"]
+                                
+                                if score >= threshold and candidate not in [item["candidate"] for item in similar_notes]:
                                     similar_notes.append(candidate)
             
             logger.info(f"Found similar notes: {similar_notes}")

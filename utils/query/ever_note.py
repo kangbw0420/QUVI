@@ -108,7 +108,7 @@ async def ever_note(query: str) -> Dict[str, Any]:
                 similar_notes = await retriever.get_evernote(
                     original_note, 
                     available_notes,
-                    top_k=3
+                    top_k=10
                 )
                 
                 note_to_similar[original_note] = similar_notes

@@ -23,9 +23,11 @@ stateDiagram-v2
     
     executor --> nodata: no_data = true
     executor --> respondent
-
     executor --> note_embedding: no_data + note
-    note_embedding --> executor: modified_note
+    executor --> safeguard: query_error
+
+    note_embedding --> executor: similar_note
+    safeguard --> executor: safe_query
     
     killjoy --> END
     nodata --> END
