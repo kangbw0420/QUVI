@@ -5,7 +5,6 @@ class ProcessingFlags(TypedDict):
     no_data: bool
     note_changed: bool
     future_date: bool
-    query_date: bool
     query_error: bool
     query_changed: bool
     # stock_sec: bool

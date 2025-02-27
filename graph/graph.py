@@ -47,9 +47,17 @@ class TrackedStateGraph(StateGraph):
                 return result
             
             except Exception as e:
-                # 에러 발생 시 trace를 error로 마크
                 if trace_id:
                     TraceManager.mark_trace_error(trace_id)
+                error_msg = str(e)
+                # SQL 쿼리 에러인 경우 특별 처리
+                if "psycopg" in error_msg.lower() or "invalid query" in error_msg.lower():
+                    # state에 에러 정보 추가
+                    state["flags"] = state.get("flags", {})
+                    state["flags"]["query_error"] = True
+                    state["sql_error"] = error_msg
+                    return state  # 에러를 던지지 않고 state를 반환
+                # 다른 예외는 그대로 던짐
                 raise e
                 
         return super().add_node(key, tracked_action)
@@ -125,7 +133,7 @@ def make_graph() -> CompiledStateGraph:
                 # 다양한 적요 찾은 이후 그거 한 줄 답변으로 작성하기가 힘듭니다
                 "END" if x["flags"]["note_changed"] else
                 # 위험에 처했거나 가능성이 있는 쿼리는 safeguard로
-                "safeguard" if x["flags"]["query_error"] or x["flags"]["query_date"] else
+                "safeguard" if x["flags"]["query_error"] else
                 # 그 외의 경우 respondent로
                 "respondent"
             ),
@@ -136,6 +144,8 @@ def make_graph() -> CompiledStateGraph:
                 "respondent": "respondent"
             }
         )
+        workflow.add_edge("safeguard", "executor")
+
         workflow.add_edge("respondent", END)
         workflow.add_edge("nodata", END)
         workflow.add_edge("killjoy", END)

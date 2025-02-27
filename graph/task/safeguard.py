@@ -27,15 +27,11 @@ async def guard_query(
     if flags["query_error"]:
         system_prompt = database_service.get_prompt(
             node_nm='safeguard', prompt_nm='error'
-        )[0]['prompt'].format(today=prompt_today, unsafe_query=unsafe_query, sql_error=sql_error)
-    elif flags["query_date"]:
-        system_prompt = database_service.get_prompt(
-            node_nm='safeguard', prompt_nm='date'
-        )[0]['prompt'].format(today=prompt_today, unsafe_query=unsafe_query)
+        )[0]['prompt'].format(user_question=user_question, today=prompt_today, unsafe_query=unsafe_query, sql_error=sql_error)
     else:
         system_prompt = database_service.get_prompt(
             node_nm='safeguard', prompt_nm=selected_table
-        )[0]['prompt'].format(today=prompt_today, unsafe_query=unsafe_query)
+        )[0]['prompt'].format(user_question=user_question, today=prompt_today, unsafe_query=unsafe_query)
 
     prompt = ChatPromptTemplate.from_messages(
         [

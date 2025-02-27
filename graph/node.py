@@ -165,14 +165,8 @@ async def executor(state: GraphState) -> GraphState:
 
             print("#" * 80)
             print(query)
-            try:
-                result = execute(query)
-            except Exception as e:
-                error_msg = str(e)
-                if "psycopg" in error_msg.lower() or "invalid query" in error_msg.lower():
-                    flags["query_error"] = True
-                    state.update({"sql_error": error_msg})
-                raise
+
+            result = execute(query)
 
             # If no results found and it's a trsc query, try vector search for note1
             if not result and selected_table == 'trsc':
@@ -221,14 +215,6 @@ async def executor(state: GraphState) -> GraphState:
         StateManager.update_state(trace_id, {"query_result": empty_result})
         
         return state
-
-    date_info = state.get("date_info")
-    if date_info:
-        from_date, to_date = date_info
-
-        if from_date != today_str or to_date != today_str:
-            flags["query_date"] = True
-            print(f"최종 날짜 범위 차이 감지: date_info=({from_date}, {to_date}), today={today_str}")
     
     state.update({"query_result": result, "column_list": column_list})
     StateManager.update_state(trace_id, {"query_result": result})
@@ -252,6 +238,7 @@ async def safeguard(state: GraphState) -> GraphState:
     if safe_query != unsafe_query:
         flags["query_changed"] = True
         state.update({"sql_query": safe_query})
+
         StateManager.update_state(trace_id, {"sql_query": safe_query})
         return state
 
