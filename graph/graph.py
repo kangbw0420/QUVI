@@ -6,8 +6,6 @@ from llm_admin.trace_manager import TraceManager
 
 from .node import (
     GraphState,
-    # yadon,
-    # yadoran,
     checkpoint,
     commander,
     funk,
@@ -15,6 +13,7 @@ from .node import (
     nl2sql,
     respondent,
     executor,
+    safeguard,
     nodata,
     killjoy
 )
@@ -70,6 +69,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("params", params) # api 함수 파라미터 선택
         workflow.add_node("nl2sql", nl2sql) # SQL 생성
         workflow.add_node("executor", executor) # SQL 실행 및 상태 체크
+        workflow.add_node("safeguard", safeguard) # 에러 가능성 있는 쿼리를 점검
         workflow.add_node("respondent", respondent) # 답변 생성
         workflow.add_node("nodata", nodata) # 데이터가 없을 경우 답변 생성
         workflow.add_node("killjoy", killjoy) # 일상 대화 대응
@@ -88,8 +88,6 @@ def make_graph() -> CompiledStateGraph:
         # )
         # yadoran은 항상 commander로
         # workflow.add_edge("yadoran", "commander")
-
-        # selector가 api를 토하면 끝남
 
         workflow.add_conditional_edges(
             "checkpoint",
@@ -126,12 +124,15 @@ def make_graph() -> CompiledStateGraph:
                 "nodata" if x["flags"]["no_data"] else
                 # 다양한 적요 찾은 이후 그거 한 줄 답변으로 작성하기가 힘듭니다
                 "END" if x["flags"]["note_changed"] else
+                # 위험에 처했거나 가능성이 있는 쿼리는 safeguard로
+                "safeguard" if x["flags"]["query_error"] or x["flags"]["query_date"] else
                 # 그 외의 경우 respondent로
                 "respondent"
             ),
             {
                 "nodata": "nodata",
                 "END": END,
+                "safeguard": "safeguard",
                 "respondent": "respondent"
             }
         )
