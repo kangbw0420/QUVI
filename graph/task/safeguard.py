@@ -1,3 +1,4 @@
+import re
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -51,7 +52,18 @@ async def guard_query(
     )
 
     guard_chain = prompt | qwen_llm
-    safe_query = guard_chain.invoke({"user_question": user_question})
+    output = guard_chain.invoke({"user_question": user_question})
+    
+    match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
+    if match:
+        safe_query = match.group(1)
+    else:
+        match = re.search(r"SELECT.*", output, re.DOTALL)
+        if match:
+            safe_query = match.group(0)
+
+        else:
+            raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
 
     print("=" * 40 + "safeguard(A)" + "=" * 40)
     print(safe_query)
