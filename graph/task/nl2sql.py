@@ -38,13 +38,13 @@ async def create_sql(
         TypeError: LLM 응답이 예상된 형식이 아닌 경우.
     """
     try:
-
         try:
+            prompt_today = today.strftime("%Y년 %m월 %d일")
             system_prompt = database_service.get_prompt(
                 node_nm='nl2sql', 
                 prompt_nm=selected_table
             )[0]['prompt'].format(
-                today=today
+                today=prompt_today
             )
         except:
             system_prompt = database_service.get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(today=today)
