@@ -378,6 +378,11 @@ async def nodata(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     flags = state.get("flags")
+    
+    if flags.get("note_changed"):
+        vector_notes = state.get("vector_notes", {})
+        vector_note_str = "', '".join(vector_notes.get("vector_notes", []))
+        user_question = user_question + f" 유사한 노트('{vector_note_str}')를 활용해서도 검색해줘"
 
     final_answer = await no_data(trace_id, user_question)
 
