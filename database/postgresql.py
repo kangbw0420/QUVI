@@ -59,8 +59,7 @@ def get_connection(pool: ThreadedConnectionPool):
     conn = pool.getconn()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT NOW();")  # 연결 상태 체크
-            print(cursor.fetchone())
+            cursor.execute("SELECT 1;")  # 연결 상태 체크
         return conn
     except (OperationalError, InterfaceError):
         print("Connection Failed. Retry...")
@@ -79,7 +78,7 @@ def expire_connections():
             for _ in range(PostgreSQL.pool_prompt.maxconn):
                 conn = PostgreSQL.pool_prompt.getconn()
                 PostgreSQL.pool_prompt.putconn(conn, close=True)  # 강제 종료 후 다시 연결
-            print("Connection pool refreshed")
+            # print("Connection pool refreshed")
         except Exception as e:
             print(f"Connection pool refresh error : {e}")
 

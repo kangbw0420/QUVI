@@ -10,7 +10,8 @@ recommend_api = APIRouter(tags=["recommend"])
 
 # 홈 화면 추천질의 데이터 조회
 @recommend_api.get("/getHome")
-@cache(expire=0, namespace="home_recommend")
+@cache(expire=60*60, namespace="home_recommend")
+# @cache(expire=None, namespace="home_recommend")
 def get_home_recommend():
     """
     홈 화면 내 추천질의 더보기 데이터를 조회합니다.
