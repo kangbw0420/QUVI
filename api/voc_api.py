@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 
 import requests
@@ -7,10 +6,10 @@ from fastapi import APIRouter, HTTPException
 
 from api.dto import VocRequest
 from database.database_service import DatabaseService
+from utils.config import Config
 
 voc_api = APIRouter(tags=["voc"])
 
-load_dotenv()
 
 # VOC 데이터 전체 조회
 @voc_api.post("/getAll")
@@ -140,12 +139,13 @@ def answer_voc(data: VocRequest):
 
 
 def flow_post_task(data: VocRequest):
+    ADMIN_DOMAIN = Config.ADMIN_DOMAIN
+
     try:
         apiURL = "https://api.flow.team/v1/posts/projects/2396558/tasks"
 
         llmURL = ""
         if data.utteranceContents:
-            ADMIN_DOMAIN = os.getenv("ADMIN_DOMAIN")
             if (data.conversationId):
                 llmURL += f"/conversation/{data.conversationId}"
             if (data.chainId):
@@ -185,16 +185,18 @@ def flow_post_task(data: VocRequest):
 
 
 def push_answer(data: VocRequest):
+    DAQUV_API_DOMAIN = Config.DAQUV_API_DOMAIN
+
     try:
         result = DatabaseService.get_voc(data.seq)
         if result:
             result = result[0]
-
-        DAQUV_API_DOMAIN = os.getenv("DAQUV_API_DOMAIN")
+        # print(f"result : {result}")
 
         tokenData = {
             "userId": result['user_id'],
-            "companyId": result['company_id']
+            # "companyId": result['company_id'],
+            "companyId": result['use_intt_id'],
         }
         tokenResponse = requests.post(DAQUV_API_DOMAIN + "/api/v1/auth/generate-token", json=tokenData)
         tokenResponse.raise_for_status()
@@ -217,6 +219,7 @@ def push_answer(data: VocRequest):
             "bodyText4": formattedNow,
             "vocSeq": result['seq'],
             "userId": result['user_id'],
+            "useInttId": result['use_intt_id'],
         }
         print(f"[PUSH] pushData : {pushData}")
 
