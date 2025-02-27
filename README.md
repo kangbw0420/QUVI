@@ -17,8 +17,7 @@ stateDiagram-v2
     
     funk --> params
     params --> executor
-    
-    nl2sql --> END: stock_restricted
+
     nl2sql --> executor
     
     executor --> nodata: no_data = true
