@@ -20,3 +20,6 @@ class Config:
 
     API_URL = os.getenv("API_URL")
     VECTOR_STORE_DOMAIN = os.getenv("VECTOR_STORE_DOMAIN")
+
+    ADMIN_DOMAIN = os.getenv("ADMIN_DOMAIN")
+    DAQUV_API_DOMAIN = os.getenv("DAQUV_API_DOMAIN")

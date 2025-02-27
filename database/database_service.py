@@ -190,7 +190,7 @@ class DatabaseService:
             dataList[collection_name].ids.append(id)
             dataList[collection_name].documents.append(document)
             dataList[collection_name].metadatas.append(metadata)
-            print(f"Data added to {collection_name}: id={id}, document={document}, metadata={metadata}")
+            # print(f"Data added to {collection_name}: id={id}, document={document}, metadata={metadata}")
 
         for collection in dataList:
             data = dataList[collection]

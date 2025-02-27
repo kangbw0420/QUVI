@@ -84,9 +84,9 @@ class EmbeddingAPIClient:
             response = requests.post(url, json=payload)
             response.raise_for_status()  # 오류 발생 시 예외 처리
 
-            print(f"[SUCCESS] Embedding added: {response.json()}")
+            print(f"[SUCCESS] {collection_name} / Embedding added: {response.json()}")
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to add embedding: {e}")
+            print(f"[ERROR] {collection_name} / Failed to add embedding: {e}")
 
 
     def update_embedding(collection_name: str, item_id: str, text: str):

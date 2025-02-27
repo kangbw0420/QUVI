@@ -127,8 +127,7 @@ def get_fewshot(title: str):
 
 
 # Few-shot 전체 데이터 조회
-@data_api.post("/fewshot/getAllRDB")
-# @data_api.get("/fewshot/getAllRDB")
+@data_api.get("/fewshot/getAllRDB")
 def getAllRDB_fewshot():
     """
     RDB 에서 Few-shot 전체 데이터를 조회합니다.
