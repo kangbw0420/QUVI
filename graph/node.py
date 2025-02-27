@@ -116,7 +116,9 @@ async def executor(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     flags = state.get("flags")
-    today_str = today.strftime("%Y%m%d")
+
+    if "safe_count" not in flags:
+        flags["safe_count"] = 0
     
     if selected_table == "api":
         query = state.get("sql_query")
@@ -228,6 +230,8 @@ async def safeguard(state: GraphState) -> GraphState:
     unsafe_query = state["sql_query"]
     sql_error = state.get("sql_error", "")
     flags = state.get("flags")
+    
+    flags["safe_count"] = flags.get("safe_count", 0) + 1
     
     safe_query = await guard_query(trace_id, unsafe_query, user_question, selected_table, flags, today, sql_error)
     

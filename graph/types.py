@@ -7,6 +7,7 @@ class ProcessingFlags(TypedDict):
     future_date: bool
     query_error: bool
     query_changed: bool
+    safe_count: int
     # stock_sec: bool
     # past_date: bool
 

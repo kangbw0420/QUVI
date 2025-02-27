@@ -133,7 +133,7 @@ def make_graph() -> CompiledStateGraph:
                 # 다양한 적요 찾은 이후 그거 한 줄 답변으로 작성하기가 힘듭니다
                 "END" if x["flags"]["note_changed"] else
                 # 위험에 처했거나 가능성이 있는 쿼리는 safeguard로
-                "safeguard" if x["flags"]["query_error"] else
+                "safeguard" if x["flags"]["query_error"] and x["flags"].get("safe_count", 0) < 2 else
                 # 그 외의 경우 respondent로
                 "respondent"
             ),
