@@ -229,7 +229,7 @@ async def safeguard(state: GraphState) -> GraphState:
     sql_error = state.get("sql_error", "")
     flags = state.get("flags")
     
-    safe_query = guard_query(trace_id, unsafe_query, user_question, selected_table, flags, today, sql_error)
+    safe_query = await guard_query(trace_id, unsafe_query, user_question, selected_table, flags, today, sql_error)
     
     if safe_query == unsafe_query:
         flags["query_changed"] = False
