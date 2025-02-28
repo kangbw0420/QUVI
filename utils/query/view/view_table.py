@@ -220,50 +220,52 @@ class ViewTableTransformer:
                 # 서브쿼리만의 날짜 조건 추출
                 conditions = self.date_extractor._extract_date_conditions(node.this)
                 
-                # 서브쿼리에서 날짜 조건이 있는지 확인
-                has_date_condition = any(
-                    condition.column in ['reg_dt', 'trsc_dt'] 
-                    for condition in conditions
-                )
+                # 날짜 컬럼이 trsc_dt 또는 reg_dt인 조건만 확인
+                date_conditions = [
+                    condition for condition in conditions 
+                    if condition.column in ['reg_dt', 'trsc_dt']
+                ]
                 
-                if has_date_condition:
-                    condition = conditions[0]
+                # 초기화
+                subquery_from_date = None
+                subquery_to_date = None
+                
+                if date_conditions:
+                    # 날짜 조건이 있는 경우 사용
+                    condition = date_conditions[0]
                     
                     if condition.operator in ('GT', '>'):
                         # value의 다음날부터 today_str까지
-                        from_date = (datetime.strptime(condition.value, "%Y%m%d") + timedelta(days=1)).strftime("%Y%m%d")
-                        to_date = self.date_extractor.today_str
+                        subquery_from_date = (datetime.strptime(condition.value, "%Y%m%d") + timedelta(days=1)).strftime("%Y%m%d")
+                        subquery_to_date = self.date_extractor.today_str
                     elif condition.operator in ('GTE', '>='):
                         # value부터 today_str까지
-                        from_date = condition.value
-                        to_date = self.date_extractor.today_str
+                        subquery_from_date = condition.value
+                        subquery_to_date = self.date_extractor.today_str
                     elif condition.operator == 'BETWEEN':
-                        from_date = condition.value
-                        to_date = condition.secondary_value
+                        subquery_from_date = condition.value
+                        subquery_to_date = condition.secondary_value
                     elif condition.operator in ('EQ', '='):
-                        from_date = condition.value
-                        to_date = condition.value
+                        subquery_from_date = condition.value
+                        subquery_to_date = condition.value
                     else:
                         # LT, LTE 등 다른 조건들 처리
-                        from_date = "19700101"
-                        to_date = condition.value
+                        subquery_from_date = "19700101"
+                        subquery_to_date = condition.value
 
-                    self.date_ranges[subquery_id] = (from_date, to_date)
+                    self.date_ranges[subquery_id] = (subquery_from_date, subquery_to_date)
                 else:
                     # 서브쿼리에 날짜 조건이 없는 경우, 부모 쿼리의 날짜 범위 사용
-                    parent_query_id = "main"  # 기본값, 서브 쿼리 안에 또 서브 쿼리가 있다면 부모 쿼리 ID를 전달받아야 함
-                    parent_dates = self.date_ranges.get(parent_query_id)
-                    parent_from_date, parent_to_date = parent_dates
-                    self.date_ranges[subquery_id] = (parent_from_date, parent_to_date)
+                    parent_query_id = "main"  # 기본값
+                    parent_dates = self.date_ranges.get(parent_query_id, (self.date_extractor.today_str, self.date_extractor.today_str))
+                    subquery_from_date, subquery_to_date = parent_dates
+                    self.date_ranges[subquery_id] = (subquery_from_date, subquery_to_date)
                 
                 # 미래 날짜 처리
-                if from_date > self.date_extractor.today_str:
+                if subquery_from_date > self.date_extractor.today_str:
                     self.flags["future_date"] = True
-                    from_date = self.date_extractor.today_str
-                    self.date_ranges[subquery_id] = (from_date, to_date)
-                
-                # 서브쿼리 날짜 범위 얻기
-                subquery_from_date, subquery_to_date = self.date_ranges[subquery_id]
+                    subquery_from_date = self.date_extractor.today_str
+                    self.date_ranges[subquery_id] = (subquery_from_date, subquery_to_date)
                 
                 # 서브쿼리 SQL 문자열 가져오기
                 subquery_sql = node.this.sql(dialect='postgres')
