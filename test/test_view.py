@@ -178,14 +178,12 @@ class TestDateExtractor:
             assert date_range.from_date == self.one_month_ago
         assert date_range.to_date == self.today_str
         
-    def test_no_date_conditions_with_due_dt(self):
+    def test_main_case(self):
         # reg_dt 조건은 없고 due_dt 조건만 있는 경우
-        query = f"""
-        SELECT * FROM aicfo_get_all_amt 
-        WHERE due_dt = '{self.yesterday}'
+        query = f"""SELECT bank_nm, acct_dv, acct_no, acct_bal_amt, open_dt, due_dt, intr_rate, acct_bal_upd_dtm FROM AICFO_GET_ALL_AMT WHERE com_nm = '마드라스체크' AND view_dv = '대출' AND curr_cd = 'KRW' AND due_dt BETWEEN '20240101' AND '20241231' AND reg_dt = '20250228'
         """
         from_date, to_date = self.extractor.extract_dates(query)
         
         # due_dt 조건만 있을 때 from_date는 due_dt가 되어야 함
-        assert from_date == self.yesterday
-        assert to_date == self.today_str
+        assert from_date == '20240101'
+        assert to_date == '20250228'

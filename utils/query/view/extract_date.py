@@ -150,7 +150,7 @@ class DateExtractor:
 
     def _determine_date_range(self, date_conditions: List[DateCondition], due_date_conditions: List[DateCondition]) -> DateRange:
         """여러 날짜 조건을 고려하여 날짜 범위 결정"""
-
+        
         # 조건이 없는 경우 오늘 날짜
         if not date_conditions and not due_date_conditions:
             return DateRange(self.today_str, self.today_str, self.date_column)
@@ -161,17 +161,19 @@ class DateExtractor:
         source_column = self.date_column
         is_between = False
         is_single_date = False
-    
+        
+        # 등호 조건을 별도로 저장 (바로 반환하지 않음)
+        eq_condition = None
+        
         # 일반 날짜 조건(reg_dt, trsc_dt)을 처리
         for condition in date_conditions:
             if condition.operator in ('EQ', '='):
-                # 단일 날짜 조건이 발견되면 그 값만 사용
-                return DateRange(
-                    from_date=condition.value,
-                    to_date=condition.value,
-                    source_column=condition.column,
-                    is_single_date=True
-                )
+                # 등호 조건 저장
+                eq_condition = condition
+                from_date = condition.value
+                to_date = condition.value
+                source_column = condition.column
+                is_single_date = True
             elif condition.operator == 'BETWEEN':
                 # BETWEEN 조건은 독립적인 범위로 취급
                 from_date = condition.value
@@ -203,28 +205,29 @@ class DateExtractor:
         
         for condition in due_date_conditions:
             if condition.operator in ('EQ', '='):
-                # 만기일이 특정 날짜인 경우, 그 날짜를 due_from_date로 설정
+                # 만기일이 특정 날짜인 경우
                 due_from_date = condition.value
             elif condition.operator == 'BETWEEN':
-                # 만기일이 범위인 경우, 시작 날짜를 due_from_date로 설정
+                # 만기일이 범위인 경우
                 due_from_date = condition.value
             elif condition.operator in ('GT', '>'):
-                # 만기일이 특정 날짜 이후인 경우, 다음 날짜를 due_from_date로 설정
+                # 만기일이 특정 날짜 이후인 경우
                 due_from_date = self._add_days(condition.value, 1)
             elif condition.operator in ('GTE', '>='):
-                # 만기일이 특정 날짜 이상인 경우, 그 날짜를 due_from_date로 설정
+                # 만기일이 특정 날짜 이상인 경우
                 due_from_date = condition.value
-            elif condition.operator in ('LT', '<'):
-                # due_dt < X 조건은 from_date에 영향을 주지 않음
-                pass
-            elif condition.operator in ('LTE', '<='):
-                # due_dt <= X 조건은 from_date에 영향을 주지 않음
-                pass
         
-        # due_dt 조건이 있고, due_from_date가 일반 from_date보다 앞에 있으면 from_date를 조정
-        if due_date_conditions and due_from_date != "99991231" and due_from_date < from_date:
-            from_date = due_from_date
-            # source_column은 기존 것을 유지 (reg_dt 또는 trsc_dt)
+        # 날짜 조건이 없고 만기일 조건만 있는 경우
+        if not date_conditions and due_date_conditions:
+            if due_from_date != "99991231":
+                from_date = due_from_date
+        # 날짜 조건과 만기일 조건이 모두 있는 경우
+        elif date_conditions and due_date_conditions:
+            # due_from_date가 일반 from_date보다 앞에 있으면 from_date를 조정
+            if due_from_date != "99991231" and due_from_date < from_date:
+                # 등호 조건이 있어도 due_dt가 더 이전이면 from_date를 조정
+                from_date = due_from_date
+                is_single_date = False  # 단일 날짜 조건 해제
         
         return DateRange(from_date, to_date, source_column, is_between, is_single_date)
 
