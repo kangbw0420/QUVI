@@ -55,6 +55,7 @@ class DateExtractor:
             
         except Exception as e:
             print(f"DEBUG: Error in extract_dates: {e}")
+            # 예외 발생 시 기본값 반환
             return self.today_str, self.today_str
 
     def _extract_date_conditions(self, ast: exp.Expression) -> List[DateCondition]:

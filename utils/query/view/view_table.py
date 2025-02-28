@@ -42,34 +42,35 @@ class ViewTableTransformer:
                 - 쿼리 ID별 날짜 범위 정보 (from_date, to_date)
         """
         try:
-            # 쿼리 카운터 초기화
+            # initialize query counter
             self.query_counter = 0
             self.date_ranges = {}
             
-            # 쿼리 파싱
+            # parsing query
             ast = sqlglot.parse_one(query, dialect='postgres')
             
-            # 쿼리 구조 분석
+            # analyze query sturcture
             query_info = self.classifier.classify_query(query)
             print(f"DEBUG: Query Info - has_union: {query_info.has_union}, has_subquery: {query_info.has_subquery}")
             
-            # 쿼리 타입에 따라 처리
             if query_info.has_union:
-                # UNION 쿼리 처리
-                print("DEBUG: Processing UNION query")
                 transformed_ast = self._handle_union_query(ast)
             else:
-                # 일반 쿼리 처리
                 query_id = "main"
                 
                 # 메인 쿼리의 날짜 범위 추출
-                from_date, to_date = self.date_extractor.extract_dates(query)
-                self.date_ranges[query_id] = (from_date, to_date)
-                
-                # 미래 날짜 처리
-                if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
-                    print(f"DEBUG: Future date detected. Today: {self.date_extractor.today_str}, Dates: {from_date}, {to_date}")
-                    self.flags["future_date"] = True
+                date_range = self.date_extractor.extract_dates(query)
+                if isinstance(date_range, tuple) and len(date_range) == 2:
+                    from_date, to_date = date_range
+                    self.date_ranges[query_id] = (from_date, to_date)
+                    
+                    # 미래 날짜 처리
+                    if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
+                        self.flags["future_date"] = True
+                else:
+                    # 날짜 추출 실패 시 기본값 설정
+                    today = self.date_extractor.today_str
+                    self.date_ranges[query_id] = (today, today)
                 
                 # 쿼리 변환
                 transformed_ast = self._handle_single_query(ast, query_id)
@@ -146,23 +147,30 @@ class ViewTableTransformer:
         """
         # 현재 AST 노드에 대해서만 날짜 조건을 추출
         sql_query = ast.sql(dialect='postgres')
-        from_date, to_date = self.date_extractor.extract_dates(sql_query, ast)
-        print(f"DEBUG: Extracted dates for query ID {query_id}: {from_date}, {to_date}")
-        
-        # 날짜 정보 저장
-        self.date_ranges[query_id] = (from_date, to_date)
-        
-        # 미래 날짜 처리
-        if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
-            print(f"DEBUG: Future date in query {query_id}. Today: {self.date_extractor.today_str}, Dates: {from_date}, {to_date}")
-            self.flags["future_date"] = True
-            # 미래 날짜를 현재 날짜로 조정
-            if from_date > self.date_extractor.today_str:
-                from_date = self.date_extractor.today_str
-            if to_date > self.date_extractor.today_str:
-                to_date = self.date_extractor.today_str
+        try:
+            from_date, to_date = self.date_extractor.extract_dates(sql_query, ast)
+            print(f"DEBUG: Extracted dates for query ID {query_id}: {from_date}, {to_date}")
+            
+            # 날짜 정보 저장
             self.date_ranges[query_id] = (from_date, to_date)
-            print(f"DEBUG: Adjusted dates for query ID {query_id}: {from_date}, {to_date}")
+            
+            # 미래 날짜 처리
+            if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
+                print(f"DEBUG: Future date in query {query_id}. Today: {self.date_extractor.today_str}, Dates: {from_date}, {to_date}")
+                self.flags["future_date"] = True
+                # 미래 날짜를 현재 날짜로 조정
+                if from_date > self.date_extractor.today_str:
+                    from_date = self.date_extractor.today_str
+                if to_date > self.date_extractor.today_str:
+                    to_date = self.date_extractor.today_str
+                self.date_ranges[query_id] = (from_date, to_date)
+                print(f"DEBUG: Adjusted dates for query ID {query_id}: {from_date}, {to_date}")
+        except Exception as e:
+            print(f"DEBUG: Error extracting dates in _handle_single_query: {str(e)}")
+            # 날짜 추출 실패 시 기본값 설정
+            today = self.date_extractor.today_str
+            self.date_ranges[query_id] = (today, today)
+            from_date, to_date = today, today
 
         def transform_table(node: exp.Expression) -> exp.Expression:
             """테이블 참조를 뷰 함수 호출로 변환"""
@@ -170,7 +178,7 @@ class ViewTableTransformer:
                 # aicfo_get_all_* 테이블 변환
                 if node.name.startswith('aicfo_get_all_'):
                     # 해당 쿼리 ID의 날짜 정보 사용
-                    from_date, to_date = self.date_ranges.get(query_id, ("", ""))
+                    current_from_date, current_to_date = self.date_ranges.get(query_id, (self.date_extractor.today_str, self.date_extractor.today_str))
                     
                     # 뷰 함수 생성
                     view_func = self._create_view_function(
@@ -179,8 +187,8 @@ class ViewTableTransformer:
                             use_intt_id=self.use_intt_id,
                             user_id=self.user_id,
                             view_com=self.view_com,
-                            from_date=from_date,
-                            to_date=to_date,
+                            from_date=current_from_date,
+                            to_date=current_to_date,
                             alias=node.alias,
                             query_id=query_id
                         )
