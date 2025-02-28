@@ -42,20 +42,14 @@ class DateExtractor:
             
             # 특정 노드 범위가 지정된 경우 해당 노드만 사용
             if node_scope:
-                print("특정 노드 범위 있음")
                 date_conditions = self._extract_date_conditions(node_scope)
                 due_date_conditions = self._extract_due_date_conditions(node_scope)
             else:
                 # 전체 쿼리에서 날짜 조건 추출
-                print("특정 노드 범위 없음. 전체 쿼리 사용")
                 date_conditions = self._extract_date_conditions(ast)
                 due_date_conditions = self._extract_due_date_conditions(ast)
             
-            print(f"DEBUG: 날짜 찾음: {date_conditions}")
-            print(f"DEBUG: due date가 있는가?: {due_date_conditions}")
-            
             date_range = self._determine_date_range(date_conditions, due_date_conditions)
-            print(f"DEBUG: 날짜 범위 결정: {date_range}")
             
             return date_range.from_date, date_range.to_date
             
@@ -67,8 +61,20 @@ class DateExtractor:
         """AST에서 날짜 조건 추출"""
         conditions = []
         date_pattern = re.compile(r"\d{8}|\d{4}-\d{2}-\d{2}")
+        visited_nodes = set()
         
         def extract_from_node(node: exp.Expression):
+            # 이미 방문한 노드는 건너뛰기
+            node_id = id(node)
+            if node_id in visited_nodes:
+                return
+            visited_nodes.add(node_id)
+            
+            # 서브쿼리는 건너뛰기 - 중요!
+            if isinstance(node, exp.Subquery):
+                return
+
+            # extract date condition
             if isinstance(node, exp.Between):
                 if (isinstance(node.this, exp.Column) and
                     (node.this.name == 'reg_dt' or node.this.name == 'trsc_dt')):
@@ -88,6 +94,8 @@ class DateExtractor:
                     value = str(node.expression.this).strip("'")
                     op_name = node.__class__.__name__
                     
+                    print(f"DEBUG: Found date condition - {node.this.name} {op_name} '{value}'")
+                    
                     if date_pattern.match(value):
                         conditions.append(DateCondition(
                             column=node.this.name,
@@ -95,9 +103,17 @@ class DateExtractor:
                             value=value
                         ))
         
-        for node in ast.walk():
-            extract_from_node(node)
-            
+            # 자식 노드 처리
+            for arg_name, arg_value in node.args.items():
+                if isinstance(arg_value, exp.Expression):
+                    extract_from_node(arg_value)
+                elif isinstance(arg_value, list):
+                    for item in arg_value:
+                        if isinstance(item, exp.Expression):
+                            extract_from_node(item)
+        
+        # 루트 노드부터 처리 시작
+        extract_from_node(ast)
         return conditions
 
     def _extract_due_date_conditions(self, ast: exp.Expression) -> List[DateCondition]:
@@ -110,8 +126,6 @@ class DateExtractor:
                     low_value = str(node.args["low"].this).strip("'")
                     high_value = str(node.args["high"].this).strip("'")
                     
-                    print(f"DEBUG: Found BETWEEN condition on due_dt: {low_value} AND {high_value}")
-                    
                     if date_pattern.match(low_value) and date_pattern.match(high_value):
                         conditions.append(DateCondition(
                             column='due_dt',
@@ -123,8 +137,6 @@ class DateExtractor:
                 if (isinstance(node.this, exp.Column) and node.this.name == 'due_dt'):
                     value = str(node.expression.this).strip("'")
                     op_name = node.__class__.__name__
-                    
-                    print(f"DEBUG: Found {op_name} condition on due_dt: {value}")
                     
                     if date_pattern.match(value):
                         conditions.append(DateCondition(
@@ -139,7 +151,7 @@ class DateExtractor:
         return conditions
 
     def _determine_date_range(self, date_conditions: List[DateCondition], due_date_conditions: List[DateCondition]) -> DateRange:
-        """단일 날짜 조건으로부터 날짜 범위 결정"""
+        """여러 날짜 조건을 고려하여 날짜 범위 결정"""
         
         def add_days(date_str: str, days: int) -> str:
             """날짜 문자열에 일수를 더하거나 뺌"""
@@ -155,66 +167,53 @@ class DateExtractor:
         if not date_conditions and not due_date_conditions:
             return DateRange(self.today_str, self.today_str, self.date_column)
 
-        # 첫 번째 date_condition만 사용
-        condition = date_conditions[0] if date_conditions else None
-        if not condition:
-            return DateRange(self.today_str, self.today_str, self.date_column)
+        # 초기 날짜 범위 설정
+        from_date = "19700101"  # 가장 과거
+        to_date = self.today_str  # 현재 날짜
+        source_column = self.date_column
+        is_between = False
+        is_single_date = False
+ 
+        # 모든 조건을 조사하여 from_date와 to_date 업데이트
+        for condition in date_conditions:
+            if condition.operator in ('EQ', '='):
+                # 단일 날짜 조건이 발견되면 그 값만 사용
+                return DateRange(
+                    from_date=condition.value,
+                    to_date=condition.value,
+                    source_column=condition.column,
+                    is_single_date=True
+                )
+            elif condition.operator == 'BETWEEN':
+                # BETWEEN 조건은 독립적인 범위로 취급
+                return DateRange(
+                    from_date=condition.value,
+                    to_date=condition.secondary_value,
+                    source_column=condition.column,
+                    is_between=True
+                )
+            elif condition.operator in ('GT', '>'):
+                # 다음 날부터 시작하는 조건
+                next_day = add_days(condition.value, 1)
+                if next_day > from_date:
+                    from_date = next_day
+                    source_column = condition.column
+            elif condition.operator in ('GTE', '>='):
+                if condition.value > from_date:
+                    from_date = condition.value
+                    source_column = condition.column
+                    print(f"DEBUG: Updated from_date to {from_date}")
+            elif condition.operator in ('LT', '<'):
+                prev_day = add_days(condition.value, -1)
+                if prev_day < to_date:
+                    to_date = prev_day
+                    source_column = condition.column
+            elif condition.operator in ('LTE', '<='):
+                if condition.value < to_date:
+                    to_date = condition.value
+                    source_column = condition.column
 
-        # 조건 유형에 따라 날짜 범위 결정
-        if condition.operator in ('EQ', '='):
-            # 단일 날짜면 시작과 끝 날짜 모두 같은 값
-            return DateRange(
-                from_date=condition.value,
-                to_date=condition.value,
-                source_column=condition.column,
-                is_single_date=True
-            )
-            
-        elif condition.operator == 'BETWEEN':
-            # BETWEEN은 value와 secondary_value 사용
-            return DateRange(
-                from_date=condition.value,
-                to_date=condition.secondary_value,
-                source_column=condition.column,
-                is_between=True
-            )
-            
-        elif condition.operator in ('GT', '>'):
-            # 다음 날부터 오늘까지
-            from_date = add_days(condition.value, 1)
-            return DateRange(
-                from_date=from_date,
-                to_date=self.today_str,
-                source_column=condition.column
-            )
-            
-        elif condition.operator in ('GTE', '>='):
-            # 해당 날짜부터 오늘까지
-            return DateRange(
-                from_date=condition.value,
-                to_date=self.today_str,
-                source_column=condition.column
-            )
-            
-        elif condition.operator in ('LT', '<'):
-            # 처음부터 전날까지
-            to_date = add_days(condition.value, -1)
-            return DateRange(
-                from_date="19700101",
-                to_date=to_date,
-                source_column=condition.column
-            )
-            
-        elif condition.operator in ('LTE', '<='):
-            # 처음부터 해당 날짜까지
-            return DateRange(
-                from_date="19700101",
-                to_date=condition.value,
-                source_column=condition.column
-            )
-            
-        # 기본값은 오늘 날짜
-        return DateRange(self.today_str, self.today_str, self.date_column)
+        return DateRange(from_date, to_date, source_column, is_between, is_single_date)
 
     def _add_days(self, date_str: str, days: int) -> str:
         """날짜 문자열에 일수를 더하거나 뺌"""

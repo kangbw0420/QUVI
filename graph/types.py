@@ -27,7 +27,7 @@ class GraphState(TypedDict):
     selected_api: str
     sql_query: str
     sql_error: str
-    column_list: List[str] # debug: 회사 내려오는 방식 변경되면 수정
+    column_list: List[str]
     date_info: Tuple[str, str]
     query_result: dict
     final_answer: str

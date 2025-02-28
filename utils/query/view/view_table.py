@@ -61,11 +61,9 @@ class ViewTableTransformer:
             else:
                 # 일반 쿼리 처리
                 query_id = "main"
-                print(f"DEBUG: Processing regular query with ID: {query_id}")
                 
                 # 메인 쿼리의 날짜 범위 추출
                 from_date, to_date = self.date_extractor.extract_dates(query)
-                print(f"DEBUG: Main query date range: {from_date}, {to_date}")
                 self.date_ranges[query_id] = (from_date, to_date)
                 
                 # 미래 날짜 처리
@@ -173,7 +171,6 @@ class ViewTableTransformer:
                 if node.name.startswith('aicfo_get_all_'):
                     # 해당 쿼리 ID의 날짜 정보 사용
                     from_date, to_date = self.date_ranges.get(query_id, ("", ""))
-                    print(f"DEBUG: Creating view function for table {node.name} with dates: {from_date}, {to_date}")
                     
                     # 뷰 함수 생성
                     view_func = self._create_view_function(
@@ -197,7 +194,6 @@ class ViewTableTransformer:
         
         # 서브쿼리 처리 (테이블 참조 변환 후)
         if self.classifier.has_subquery(ast.sql(dialect='postgres')):
-            print(f"DEBUG: Query {query_id} has subqueries, processing them")
             transformed_ast = self._handle_subqueries(transformed_ast)
         
         return transformed_ast
@@ -215,14 +211,12 @@ class ViewTableTransformer:
                 
                 # 서브쿼리만의 날짜 조건 추출
                 conditions = self.date_extractor._extract_date_conditions(node.this)
-                print(f"DEBUG: 서브쿼리 조건임!! {subquery_id}: {conditions}")
                 
                 # 서브쿼리에서 날짜 조건이 있는지 확인
                 has_date_condition = any(
                     condition.column in ['reg_dt', 'trsc_dt'] 
                     for condition in conditions
                 )
-                print(has_date_condition)
                 
                 if has_date_condition:
                     condition = conditions[0]
@@ -256,14 +250,12 @@ class ViewTableTransformer:
                 
                 # 미래 날짜 처리
                 if from_date > self.date_extractor.today_str:
-                    print(f"DEBUG: Future date in subquery. Today: {self.date_extractor.today_str}, from_date: {from_date}")
                     self.flags["future_date"] = True
                     from_date = self.date_extractor.today_str
                     self.date_ranges[subquery_id] = (from_date, to_date)
                 
                 # 서브쿼리 날짜 범위 얻기
                 subquery_from_date, subquery_to_date = self.date_ranges[subquery_id]
-                print(f"맞죠??? {subquery_from_date, subquery_to_date}")
                 
                 # 서브쿼리 SQL 문자열 가져오기
                 subquery_sql = node.this.sql(dialect='postgres')
@@ -277,7 +269,6 @@ class ViewTableTransformer:
                 modified_sql = re.sub(pattern, replacement, subquery_sql)
                 
                 if modified_sql != subquery_sql:
-                    print(f"DEBUG: Modified subquery SQL: {modified_sql}")
                     try:
                         # 수정된 SQL 파싱해서 새 서브쿼리 생성
                         modified_subquery = sqlglot.parse_one(modified_sql, dialect='postgres')

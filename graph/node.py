@@ -98,8 +98,6 @@ async def nl2sql(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
-    
-    # debug: 회사 내려오는 방식 변경되면 수정
     company_id = state["company_id"]
 
     sql_query = await create_sql(trace_id, selected_table, company_id, user_question, today)
@@ -126,6 +124,7 @@ async def executor(state: GraphState) -> GraphState:
         print(query)
         try:
             result = execute(query)
+            state.update({"sql_query": query})
             if result:
                 column_list = extract_col_from_dict(result)
             else:
@@ -169,6 +168,7 @@ async def executor(state: GraphState) -> GraphState:
             print(query)
 
             result = execute(query)
+            state.update({"sql_query": query})
 
             # If no results found and it's a trsc query, try vector search for note1
             if not result and selected_table == 'trsc':
@@ -200,6 +200,7 @@ async def executor(state: GraphState) -> GraphState:
                     print("Retrying with modified note1 conditions:")
                     print(modified_query)
                     result = execute(modified_query)
+                    state.update({"sql_query": modified_query})
                     result = final_format(result, selected_table)
             
             state.update({"date_info": view_dates["main"]})
@@ -207,6 +208,7 @@ async def executor(state: GraphState) -> GraphState:
         except Exception as e:
             logger.error(f"Error in view table processing: {str(e)}")
             result = execute(query_ordered)
+            state.update({"sql_query": query_ordered})
 
     # 결과가 없는 경우 처리
     if not result:
