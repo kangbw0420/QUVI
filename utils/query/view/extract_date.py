@@ -150,16 +150,6 @@ class DateExtractor:
 
     def _determine_date_range(self, date_conditions: List[DateCondition], due_date_conditions: List[DateCondition]) -> DateRange:
         """여러 날짜 조건을 고려하여 날짜 범위 결정"""
-        
-        def add_days(date_str: str, days: int) -> str:
-            """날짜 문자열에 일수를 더하거나 뺌"""
-            try:
-                date_obj = datetime.strptime(date_str, "%Y%m%d")
-                new_date = date_obj + timedelta(days=days)
-                return new_date.strftime("%Y%m%d")
-            except Exception as e:
-                print(f"Error adding days to date: {e}")
-                return date_str
 
         # 조건이 없는 경우 오늘 날짜
         if not date_conditions and not due_date_conditions:
@@ -171,8 +161,8 @@ class DateExtractor:
         source_column = self.date_column
         is_between = False
         is_single_date = False
- 
-        # 모든 조건을 조사하여 from_date와 to_date 업데이트
+    
+        # 일반 날짜 조건(reg_dt, trsc_dt)을 처리
         for condition in date_conditions:
             if condition.operator in ('EQ', '='):
                 # 단일 날짜 조건이 발견되면 그 값만 사용
@@ -184,15 +174,13 @@ class DateExtractor:
                 )
             elif condition.operator == 'BETWEEN':
                 # BETWEEN 조건은 독립적인 범위로 취급
-                return DateRange(
-                    from_date=condition.value,
-                    to_date=condition.secondary_value,
-                    source_column=condition.column,
-                    is_between=True
-                )
+                from_date = condition.value
+                to_date = condition.secondary_value
+                source_column = condition.column
+                is_between = True
             elif condition.operator in ('GT', '>'):
                 # 다음 날부터 시작하는 조건
-                next_day = add_days(condition.value, 1)
+                next_day = self._add_days(condition.value, 1)
                 if next_day > from_date:
                     from_date = next_day
                     source_column = condition.column
@@ -201,7 +189,7 @@ class DateExtractor:
                     from_date = condition.value
                     source_column = condition.column
             elif condition.operator in ('LT', '<'):
-                prev_day = add_days(condition.value, -1)
+                prev_day = self._add_days(condition.value, -1)
                 if prev_day < to_date:
                     to_date = prev_day
                     source_column = condition.column
@@ -209,7 +197,35 @@ class DateExtractor:
                 if condition.value < to_date:
                     to_date = condition.value
                     source_column = condition.column
-
+        
+        # due_dt 조건 처리
+        due_from_date = "99991231"  # 가장 먼 미래
+        
+        for condition in due_date_conditions:
+            if condition.operator in ('EQ', '='):
+                # 만기일이 특정 날짜인 경우, 그 날짜를 due_from_date로 설정
+                due_from_date = condition.value
+            elif condition.operator == 'BETWEEN':
+                # 만기일이 범위인 경우, 시작 날짜를 due_from_date로 설정
+                due_from_date = condition.value
+            elif condition.operator in ('GT', '>'):
+                # 만기일이 특정 날짜 이후인 경우, 다음 날짜를 due_from_date로 설정
+                due_from_date = self._add_days(condition.value, 1)
+            elif condition.operator in ('GTE', '>='):
+                # 만기일이 특정 날짜 이상인 경우, 그 날짜를 due_from_date로 설정
+                due_from_date = condition.value
+            elif condition.operator in ('LT', '<'):
+                # due_dt < X 조건은 from_date에 영향을 주지 않음
+                pass
+            elif condition.operator in ('LTE', '<='):
+                # due_dt <= X 조건은 from_date에 영향을 주지 않음
+                pass
+        
+        # due_dt 조건이 있고, due_from_date가 일반 from_date보다 앞에 있으면 from_date를 조정
+        if due_date_conditions and due_from_date != "99991231" and due_from_date < from_date:
+            from_date = due_from_date
+            # source_column은 기존 것을 유지 (reg_dt 또는 trsc_dt)
+        
         return DateRange(from_date, to_date, source_column, is_between, is_single_date)
 
     def _add_days(self, date_str: str, days: int) -> str:
