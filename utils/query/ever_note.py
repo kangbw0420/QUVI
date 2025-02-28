@@ -82,13 +82,11 @@ async def ever_note(query: str) -> Dict[str, Any]:
         
         # Extract original note values
         original_notes = [condition['value'] for condition in note_conditions]
-        logger.info(f"Found {len(note_conditions)} note1 conditions with {len(set(original_notes))} unique values: {original_notes}")
         
         # Step 2: Create and execute query to get all available notes
         use_intt_id, user_id, company, from_date, to_date = params
         note_query = f"SELECT * FROM aicfo_get_all_note('{use_intt_id}', '{user_id}', '{company}', '{from_date}', '{to_date}')"
         
-        logger.info(f"Executing note query: {note_query}")
         try:
             note_results = execute(note_query)
             # 쿼리 실행 결과 리스트로 바꾸기
@@ -115,25 +113,17 @@ async def ever_note(query: str) -> Dict[str, Any]:
                 note_to_similar[original_note] = similar_notes
                 # all_similar_notes는 respondent가 쓰기 위해 저장
                 all_similar_notes.update(similar_notes)
-                logger.info(f"Found {len(similar_notes)} similar notes for '{original_note}': {similar_notes}")
             
             # Step 4: Replace note1 conditions with OR conditions
             for i, condition in enumerate(note_conditions):
                 original_note = condition['value']
                 similar_notes = note_to_similar.get(original_note, [])
                 
-                # DEBUG: Print condition details
-                logger.info(f"DEBUG - Processing condition {i+1}/{len(note_conditions)}: {condition['type']} on value '{original_note}'")
-                logger.info(f"DEBUG - Similar notes for this condition: {similar_notes}")
-                
                 if not similar_notes:
-                    # No similar notes found, keep original condition
-                    logger.info(f"DEBUG - No similar notes found for '{original_note}', keeping original condition")
                     continue
                 
                 # Create a new condition with OR for all similar notes
                 original_column = condition['node'].this
-                logger.info(f"DEBUG - Original column: {original_column}")
                 
                 # Create ILIKE conditions for each similar note
                 or_conditions = []
@@ -144,48 +134,35 @@ async def ever_note(query: str) -> Dict[str, Any]:
                         expression=exp.Literal.string(f"%{similar_note}%")
                     )
                     or_conditions.append(ilike_expr)
-                    logger.info(f"DEBUG - Created ILIKE condition for '{similar_note}'")
                 
                 # Combine all conditions with OR
                 if len(or_conditions) == 1:
                     new_expr = or_conditions[0]
-                    logger.info(f"DEBUG - Only one similar note, using single ILIKE expression")
                 else:
                     # Create a chain of OR expressions
                     new_expr = or_conditions[0]
                     for i in range(1, len(or_conditions)):
                         new_expr = exp.Or(this=new_expr, expression=or_conditions[i])
-                    logger.info(f"DEBUG - Created OR chain with {len(or_conditions)} conditions")
                 
                 # Wrap OR conditions in parentheses to maintain precedence
                 new_expr = exp.Paren(this=new_expr)
                 
-                # DEBUG: Print node details before replacement
-                logger.info(f"DEBUG - Original node before replacement: {condition['node']}")
-                logger.info(f"DEBUG - New expression: {new_expr}")
-                
                 try:
-                    # Replace the old condition with the OR chain
                     replaced = condition['node'].replace(new_expr)
-                    logger.info(f"DEBUG - Replacement result: {replaced}")
+                    logger.info(f"Replacement result: {replaced}")
                 except Exception as replace_error:
-                    logger.error(f"DEBUG - Error during node replacement: {replace_error}")
+                    logger.error(f"Error during node replacement: {replace_error}")
             
             # Generate modified SQL query
-            try:
-                # DEBUG: Print AST structure before SQL generation
-                logger.info(f"DEBUG - AST before SQL generation: {ast}")
-                
+            try:                
                 modified_query = ast.sql(dialect='postgres')
-                logger.info(f"DEBUG - Successfully generated modified SQL: {modified_query}")
             except Exception as sql_error:
-                logger.error(f"DEBUG - Error generating SQL from modified AST: {sql_error}")
                 return {"query": query, "origin_note": list(set(original_notes)), "vector_notes": list(all_similar_notes)}
             
             # 최종 결과에는 고유한 노트값만 반환
             return {
                 "query": modified_query,
-                "origin_note": list(set(original_notes)),  # 중복 제거
+                "origin_note": list(set(original_notes)),
                 "vector_notes": list(all_similar_notes)
             }
             

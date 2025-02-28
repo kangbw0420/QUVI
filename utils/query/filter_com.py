@@ -1,12 +1,7 @@
 import re
 
 def normalize_query(query: str) -> str:
-    """SQL 쿼리의 포맷을 표준화
-    
-    - 여러 줄의 공백을 한 줄로
-    - 줄 시작과 끝의 공백 제거
-    - 괄호 앞뒤 공백 표준화
-    """
+    """SQL 쿼리의 포맷을 표준화"""
     # 여러 줄의 공백을 한 줄로
     query = re.sub(r'\s+', ' ', query)
     # 괄호 주위 공백 정리

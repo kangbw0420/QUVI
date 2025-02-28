@@ -120,8 +120,6 @@ async def executor(state: GraphState) -> GraphState:
     
     if selected_table == "api":
         query = state.get("sql_query")
-        print("#" * 80)
-        print(query)
         try:
             result = execute(query)
             state.update({"sql_query": query})
@@ -164,9 +162,6 @@ async def executor(state: GraphState) -> GraphState:
                 user_question = state["user_question"]
                 state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
 
-            print("#" * 80)
-            print(query)
-
             result = execute(query)
             state.update({"sql_query": query})
 
@@ -197,8 +192,6 @@ async def executor(state: GraphState) -> GraphState:
                 
                 # Try executing the modified query if available
                 if modified_query and modified_query != query:
-                    print("Retrying with modified note1 conditions:")
-                    print(modified_query)
                     result = execute(modified_query)
                     state.update({"sql_query": modified_query})
                     result = final_format(result, selected_table)

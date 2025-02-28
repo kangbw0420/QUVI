@@ -5,8 +5,8 @@ from pydantic import BaseModel
 
 class Input(BaseModel):
     user_question: str
-    user_id: str = 'daquv03'
-    session_id: str = 'default_session'
+    user_id: str
+    session_id: str
     use_intt_id: str
     company_id: str
 

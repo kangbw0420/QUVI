@@ -3,30 +3,20 @@ from typing import List, Dict, Any
 import re
 
 def extract_col_from_query(query: str) -> List[str]:
-    """
-    SELECT절에서 컬럼명을 추출하며 복잡한 표현식과 별칭을 올바르게 처리
-    
-    Args:
-        query: SQL 쿼리 문자열
-        
+    """SELECT절에서 컬럼명을 추출하며 복잡한 표현식과 별칭을 올바르게 처리
     Returns:
         List[str]: 추출된 컬럼명 리스트 (별칭이 있으면 별칭 사용)
     """
-    # 쿼리 파싱
     try:
-        # 주석 제거를 포함한 파싱
         parsed = sqlparse.parse(query)[0]
     except (IndexError, TypeError):
         return []
     
-    # SELECT 문 확인
     if not parsed.get_type() == 'SELECT':
         return []
     
-    # SELECT 절에서 명시적인 컬럼 식별
     columns = []
     
-    # SELECT 문 추출
     select_stmt = None
     for token in parsed.tokens:
         if token.ttype is None and isinstance(token, sqlparse.sql.IdentifierList):
@@ -37,22 +27,20 @@ def extract_col_from_query(query: str) -> List[str]:
         elif token.is_keyword and token.value.upper() == 'FROM':
             break
     
-    # SELECT 문이 없으면 빈 리스트 반환
     if not select_stmt:
-        # SELECT * FROM 패턴 체크
+        # SELECT * FROM pattern check
         for token in parsed.tokens:
             if token.value == '*':
                 return ['*']
         
-        # 대안적인 방법: 정규식으로 SELECT 절 분석
+        # alternative: use regex
         return extract_columns_with_regex(query)
     
-    # IdentifierList에서 컬럼 추출
+    # extract column from IdentifierList
     for token in select_stmt.tokens:
         if token.ttype is sqlparse.tokens.Punctuation:  # 쉼표 건너뛰기
             continue
             
-        # 컬럼 및 별칭 추출
         column_name = extract_column_name(token)
         if column_name:
             columns.append(column_name)
@@ -139,13 +127,8 @@ def extract_columns_with_regex(query: str) -> List[str]:
     return columns
 
 def split_column_expressions(select_text: str) -> List[str]:
-    """
-    SELECT 절의 컬럼 표현식을 올바르게 분리합니다.
+    """SELECT 절의 컬럼 표현식을 올바르게 분리합니다.
     중첩된 함수와 괄호를 고려합니다.
-    
-    Args:
-        select_text: SELECT 절의 컬럼 부분 텍스트
-        
     Returns:
         List[str]: 분리된 컬럼 표현식 리스트
     """
@@ -183,15 +166,9 @@ def split_column_expressions(select_text: str) -> List[str]:
     return expressions
 
 def extract_col_from_dict(result: List[Dict[str, Any]]) -> List[str]:
-    """
-    데이터프레임 형태의 쿼리 결과에서 컬럼명(키)을 추출합니다.
-    
-    Args:
-        result: SQL 쿼리 실행 결과 리스트
-        
+    """데이터프레임 형태의 쿼리 결과에서 컬럼명(키)을 추출합니다.
     Returns:
-        List[str]: 추출된 컬럼명 리스트
-        
+        List[str]: 추출된 컬럼명 리스트        
     Raises:
         ValueError: result가 비어있거나 유효하지 않은 형식인 경우
     """

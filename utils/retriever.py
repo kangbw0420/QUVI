@@ -10,7 +10,6 @@ from utils.logger import setup_logger
 
 load_dotenv()
 
-# 모듈별 로거 설정
 logger = setup_logger('retriever')
 
 class FewShotRetriever:
@@ -35,7 +34,6 @@ class FewShotRetriever:
                 }
 
                 start_time = time.time()
-                logger.debug(f"Request payload: {json.dumps(request_payload, ensure_ascii=False, indent=2)}")
                                 
                 response = await client.post(
                     f"{self.base_url}/query",

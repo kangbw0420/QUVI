@@ -4,12 +4,14 @@ from urllib.parse import quote_plus
 
 from utils.config import Config
 from database.postgresql import query_execute
+from utils.logger import setup_logger
+
+logger = setup_logger('chain_manager')
 
 class ChainManager:
 
     def create_chain(conversation_id: str, user_question: str) -> str:
-        """
-        새로운 체인을 생성하고 초기 상태를 기록
+        """새로운 체인을 생성하고 초기 상태를 기록
         Returns:
             str: 생성된 chain_id
         """
@@ -39,12 +41,11 @@ class ChainManager:
             return chain_id
 
         except Exception as e:
-            print(f"Error in create_chain: {str(e)}")
+            logger.error(f"Error in create_chain: {str(e)}")
             raise
 
     def complete_chain(chain_id: str, final_answer: str) -> bool:
-        """
-        체인 완료 시 답변과 종료 시간을 기록
+        """체인 완료 시 답변과 종료 시간을 기록
         Returns:
             bool: 성공 여부
         """
@@ -65,12 +66,11 @@ class ChainManager:
             return query_execute(query, params, use_prompt_db=True)
 
         except Exception as e:
-            print(f"Error in complete_chain: {str(e)}")
+            logger.error(f"Error in complete_chain: {str(e)}")
             raise
 
     def mark_chain_error(chain_id: str, error_message: str) -> bool:
-        """
-        체인 실행 중 오류 발생 시 상태를 error로 변경
+        """체인 실행 중 오류 발생 시 상태를 error로 변경
         Returns:
             bool: 성공 여부
         """
@@ -100,5 +100,5 @@ class ChainManager:
             return True
 
         except Exception as e:
-            print(f"Error in mark_chain_error: {str(e)}")
+            logger.error(f"Error in mark_chain_error: {str(e)}")
             raise

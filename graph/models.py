@@ -29,7 +29,6 @@ class CustomChatLLM(BaseLLM, BaseModel):
             "temperature": self.temperature,
         }
 
-        # print("API Payload:", json.dumps(payload, indent=2))
         try:
             response = requests.post(self.api_url, json=payload)
             response.raise_for_status()

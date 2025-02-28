@@ -3,6 +3,9 @@ from typing import Dict, Any, Optional
 from decimal import Decimal
 
 from database.postgresql import query_execute
+from utils.logger import setup_logger
+
+logger = setup_logger('state_manager')
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -67,7 +70,7 @@ class StateManager:
             return query_execute(insert_query, params, use_prompt_db=True)
 
         except Exception as e:
-            print(f"\nError in update_state: {str(e)}")
+            logger.error(f"Error in update_state: {str(e)}")
             raise
 
     @staticmethod
@@ -93,7 +96,7 @@ class StateManager:
         result = query_execute(query, {'trace_id': trace_id}, use_prompt_db=True)
         
         if not result or not isinstance(result, list) or len(result) == 0:
-            print("No previous state found")
+            logger.error("No previous state found")
             return None
 
         state_dict = result[0]
@@ -104,7 +107,7 @@ class StateManager:
                 try:
                     state_dict[key] = json.loads(state_dict[key])
                 except json.JSONDecodeError:
-                    print(f"Warning: Could not parse JSON for {key}")
+                    logger.error(f"Warning: Could not parse JSON for {key}")
 
         # id 필드 제거 (새로운 row 생성 시 사용하지 않음)
         state_dict.pop('id', None)

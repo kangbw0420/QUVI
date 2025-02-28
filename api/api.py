@@ -104,9 +104,8 @@ async def process_input(request: Input) -> Output:
                 "chain_id": chain_id,
                 "recommend": recommend_list,
                 "is_api": selected_table == "api",
-                # "is_muryo": flags["stock_sec"] == True or flags["past_date"] == True,
                 "date_info": date_info,
-                "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, 프로덕션 제거)
+                "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, debug)
             }
         )
         
@@ -120,7 +119,7 @@ async def process_input(request: Input) -> Output:
             try:
                 ChainManager.mark_chain_error(chain_id, str(e))
             except Exception as chain_error:
-                print(f"Error marking chain error: {str(chain_error)}")
+                logger.error(f"Error marking chain error: {str(chain_error)}")
 
         # error_detail = str(e)
         # raise HTTPException(status_code=500, detail=f"Error processing input: {error_detail}")

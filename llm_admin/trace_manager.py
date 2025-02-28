@@ -5,15 +5,14 @@ from urllib.parse import quote_plus
 
 from utils.config import Config
 from database.postgresql import query_execute
+from utils.logger import setup_logger
+
+logger = setup_logger('trace_manager')
 
 class TraceManager:
 
     def create_trace(chain_id: str, node_type: str) -> str:
-        """
-        노드 실행 시작 시 trace 기록 생성
-        Args:
-            chain_id: 연관된 체인 ID
-            node_type: 노드 타입
+        """노드 실행 시작 시 trace 기록 생성
         Returns:
             str: 생성된 trace_id
         """
@@ -43,17 +42,11 @@ class TraceManager:
             return trace_id
 
         except Exception as e:
-            print(f"Error in create_trace: {str(e)}")
+            logger.error(f"Error in create_trace: {str(e)}")
             raise
 
     def complete_trace(trace_id: str) -> bool:
-        """
-        노드 실행 완료 시 trace 상태 업데이트
-        Args:
-            trace_id: 대상 trace ID
-        Returns:
-            bool: 성공 여부
-        """
+        """노드 실행 완료 시 trace 상태 업데이트"""
         try:
             query = """
                 UPDATE trace 
@@ -66,14 +59,11 @@ class TraceManager:
             return query_execute(query, {'trace_id': trace_id}, use_prompt_db=True)
 
         except Exception as e:
-            print(f"Error in complete_trace: {str(e)}")
+            logger.error(f"Error in complete_trace: {str(e)}")
             raise
 
     def mark_trace_error(trace_id: str) -> bool:
-        """
-        trace 상태를 error로 변경하고 종료 시간 기록
-        Args:
-            trace_id: 대상 trace ID
+        """trace 상태를 error로 변경하고 종료 시간 기록
         Returns:
             bool: 성공 여부
         """
@@ -101,5 +91,5 @@ class TraceManager:
             return True
 
         except Exception as e:
-            print(f"Error in mark_trace_error: {str(e)}")
+            logger.error(f"Error in mark_trace_error: {str(e)}")
             raise

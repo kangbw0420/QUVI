@@ -51,7 +51,6 @@ class ViewTableTransformer:
             
             # analyze query sturcture
             query_info = self.classifier.classify_query(query)
-            print(f"DEBUG: Query Info - has_union: {query_info.has_union}, has_subquery: {query_info.has_subquery}")
             
             if query_info.has_union:
                 transformed_ast = self._handle_union_query(ast)
@@ -77,20 +76,18 @@ class ViewTableTransformer:
             
             # 변환된 SQL 문자열
             transformed_sql = transformed_ast.sql(dialect='postgres')
-            print(f"DEBUG: Date ranges after transformation: {self.date_ranges}")
-            print(f"DEBUG: Transformed Query: {transformed_sql}")
             
             # 변환된 SQL과 날짜 정보 반환
             return transformed_sql, self.date_ranges
             
         except ParseError as e:
-            print(f"DEBUG: Parse error: {e}")
+            print(f"Parse error: {e}")
             # 파싱 실패 시 원본 쿼리와 기본 날짜 정보 반환
             today = self.date_extractor.today_str
             self.date_ranges["main"] = (today, today)
             return query, self.date_ranges
         except Exception as e:
-            print(f"DEBUG: Unexpected error: {e}")
+            print(f"Unexpected error: {e}")
             # 기타 오류 처리
             today = self.date_extractor.today_str
             self.date_ranges["main"] = (today, today)
@@ -109,17 +106,13 @@ class ViewTableTransformer:
         
         # 왼쪽 부분쿼리 처리
         left_query = ast.left.sql(dialect='postgres')
-        print(f"DEBUG: Processing left union part: {left_query}")
         left_dates = self.date_extractor.extract_dates(left_query)
-        print(f"DEBUG: Left union dates: {left_dates}")
         self.date_ranges[left_id] = left_dates
         transformed_left = self._handle_single_query(ast.left, left_id)
         
         # 오른쪽 부분쿼리 처리
         right_query = ast.right.sql(dialect='postgres')
-        print(f"DEBUG: Processing right union part: {right_query}")
         right_dates = self.date_extractor.extract_dates(right_query)
-        print(f"DEBUG: Right union dates: {right_dates}")
         self.date_ranges[right_id] = right_dates
         transformed_right = self._handle_single_query(ast.right, right_id)
         
@@ -127,7 +120,6 @@ class ViewTableTransformer:
         for date_range in [left_dates, right_dates]:
             from_date, to_date = date_range
             if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
-                print(f"DEBUG: Future date in union. Today: {self.date_extractor.today_str}, Dates: {from_date}, {to_date}")
                 self.flags["future_date"] = True
         
         # 변환된 UNION 반환
@@ -149,24 +141,21 @@ class ViewTableTransformer:
         sql_query = ast.sql(dialect='postgres')
         try:
             from_date, to_date = self.date_extractor.extract_dates(sql_query, ast)
-            print(f"DEBUG: Extracted dates for query ID {query_id}: {from_date}, {to_date}")
             
             # 날짜 정보 저장
             self.date_ranges[query_id] = (from_date, to_date)
             
             # 미래 날짜 처리
             if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
-                print(f"DEBUG: Future date in query {query_id}. Today: {self.date_extractor.today_str}, Dates: {from_date}, {to_date}")
                 self.flags["future_date"] = True
-                # 미래 날짜를 현재 날짜로 조정
                 if from_date > self.date_extractor.today_str:
                     from_date = self.date_extractor.today_str
                 if to_date > self.date_extractor.today_str:
                     to_date = self.date_extractor.today_str
                 self.date_ranges[query_id] = (from_date, to_date)
-                print(f"DEBUG: Adjusted dates for query ID {query_id}: {from_date}, {to_date}")
+
         except Exception as e:
-            print(f"DEBUG: Error extracting dates in _handle_single_query: {str(e)}")
+            print(f"Error extracting dates in _handle_single_query: {str(e)}")
             # 날짜 추출 실패 시 기본값 설정
             today = self.date_extractor.today_str
             self.date_ranges[query_id] = (today, today)
@@ -175,12 +164,10 @@ class ViewTableTransformer:
         def transform_table(node: exp.Expression) -> exp.Expression:
             """테이블 참조를 뷰 함수 호출로 변환"""
             if isinstance(node, exp.Table):
-                # aicfo_get_all_* 테이블 변환
                 if node.name.startswith('aicfo_get_all_'):
                     # 해당 쿼리 ID의 날짜 정보 사용
                     current_from_date, current_to_date = self.date_ranges.get(query_id, (self.date_extractor.today_str, self.date_extractor.today_str))
-                    
-                    # 뷰 함수 생성
+
                     view_func = self._create_view_function(
                         ViewFunction(
                             base_name=node.name,
@@ -284,7 +271,7 @@ class ViewTableTransformer:
                         modified_subquery = sqlglot.parse_one(modified_sql, dialect='postgres')
                         return exp.Subquery(this=modified_subquery)
                     except Exception as e:
-                        print(f"DEBUG: Error parsing modified SQL: {e}")
+                        print(f"Error parsing modified SQL: {e}")
                 
                 # 기존 방식으로도 시도
                 return node

@@ -27,7 +27,6 @@ class DateExtractor:
         self.date_column = 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
         self.today = datetime.now()
         self.today_str = self.today.strftime("%Y%m%d")
-        print(f"DEBUG: DateExtractor!!!!! with date_column={self.date_column}, today={self.today_str}")
 
     def extract_dates(self, query: str, node_scope=None) -> Tuple[str, str]:
         """쿼리에서 날짜 범위를 추출하고 검증, node_scope 매개변수 추가
@@ -54,7 +53,7 @@ class DateExtractor:
             return date_range.from_date, date_range.to_date
             
         except Exception as e:
-            print(f"DEBUG: Error in extract_dates: {e}")
+            print(f"Error in extract_dates: {e}")
             # 예외 발생 시 기본값 반환
             return self.today_str, self.today_str
 
@@ -94,8 +93,6 @@ class DateExtractor:
                     (node.this.name == 'reg_dt' or node.this.name == 'trsc_dt')):
                     value = str(node.expression.this).strip("'")
                     op_name = node.__class__.__name__
-                    
-                    print(f"DEBUG: Found date condition - {node.this.name} {op_name} '{value}'")
                     
                     if date_pattern.match(value):
                         conditions.append(DateCondition(
@@ -161,7 +158,7 @@ class DateExtractor:
                 new_date = date_obj + timedelta(days=days)
                 return new_date.strftime("%Y%m%d")
             except Exception as e:
-                print(f"DEBUG: Error adding days to date: {e}")
+                print(f"Error adding days to date: {e}")
                 return date_str
 
         # 조건이 없는 경우 오늘 날짜
@@ -203,7 +200,6 @@ class DateExtractor:
                 if condition.value > from_date:
                     from_date = condition.value
                     source_column = condition.column
-                    print(f"DEBUG: Updated from_date to {from_date}")
             elif condition.operator in ('LT', '<'):
                 prev_day = add_days(condition.value, -1)
                 if prev_day < to_date:
@@ -223,7 +219,7 @@ class DateExtractor:
             new_date = date_obj + timedelta(days=days)
             return new_date.strftime("%Y%m%d")
         except Exception as e:
-            print(f"DEBUG: Error adding days to date: {e}")
+            print(f"Error adding days to date: {e}")
             return date_str
 
     @staticmethod
