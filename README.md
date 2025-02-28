@@ -8,7 +8,7 @@ yadoran --> commander
 stateDiagram-v2
     [*] --> checkpoint
 
-    checkpoint --> commander: utterance = "fin"
+    checkpoint --> commander
     checkpoint --> killjoy: utterance = "joy"
 
     commander --> funk: selected_table = "api"
