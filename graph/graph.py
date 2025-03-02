@@ -7,6 +7,7 @@ from llm_admin.trace_manager import TraceManager
 from .node import (
     GraphState,
     checkpoint,
+    isapi,
     commander,
     funk,
     params,
@@ -72,6 +73,7 @@ def make_graph() -> CompiledStateGraph:
         # workflow.add_node("yadon", yadon) # 꼬리가 물렸는지 판단
         # workflow.add_node("yadoran", yadoran) # 꼬리가 물린 후 질문을 변환
         workflow.add_node("checkpoint", checkpoint)
+        workflow.add_node("isapi", isapi)
         workflow.add_node("commander", commander) # 처리 경로를 결정
         workflow.add_node("funk", funk) # api 함수 선택
         workflow.add_node("params", params) # api 함수 파라미터 선택
@@ -101,28 +103,28 @@ def make_graph() -> CompiledStateGraph:
             "checkpoint",
             lambda x: (
                 "killjoy" if x["flags"]["is_joy"] else
-                "commander"
+                "isapi"
             ),
             {
                 "killjoy": "killjoy",
-                "commander": "commander"
+                "isapi": "isapi"
             }
         )
         workflow.add_conditional_edges(
-            "commander",
+            "isapi",
             lambda x: (
-                # "END" if x["flags"]["stock_sec"] else
                 "funk" if x["selected_table"] == "api" else
-                "nl2sql"
+                "commander"
             ),
             {
-                # "END": END,
-                "nl2sql": "nl2sql",
-                "funk": "funk"
+                "funk": "funk",
+                "commander": "commander"
             }
         )
         workflow.add_edge("funk", "params")
         workflow.add_edge("params", "executor")
+
+        workflow.add_edge("commander", "nl2sql")
         workflow.add_edge("nl2sql", "executor")
         
         workflow.add_conditional_edges(
