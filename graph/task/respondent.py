@@ -11,7 +11,7 @@ from llm_admin.qna_manager import QnAManager
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
-async def response(trace_id: str, user_question, column_list = None, date_info: Optional[Tuple[str, str]] = None) -> str:
+async def response(trace_id: str, user_question, selected_table: str, column_list = None, date_info: Optional[Tuple[str, str]] = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -20,7 +20,10 @@ async def response(trace_id: str, user_question, column_list = None, date_info: 
     """
     output_parser = StrOutputParser()
 
-    system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='system')[0]['prompt']
+    if selected_table == 'api':
+        system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
+    else:
+        system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='sql')[0]['prompt']
 
     few_shots = await retriever.get_few_shots(
         query_text=user_question,

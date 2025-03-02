@@ -255,13 +255,12 @@ async def respondent(state: GraphState) -> GraphState:
 
     # 컬럼과 데이터에서 입출금과 통화 구분
     result_for_col, column_list = transform_data(result, raw_column_list)
-    
-    # SQL 쿼리 생성
+
     if selected_table == "api":
         date_info = state["date_info"]
     else:
         date_info = ()
-    fstring_answer = await response(trace_id, user_question, column_list, date_info)
+    fstring_answer = await response(trace_id, user_question, selected_table, column_list, date_info)
     #debuging
     state.update({"yogeumjae": fstring_answer})
     #debuging
