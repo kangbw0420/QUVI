@@ -2,8 +2,7 @@ from datetime import datetime
 
 from llm_admin.state_manager import StateManager
 from graph.types import GraphState
-from graph.task.checkpoint import check_joy
-from graph.task.isapi import is_api
+from graph.task.checkpoint import check_joy, is_api
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
 from graph.task.respondent import response
@@ -49,7 +48,7 @@ async def isapi(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     trace_id = state["trace_id"]
 
-    selected_table = await command(trace_id, user_question)
+    selected_table = await is_api(user_question)
 
     state.update({"selected_table": selected_table})
     

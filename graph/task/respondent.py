@@ -25,9 +25,14 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
     else:
         system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='sql')[0]['prompt']
 
+    if selected_table == 'api':
+        collection_name = "shots_respondent_api"
+    else:
+        collection_name = "shots_respondent_sql"
+
     few_shots = await retriever.get_few_shots(
         query_text=user_question,
-        collection_name="shots_respondent",
+        collection_name=collection_name,
         top_k=3
     )
     few_shot_prompt = []

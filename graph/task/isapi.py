@@ -41,7 +41,7 @@ async def is_api(trace_id: str, user_question: str) -> bool:
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=ISAPI_PROMPT,
-        model="qwen_selector"
+        model="qwen_isapi"
     )
 
     isapi_chain = ISAPI_PROMPT | isapi | output_parser
