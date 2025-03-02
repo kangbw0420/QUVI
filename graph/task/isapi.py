@@ -45,10 +45,15 @@ async def is_api(trace_id: str, user_question: str) -> bool:
     )
 
     isapi_chain = ISAPI_PROMPT | isapi | output_parser
-    selected_table = isapi_chain.invoke({"user_question": user_question})
+    result = isapi_chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "isapi(A)" + "=" * 40)
-    print(selected_table)
-    qna_manager.record_answer(qna_id, selected_table)
+    print(result)
+    qna_manager.record_answer(qna_id, result)
+
+    if result.strip() == "1":
+        selected_table = "api"
+    else:
+        selected_table = ""
 
     return selected_table
