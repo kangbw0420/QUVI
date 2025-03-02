@@ -44,8 +44,8 @@ async def is_api(trace_id: str, user_question: str) -> bool:
         model="qwen_selector"
     )
 
-    commander_chain = ISAPI_PROMPT | isapi | output_parser
-    selected_table = commander_chain.invoke({"user_question": user_question})
+    isapi_chain = ISAPI_PROMPT | isapi | output_parser
+    selected_table = isapi_chain.invoke({"user_question": user_question})
 
     print("=" * 40 + "isapi(A)" + "=" * 40)
     print(selected_table)
