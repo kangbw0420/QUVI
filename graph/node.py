@@ -2,7 +2,7 @@ from datetime import datetime
 
 from llm_admin.state_manager import StateManager
 from graph.types import GraphState
-from graph.task.checkpoint import check_joy, is_api
+from graph.task.classifier import check_joy, is_api, classify_yqmd
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
 from graph.task.respondent import response
@@ -16,7 +16,7 @@ from graph.task.safeguard import guard_query
 from utils.logger import setup_logger
 from utils.common.extract_data_info import extract_col_from_query, extract_col_from_dict 
 from utils.common.date_checker import check_date
-from utils.dataframe.final_format import final_format
+from utils.dataframe.format_df import delete_useless_col, final_df_format
 from utils.query.filter_com import add_com_condition
 from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
@@ -109,6 +109,16 @@ async def params(state: GraphState) -> GraphState:
 
     state.update({"sql_query": sql_query, "date_info": date_info})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
+    return state
+
+async def yqmd(state: GraphState) -> GraphState:
+    """자금 흐름 api에서 연간/분기간/월간/일간 파라미터 결정"""
+    user_question = state["user_question"]
+    sql_query = state["sql_query"]
+
+    query_yqmd = await classify_yqmd(user_question, sql_query)
+    state.update({"sql_query": query_yqmd})
+
     return state
 
 async def nl2sql(state: GraphState) -> GraphState:
@@ -230,7 +240,7 @@ async def executor(state: GraphState) -> GraphState:
                 if modified_query and modified_query != query:
                     result = execute(modified_query)
                     state.update({"sql_query": modified_query})
-                    result = final_format(result, selected_table)
+                    result = final_df_format(result, selected_table)
             
             state.update({"date_info": view_dates["main"]})
 
@@ -285,8 +295,9 @@ async def respondent(state: GraphState) -> GraphState:
     selected_table = state["selected_table"]
     raw_column_list = state["column_list"]
 
+    cleaned_result, cleaned_column_list = delete_useless_col(result, raw_column_list)
     # 컬럼과 데이터에서 입출금과 통화 구분
-    result_for_col, column_list = transform_data(result, raw_column_list)
+    result_for_col, column_list = transform_data(cleaned_result, cleaned_column_list)
 
     if selected_table == "api":
         date_info = state["date_info"]
@@ -298,7 +309,7 @@ async def respondent(state: GraphState) -> GraphState:
     #debuging
     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
-    final_result = final_format(result, selected_table)
+    final_result = final_df_format(cleaned_result, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)
 

@@ -83,34 +83,12 @@ def transform_currency_columns(result: List[Dict[str, Any]], column_list: List[s
     
     return new_result, new_column_list
 
-def delete_upd_dtm(result: List[Dict[str, Any]], column_list: List[str]) -> tuple[List[Dict[str, Any]], List[str]]:
-    """결과 데이터와 컬럼 리스트에서 업데이트 시간 관련 정보 제거
-    Returns:
-        tuple[List[Dict[str, Any]], List[str]]: (업데이트 시간 정보가 제거된 결과, 변환된 컬럼 리스트)
-    """
-    # 제거할 컬럼들
-    columns_to_delete = {'acct_bal_upd_dtm', 'reg_dtm_upd'}
-    
-    # 컬럼 리스트에서 제거
-    new_column_list = [col for col in column_list if col not in columns_to_delete]
-    
-    # 결과 데이터에서 제거
-    new_result = []
-    for row in result:
-        new_row = {k: v for k, v in row.items() if k not in columns_to_delete}
-        new_result.append(new_row)
-    
-    return new_result, new_column_list
-
 def transform_data(result: List[Dict[str, Any]], column_list: List[str]) -> tuple[List[Dict[str, Any]], List[str]]:
     """
     데이터와 컬럼 리스트를 변환하는 메인 함수
     Returns:
         tuple[List[Dict[str, Any]], List[str]]: (변환된 결과, 변환된 컬럼 리스트)
     """
-    # 최종잔액조회일시 컬럼 및 데이터 제거
-    result, column_list = delete_upd_dtm(result, column_list)
-
     # 입출금 변환
     result, column_list = transform_inout_columns(result, column_list)
     

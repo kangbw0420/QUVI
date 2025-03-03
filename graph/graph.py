@@ -11,6 +11,7 @@ from .node import (
     commander,
     funk,
     params,
+    yqmd,
     nl2sql,
     respondent,
     executor,
@@ -77,6 +78,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("commander", commander) # 처리 경로를 결정
         workflow.add_node("funk", funk) # api 함수 선택
         workflow.add_node("params", params) # api 함수 파라미터 선택
+        workflow.add_node("yqmd", yqmd)
         workflow.add_node("nl2sql", nl2sql) # SQL 생성
         workflow.add_node("executor", executor) # SQL 실행 및 상태 체크
         workflow.add_node("safeguard", safeguard) # 에러 가능성 있는 쿼리를 점검
@@ -122,15 +124,16 @@ def make_graph() -> CompiledStateGraph:
             }
         )
         workflow.add_edge("funk", "params")
-        workflow.add_edge("params", "executor")
         workflow.add_conditional_edges(
             "params",
             lambda x: (
                 "END" if x["flags"]["invalid_date"] else
+                "yqmd" if x["selected_api"] == "aicfo_get_financial_flow" else
                 "executor"
             ),
             {
                 "END": END,
+                "yqmd": "yqmd",
                 "executor": "executor"
             }
         )

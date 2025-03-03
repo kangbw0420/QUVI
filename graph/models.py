@@ -91,7 +91,7 @@ qwen_boolean = CustomChatLLM(model="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", temper
 selector = CustomChatLLM(model="selector", temperature=0.01, max_tokens=300)
 isapi = CustomChatLLM(model="isapi", temperature=0.01, max_tokens=1)
 nl2sql = CustomChatLLM(model="nl2sql", temperature=0.01, max_tokens=3000)
-solver = CustomChatLLM(model="solver", temperature=0.2, max_tokens=1000)
+solver = CustomChatLLM(model="solver", temperature=0.1, max_tokens=1000)
 
 # yadon = CustomChatLLM(model="yadon", temperature=0.01, max_tokens=1)
 # yadoran = CustomChatLLM(model="yadoran", temperature=0.01, max_tokens=1000)
