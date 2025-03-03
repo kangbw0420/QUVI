@@ -22,7 +22,7 @@ from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.query.ever_note import ever_note
-from utils.dataframe.is_inout_krw import is_krw
+from utils.dataframe.is_krw_null import is_krw, is_null_only
 from utils.dataframe.transform_col import transform_data
 from utils.compute.main_compute import compute_fstring
 
@@ -212,7 +212,7 @@ async def executor(state: GraphState) -> GraphState:
             state.update({"sql_query": query})
 
             # If no results found and it's a trsc query, try vector search for note1
-            if not result and selected_table == 'trsc':
+            if (not result or is_null_only(result)) and selected_table == 'trsc':
                 evernote_result = await ever_note(query)
                 
                 # Get original and similar notes from the result
@@ -250,7 +250,7 @@ async def executor(state: GraphState) -> GraphState:
             state.update({"sql_query": query_ordered})
 
     # 결과가 없는 경우 처리
-    if not result:
+    if not result or is_null_only(result):
         flags["no_data"] = True
         empty_result = []
         column_list = []
