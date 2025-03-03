@@ -8,10 +8,12 @@ yadoran --> commander
 stateDiagram-v2
     [*] --> checkpoint
 
-    checkpoint --> commander
-    checkpoint --> killjoy: utterance = "joy"
-
-    commander --> funk: selected_table = "api"
+    checkpoint --> isapi: not is_joy
+    checkpoint --> killjoy: is_joy
+    
+    isapi --> funk: selected_table = "api"
+    isapi --> commander: selected_table != "api"
+    
     commander --> nl2sql
     
     funk --> params
@@ -30,6 +32,7 @@ stateDiagram-v2
     killjoy --> END
     nodata --> END
     respondent --> END
+
 ```
 
 
