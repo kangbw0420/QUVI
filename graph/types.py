@@ -5,6 +5,7 @@ class ProcessingFlags(TypedDict):
     no_data: bool
     note_changed: bool
     future_date: bool
+    invalid_date: bool
     query_error: bool
     query_changed: bool
     safe_count: int

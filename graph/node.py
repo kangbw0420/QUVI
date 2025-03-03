@@ -14,7 +14,8 @@ from graph.task.killjoy import kill_joy
 from graph.task.safeguard import guard_query
 
 from utils.logger import setup_logger
-from utils.extract_data_info import extract_col_from_query, extract_col_from_dict 
+from utils.common.extract_data_info import extract_col_from_query, extract_col_from_dict 
+from utils.common.date_checker import check_date
 from utils.dataframe.final_format import final_format
 from utils.query.filter_com import add_com_condition
 from utils.query.view.view_table import view_table
@@ -51,7 +52,6 @@ async def isapi(state: GraphState) -> GraphState:
     selected_table = await is_api(user_question)
 
     state.update({"selected_table": selected_table})
-    
     StateManager.update_state(trace_id, {
         "user_question": user_question,
         "selected_table": selected_table
@@ -66,7 +66,6 @@ async def commander(state: GraphState) -> GraphState:
     selected_table = await command(trace_id, user_question)
 
     state.update({"selected_table": selected_table})
-    
     StateManager.update_state(trace_id, {
         "user_question": user_question,
         "selected_table": selected_table
@@ -93,12 +92,18 @@ async def params(state: GraphState) -> GraphState:
     selected_api = state["selected_api"]
     user_question = state["user_question"]
     company_id = state["company_id"]
-
     user_info = state["user_info"]
+    flags = state.get("flags")
 
     sql_query, date_info = await parameters(
         trace_id, selected_api, user_question, company_id, user_info, today
     )
+
+    invalid_date_message = check_date(date_info, flags)
+    if invalid_date_message:
+        state.update({
+            "final_answer": invalid_date_message
+        })
 
     state.update({"sql_query": sql_query, "date_info": date_info})
     StateManager.update_state(trace_id, {"sql_query": sql_query})
@@ -173,6 +178,13 @@ async def executor(state: GraphState) -> GraphState:
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
             query, view_dates = view_table(query_ordered, selected_table, company_id, user_info, flags)
+            
+            if 'main' in view_dates:
+                invalid_date_message = check_date(view_dates['main'], flags)
+                if invalid_date_message:
+                    state.update({
+                        "final_answer": invalid_date_message
+                    })
 
             # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
             if flags.get("future_date"):
@@ -284,9 +296,6 @@ async def respondent(state: GraphState) -> GraphState:
     final_result = final_format(result, selected_table)
     if selected_table == "api":
         final_result = is_krw(final_result)
-
-    # if flags.get("past_date"):
-    #     final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 2일 이전 데이터에 대해서는 조회 제한이 적용된 상황입니다.\n결제 후 모든 기간의 데이터를 조회하실 수 있습니다.\U0001F64F\U0001F64F"
 
     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
     StateManager.update_state(trace_id, {"final_answer": final_answer, "query_result": final_result})

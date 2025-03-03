@@ -50,6 +50,7 @@ async def process_input(request: Input) -> Output:
                 "no_data": False,
                 "note_changed": False,
                 "future_date": False,
+                "invalid_date": False,
                 "query_error": False,
                 "query_changed": False,
                 # "stock_sec": False,

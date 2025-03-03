@@ -1,7 +1,7 @@
 import re
 # ORDER BY 조립 위치가 다양해질 수 있어서, 정규식 포기를 고려
 from typing import List
-from utils.extract_data_info import extract_col_from_query
+from utils.common.extract_data_info import extract_col_from_query
 
 import sqlglot
 from sqlglot.errors import ParseError
