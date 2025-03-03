@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from decimal import Decimal
 from utils.compute.formatter import format_number
 from utils.compute.computer import parse_function_params, compute_function
-from utils.compute.detector import detect_computed_column, split_by_operators, calculate_with_operator
+from utils.compute.detector import split_by_operators, calculate_with_operator
 
 def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
     expression = match.group(1)
@@ -68,31 +68,51 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
         except Exception as e:
             return f"Error: {str(e)}"
 
-def handle_computed_column(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
-    """중괄호 안의 계산 표현식을 처리하고 계산된 컬럼을 지원합니다.
+def handle_computed_column(expression: str, result: List[Dict[str, Any]], column_list: List[str]) -> str:
+    """계산식 표현식에서 미리 계산된 컬럼(sum, count, average 등)을 처리합니다.
+    
     Args:
-        match: 정규표현식 매치 객체로, 중괄호 안의 표현식을 포함
+        expression: 처리할 표현식 문자열
         result: SQL 쿼리 실행 결과 데이터의 리스트
         column_list: 결과 데이터에서 사용 가능한 컬럼명 리스트
+        
     Returns:
-        str: 계산된 값을 문자열로 변환한 결과. 오류 발생 시 오류 메시지 반환
-    Raises:
-        ValueError: 표현식 내 유효하지 않은 컬럼명이나 계산 오류 발생 시
+        str: 처리된 결과 문자열. 계산된 컬럼이 있으면 해당 값 반환, 아니면 원래 표현식 반환
     """
-    expression = match.group(1)
+    # 함수 패턴 확인 (sum(x)와 같은 형태)
+    func_pattern = r'(\w+)(?:\(.*?\))?'
     
+    # expression이 그 자체로 column_list에 있는지 먼저 확인
+    if expression in column_list and len(result) == 1 and expression in result[0]:
+        return str(result[0][expression])
+    
+    # 계산 함수 목록
+    computed_funcs = ['sum', 'count', 'average']
+    
+    # 컬럼 리스트에 계산 함수가 포함된 이름이 있는지 확인
+    computed_cols = []
+    for col in column_list:
+        for func in computed_funcs:
+            if func in col:
+                computed_cols.append(col)
+                break
+    
+    if computed_cols and len(result) == 1:
+        # 표현식에서 계산된 컬럼이 사용되었는지 확인
+        for col in computed_cols:
+            if col == expression:
+                # 정확히 일치하는 경우 바로 해당 값 반환
+                computed_value = result[0].get(col)
+                if computed_value is not None:
+                    return str(computed_value)
+    
+    # 계산된 컬럼이 아니거나 결과가 여러 개인 경우, 기존 handle_math_expression 호출
     try:
+        match = type('Match', (), {'group': lambda *args: expression})()
         return handle_math_expression(match, result, column_list)
     except ValueError as e:
-        error_msg = str(e)
-        # 계산된 값들이 내려오는 경우 value(func_name) 처리
-        is_computed, func_name, _ = detect_computed_column(error_msg, column_list)
-        
-        if is_computed:
-            modified_expression = f"value({func_name})"
-            modified_match = type('Match', (), {'group': lambda x: modified_expression})()
-            return handle_math_expression(modified_match, result, column_list)
-        raise
+        # 에러 처리
+        return f"Error: {str(e)}"
 
 def compute_fstring(fstring_answer: str, result: List[Dict[str, Any]], column_list: List[str]) -> str:
     # 작은 따옴표와 큰 따옴표 문구에 모두 대응. 괄호 내부만 뽑아냄
@@ -103,7 +123,7 @@ def compute_fstring(fstring_answer: str, result: List[Dict[str, Any]], column_li
 
     # 중괄호 안에 있는 걸 찾아내기
     pattern = r'\{([^}]+)\}'
-    processed_answer = re.sub(pattern, lambda m: handle_computed_column(m, result, column_list), fstring_answer)
+    processed_answer = re.sub(pattern, lambda m: handle_computed_column(m.group(1), result, column_list), fstring_answer)
     
     # "Error: "가 포함되어 있는지 체크
     if "Error: " in processed_answer:
