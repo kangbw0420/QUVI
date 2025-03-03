@@ -102,7 +102,9 @@ async def params(state: GraphState) -> GraphState:
     invalid_date_message = check_date(date_info, flags)
     if invalid_date_message:
         state.update({
-            "final_answer": invalid_date_message
+            "final_answer": invalid_date_message,
+            "query_result": [],
+            "column_list": []
         })
 
     state.update({"sql_query": sql_query, "date_info": date_info})
@@ -183,8 +185,11 @@ async def executor(state: GraphState) -> GraphState:
                 invalid_date_message = check_date(view_dates['main'], flags)
                 if invalid_date_message:
                     state.update({
-                        "final_answer": invalid_date_message
+                        "final_answer": invalid_date_message,
+                        "query_result": [],
+                        "column_list": []
                     })
+                    return state
 
             # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
             if flags.get("future_date"):

@@ -123,6 +123,17 @@ def make_graph() -> CompiledStateGraph:
         )
         workflow.add_edge("funk", "params")
         workflow.add_edge("params", "executor")
+        workflow.add_conditional_edges(
+            "params",
+            lambda x: (
+                "END" if x["flags"]["invalid_date"] else
+                "executor"
+            ),
+            {
+                "END": END,
+                "executor": "executor"
+            }
+        )
 
         workflow.add_edge("commander", "nl2sql")
         workflow.add_edge("nl2sql", "executor")
@@ -130,6 +141,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_conditional_edges(
             "executor",
             lambda x: (
+                "END" if x["flags"]["invalid_date"] else
                 # 데이터가 없었다면 데이터 없었다는 사과문 작성하러
                 "nodata" if x["flags"]["no_data"] else
                 # 다양한 적요 찾은 이후 그거 한 줄 답변으로 작성하기가 힘듭니다

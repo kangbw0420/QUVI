@@ -69,7 +69,16 @@ def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column
             return f"Error: {str(e)}"
 
 def handle_computed_column(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
-    """Handle expressions inside curly braces with support for computed columns"""
+    """중괄호 안의 계산 표현식을 처리하고 계산된 컬럼을 지원합니다.
+    Args:
+        match: 정규표현식 매치 객체로, 중괄호 안의 표현식을 포함
+        result: SQL 쿼리 실행 결과 데이터의 리스트
+        column_list: 결과 데이터에서 사용 가능한 컬럼명 리스트
+    Returns:
+        str: 계산된 값을 문자열로 변환한 결과. 오류 발생 시 오류 메시지 반환
+    Raises:
+        ValueError: 표현식 내 유효하지 않은 컬럼명이나 계산 오류 발생 시
+    """
     expression = match.group(1)
     
     try:
