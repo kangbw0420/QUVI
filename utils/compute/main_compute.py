@@ -79,12 +79,12 @@ def handle_computed_column(expression: str, result: List[Dict[str, Any]], column
     Returns:
         str: 처리된 결과 문자열. 계산된 컬럼이 있으면 해당 값 반환, 아니면 원래 표현식 반환
     """
-    # 함수 패턴 확인 (sum(x)와 같은 형태)
-    func_pattern = r'(\w+)(?:\(.*?\))?'
-    
     # expression이 그 자체로 column_list에 있는지 먼저 확인
-    if expression in column_list and len(result) == 1 and expression in result[0]:
-        return str(result[0][expression])
+    if expression in column_list and len(result) == 1:
+        try:
+            return str(int(result[0][expression]))
+        except (ValueError, TypeError):
+            return str(result[0][expression])
     
     # 계산 함수 목록
     computed_funcs = ['sum', 'count', 'average']
