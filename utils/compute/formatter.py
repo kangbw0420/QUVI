@@ -21,7 +21,9 @@ string_columns = {
     'KRW_p_day',
     'p_day',
     'reg_dt',
-    'trsc_dt'
+    'trsc_dt',
+    'open_dt',
+    'due_dt'
 }
 
 def should_use_decimals(column: str, func_name: str, params: List[str] = None) -> bool:
