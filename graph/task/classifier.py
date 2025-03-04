@@ -1,11 +1,18 @@
+import re
 import json
 from utils.config import Config
 import httpx
 
 BASE_URL = Config.VECTOR_STORE_DOMAIN
 
+def sanitize_query(query_text: str) -> str:
+    # 슬래시, 백슬래시, 따옴표 등 URL에 문제가 될 수 있는 특수 문자를 언더스코어로 변환
+    sanitized = re.sub(r'[\\/"\'&?#]', '-', query_text)
+    return sanitized
+
 async def check_joy(query_text: str) -> dict:
-    url = f"{BASE_URL}/checkpoint/{query_text}"
+    sanitized_query = sanitize_query(query_text)
+    url = f"{BASE_URL}/checkpoint/{sanitized_query}"
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(url)
@@ -18,7 +25,8 @@ async def check_joy(query_text: str) -> dict:
             print(f"[ERROR] Failed to test embedding: {e}")
 
 async def is_api(query_text: str) -> str:
-    url = f"{BASE_URL}/isapi/{query_text}"
+    sanitized_query = sanitize_query(query_text)
+    url = f"{BASE_URL}/isapi/{sanitized_query}"
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(url)
@@ -41,7 +49,8 @@ async def classify_yqmd(query_text: str, sql_query: str) -> str:
     Returns:
         str: 파라미터가 추가된 SQL 쿼리
     """
-    url = f"{BASE_URL}/yqmd/{query_text}"
+    sanitized_query = sanitize_query(query_text)
+    url = f"{BASE_URL}/yqmd/{sanitized_query}"
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(url)
