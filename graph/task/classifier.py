@@ -36,7 +36,7 @@ async def is_api(query_text: str) -> str:
         except httpx.HTTPError as e:
             print(f"[ERROR] Failed to test embedding: {e}")
 
-async def classify_yqmd(query_text: str) -> str:
+async def classify_yqmd(query_text: str, sql_query: str) -> str:
     url = f"{BASE_URL}/isapi/{query_text}"
     async with httpx.AsyncClient() as client:
         try:
