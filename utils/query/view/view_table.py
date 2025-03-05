@@ -38,13 +38,18 @@ class ViewTableTransformer:
         
         # Union 노드 처리
         if isinstance(node, exp.Union):
+            print(node)
+            print(1)
+            print(node.args)
             # 왼쪽과 오른쪽 부분에 대해 재귀적으로 처리
             left_id = f"{node_id}_left"
             right_id = f"{node_id}_right"
             
             transformed_left = self._handle_node_recursively(node.left, left_id)
             transformed_right = self._handle_node_recursively(node.right, right_id)
-            
+            print(transformed_left)
+            print(2)
+            print(transformed_right)
             # 변환된 UNION 생성
             transformed_node = exp.Union(
                 this=transformed_left,
