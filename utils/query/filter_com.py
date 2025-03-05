@@ -17,8 +17,8 @@ def add_com_condition(query: str, company_id: str) -> str:
     
     if ' UNION ' in query.upper():
         parts = query.split(' UNION ')
-        filtered_parts = [add_com_condition(part.strip(), company_id)[0] for part in parts]
-        return ' UNION '.join(filtered_parts), company_id, [], ""
+        filtered_parts = [add_com_condition(part.strip(), company_id) for part in parts]
+        return ' UNION '.join(filtered_parts)
 
     # 쿼리 표준화
     query = normalize_query(query)
