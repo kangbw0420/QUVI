@@ -129,7 +129,12 @@ def compute_fstring(fstring_answer: str, result: List[Dict[str, Any]], column_li
     if "Error: " in processed_answer:
         return (
             "요청주신 질문에 대한 데이터는 아래 표와 같습니다.\n\n"
-            "...라고 정식 출시 때는 나갈 예정입니다.\U0001F605 현재는 베타 기간이니 에러난 답변도 보시지요.\U0001f600:\n\n"
+            # "...라고 정식 출시 때는 나갈 예정입니다.\U0001F605 현재는 베타 기간이니 에러난 답변도 보시지요.\U0001f600:\n\n"
+            # f"{processed_answer}"
+        )
+    if "Division by zero" in processed_answer:
+        return (
+            "요청주신 질문을 처리하는 과정에서 0으로 나눠야 하는 상황이 발생했습니다. 이는 불가능하므로, 질문 혹은 데이터를 확인해주시면 감사하겠습니다.\n\n"
             f"{processed_answer}"
         )
     return processed_answer
