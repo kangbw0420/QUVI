@@ -34,18 +34,17 @@ class ViewTableTransformer:
         self.query_counter = 0  # 서브쿼리에 고유 ID 부여를 위한 카운터
         
     def _handle_node_recursively(self, node: exp.Expression, node_id: str) -> exp.Expression:
-        """모든 타입의 노드를 재귀적으로 처리"""
+        """모든 타입의 노드를 재귀적으로 처리"""        
         # Union 노드 처리
         if isinstance(node, exp.Union):
-            # print(node.args)
+            print(222222)
             # 왼쪽과 오른쪽 부분에 대해 재귀적으로 처리
             left_id = f"{node_id}_left"
             right_id = f"{node_id}_right"
             
             transformed_left = self._handle_node_recursively(node.left, left_id)
+            print(555555)
             transformed_right = self._handle_node_recursively(node.right, right_id)
-            # print(transformed_left)
-            # print(transformed_right)
             
             distinct_value = node.args.get('distinct', False)
             # 변환된 UNION 생성
@@ -58,11 +57,7 @@ class ViewTableTransformer:
             # 부모 노드의 날짜 범위는 양쪽 자식의 병합된 범위
             if left_id in self.date_ranges and right_id in self.date_ranges:
                 left_from, left_to = self.date_ranges[left_id]
-                print(left_from)
-                print(left_to)
                 right_from, right_to = self.date_ranges[right_id]
-                print(right_from)
-                print(right_to)
                 
                 merged_from = min(left_from, right_from)
                 merged_to = max(left_to, right_to)
@@ -77,7 +72,7 @@ class ViewTableTransformer:
         
         # Subquery 노드 처리
         elif isinstance(node, exp.Subquery):
-            print(11111111111)
+            print(3333333)
             subquery_id = f"{node_id}_sub_{self.query_counter}"
             self.query_counter += 1
             
@@ -92,10 +87,32 @@ class ViewTableTransformer:
                 self.date_ranges[node_id] = self.date_ranges[subquery_id]
             
             return transformed_node
+
+        # # Select 부분에 서브 쿼리가 있을 때의 처리
+        # elif isinstance(node, exp.Select):
+        #     print(666666)
+        #     # FROM 절의 서브쿼리 재귀 처리
+        #     if node.args.get("from"):
+        #         from_node = node.args["from"]
+        #         new_from = self._handle_node_recursively(from_node, f"{node_id}_from")
+        #         node.set("from", new_from)
+
+        #     # WHERE 절 재귀 처리
+        #     if node.args.get("where"):
+        #         where_node = node.args["where"]
+        #         new_where = self._handle_node_recursively(where_node, f"{node_id}_where")
+        #         node.set("where", new_where)
+
+        #     # SELECT 리스트 처리
+        #     for i, expr in enumerate(node.args.get("expressions", [])):
+        #         new_expr = self._handle_node_recursively(expr, f"{node_id}_expr_{i}")
+        #         node.args["expressions"][i] = new_expr
+
+        #     return node
         
         # 일반 Select 쿼리 처리
         else:
-            print(2222222)
+            print(4444444444)
             # 현재 노드에서 날짜 조건 추출
             sql_query = node.sql(dialect='postgres')
             try:
