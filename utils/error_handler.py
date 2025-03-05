@@ -105,7 +105,7 @@ class ErrorHandler:
                 "status": 500,
                 "success": False,
                 "retCd": 500,
-                "message": "죄송합니다. 지금의 저는 이 질문에 답하기에 적합한 쿼리를 만들 수 없습니다. 그러나 저는 꾸준히 학습 중입니다. 곧 이 질문에 답할 수 있는 AICFO가 되어 도움을 드리겠습니다.",
+                "message": " 죄송합니다. 아직 저는 이 질문에 답하기에 적합한 쿼리를 만들 수 없습니다. 그러나 저는 꾸준히 학습 중입니다. 곧 이 질문에 답할 수 있는 AICFO가 되어 도움을 드리겠습니다.",
                 "body": {
                     "error_code": "QUERY_SAFE_LIMIT",
                     "detail": str(error)
