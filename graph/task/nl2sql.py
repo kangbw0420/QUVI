@@ -39,6 +39,7 @@ async def create_sql(
     """
     try:
         prompt_today = today.strftime("%Y년 %m월 %d일")
+        print(f"nl2sql prompt_today: {prompt_today}")
         try:
             system_prompt = database_service.get_prompt(
                 node_nm='nl2sql', 

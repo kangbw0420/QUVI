@@ -52,6 +52,7 @@ async def parameters(
         json_format = '"from_date": from_date, "to_date": to_date'
         
         prompt_today = today.strftime("%Y년 %m월 %d일")
+        print(f"params prompt_today: {prompt_today}")
         system_prompt = database_service.get_prompt(
             node_nm="params", prompt_nm="system"
         )[0]["prompt"].format(today=prompt_today, json_format=json_format)

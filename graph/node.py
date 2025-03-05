@@ -29,6 +29,7 @@ from utils.compute.main_compute import compute_fstring
 logger = setup_logger('node')
     
 today = datetime.now()
+print(f"original today: {today}")
 
 async def checkpoint(state: GraphState) -> GraphState:
     """금융 관련 질의 fin과 쓸데없는 질의 joy의 임베딩 모델 활용 이진분류"""
@@ -95,6 +96,7 @@ async def params(state: GraphState) -> GraphState:
     user_info = state["user_info"]
     flags = state.get("flags")
 
+    print(f"params today: {today}")
     sql_query, date_info = await parameters(
         trace_id, selected_api, user_question, company_id, user_info, today
     )
@@ -132,6 +134,7 @@ async def nl2sql(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     company_id = state["company_id"]
 
+    print(f"nl2sql today: {today}")
     sql_query = await create_sql(trace_id, selected_table, company_id, user_question, today)
 
     state.update({"sql_query": sql_query,})
