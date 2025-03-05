@@ -32,6 +32,106 @@ class ViewTableTransformer:
         self.date_extractor = DateExtractor(selected_table)
         self.date_ranges = {}  # 쿼리 ID별 날짜 범위 저장
         self.query_counter = 0  # 서브쿼리에 고유 ID 부여를 위한 카운터
+        
+    def _handle_node_recursively(self, node: exp.Expression, node_id: str) -> exp.Expression:
+        """모든 타입의 노드를 재귀적으로 처리"""
+        
+        # Union 노드 처리
+        if isinstance(node, exp.Union):
+            # 왼쪽과 오른쪽 부분에 대해 재귀적으로 처리
+            left_id = f"{node_id}_left"
+            right_id = f"{node_id}_right"
+            
+            transformed_left = self._handle_node_recursively(node.left, left_id)
+            transformed_right = self._handle_node_recursively(node.right, right_id)
+            
+            # 변환된 UNION 생성
+            transformed_node = exp.Union(
+                this=transformed_left,
+                expression=transformed_right,
+                distinct=node.distinct
+            )
+            
+            # 부모 노드의 날짜 범위는 양쪽 자식의 병합된 범위
+            if left_id in self.date_ranges and right_id in self.date_ranges:
+                left_from, left_to = self.date_ranges[left_id]
+                right_from, right_to = self.date_ranges[right_id]
+                
+                merged_from = min(left_from, right_from)
+                merged_to = max(left_to, right_to)
+                
+                self.date_ranges[node_id] = (merged_from, merged_to)
+                
+                # 미래 날짜 확인
+                if merged_from > self.date_extractor.today_str or merged_to > self.date_extractor.today_str:
+                    self.flags["future_date"] = True
+            
+            return transformed_node
+        
+        # Subquery 노드 처리
+        elif isinstance(node, exp.Subquery):
+            subquery_id = f"{node_id}_sub_{self.query_counter}"
+            self.query_counter += 1
+            
+            # 내부 쿼리를 재귀적으로 처리
+            transformed_inner = self._handle_node_recursively(node.this, subquery_id)
+            
+            # 변환된 서브쿼리 생성
+            transformed_node = exp.Subquery(this=transformed_inner)
+            
+            # 날짜 범위 상속
+            if subquery_id in self.date_ranges:
+                self.date_ranges[node_id] = self.date_ranges[subquery_id]
+            
+            return transformed_node
+        
+        # 일반 Select 쿼리 처리
+        else:
+            # 현재 노드에서 날짜 조건 추출
+            sql_query = node.sql(dialect='postgres')
+            try:
+                from_date, to_date = self.date_extractor.extract_dates(sql_query, node)
+                
+                # 날짜 정보 저장
+                self.date_ranges[node_id] = (from_date, to_date)
+                
+                # 미래 날짜 처리
+                if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
+                    self.flags["future_date"] = True
+                    if from_date > self.date_extractor.today_str:
+                        from_date = self.date_extractor.today_str
+                    if to_date > self.date_extractor.today_str:
+                        to_date = self.date_extractor.today_str
+                    self.date_ranges[node_id] = (from_date, to_date)
+            except Exception as e:
+                print(f"Error extracting dates: {str(e)}")
+                today = self.date_extractor.today_str
+                self.date_ranges[node_id] = (today, today)
+            
+            # 테이블 참조 변환 (aicfo_get_all_* 함수로 변환)
+            def transform_table(table_node: exp.Expression) -> exp.Expression:
+                if isinstance(table_node, exp.Table) and table_node.name.startswith('aicfo_get_all_'):
+                    current_from_date, current_to_date = self.date_ranges.get(node_id, (self.date_extractor.today_str, self.date_extractor.today_str))
+                    
+                    view_func = self._create_view_function(
+                        ViewFunction(
+                            base_name=table_node.name,
+                            use_intt_id=self.use_intt_id,
+                            user_id=self.user_id,
+                            view_com=self.view_com,
+                            from_date=current_from_date,
+                            to_date=current_to_date,
+                            alias=table_node.alias,
+                            query_id=node_id
+                        )
+                    )
+                    return view_func
+                return table_node
+            
+            # 테이블 참조 변환 적용
+            transformed_node = node.transform(transform_table)
+            
+            return transformed_node
 
     def transform_query(self, query: str) -> Tuple[str, Dict[str, Tuple[str, str]]]:
         """
@@ -46,36 +146,16 @@ class ViewTableTransformer:
             self.query_counter = 0
             self.date_ranges = {}
             
-            # parsing query
             ast = sqlglot.parse_one(query, dialect='postgres')
-            
-            # analyze query sturcture
-            query_info = self.classifier.classify_query(query)
-            
-            if query_info.has_union:
-                transformed_ast = self._handle_union_query(ast)
-            else:
-                query_id = "main"
+            transformed_ast = self._handle_node_recursively(ast, "main")
                 
-                # 메인 쿼리의 날짜 범위 추출
-                date_range = self.date_extractor.extract_dates(query)
-                if isinstance(date_range, tuple) and len(date_range) == 2:
-                    from_date, to_date = date_range
-                    self.date_ranges[query_id] = (from_date, to_date)
-                    
-                    # 미래 날짜 처리
-                    if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
-                        self.flags["future_date"] = True
-                else:
-                    # 날짜 추출 실패 시 기본값 설정
-                    today = self.date_extractor.today_str
-                    self.date_ranges[query_id] = (today, today)
-                
-                # 쿼리 변환
-                transformed_ast = self._handle_single_query(ast, query_id)
-            
             # 변환된 SQL 문자열
             transformed_sql = transformed_ast.sql(dialect='postgres')
+            
+            # date_ranges가 비어있으면 기본값 추가
+            if 'main' not in self.date_ranges:
+                today = self.date_extractor.today_str
+                self.date_ranges['main'] = (today, today)
             
             # 변환된 SQL과 날짜 정보 반환
             return transformed_sql, self.date_ranges

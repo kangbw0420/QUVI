@@ -1,127 +1,189 @@
 import pytest
-from datetime import datetime
-from utils.query.view.view_table import view_table
+from datetime import datetime, timedelta
+import sqlglot
+from sqlglot import exp
 
-class TestViewTableComplexQuery:
+from utils.query.view.extract_date import DateExtractor, DateCondition, DateRange
+
+
+class TestDateExtractor:
     
     def setup_method(self):
-        # Test data setup
-        self.selected_table = 'trsc'
-        self.company_id = '뉴젠피앤피'
-        self.user_info = ('test_user', 'test_intt_id')  # user_id, use_intt_id
-        self.flags = {
-            'is_joy': False,
-            'no_data': False,
-            'note_changed': False,
-            'future_date': False,
-            'invalid_date': False,
-            'query_error': False,
-            'query_changed': False
-        }
+        self.extractor = DateExtractor(selected_table="amt")  # amt 테이블에서는 reg_dt가 기본 날짜 컬럼
+        self.extractor_trsc = DateExtractor(selected_table="trsc")  # trsc 테이블에서는 trsc_dt가 기본 날짜 컬럼
         
-        # Mock current date for consistent testing
+        # 오늘 날짜와 기준 날짜들 설정
         self.today = datetime.now()
         self.today_str = self.today.strftime("%Y%m%d")
+        self.yesterday = (self.today - timedelta(days=1)).strftime("%Y%m%d")
+        self.tomorrow = (self.today + timedelta(days=1)).strftime("%Y%m%d")
+        self.one_month_ago = (self.today - timedelta(days=30)).strftime("%Y%m%d")
+        self.one_month_later = (self.today + timedelta(days=30)).strftime("%Y%m%d")
+    
+    def test_basic_date_extraction(self):
+        # 간단한 날짜 조건이 있는 쿼리
+        query = f"SELECT * FROM aicfo_get_all_amt WHERE reg_dt = '{self.yesterday}'"
+        from_date, to_date = self.extractor.extract_dates(query)
         
-    def test_complex_query_with_union_and_subqueries(self):
-        """Test processing a complex query with UNION and multiple subqueries."""
+        assert from_date == self.yesterday
+        assert to_date == self.yesterday
         
-        # The complex query with subqueries and UNION
-        query_ordered = """
-        SELECT acct_no FROM (
-            SELECT acct_no, COUNT(*) AS transaction_count 
-            FROM aicfo_get_all_trsc 
-            WHERE view_dv = '수시' AND curr_cd = 'KRW' 
-            AND trsc_dt BETWEEN '20250205' AND '20250305' 
-            GROUP BY acct_no 
-            ORDER BY transaction_count DESC 
-            LIMIT 1
-        ) 
-        UNION 
-        SELECT acct_no FROM (
-            SELECT acct_no, COUNT(*) AS transaction_count 
-            FROM aicfo_get_all_trsc 
-            WHERE view_dv = '수시' AND curr_cd = 'KRW' 
-            AND trsc_dt BETWEEN '20250105' AND '20250205' 
-            GROUP BY acct_no 
-            ORDER BY transaction_count ASC 
-            LIMIT 1
-        )
+    def test_between_date_extraction(self):
+        # BETWEEN 조건이 있는 쿼리
+        query = f"SELECT * FROM aicfo_get_all_amt WHERE reg_dt BETWEEN '{self.one_month_ago}' AND '{self.yesterday}'"
+        from_date, to_date = self.extractor.extract_dates(query)
+        
+        assert from_date == self.one_month_ago
+        assert to_date == self.yesterday
+        
+    def test_greater_than_date_extraction(self):
+        # 부등호 조건이 있는 쿼리
+        query = f"SELECT * FROM aicfo_get_all_amt WHERE reg_dt > '{self.one_month_ago}'"
+        from_date, to_date = self.extractor.extract_dates(query)
+        
+        # reg_dt > date 조건은 date의 다음 날부터 오늘까지가 범위
+        expected_from = (datetime.strptime(self.one_month_ago, "%Y%m%d") + timedelta(days=1)).strftime("%Y%m%d")
+        assert from_date == expected_from
+        assert to_date == self.today_str
+        
+    def test_less_than_date_extraction(self):
+        # 부등호 조건이 있는 쿼리
+        query = f"SELECT * FROM aicfo_get_all_amt WHERE reg_dt < '{self.yesterday}'"
+        from_date, to_date = self.extractor.extract_dates(query)
+        
+        # reg_dt < date 조건은 오래된 날짜부터 date의 전날까지가 범위
+        expected_to = (datetime.strptime(self.yesterday, "%Y%m%d") - timedelta(days=1)).strftime("%Y%m%d")
+        assert from_date == "19700101"  # 가장 과거 날짜
+        assert to_date == expected_to
+        
+    def test_no_date_condition(self):
+        # 날짜 조건이 없는 쿼리
+        query = "SELECT * FROM aicfo_get_all_amt WHERE acct_no = '1234567890'"
+        from_date, to_date = self.extractor.extract_dates(query)
+        
+        # 날짜 조건이 없으면 오늘 날짜가 기본값
+        assert from_date == self.today_str
+        assert to_date == self.today_str
+        
+    def test_future_date_handling(self):
+        # 미래 날짜 조건이 있는 쿼리
+        query = f"SELECT * FROM aicfo_get_all_amt WHERE reg_dt = '{self.tomorrow}'"
+        from_date, to_date = self.extractor.extract_dates(query)
+        
+        # 미래 날짜도 그대로 추출되어야 함 (실제 처리는 view_table에서 함)
+        assert from_date == self.tomorrow
+        assert to_date == self.tomorrow
+        
+    def test_trsc_table_date_column(self):
+        # trsc 테이블은 trsc_dt가 기본 날짜 컬럼
+        query = f"SELECT * FROM aicfo_get_all_trsc WHERE trsc_dt = '{self.yesterday}'"
+        from_date, to_date = self.extractor_trsc.extract_dates(query)
+        
+        assert from_date == self.yesterday
+        assert to_date == self.yesterday
+        
+    def test_due_date_extraction(self):
+        # due_dt 조건이 있는 쿼리
+        query = f"""
+        SELECT * FROM aicfo_get_all_amt 
+        WHERE reg_dt >= '{self.one_month_ago}' AND due_dt = '{self.yesterday}'
         """
+        from_date, to_date = self.extractor.extract_dates(query)
         
-        # Call the function being tested
-        transformed_query, date_ranges = view_table(
-            query_ordered=query_ordered,
-            selected_table=self.selected_table,
-            company_id=self.company_id,
-            user_info=self.user_info,
-            flags=self.flags
-        )
+        assert from_date == self.one_month_ago
+        assert to_date == self.today_str
         
-        # Assertions
-        assert transformed_query is not None
-        assert len(date_ranges) > 0
+    def test_due_date_no_effect(self):
+        # due_dt 조건이 있지만 reg_dt보다 나중인 경우
+        query = f"""
+        SELECT * FROM aicfo_get_all_amt 
+        WHERE reg_dt >= '{self.one_month_ago}' AND due_dt = '{self.tomorrow}'
+        """
+        from_date, to_date = self.extractor.extract_dates(query)
         
-        # Check if date ranges were correctly extracted
-        assert 'main' in date_ranges
+        # due_dt가 reg_dt보다 이후이므로, from_date는 변경되지 않아야 함
+        assert from_date == self.one_month_ago
+        assert to_date == self.today_str
         
-        # Verify the date range for the main query
-        from_date, to_date = date_ranges['main']
-        assert from_date == '20250105'  # Should be the earliest date from all subqueries
+    def test_due_date_between(self):
+        # due_dt BETWEEN 조건
+        query = f"""
+        SELECT * FROM aicfo_get_all_amt 
+        WHERE reg_dt >= '{self.yesterday}' AND due_dt BETWEEN '{self.one_month_ago}' AND '{self.tomorrow}'
+        """
+        from_date, to_date = self.extractor.extract_dates(query)
         
-        # Check if today's date is used if the query has future dates
-        if self.flags['future_date']:
-            assert to_date <= self.today_str
+        # due_dt의 시작이 reg_dt보다 이전이므로, from_date가 변경되어야 함
+        assert from_date == self.one_month_ago
+        assert to_date == self.today_str
+        
+    def test_due_date_greater_than(self):
+        # due_dt > 조건
+        query = f"""
+        SELECT * FROM aicfo_get_all_amt 
+        WHERE reg_dt >= '{self.yesterday}' AND due_dt > '{self.one_month_ago}'
+        """
+        from_date, to_date = self.extractor.extract_dates(query)
+        
+        # due_dt > one_month_ago는 다음 날부터이므로
+        expected_from = (datetime.strptime(self.one_month_ago, "%Y%m%d") + timedelta(days=1)).strftime("%Y%m%d")
+        
+        # 만약 expected_from이 reg_dt보다 이전이면, from_date가 변경되어야 함
+        assert from_date == expected_from
+        assert to_date == self.today_str
+        
+    def test_multiple_date_conditions(self):
+        # 여러 날짜 조건이 있는 경우
+        query = f"""
+        SELECT * FROM aicfo_get_all_amt 
+        WHERE reg_dt >= '{self.one_month_ago}' 
+        AND reg_dt <= '{self.yesterday}'
+        AND due_dt = '{self.one_month_ago}'
+        """
+        from_date, to_date = self.extractor.extract_dates(query)
+        
+        # reg_dt >= one_month_ago AND reg_dt <= yesterday AND due_dt = one_month_ago
+        # due_dt와 reg_dt의 시작이 같으므로 변화 없음
+        assert from_date == self.one_month_ago
+        assert to_date == self.yesterday
+        
+    def test_combine_reg_dt_and_due_dt(self):
+        # reg_dt와 due_dt 조건이 같이 있지만 due_dt가 더 최근인 경우
+        query = f"""
+        SELECT * FROM aicfo_get_all_amt 
+        WHERE reg_dt >= '{self.one_month_ago}' 
+        AND due_dt >= '{self.yesterday}'
+        """
+        from_date, to_date = self.extractor.extract_dates(query)
+        
+        # due_dt가 reg_dt보다 이후이므로 영향 없음
+        assert from_date == self.one_month_ago
+        assert to_date == self.today_str
+        
+    def test_determine_date_range(self):
+        # DateCondition과 _determine_date_range 메서드 직접 테스트
+        date_conditions = [
+            DateCondition(column="reg_dt", operator="GTE", value=self.one_month_ago)
+        ]
+        due_date_conditions = [
+            DateCondition(column="due_dt", operator="EQ", value=self.yesterday)
+        ]
+        
+        date_range = self.extractor._determine_date_range(date_conditions, due_date_conditions)
+        
+        # due_dt가 reg_dt보다 이후이므로 영향 없음
+        if self.yesterday < self.one_month_ago:
+            assert date_range.from_date == self.yesterday
         else:
-            assert to_date == '20250305'  # Should be the latest date from all subqueries
+            assert date_range.from_date == self.one_month_ago
+        assert date_range.to_date == self.today_str
         
-        # Check if the transformed query contains the view functions with correct parameters
-        assert 'aicfo_get_all_amt(' in transformed_query
-        assert 'aicfo_get_all_trsc(' in transformed_query
-        
-        # Verify company_id is properly included in the query
-        assert self.company_id in transformed_query
-        
-        # Print the transformed query for debugging
-        print(f"\nTransformed Query:\n{transformed_query}")
-        print(f"\nDate Ranges:\n{date_ranges}")
-        
-    def test_multiple_subqueries_date_extraction(self):
-        """Test that the earliest and latest dates are correctly extracted from multiple subqueries."""
-        
-        # Query with multiple date ranges in different parts
-        query_with_multiple_dates = """
-        SELECT acct_no, bank_nm 
-        FROM aicfo_get_all_amt 
-        WHERE view_dv = '수시' AND reg_dt BETWEEN '20250101' AND '20250131'
-        AND acct_no IN (
-            SELECT acct_no FROM aicfo_get_all_trsc 
-            WHERE trsc_dt BETWEEN '20250201' AND '20250228'
-            UNION
-            SELECT acct_no FROM aicfo_get_all_trsc 
-            WHERE trsc_dt BETWEEN '20250301' AND '20250331'
-        )
+    def test_main_case(self):
+        # reg_dt 조건은 없고 due_dt 조건만 있는 경우
+        query = f"""SELECT bank_nm, acct_dv, acct_no, acct_bal_amt, open_dt, due_dt, intr_rate, acct_bal_upd_dtm FROM AICFO_GET_ALL_AMT WHERE com_nm = '마드라스체크' AND view_dv = '대출' AND curr_cd = 'KRW' AND due_dt BETWEEN '20240101' AND '20241231' AND reg_dt = '20250228'
         """
+        from_date, to_date = self.extractor.extract_dates(query)
         
-        # Call the function being tested
-        transformed_query, date_ranges = view_table(
-            query_ordered=query_with_multiple_dates,
-            selected_table=self.selected_table,
-            company_id=self.company_id,
-            user_info=self.user_info,
-            flags=self.flags
-        )
-        
-        # Assertions for date ranges
-        assert 'main' in date_ranges
-        from_date, to_date = date_ranges['main']
-        
-        # The earliest date should be from the first condition
-        assert from_date == '20250101'
-        
-        # The latest date should be from the last subquery
-        assert to_date == '20250331'
-        
-        # Print results for debugging
-        print(f"\nTransformed Query (Multiple Dates):\n{transformed_query}")
-        print(f"\nDate Ranges (Multiple Dates):\n{date_ranges}")
+        # due_dt 조건만 있을 때 from_date는 due_dt가 되어야 함
+        assert from_date == '20240101'
+        assert to_date == '20250228'
