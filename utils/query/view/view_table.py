@@ -35,32 +35,34 @@ class ViewTableTransformer:
         
     def _handle_node_recursively(self, node: exp.Expression, node_id: str) -> exp.Expression:
         """모든 타입의 노드를 재귀적으로 처리"""
-        
         # Union 노드 처리
         if isinstance(node, exp.Union):
-            print(node)
-            print(1)
-            print(node.args)
+            # print(node.args)
             # 왼쪽과 오른쪽 부분에 대해 재귀적으로 처리
             left_id = f"{node_id}_left"
             right_id = f"{node_id}_right"
             
             transformed_left = self._handle_node_recursively(node.left, left_id)
             transformed_right = self._handle_node_recursively(node.right, right_id)
-            print(transformed_left)
-            print(2)
-            print(transformed_right)
+            # print(transformed_left)
+            # print(transformed_right)
+            
+            distinct_value = node.args.get('distinct', False)
             # 변환된 UNION 생성
             transformed_node = exp.Union(
                 this=transformed_left,
                 expression=transformed_right,
-                distinct=node.distinct
+                distinct=distinct_value
             )
             
             # 부모 노드의 날짜 범위는 양쪽 자식의 병합된 범위
             if left_id in self.date_ranges and right_id in self.date_ranges:
                 left_from, left_to = self.date_ranges[left_id]
+                print(left_from)
+                print(left_to)
                 right_from, right_to = self.date_ranges[right_id]
+                print(right_from)
+                print(right_to)
                 
                 merged_from = min(left_from, right_from)
                 merged_to = max(left_to, right_to)
@@ -75,6 +77,7 @@ class ViewTableTransformer:
         
         # Subquery 노드 처리
         elif isinstance(node, exp.Subquery):
+            print(11111111111)
             subquery_id = f"{node_id}_sub_{self.query_counter}"
             self.query_counter += 1
             
@@ -92,13 +95,18 @@ class ViewTableTransformer:
         
         # 일반 Select 쿼리 처리
         else:
+            print(2222222)
             # 현재 노드에서 날짜 조건 추출
             sql_query = node.sql(dialect='postgres')
             try:
+                print(f"Extracting dates for node_id: {node_id}")
+                print(f"{node_id} == {sql_query}")
                 from_date, to_date = self.date_extractor.extract_dates(sql_query, node)
+                print(f"Extracted dates: from={from_date}, to={to_date}")
                 
                 # 날짜 정보 저장
                 self.date_ranges[node_id] = (from_date, to_date)
+                print(f"Updated date_ranges: {self.date_ranges}")
                 
                 # 미래 날짜 처리
                 if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
@@ -109,7 +117,7 @@ class ViewTableTransformer:
                         to_date = self.date_extractor.today_str
                     self.date_ranges[node_id] = (from_date, to_date)
             except Exception as e:
-                print(f"Error extracting dates: {str(e)}")
+                print(f"Error extracting dates in node_id {node_id}: {str(e)}")
                 today = self.date_extractor.today_str
                 self.date_ranges[node_id] = (today, today)
             

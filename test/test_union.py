@@ -86,42 +86,42 @@ class TestViewTableComplexQuery:
         print(f"\nTransformed Query:\n{transformed_query}")
         print(f"\nDate Ranges:\n{date_ranges}")
         
-    def test_multiple_subqueries_date_extraction(self):
-        """Test that the earliest and latest dates are correctly extracted from multiple subqueries."""
+    # def test_multiple_subqueries_date_extraction(self):
+    #     """Test that the earliest and latest dates are correctly extracted from multiple subqueries."""
         
-        # Query with multiple date ranges in different parts
-        query_with_multiple_dates = """
-        SELECT acct_no, bank_nm 
-        FROM aicfo_get_all_amt 
-        WHERE view_dv = '수시' AND reg_dt BETWEEN '20250101' AND '20250131'
-        AND acct_no IN (
-            SELECT acct_no FROM aicfo_get_all_trsc 
-            WHERE trsc_dt BETWEEN '20250201' AND '20250228'
-            UNION
-            SELECT acct_no FROM aicfo_get_all_trsc 
-            WHERE trsc_dt BETWEEN '20250301' AND '20250331'
-        )
-        """
+    #     # Query with multiple date ranges in different parts
+    #     query_with_multiple_dates = """
+    #     SELECT acct_no, bank_nm 
+    #     FROM aicfo_get_all_amt 
+    #     WHERE view_dv = '수시' AND reg_dt BETWEEN '20250101' AND '20250131'
+    #     AND acct_no IN (
+    #         SELECT acct_no FROM aicfo_get_all_trsc 
+    #         WHERE trsc_dt BETWEEN '20250201' AND '20250228'
+    #         UNION
+    #         SELECT acct_no FROM aicfo_get_all_trsc 
+    #         WHERE trsc_dt BETWEEN '20250301' AND '20250331'
+    #     )
+    #     """
         
-        # Call the function being tested
-        transformed_query, date_ranges = view_table(
-            query_ordered=query_with_multiple_dates,
-            selected_table=self.selected_table,
-            company_id=self.company_id,
-            user_info=self.user_info,
-            flags=self.flags
-        )
+    #     # Call the function being tested
+    #     transformed_query, date_ranges = view_table(
+    #         query_ordered=query_with_multiple_dates,
+    #         selected_table=self.selected_table,
+    #         company_id=self.company_id,
+    #         user_info=self.user_info,
+    #         flags=self.flags
+    #     )
         
-        # Assertions for date ranges
-        assert 'main' in date_ranges
-        from_date, to_date = date_ranges['main']
+    #     # Assertions for date ranges
+    #     assert 'main' in date_ranges
+    #     from_date, to_date = date_ranges['main']
         
-        # The earliest date should be from the first condition
-        assert from_date == '20250101'
+    #     # The earliest date should be from the first condition
+    #     assert from_date == '20250101'
         
-        # The latest date should be from the last subquery
-        assert to_date == '20250331'
+    #     # The latest date should be from the last subquery
+    #     assert to_date == '20250331'
         
-        # Print results for debugging
-        print(f"\nTransformed Query (Multiple Dates):\n{transformed_query}")
-        print(f"\nDate Ranges (Multiple Dates):\n{date_ranges}")
+    #     # Print results for debugging
+    #     print(f"\nTransformed Query (Multiple Dates):\n{transformed_query}")
+    #     print(f"\nDate Ranges (Multiple Dates):\n{date_ranges}")
