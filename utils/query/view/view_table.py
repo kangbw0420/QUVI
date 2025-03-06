@@ -7,7 +7,7 @@ from sqlglot.errors import ParseError
 from datetime import datetime, timedelta
 
 from utils.query.view.classify_query import QueryClassifier
-from utils.query.view.extract_date import DateExtractor, DateCondition
+from utils.query.view.extract_date import DateExtractor
 
 @dataclass
 class ViewFunction:
@@ -32,280 +32,6 @@ class ViewTableTransformer:
         self.date_extractor = DateExtractor(selected_table)
         self.date_ranges = {}  # 쿼리 ID별 날짜 범위 저장
         self.query_counter = 0  # 서브쿼리에 고유 ID 부여를 위한 카운터
-        
-    def _handle_node_recursively(self, node: exp.Expression, node_id: str) -> exp.Expression:
-        """모든 타입의 노드를 재귀적으로 처리"""        
-        # Union 노드 처리
-        if isinstance(node, exp.Union):
-            # 왼쪽과 오른쪽 부분에 대해 재귀적으로 처리
-            left_id = f"{node_id}_left"
-            right_id = f"{node_id}_right"
-            
-            transformed_left = self._handle_node_recursively(node.left, left_id)
-            transformed_right = self._handle_node_recursively(node.right, right_id)
-            
-            distinct_value = node.args.get('distinct', False)
-            # 변환된 UNION 생성
-            transformed_node = exp.Union(
-                this=transformed_left,
-                expression=transformed_right,
-                distinct=distinct_value
-            )
-            
-            # 부모 노드의 날짜 범위는 양쪽 자식의 병합된 범위
-            if left_id in self.date_ranges and right_id in self.date_ranges:
-                left_from, left_to = self.date_ranges[left_id]
-                right_from, right_to = self.date_ranges[right_id]
-                
-                merged_from = min(left_from, right_from)
-                merged_to = max(left_to, right_to)
-                
-                self.date_ranges[node_id] = (merged_from, merged_to)
-                
-                # 미래 날짜 확인
-                if merged_from > self.date_extractor.today_str or merged_to > self.date_extractor.today_str:
-                    self.flags["future_date"] = True
-            
-            return transformed_node
-        
-        # Select 노드 처리
-        elif isinstance(node, exp.Select):
-            # 노드 복사 - 변경 사항을 적용할 새로운 Select 객체
-            transformed_node = node
-            
-            # 먼저 노드에서 직접 날짜 조건 추출 (WHERE 절에서)
-            if node.args.get("where"):
-                where_node = node.args["where"]
-                # WHERE 절에서 날짜 조건 직접 추출
-                date_conditions = self._extract_date_conditions_direct(where_node)
-                
-                if date_conditions:
-                    # 추출된 날짜 조건이 있으면 날짜 범위 결정
-                    from_date = None
-                    to_date = None
-                    
-                    for condition in date_conditions:
-                        if condition.column in ['reg_dt', 'trsc_dt']:
-                            if condition.operator == 'BETWEEN':
-                                # BETWEEN에서는 범위 직접 사용
-                                cond_from = condition.value
-                                cond_to = condition.secondary_value
-                                from_date = cond_from if from_date is None else min(from_date, cond_from)
-                                to_date = cond_to if to_date is None else max(to_date, cond_to)
-                            elif condition.operator in ('EQ', '='):
-                                # 등호에서는 같은 날짜
-                                cond_date = condition.value
-                                from_date = cond_date if from_date is None else min(from_date, cond_date)
-                                to_date = cond_date if to_date is None else max(to_date, cond_date)
-                            # 다른 연산자에 대한 처리 추가 가능
-                    
-                    if from_date and to_date:
-                        self.date_ranges[node_id] = (from_date, to_date)
-                        
-                        # 미래 날짜 처리
-                        if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
-                            self.flags["future_date"] = True
-            
-            # FROM 절 처리 (서브쿼리 포함)
-            if node.args.get("from"):
-                from_clause = node.args["from"]
-                
-                # FROM 절이 From 객체인 경우
-                if isinstance(from_clause, exp.From):
-                    if isinstance(from_clause.this, exp.Subquery):
-                        # 서브쿼리에 고유 ID 할당
-                        subquery_id = f"{node_id}_sub"
-                        
-                        # 서브쿼리 내부를 재귀적으로 처리
-                        transformed_subquery = self._handle_node_recursively(from_clause.this.this, subquery_id)
-                        
-                        # 변환된 서브쿼리로 FROM 절 업데이트
-                        new_from = exp.From(
-                            this=exp.Subquery(
-                                this=transformed_subquery
-                            )
-                        )
-                        transformed_node.args["from"] = new_from
-                        
-                        # 날짜 범위 상속
-                        if subquery_id in self.date_ranges:
-                            sub_from, sub_to = self.date_ranges[subquery_id]
-                            if node_id in self.date_ranges:
-                                node_from, node_to = self.date_ranges[node_id]
-                                self.date_ranges[node_id] = (
-                                    min(node_from, sub_from),
-                                    max(node_to, sub_to)
-                                )
-                            else:
-                                self.date_ranges[node_id] = (sub_from, sub_to)
-                    elif isinstance(from_clause.this, exp.Table):
-                        # 테이블 참조 변환
-                        if from_clause.this.name.startswith('aicfo_get_all_'):
-                            # 현재 노드의 날짜 범위 가져오기
-                            if node_id in self.date_ranges:
-                                current_from_date, current_to_date = self.date_ranges[node_id]
-                            else:
-                                # 날짜 범위가 없으면 SQL에서 추출 시도
-                                try:
-                                    sql_query = node.sql(dialect='postgres')
-                                    current_from_date, current_to_date = self.date_extractor.extract_dates(sql_query)
-                                    self.date_ranges[node_id] = (current_from_date, current_to_date)
-                                except:
-                                    current_from_date = current_to_date = self.date_extractor.today_str
-                            
-                            view_func = self._create_view_function(
-                                ViewFunction(
-                                    base_name=from_clause.this.name,
-                                    use_intt_id=self.use_intt_id,
-                                    user_id=self.user_id,
-                                    view_com=self.view_com,
-                                    from_date=current_from_date,
-                                    to_date=current_to_date,
-                                    alias=from_clause.this.alias,
-                                    query_id=node_id
-                                )
-                            )
-                            transformed_node.args["from"] = exp.From(this=view_func)
-            
-            # WHERE 절 내 IN 조건의 서브쿼리 처리
-            if transformed_node.args.get("where"):
-                def process_where_subqueries(expr, parent_id):
-                    if isinstance(expr, exp.In) and isinstance(expr.expression, exp.Subquery):
-                        # IN 조건의 서브쿼리 처리
-                        subquery_id = f"{parent_id}_in_sub"
-                        transformed_subquery = self._handle_node_recursively(expr.expression.this, subquery_id)
-                        
-                        # 변환된 서브쿼리로 IN 조건 업데이트
-                        return exp.In(
-                            this=expr.this,
-                            expression=exp.Subquery(this=transformed_subquery),
-                            invert=expr.args.get("invert", False)
-                        )
-                    
-                    # 그 외 AND/OR 조건 처리
-                    elif isinstance(expr, (exp.And, exp.Or)):
-                        new_this = process_where_subqueries(expr.this, f"{parent_id}_this")
-                        new_expression = process_where_subqueries(expr.expression, f"{parent_id}_expr")
-                        
-                        if isinstance(expr, exp.And):
-                            return exp.And(this=new_this, expression=new_expression)
-                        else:  # Or
-                            return exp.Or(this=new_this, expression=new_expression)
-                    
-                    return expr
-                
-                # WHERE 절 서브쿼리 처리
-                transformed_node.args["where"] = process_where_subqueries(transformed_node.args["where"], f"{node_id}_where")
-            
-            # 최종 변환된 노드 반환
-            return transformed_node
-        
-        # Subquery 노드 처리
-        elif isinstance(node, exp.Subquery):
-            subquery_id = f"{node_id}_inner"
-            
-            # 내부 쿼리를 재귀적으로 처리
-            transformed_inner = self._handle_node_recursively(node.this, subquery_id)
-            
-            # 변환된 서브쿼리 생성
-            transformed_node = exp.Subquery(this=transformed_inner)
-            
-            # 날짜 범위 상속
-            if subquery_id in self.date_ranges:
-                self.date_ranges[node_id] = self.date_ranges[subquery_id]
-            
-            return transformed_node
-        
-        # 일반 노드 처리
-        else:
-            try:
-                # 현재 노드가 Table이면서 aicfo_get_all_*인 경우 뷰 함수로 변환
-                if isinstance(node, exp.Table) and node.name.startswith('aicfo_get_all_'):
-                    # 현재 노드에 대한 날짜 정보 가져오기
-                    if node_id not in self.date_ranges:
-                        # 부모 노드에서 날짜 정보 상속
-                        parent_id = node_id.rsplit('_', 1)[0] if '_' in node_id else "main"
-                        if parent_id in self.date_ranges:
-                            self.date_ranges[node_id] = self.date_ranges[parent_id]
-                        else:
-                            self.date_ranges[node_id] = (self.date_extractor.today_str, self.date_extractor.today_str)
-                    
-                    current_from_date, current_to_date = self.date_ranges[node_id]
-                    
-                    # 뷰 함수 생성
-                    view_func = self._create_view_function(
-                        ViewFunction(
-                            base_name=node.name,
-                            use_intt_id=self.use_intt_id,
-                            user_id=self.user_id,
-                            view_com=self.view_com,
-                            from_date=current_from_date,
-                            to_date=current_to_date,
-                            alias=node.alias,
-                            query_id=node_id
-                        )
-                    )
-                    
-                    return view_func
-                
-                # 그 외 일반 노드는 그대로 반환
-                return node
-                    
-            except Exception as e:
-                print(f"Error processing node {node_id}: {str(e)}")
-                return node
-
-    def _extract_date_conditions_direct(self, node: exp.Expression) -> list:
-        """AST 노드에서 직접 날짜 조건 추출"""
-        conditions = []
-        date_pattern = re.compile(r"\d{8}|\d{4}-\d{2}-\d{2}")
-        
-        # Between 조건 확인
-        if isinstance(node, exp.Between):
-            if (isinstance(node.this, exp.Column) and 
-                (node.this.name == 'reg_dt' or node.this.name == 'trsc_dt')):
-                low_value = str(node.args["low"].this).strip("'")
-                high_value = str(node.args["high"].this).strip("'")
-
-                if date_pattern.match(low_value) and date_pattern.match(high_value):
-                    conditions.append(DateCondition(
-                        column=node.this.name,
-                        operator='BETWEEN',
-                        value=low_value,
-                        secondary_value=high_value
-                    ))
-        
-        # 등호 조건 확인
-        elif isinstance(node, (exp.EQ, exp.GT, exp.LT, exp.GTE, exp.LTE)):
-            if (isinstance(node.this, exp.Column) and 
-                (node.this.name == 'reg_dt' or node.this.name == 'trsc_dt')):
-                value = str(node.expression.this).strip("'")
-                op_name = node.__class__.__name__
-                
-                if date_pattern.match(value):
-                    conditions.append(DateCondition(
-                        column=node.this.name,
-                        operator=op_name,
-                        value=value
-                    ))
-        
-        # AND 조건 처리
-        elif isinstance(node, exp.And):
-            # 양쪽 하위 노드에서 조건 추출
-            left_conditions = self._extract_date_conditions_direct(node.this)
-            right_conditions = self._extract_date_conditions_direct(node.expression)
-            conditions.extend(left_conditions)
-            conditions.extend(right_conditions)
-        
-        # OR 조건 처리
-        elif isinstance(node, exp.Or):
-            # 양쪽 하위 노드에서 조건 추출
-            left_conditions = self._extract_date_conditions_direct(node.this)
-            right_conditions = self._extract_date_conditions_direct(node.expression)
-            conditions.extend(left_conditions)
-            conditions.extend(right_conditions)
-        
-        return conditions
 
     def transform_query(self, query: str) -> Tuple[str, Dict[str, Tuple[str, str]]]:
         """
@@ -320,16 +46,36 @@ class ViewTableTransformer:
             self.query_counter = 0
             self.date_ranges = {}
             
+            # parsing query
             ast = sqlglot.parse_one(query, dialect='postgres')
-            transformed_ast = self._handle_node_recursively(ast, "main")
+            
+            # analyze query sturcture
+            query_info = self.classifier.classify_query(query)
+            
+            if query_info.has_union:
+                transformed_ast = self._handle_union_query(ast)
+            else:
+                query_id = "main"
                 
+                # 메인 쿼리의 날짜 범위 추출
+                date_range = self.date_extractor.extract_dates(query)
+                if isinstance(date_range, tuple) and len(date_range) == 2:
+                    from_date, to_date = date_range
+                    self.date_ranges[query_id] = (from_date, to_date)
+                    
+                    # 미래 날짜 처리
+                    if from_date > self.date_extractor.today_str or to_date > self.date_extractor.today_str:
+                        self.flags["future_date"] = True
+                else:
+                    # 날짜 추출 실패 시 기본값 설정
+                    today = self.date_extractor.today_str
+                    self.date_ranges[query_id] = (today, today)
+                
+                # 쿼리 변환
+                transformed_ast = self._handle_single_query(ast, query_id)
+            
             # 변환된 SQL 문자열
             transformed_sql = transformed_ast.sql(dialect='postgres')
-            
-            # date_ranges가 비어있으면 기본값 추가
-            if 'main' not in self.date_ranges:
-                today = self.date_extractor.today_str
-                self.date_ranges['main'] = (today, today)
             
             # 변환된 SQL과 날짜 정보 반환
             return transformed_sql, self.date_ranges
