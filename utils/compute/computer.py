@@ -68,6 +68,23 @@ def _limit_output(items, max_items=20, max_chars=400):
     
     return result
 
+def _format_date_string(value, column_name):
+    """날짜 컬럼(reg_dt, trsc_dt 등)의 YYYYMMDD 형식을 YYYY-MM-DD 형식으로 변환"""
+    date_columns = {'reg_dt', 'trsc_dt', 'open_dt', 'due_dt', 'trmn_dt'}
+    
+    if column_name in date_columns and isinstance(value, str) and len(value) == 8 and value.isdigit():
+        try:
+            # YYYYMMDD 형식을 YYYY-MM-DD 형식으로 변환
+            year = value[:4]
+            month = value[4:6]
+            day = value[6:8]
+            return f"{year}-{month}-{day}"
+        except Exception:
+            # 변환 실패 시 원래 값 반환
+            return value
+    
+    return value
+
 def compute_function(func_name: str, params: List[str], result: List[Dict[str, Any]], column_list: List[str]) -> Union[float, str]:
     """compute a function with its parameters"""
     # Handle nested functions first
@@ -151,8 +168,15 @@ def compute_function(func_name: str, params: List[str], result: List[Dict[str, A
         
     elif func_name == 'unique':
         col = evaluated_params[0]
-        unique_values = list(set(str(row[col]) for row in result if col in row and row[col] is not None))
-        return _limit_output(unique_values)
+        # 각 값을 날짜 형식으로 변환하면서 고유한 값들 수집
+        unique_values = set()
+        for row in result:
+            if col in row and row[col] is not None:
+                # 날짜 형식 변환 함수 적용
+                formatted_value = _format_date_string(str(row[col]), col)
+                unique_values.add(formatted_value)
+        
+        return _limit_output(list(unique_values))
         
     elif func_name == 'mode':
         col = evaluated_params[0]
@@ -183,7 +207,15 @@ def compute_function(func_name: str, params: List[str], result: List[Dict[str, A
             
     elif func_name == 'list':
         col = evaluated_params[0]
-        values = [row[col] for row in result if col in row and row[col] is not None]
+        
+        # 날짜 컬럼인 경우 YYYYMMDD -> YYYY-MM-DD 형식으로 변환
+        values = []
+        for row in result:
+            if col in row and row[col] is not None:
+                # 날짜 형식 변환 함수 적용
+                formatted_value = _format_date_string(row[col], col)
+                values.append(formatted_value)      
+
         if not values:
             return ""
         
