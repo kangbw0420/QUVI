@@ -1,4 +1,6 @@
 import re
+from datetime import datetime
+
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -15,13 +17,13 @@ async def guard_query(
     user_question: str,
     selected_table: str,
     flags: dict,
-    today: str,
     sql_error: str = ""
     ) -> str:
     """에러가 발생했거나 날짜가 틀릴 수 있는 쿼리를 체크
     Returns:
         수정된 쿼리(문제 없으면 쿼리 그대로 return)
     """
+    today = datetime.now()
     prompt_today = today.strftime("%Y년 %m월 %d일")
     
     if flags["query_error"]:

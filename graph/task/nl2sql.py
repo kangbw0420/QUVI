@@ -27,8 +27,7 @@ async def create_sql(
     trace_id: str, 
     selected_table: str, 
     company_id: str,
-    user_question: str,
-    today: str
+    user_question: str
 ) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
@@ -38,6 +37,7 @@ async def create_sql(
         TypeError: LLM 응답이 예상된 형식이 아닌 경우.
     """
     try:
+        today = datetime.now()
         prompt_today = today.strftime("%Y년 %m월 %d일")
         print(f"nl2sql prompt_today: {prompt_today}")
         try:

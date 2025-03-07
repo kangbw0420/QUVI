@@ -36,8 +36,7 @@ async def parameters(
     selected_api: str,
     user_question: str,
     company_id: str,
-    user_info: Tuple[str, str],
-    today: str,
+    user_info: Tuple[str, str]
 ) -> Tuple[str, Tuple[str, str]]:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
@@ -51,6 +50,7 @@ async def parameters(
     try:
         json_format = '"from_date": from_date, "to_date": to_date'
         
+        today = datetime.now()
         prompt_today = today.strftime("%Y년 %m월 %d일")
         print(f"params prompt_today: {prompt_today}")
         system_prompt = database_service.get_prompt(
