@@ -54,14 +54,17 @@ class NameModifier:
             ))
             
         return patterns
-
+        
     def modify_query(self, query: str) -> str:
         patterns = self._find_all_patterns(query)
         modified_query = query
         
         for names_str, operator, full_match in patterns:
+            # 공백 제거 추가
+            normalized_name = re.sub(r'\s+', '', names_str)
+            
             if operator == '=':
-                official_name = self.name_mappings.get(names_str)
+                official_name = self.name_mappings.get(normalized_name)
                 if official_name:
                     new_condition = f"{self.column_name} = '{official_name}'"
                     modified_query = modified_query.replace(full_match, new_condition)
@@ -70,12 +73,14 @@ class NameModifier:
                 values = [v.strip().strip("'\"") for v in names_str.split(',')]
                 new_values = []
                 for value in values:
-                    official_name = self.name_mappings.get(value)
+                    normalized_value = re.sub(r'\s+', '', value)
+                    official_name = self.name_mappings.get(normalized_value)
                     new_values.append(f"'{official_name}'" if official_name else f"'{value}'")
                 new_condition = f"{self.column_name} IN ({', '.join(new_values)})"
                 modified_query = modified_query.replace(full_match, new_condition)
             else:  # LIKE
-                official_name = self.name_mappings.get(names_str)
+                normalized_name = re.sub(r'\s+', '', names_str)
+                official_name = self.name_mappings.get(normalized_name)
                 if official_name:
                     new_condition = f"{self.column_name} LIKE '%{official_name}%'"
                     modified_query = modified_query.replace(full_match, new_condition)

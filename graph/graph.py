@@ -137,6 +137,7 @@ def make_graph() -> CompiledStateGraph:
                 "executor": "executor"
             }
         )
+        workflow.add_edge("yqmd", "executor")
 
         workflow.add_edge("commander", "nl2sql")
         workflow.add_edge("nl2sql", "executor")
