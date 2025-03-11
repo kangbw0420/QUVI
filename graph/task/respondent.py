@@ -57,7 +57,12 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
     
     if date_info:
         (from_date, to_date) = date_info
-        formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}.  {user_question}"
+        try:
+            formatted_from = f"{from_date[:4]}년 {int(from_date[4:6])}월 {int(from_date[6:8])}일"
+            formatted_to = f"{to_date[:4]}년 {int(to_date[4:6])}월 {int(to_date[6:8])}일"
+            formatted_user_question = f"시작 시점: {formatted_from}, 종료 시점: {formatted_to}. {user_question}"
+        except:
+            formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}. {user_question}"
     else:
         formatted_user_question = user_question
 

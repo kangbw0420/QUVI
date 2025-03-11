@@ -1,3 +1,4 @@
+import os
 import argparse
 import time
 from contextlib import asynccontextmanager
@@ -18,8 +19,12 @@ from api.voc_api import voc_api
 from database.postgresql import connect_postgresql_pool
 from utils.logger import setup_logger
 
+# 로그 파일 경로 설정
+log_dir = os.environ.get('LOG_DIR', 'logs')  # 환경변수 또는 기본값
+log_file = os.path.join(log_dir, 'agent.log')
+
 # 애플리케이션 루트 로거 설정
-logger = setup_logger('main')
+logger = setup_logger('main', log_file)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="FastAPI Uvicorn Server")
