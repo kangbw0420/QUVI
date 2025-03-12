@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from llm_admin.state_manager import StateManager
 from graph.types import GraphState
 from graph.task.classifier import check_joy, is_api, classify_yqmd
@@ -106,7 +104,10 @@ async def params(state: GraphState) -> GraphState:
         })
 
     state.update({"sql_query": sql_query, "date_info": date_info})
-    StateManager.update_state(trace_id, {"sql_query": sql_query})
+    StateManager.update_state(trace_id, {
+        "company_id": company_id,
+        "sql_query": sql_query
+    })
     return state
 
 async def yqmd(state: GraphState) -> GraphState:
@@ -133,7 +134,10 @@ async def nl2sql(state: GraphState) -> GraphState:
     sql_query = await create_sql(trace_id, selected_table, company_id, user_question)
 
     state.update({"sql_query": sql_query,})
-    StateManager.update_state(trace_id, {"sql_query": sql_query})
+    StateManager.update_state(trace_id, {
+        "company_id": company_id,
+        "sql_query": sql_query
+    })
     return state
 
 async def executor(state: GraphState) -> GraphState:
@@ -253,12 +257,20 @@ async def executor(state: GraphState) -> GraphState:
         empty_result = []
         column_list = []
         state.update({"query_result": empty_result, "column_list": column_list})
-        StateManager.update_state(trace_id, {"query_result": empty_result})
+        StateManager.update_state(trace_id, {
+            "query_result": empty_result,
+            "column_list": column_list,
+            "date_info": state.get("date_info", (None, None))
+        })
         
         return state
     
     state.update({"query_result": result, "column_list": column_list})
-    StateManager.update_state(trace_id, {"query_result": result})
+    StateManager.update_state(trace_id, {
+        "query_result": result,
+        "column_list": column_list,
+        "date_info": state.get("date_info", (None, None))
+    })
     
     return state
 
@@ -282,7 +294,10 @@ async def safeguard(state: GraphState) -> GraphState:
         flags["query_changed"] = True
         state.update({"sql_query": safe_query})
 
-        StateManager.update_state(trace_id, {"sql_query": safe_query})
+        StateManager.update_state(trace_id, {
+            "sql_query": safe_query,
+            "sql_error": sql_error
+        })
         return state
 
 async def respondent(state: GraphState) -> GraphState:
@@ -312,7 +327,11 @@ async def respondent(state: GraphState) -> GraphState:
         final_result = is_krw(final_result)
 
     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
-    StateManager.update_state(trace_id, {"final_answer": final_answer, "query_result": final_result})
+    StateManager.update_state(trace_id, {
+    "final_answer": final_answer,
+    "column_list": column_list,
+    "query_result": final_result
+    })
     return state
 
 async def nodata(state: GraphState) -> GraphState:

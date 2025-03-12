@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 from decimal import Decimal
 
 from database.postgresql import query_execute
@@ -44,14 +44,22 @@ class StateManager:
                     return [convert_decimal(item) for item in obj]
                 elif isinstance(obj, Decimal):
                     return float(obj)
+                elif isinstance(obj, tuple):
+                    return list(convert_decimal(item) for item in obj)
                 return obj
 
             # JSON 필드 처리
             params = {'trace_id': trace_id}
             for key, value in new_state.items():
-                if key in ['query_result_stats', 'query_result'] and value is not None:
+                if key in ['query_result', 'column_list'] and value is not None:
                     converted_value = convert_decimal(value)
                     params[key] = json.dumps(converted_value, ensure_ascii=False)
+                elif key == 'date_info' and value is not None:
+                    # date_info는 tuple이므로 리스트로 변환하여 저장
+                    if isinstance(value, tuple) and len(value) == 2:
+                        params[key] = json.dumps(list(value), ensure_ascii=False)
+                    else:
+                        params[key] = None
                 else:
                     params[key] = value
 
@@ -96,18 +104,42 @@ class StateManager:
         result = query_execute(query, {'trace_id': trace_id}, use_prompt_db=True)
         
         if not result or not isinstance(result, list) or len(result) == 0:
-            logger.error("No previous state found")
+            logger.info("No previous state found")
             return None
 
         state_dict = result[0]
 
         # JSON 필드 파싱
-        for key in ['query_result_stats', 'query_result']:
+        for key in ['query_result', 'column_list']:
             if key in state_dict and state_dict[key]:
                 try:
-                    state_dict[key] = json.loads(state_dict[key])
+                    # 문자열이면 JSON으로 파싱, 아니면 그대로 사용
+                    if isinstance(state_dict[key], str):
+                        state_dict[key] = json.loads(state_dict[key])
                 except json.JSONDecodeError:
                     logger.error(f"Warning: Could not parse JSON for {key}")
+        
+        # date_info JSON을 tuple로 변환
+        if 'date_info' in state_dict and state_dict['date_info']:
+            try:
+                # 타입 체크 - 문자열인 경우에만 json.loads 적용
+                if isinstance(state_dict['date_info'], str):
+                    date_info_list = json.loads(state_dict['date_info'])
+                    if isinstance(date_info_list, list) and len(date_info_list) == 2:
+                        state_dict['date_info'] = tuple(date_info_list)
+                    else:
+                        state_dict['date_info'] = (None, None)
+                elif isinstance(state_dict['date_info'], list) and len(state_dict['date_info']) == 2:
+                    # 이미 리스트로 파싱되어 있는 경우
+                    state_dict['date_info'] = tuple(state_dict['date_info'])
+                else:
+                    state_dict['date_info'] = (None, None)
+            except json.JSONDecodeError:
+                logger.error("Warning: Could not parse JSON for date_info")
+                state_dict['date_info'] = (None, None)
+            except Exception as e:
+                logger.error(f"Error processing date_info: {str(e)}")
+                state_dict['date_info'] = (None, None)
 
         # id 필드 제거 (새로운 row 생성 시 사용하지 않음)
         state_dict.pop('id', None)
