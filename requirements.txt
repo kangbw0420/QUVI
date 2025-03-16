@@ -11,3 +11,4 @@ python-dotenv==1.0.1
 uvicorn==0.34.0
 sqlglot==26.6.0
 sqlparse==0.5.3
+concurrent-log-handler==0.9.25

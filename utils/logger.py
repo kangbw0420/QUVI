@@ -1,8 +1,8 @@
 import logging
 import sys
-from logging.handlers import TimedRotatingFileHandler
 import os
 from typing import Optional
+from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None) -> logging.Logger:
     """
@@ -44,8 +44,8 @@ def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None) -> 
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
             
-        # TimedRotatingFileHandler 설정 (매일 자정에 로테이션)
-        file_handler = TimedRotatingFileHandler(
+        # ConcurrentTimedRotatingFileHandler 설정 (멀티프로세스 안전)
+        file_handler = ConcurrentTimedRotatingFileHandler(
             log_file,
             when='midnight',  # 자정에 로테이션
             interval=1,       # 1일 간격
