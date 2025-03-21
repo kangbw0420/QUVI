@@ -7,25 +7,28 @@ from langchain_core.prompts import ChatPromptTemplate
 from database.database_service import DatabaseService
 from graph.models import qwen_llm
 from llm_admin.qna_manager import QnAManager
+from utils.logger import setup_logger
 
 database_service = DatabaseService()
 qna_manager = QnAManager()
+logger = setup_logger('safeguard')
+
 
 async def guard_query(
-    trace_id: str,
-    unsafe_query: str,
-    user_question: str,
-    selected_table: str,
-    flags: dict,
-    sql_error: str = ""
-    ) -> str:
+        trace_id: str,
+        unsafe_query: str,
+        user_question: str,
+        selected_table: str,
+        flags: dict,
+        sql_error: str = ""
+) -> str:
     """에러가 발생했거나 날짜가 틀릴 수 있는 쿼리를 체크
     Returns:
         수정된 쿼리(문제 없으면 쿼리 그대로 return)
     """
     today = datetime.now()
     prompt_today = today.strftime("%Y년 %m월 %d일")
-    
+
     if flags["query_error"]:
         system_prompt = database_service.get_prompt(
             node_nm='safeguard', prompt_nm='error'
@@ -42,7 +45,7 @@ async def guard_query(
         ]
     )
 
-    print("=" * 40 + "safeguard(Q)" + "=" * 40)
+    logger.debug("===== safeguard(Q) =====")
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=prompt,
@@ -61,10 +64,19 @@ async def guard_query(
             safe_query = match.group(0)
 
         else:
+            logger.error("Failed to extract SQL query from response")
             raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
 
-    print("=" * 40 + "safeguard(A)" + "=" * 40)
-    print(safe_query)
+    logger.debug("===== safeguard(A) =====")
+
+    # 쿼리 변경 여부 로깅
+    if safe_query != unsafe_query:
+        logger.info("Query was modified by safeguard")
+        logger.debug(f"Original query: {unsafe_query}")
+        logger.debug(f"Modified query: {safe_query}")
+    else:
+        logger.info("Query was not modified by safeguard")
+
     qna_manager.record_answer(qna_id, safe_query)
 
     return safe_query

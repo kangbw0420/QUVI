@@ -6,9 +6,11 @@ from database.database_service import DatabaseService
 from graph.models import selector
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
+from utils.logger import setup_logger
 
 database_service = DatabaseService()
 qna_manager = QnAManager()
+logger = setup_logger('commander')
 
 async def command(trace_id: str, user_question: str) -> str:
     """사용자의 질문으로부터 테이블을 선택
@@ -37,7 +39,7 @@ async def command(trace_id: str, user_question: str) -> str:
         ]
     )
 
-    print("=" * 40 + "selector(Q)" + "=" * 40)
+    logger.debug("===== selector(Q) =====")
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=COMMANDER_PROMPT,
@@ -47,8 +49,8 @@ async def command(trace_id: str, user_question: str) -> str:
     commander_chain = COMMANDER_PROMPT | selector | output_parser
     selected_table = commander_chain.invoke({"user_question": user_question})
 
-    print("=" * 40 + "selector(A)" + "=" * 40)
-    print(selected_table)
+    logger.debug("===== selector(A) =====")
+    logger.info(f"Selected table: {selected_table}")
     qna_manager.record_answer(qna_id, selected_table)
 
     return selected_table

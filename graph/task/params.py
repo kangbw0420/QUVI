@@ -10,11 +10,12 @@ from langchain_core.output_parsers import JsonOutputParser
 from database.database_service import DatabaseService
 from graph.models import qwen_llm
 from utils.retriever import retriever
-
 from llm_admin.qna_manager import QnAManager
+from utils.logger import setup_logger
 
 database_service = DatabaseService()
 qna_manager = QnAManager()
+logger = setup_logger('params')
 
 SQL_TEMPLATE = """SELECT * FROM sql_func('use_intt_id', 'user_id', 'company_id', 'from_date', 'to_date')"""
 
@@ -23,7 +24,7 @@ WEEKDAYS = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"
 def convert_date_format(date_str: str) -> str:
     # 먼저 공백 제거
     date_str = date_str.strip()
-    
+
     if len(date_str) == 8 and date_str.isdigit():
         return date_str
     # YYYY-MM-DD 형식 검사 및 변환
@@ -32,11 +33,11 @@ def convert_date_format(date_str: str) -> str:
     return date_str
 
 async def parameters(
-    trace_id: str,
-    selected_api: str,
-    user_question: str,
-    company_id: str,
-    user_info: Tuple[str, str]
+        trace_id: str,
+        selected_api: str,
+        user_question: str,
+        company_id: str,
+        user_info: Tuple[str, str]
 ) -> Tuple[str, Tuple[str, str]]:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
@@ -45,6 +46,7 @@ async def parameters(
         ValueError: SQL 쿼리를 생성할 수 없거나, 추출 패턴이 매치되지 않는 경우
         TypeError: LLM 응답이 예상된 형식이 아닌 경우.
     """
+    logger.info(f"Generating parameters for API '{selected_api}', question: '{user_question[:50]}...'")
     user_id, use_intt_id = user_info
 
     try:
@@ -52,7 +54,8 @@ async def parameters(
         
         today = datetime.now()
         prompt_today = today.strftime("%Y년 %m월 %d일")
-        print(f"params prompt_today: {prompt_today}")
+        logger.info(f"Current date: {prompt_today}")
+
         system_prompt = database_service.get_prompt(
             node_nm="params", prompt_nm="system"
         )[0]["prompt"].format(today=prompt_today, json_format=json_format)
@@ -83,14 +86,14 @@ async def parameters(
             ]
         )
 
-        print("=" * 40 + "params(Q)" + "=" * 40)
+        logger.debug("===== params(Q) =====")
         qna_id = qna_manager.create_question(
             trace_id=trace_id, question=prompt, model="qwen_nl2sql"
         )
 
-        chain = prompt | qwen_llm 
+        chain = prompt | qwen_llm
         raw_output = chain.invoke({"user_question": user_question})
-        
+
         # JSON 형식이 없을 경우의 에러 처리
         try:
             # 먼저 JsonOutputParser로 시도
@@ -114,7 +117,7 @@ async def parameters(
         if "from_date" not in output or "to_date" not in output:
             raise ValueError(f"응답에 (from_date, to_date)가 없어요..: {output}")
 
-        print(output)
+        logger.info(f"Extracted parameters: from_date={output.get('from_date')}, to_date={output.get('to_date')}")
 
         # from_date와 to_date 형식 변환
         from_date = convert_date_format(output["from_date"])
@@ -130,14 +133,15 @@ async def parameters(
             .replace("to_date", to_date)
         )
 
-        print("=" * 40 + "params(A)" + "=" * 40)
-        print(sql_query)
+        logger.debug("===== params(A) =====")
+        logger.info(f"Generated SQL query: {sql_query}")
         output_str = json.dumps(output, ensure_ascii=False)
         qna_manager.record_answer(qna_id, output_str)
-        
+
         date_info = (from_date, to_date)
 
         return sql_query.strip(), date_info
 
     except Exception as e:
+        logger.error(f"Error generating parameters: {str(e)}")
         raise

@@ -1,10 +1,9 @@
 import json
-
 import requests
-
 from utils.config import Config
+from utils.logger import setup_logger
 
-
+logger = setup_logger('vector_db')
 BASE_URL = Config.VECTOR_STORE_DOMAIN
 
 class EmbeddingAPIClient:
@@ -25,12 +24,15 @@ class EmbeddingAPIClient:
             response.raise_for_status()
 
             results = response.json()
-            print(f"[SUCCESS] Query results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
+            logger.info(f"Query successful with {len(results.get('results', {}).get('documents', [[]]))} results")
+
+            if logger.isEnabledFor(10):  # DEBUG level
+                logger.debug(f"Query results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
 
             return results
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to query embedding: {e}")
-
+            logger.error(f"Failed to query embedding: {e}")
+            return None
 
     def get_embedding(collection_name: str):
         """
@@ -43,14 +45,17 @@ class EmbeddingAPIClient:
             response.raise_for_status()
 
             results = response.json()
-            print(f"[SUCCESS] Get Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
+            logger.info(f"Successfully retrieved embedding for {collection_name}")
+
+            if logger.isEnabledFor(10):  # DEBUG level
+                logger.debug(f"Embedding results:\n{json.dumps(results, indent=2, ensure_ascii=False)}")
 
             return results
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to test embedding: {e}")
+            logger.error(f"Failed to get embedding: {e}")
+            return None
 
-
-    def getAll_embedding():
+    def getAll_embedding(self):
         """
         서버에서 전체 데이터를 조회하는 함수
         """
@@ -65,8 +70,8 @@ class EmbeddingAPIClient:
 
             return results["collections"]
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to getAll embedding: {e}")
-
+            logger.error(f"Failed to get all embeddings: {e}")
+            return []
 
     def add_embedding(collection_name: str, ids: list[str], documents: list[str], metadatas: list[dict]):
         """
@@ -84,10 +89,9 @@ class EmbeddingAPIClient:
             response = requests.post(url, json=payload)
             response.raise_for_status()  # 오류 발생 시 예외 처리
 
-            print(f"[SUCCESS] {collection_name} / Embedding added: {response.json()}")
+            logger.info(f"Successfully added embeddings to {collection_name}")
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] {collection_name} / Failed to add embedding: {e}")
-
+            logger.error(f"Failed to add embedding to {collection_name}: {e}")
 
     def update_embedding(collection_name: str, item_id: str, text: str):
         """
@@ -104,10 +108,9 @@ class EmbeddingAPIClient:
             response = requests.put(url, json=payload)
             response.raise_for_status()
 
-            print(f"[SUCCESS] Embedding updated: {response.json()}")
+            logger.info(f"Successfully updated embedding")
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to update embedding: {e}")
-
+            logger.error(f"Failed to update embedding: {e}")
 
     def delete_embedding(collection_name: str, item_id: str):
         """
@@ -119,16 +122,14 @@ class EmbeddingAPIClient:
             response = requests.delete(url)
             response.raise_for_status()
 
-            print(f"[SUCCESS] Embedding deleted: {response.json()}")
+            logger.info(f"Successfully deleted embedding")
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to delete embedding: {e}")
-
+            logger.error(f"Failed to delete embedding: {e}")
 
     def collection_delete_embedding(collection_name: str):
         """
         서버에서 ID 리스트의 데이터를 삭제하는 함수
         """
-        # url = f"{BASE_URL}/multiDelete"
         url = f"{BASE_URL}/collectionDelete"
         payload = {
             "collection_name": collection_name,
@@ -138,6 +139,6 @@ class EmbeddingAPIClient:
             response = requests.delete(url, json=payload)
             response.raise_for_status()
 
-            print(f"[SUCCESS] Embedding collection deleted: {response.json()}")
+            logger.info(f"Successfully deleted collection {collection_name}")
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to collection delete embedding: {e}")
+            logger.error(f"Failed to delete collection {collection_name}: {e}")

@@ -18,26 +18,23 @@ graph = make_graph()
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
     chain_id = None
-    
+    logger = setup_logger('api')
+
     try:
         # 노드들의 벡터 DB 검색과 경합을 피하기 위해 초반에 추천질의 벡터 검색
         recommend_list = await retriever.get_recommend(query_text=request.user_question, top_k=4)
-        
         # 세션 확인/생성을 가장 먼저 수행
         conversation_id = (
             request.session_id if check_conversation_id(request.session_id)
             else make_conversation_id(request.user_id)
         )
+        logger.info(f"Using conversation_id: {conversation_id}")
 
         user_info = (request.user_id, request.use_intt_id)
-        
-        # last_data 조회
-        # last_data = extract_last_data(conversation_id) if check_conversation_id(conversation_id) else None
-        # logger.info(f"last_data: {last_data}")
 
         # 체인 생성
         chain_id = ChainManager.create_chain(conversation_id, request.user_question)
-        logger.info(f"chain_id: {chain_id}")
+        logger.info(f"Created chain_id: {chain_id}")
 
         initial_state = {
             "chain_id": chain_id,
@@ -89,10 +86,10 @@ async def process_input(request: Input) -> Output:
         
         # 기존 레코드 저장
         # save_record(conversation_id, user_question, answer, sql_query)
-        
+
         # 체인 완료 기록
         ChainManager.complete_chain(chain_id, answer)
-        
+
         return Output(
             status=200,
             success=True,
@@ -109,21 +106,18 @@ async def process_input(request: Input) -> Output:
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, debug)
             }
         )
-        
+
     except Exception as e:
-        logger.error(f"---------------Error---------------")
-        logger.error(str(e))
+        logger.error(f"Error processing request: {str(e)}")
         logger.error(traceback.format_exc())
-        
+
         # 체인 오류 상태 기록
         if chain_id:
             try:
                 ChainManager.mark_chain_error(chain_id, str(e))
+                logger.info(f"Marked chain {chain_id} as error")
             except Exception as chain_error:
                 logger.error(f"Error marking chain error: {str(chain_error)}")
 
-        # error_detail = str(e)
-        # raise HTTPException(status_code=500, detail=f"Error processing input: {error_detail}")
-        
         error_response = ErrorHandler.format_error_response(e)
         return error_response

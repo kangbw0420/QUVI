@@ -4,13 +4,15 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from database.database_service import DatabaseService
 from graph.models import qwen_llm
+from utils.logger import setup_logger
 from utils.retriever import retriever
-
 from llm_admin.qna_manager import QnAManager
 
 database_service = DatabaseService()
 qna_manager = QnAManager()
 
+# 모듈 상단에 로거 정의
+logger = setup_logger('funk')
 
 async def func_select(trace_id: str, user_question: str) -> str:
     """사용자의 질문으로부터 테이블을 선택
@@ -41,7 +43,8 @@ async def func_select(trace_id: str, user_question: str) -> str:
         ]
     )
 
-    print("=" * 40 + "funk(Q)" + "=" * 40)
+    # print 대신 logger 사용
+    logger.debug("===== funk(Q) =====")
     qna_id = qna_manager.create_question(
         trace_id=trace_id, question=FUNK_PROMPT, model="qwen_14b"
     )
@@ -49,8 +52,8 @@ async def func_select(trace_id: str, user_question: str) -> str:
     funk_chain = FUNK_PROMPT | qwen_llm | output_parser
     funk = funk_chain.invoke({"user_question": user_question})
 
-    print("=" * 40 + "funk(A)" + "=" * 40)
-    print(funk)
+    logger.debug("===== funk(A) =====")
+    logger.info(funk)
     qna_manager.record_answer(qna_id, funk)
 
     return funk

@@ -7,11 +7,15 @@ from database.database_service import DatabaseService
 from graph.models import solver, qwen_llm
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
+from utils.logger import setup_logger
 
 database_service = DatabaseService()
 qna_manager = QnAManager()
+logger = setup_logger('respondent')
 
-async def response(trace_id: str, user_question, selected_table: str, column_list = None, date_info: Optional[Tuple[str, str]] = None) -> str:
+
+async def response(trace_id: str, user_question, selected_table: str, column_list=None,
+                   date_info: Optional[Tuple[str, str]] = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
         str: 생성된 자연어 응답.
@@ -19,6 +23,8 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
         ValueError: 프롬프트 템플릿 로딩 실패 또는 LLM 응답 생성 실패시.
     """
     output_parser = StrOutputParser()
+
+    logger.info(f"Generating response for question: {user_question[:50]}...")
 
     if selected_table == 'api':
         system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
@@ -54,7 +60,7 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
 
     # column_list를 문자열로 변환
     column_list_str = ", ".join(column_list) if column_list else ""
-    
+
     if date_info:
         (from_date, to_date) = date_info
         try:
@@ -63,6 +69,7 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
             formatted_user_question = f"시작 시점: {formatted_from}, 종료 시점: {formatted_to}. {user_question}"
         except:
             formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}. {user_question}"
+            logger.warning(f"Failed to format date info: {from_date}, {to_date}")
     else:
         formatted_user_question = user_question
 
@@ -78,7 +85,7 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
         ]
     )
 
-    print("=" * 40 + "respondent(Q)" + "=" * 40)
+    logger.debug("===== respondent(Q) =====")
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=prompt,
@@ -94,14 +101,15 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
         fstring_answer = fstring_answer[10:]
     elif fstring_answer.startswith('```python'):
         fstring_answer = fstring_answer[9:]
-    
+
     if fstring_answer.endswith('\n```'):
         fstring_answer = fstring_answer[:-4]
     elif fstring_answer.endswith('```'):
         fstring_answer = fstring_answer[:-3]
 
-    print("=" * 40 + "respondent(A)" + "=" * 40)
-    print(fstring_answer)
+    logger.debug("===== respondent(A) =====")
+    logger.info(f"Generated answer (length: {len(fstring_answer)})")
+    logger.debug(f"Answer content: {fstring_answer}")
     qna_manager.record_answer(qna_id, fstring_answer)
 
     return fstring_answer

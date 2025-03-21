@@ -9,7 +9,7 @@ from utils.config import Config
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
-logger = setup_logger('execute_query')
+logger = setup_logger('executor')
 
 qna_manager = QnAManager()
 
@@ -29,7 +29,7 @@ def execute(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict
         parameters = {}
         execution_options = {}
 
-        logger.info("setting node DB connection")
+        logger.info("Setting up database connection")
         # URL encode the password to handle special characters
         password = quote_plus(str(Config.DB_PASSWORD))
         db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
@@ -43,20 +43,17 @@ def execute(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict
             elif isinstance(command, Executable):
                 pass
             else:
-                raise TypeError(f"Query expression has unknown type: {type(command)}")
-            
-            # # (production) 사용하려는 스키마 지정
-            # schemaQuery = f"SET search_path TO {Config.DB_SCHEMA}"
-            # print(f"::::::::::::::: schemaQuery : {schemaQuery}")
-            # connection.execute(text(schemaQuery))
+                err_msg = f"Query expression has unknown type: {type(command)}"
+                logger.error(err_msg)
+                raise TypeError(err_msg)
 
-            logger.info("execute_query start")
+            logger.info("Executing query")
             cursor = connection.execute(
                 command,
                 parameters,
                 execution_options=execution_options,
             )
-            logger.info("execute_query end")
+            logger.info("Query execution completed")
 
             if cursor.returns_rows:
                 if fetch == "all":
@@ -74,21 +71,18 @@ def execute(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict
                     logger.info("Returning cursor directly")
                     return cursor
                 else:
-                    logger.info(f"Invalid fetch mode: {fetch}")
+                    err_msg = f"Invalid fetch mode: {fetch}"
+                    logger.error(err_msg)
                     raise ValueError(
                         "Fetch parameter must be either 'one', 'all', or 'cursor'"
                     )
 
-                logger.info(f"Returning {len(result)} results")
                 return result
             else:
                 logger.info("Query does not return any rows")
                 return []
 
     except Exception as e:
-        logger.info(f"Error type: {type(e)}")
-        logger.info(f"Error message: {str(e)}")
-
-        logger.info("Full traceback:")
-        traceback.print_exc()
+        logger.error(f"Error executing query: {type(e).__name__}: {str(e)}")
+        logger.debug("Detailed traceback:", exc_info=True)
         raise

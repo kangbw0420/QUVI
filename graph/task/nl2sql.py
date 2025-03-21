@@ -9,9 +9,11 @@ from database.database_service import DatabaseService
 from graph.models import qwen_llm, nl2sql
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
+from utils.logger import setup_logger
 
 database_service = DatabaseService()
 qna_manager = QnAManager()
+logger = setup_logger('nl2sql')
 
 WEEKDAYS = {
     0: '월',
@@ -24,10 +26,10 @@ WEEKDAYS = {
 }
 
 async def create_sql(
-    trace_id: str, 
-    selected_table: str, 
-    company_id: str,
-    user_question: str
+        trace_id: str,
+        selected_table: str,
+        company_id: str,
+        user_question: str
 ) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
@@ -39,17 +41,19 @@ async def create_sql(
     try:
         today = datetime.now()
         prompt_today = today.strftime("%Y년 %m월 %d일")
-        print(f"nl2sql prompt_today: {prompt_today}")
+        logger.info(f"nl2sql prompt_today: {prompt_today}")
         try:
             system_prompt = database_service.get_prompt(
-                node_nm='nl2sql', 
+                node_nm='nl2sql',
                 prompt_nm=selected_table
             )[0]['prompt'].format(
                 today=prompt_today,
                 main_com=company_id
             )
         except:
-            system_prompt = database_service.get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(today=today)
+            system_prompt = database_service.get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(
+                today=today)
+            logger.warning(f"Failed to get specific prompt for {selected_table}, using default system prompt")
 
         # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
         collection_name = f"shots_{selected_table}"
@@ -81,7 +85,7 @@ async def create_sql(
             ]
         )
 
-        print("=" * 40 + "nl2sql(Q)" + "=" * 40)
+        logger.debug("===== nl2sql(Q) =====")
         qna_id = qna_manager.create_question(
             trace_id=trace_id,
             question=prompt,
@@ -103,13 +107,15 @@ async def create_sql(
                 sql_query = match.group(0)
 
             else:
+                logger.error("SQL query not found in output")
                 raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
-        
-        print("=" * 40 + "nl2sql(A)" + "=" * 40)
-        print(output)
+
+        logger.debug("===== nl2sql(A) =====")
+        logger.info(f"Generated SQL query: {sql_query}")
         qna_manager.record_answer(qna_id, output)
 
         return sql_query.strip()
 
     except Exception as e:
+        logger.error(f"Error in create_sql: {str(e)}")
         raise

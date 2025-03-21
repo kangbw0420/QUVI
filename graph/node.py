@@ -12,7 +12,7 @@ from graph.task.killjoy import kill_joy
 from graph.task.safeguard import guard_query
 
 from utils.logger import setup_logger
-from utils.common.extract_data_info import extract_col_from_query, extract_col_from_dict 
+from utils.common.extract_data_info import extract_col_from_query, extract_col_from_dict
 from utils.common.date_checker import check_date
 from utils.dataframe.format_df import delete_useless_col, final_df_format
 from utils.query.filter_com import add_com_condition
@@ -24,7 +24,9 @@ from utils.dataframe.is_krw_null import is_krw, is_null_only
 from utils.dataframe.transform_col import transform_data
 from utils.compute.main_compute import compute_fstring
 
+# 모듈 레벨 로거 생성
 logger = setup_logger('node')
+
 
 async def checkpoint(state: GraphState) -> GraphState:
     """금융 관련 질의 fin과 쓸데없는 질의 joy의 임베딩 모델 활용 이진분류"""
@@ -36,7 +38,7 @@ async def checkpoint(state: GraphState) -> GraphState:
     if is_joy['checkpoint'] == 'joy':
         flags["is_joy"] = True
         state.update({"selected_table": ""})
-    
+
     StateManager.update_state(trace_id, {"user_question": user_question})
     return state
 
@@ -151,11 +153,10 @@ async def executor(state: GraphState) -> GraphState:
 
     if "safe_count" not in flags:
         flags["safe_count"] = 0
-    
+
     if selected_table == "api":
         query = state.get("sql_query")
-        print("#" * 80)
-        print(query)
+        logger.info(f"Executing API query: {query}")
         try:
             result = execute(query)
             state.update({"sql_query": query})
@@ -170,8 +171,9 @@ async def executor(state: GraphState) -> GraphState:
     else:
         raw_query = state.get("sql_query")
         if not raw_query:
+            logger.error("No SQL query in state")
             raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
-        
+
         # 쿼리 길어지기 전에 컬럼부터 추출
         column_list = extract_col_from_query(raw_query)
         
@@ -208,8 +210,7 @@ async def executor(state: GraphState) -> GraphState:
                 user_question = state["user_question"]
                 state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
 
-            print("#" * 80)
-            print(query)
+            logger.info(f"Executing final SQL query (length: {len(query)})")
             result = execute(query)
             state.update({"sql_query": query})
 
@@ -221,29 +222,30 @@ async def executor(state: GraphState) -> GraphState:
                 origin_note = evernote_result.get("origin_note", [])
                 vector_notes = evernote_result.get("vector_notes", [])
                 modified_query = evernote_result.get("query", query)
-                
-                # Store vector notes in state
-                vector_notes_data = {
-                    "origin_note": origin_note,
-                    "vector_notes": vector_notes
-                }
-                state.update({"vector_notes": vector_notes_data})
-                
-                # Update user question to mention the similar notes
+
                 if vector_notes:
+                    logger.info(f"Found {len(vector_notes)} similar notes")
+                    # Store vector notes in state
+                    vector_notes_data = {
+                        "origin_note": origin_note,
+                        "vector_notes": vector_notes
+                    }
+                    state.update({"vector_notes": vector_notes_data})
+
+                    # Update user question to mention the similar notes
                     origin_note_str = "', '".join(origin_note)
                     vector_note_str = "', '".join(vector_notes)
-                    
+
                     final_answer = f"요청을 처리하기 위해 '{origin_note_str}' 노트의 거래내역을 찾아 보았으나 검색된 결과가 없었습니다. 해당 기간 거래내역의 노트 중 유사한 노트('{vector_note_str}')로 검색한 결과는 다음과 같습니다."
                     state.update({"final_answer": final_answer})
                     flags["note_changed"] = True
-                
+
                 # Try executing the modified query if available
                 if modified_query and modified_query != query:
                     result = execute(modified_query)
                     state.update({"sql_query": modified_query})
                     result = final_df_format(result, selected_table)
-            
+
             state.update({"date_info": view_dates["main"]})
 
         except Exception as e:
@@ -253,6 +255,7 @@ async def executor(state: GraphState) -> GraphState:
 
     # 결과가 없는 경우 처리
     if not result or is_null_only(result):
+        logger.warning("No data found in query results")
         flags["no_data"] = True
         empty_result = []
         column_list = []
@@ -262,16 +265,17 @@ async def executor(state: GraphState) -> GraphState:
             "column_list": column_list,
             "date_info": state.get("date_info", (None, None))
         })
-        
+
         return state
-    
+
+    logger.info(f"Query executed successfully, storing results")
     state.update({"query_result": result, "column_list": column_list})
     StateManager.update_state(trace_id, {
         "query_result": result,
         "column_list": column_list,
         "date_info": state.get("date_info", (None, None))
     })
-    
+
     return state
 
 async def safeguard(state: GraphState) -> GraphState:
@@ -283,13 +287,13 @@ async def safeguard(state: GraphState) -> GraphState:
     flags = state.get("flags")
     
     flags["safe_count"] = flags.get("safe_count", 0) + 1
-    
+
     safe_query = await guard_query(trace_id, unsafe_query, user_question, selected_table, flags, sql_error)
-    
+
     if safe_query == unsafe_query:
         flags["query_changed"] = False
         return state
-    
+
     if safe_query != unsafe_query:
         flags["query_changed"] = True
         state.update({"sql_query": safe_query})
@@ -317,9 +321,11 @@ async def respondent(state: GraphState) -> GraphState:
     else:
         date_info = ()
     fstring_answer = await response(trace_id, user_question, selected_table, column_list, date_info)
-    #debuging
+
+    # debuging
     state.update({"yogeumjae": fstring_answer})
-    #debuging
+
+    logger.info("Computing final answer using fstring template")
     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
     final_result = final_df_format(cleaned_result, selected_table)
@@ -328,9 +334,9 @@ async def respondent(state: GraphState) -> GraphState:
 
     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
     StateManager.update_state(trace_id, {
-    "final_answer": final_answer,
-    "column_list": column_list,
-    "query_result": final_result
+        "final_answer": final_answer,
+        "column_list": column_list,
+        "query_result": final_result
     })
     return state
 
@@ -341,6 +347,7 @@ async def nodata(state: GraphState) -> GraphState:
     flags = state.get("flags")
     
     if flags.get("note_changed"):
+        logger.info("Note changed flag detected, updating question context")
         vector_notes = state.get("vector_notes", {})
         vector_note_str = "', '".join(vector_notes.get("vector_notes", []))
         user_question = user_question + f" 유사한 노트('{vector_note_str}')를 활용해서도 검색해줘"
@@ -349,9 +356,6 @@ async def nodata(state: GraphState) -> GraphState:
 
     if flags.get("future_date"):
         final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
-
-    # if flags.get("past_date"):
-    #     final_answer = final_answer + "\n\n해당 계정은 무료 계정이므로 2일 이전 데이터에 대해서는 조회 제한이 적용된 상황입니다.\n결제 후 모든 기간의 데이터를 조회하실 수 있습니다.\U0001F64F\U0001F64F"
 
     state.update({"final_answer": final_answer})
     StateManager.update_state(trace_id, {"final_answer": final_answer})
@@ -370,6 +374,6 @@ async def killjoy(state: GraphState) -> GraphState:
         "sql_query": "",
         "column_list": []
     })
-    
+
     StateManager.update_state(trace_id, {"final_answer": final_answer})
     return state
