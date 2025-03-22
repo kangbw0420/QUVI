@@ -1,7 +1,7 @@
 import uuid
 from dotenv import load_dotenv
 
-from database.postgresql import query_execute
+from core.postgresql import query_execute
 from utils.logger import setup_logger
 
 logger = setup_logger('conversation_manager')

@@ -1,6 +1,6 @@
 import re
 # 도메인 테이블 구조에 맞는 특수한 AND 조건을 변환해야 하니 정규식으로
-from database.postgresql import query_execute
+from core.postgresql import query_execute
 
 class NameModifier:
     def __init__(self, name_type: str):

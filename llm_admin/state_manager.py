@@ -2,7 +2,7 @@ import json
 from typing import Dict, Any, Optional, List, Tuple
 from decimal import Decimal
 
-from database.postgresql import query_execute
+from core.postgresql import query_execute
 from utils.logger import setup_logger
 
 logger = setup_logger('state_manager')

@@ -6,7 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from urllib.parse import quote_plus
 
 from utils.config import Config
-from database.postgresql import query_execute
+from core.postgresql import query_execute
 from utils.logger import setup_logger
 
 logger = setup_logger('qna')

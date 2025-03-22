@@ -3,13 +3,12 @@ from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from database.database_service import DatabaseService
-from graph.models import solver, qwen_llm
+from core.postgresql import get_prompt
+from graph.models import solver
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
-database_service = DatabaseService()
 qna_manager = QnAManager()
 logger = setup_logger('respondent')
 
@@ -27,9 +26,9 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
     logger.info(f"Generating response for question: {user_question[:50]}...")
 
     if selected_table == 'api':
-        system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
+        system_prompt = get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
     else:
-        system_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='sql')[0]['prompt']
+        system_prompt = get_prompt(node_nm='respondent', prompt_nm='sql')[0]['prompt']
 
     if selected_table == 'api':
         collection_name = "shots_respondent_api"
@@ -73,7 +72,7 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
     else:
         formatted_user_question = user_question
 
-    human_prompt = database_service.get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
+    human_prompt = get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
         column_list=column_list_str, user_question=formatted_user_question
     )
 

@@ -1,7 +1,7 @@
 import traceback
 
 from fastapi import APIRouter
-from api.dto import Input, Output
+from core.dto import Input, Output
 from graph.graph import make_graph
 from llm_admin.conversation_manager import check_conversation_id, make_conversation_id, save_record, extract_last_data # 야돈 휴식 중 
 from llm_admin.chain_manager import ChainManager

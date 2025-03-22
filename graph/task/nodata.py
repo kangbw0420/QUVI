@@ -3,15 +3,13 @@ from typing import List
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from database.database_service import DatabaseService
+from core.postgresql import get_prompt
 from graph.models import qwen_llm
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
-database_service = DatabaseService()
 qna_manager = QnAManager()
 logger = setup_logger('nodata')
-
 
 async def no_data(trace_id: str, user_question: str) -> str:
     """조회해봤지만 데이터가 없습니다
@@ -20,7 +18,7 @@ async def no_data(trace_id: str, user_question: str) -> str:
     """
     logger.info(f"Generating 'no data' response for question: '{user_question[:50]}...'")
 
-    system_prompt = database_service.get_prompt(
+    system_prompt = get_prompt(
         node_nm='nodata', prompt_nm='system'
     )[0]['prompt']
 

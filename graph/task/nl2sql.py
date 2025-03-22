@@ -5,13 +5,12 @@ from datetime import datetime
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from database.database_service import DatabaseService
-from graph.models import qwen_llm, nl2sql
+from core.postgresql import get_prompt
+from graph.models import nl2sql
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
-database_service = DatabaseService()
 qna_manager = QnAManager()
 logger = setup_logger('nl2sql')
 
@@ -43,7 +42,7 @@ async def create_sql(
         prompt_today = today.strftime("%Y년 %m월 %d일")
         logger.info(f"nl2sql prompt_today: {prompt_today}")
         try:
-            system_prompt = database_service.get_prompt(
+            system_prompt = get_prompt(
                 node_nm='nl2sql',
                 prompt_nm=selected_table
             )[0]['prompt'].format(
@@ -51,7 +50,7 @@ async def create_sql(
                 main_com=company_id
             )
         except:
-            system_prompt = database_service.get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(
+            system_prompt = get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(
                 today=today)
             logger.warning(f"Failed to get specific prompt for {selected_table}, using default system prompt")
 

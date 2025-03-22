@@ -2,13 +2,12 @@ from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from database.database_service import DatabaseService
+from core.postgresql import get_prompt
 from graph.models import qwen_llm
 from utils.logger import setup_logger
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 
-database_service = DatabaseService()
 qna_manager = QnAManager()
 
 # 모듈 상단에 로거 정의
@@ -23,7 +22,7 @@ async def func_select(trace_id: str, user_question: str) -> str:
     """
     output_parser = StrOutputParser()
 
-    system_prompt = database_service.get_prompt(
+    system_prompt = get_prompt(
         node_nm="funk", prompt_nm="system"
     )[0]["prompt"]
 

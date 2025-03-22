@@ -1,15 +1,13 @@
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from database.database_service import DatabaseService
+from core.postgresql import get_prompt
 from graph.models import qwen_high
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
-database_service = DatabaseService()
 qna_manager = QnAManager()
 logger = setup_logger('killjoy')
-
 
 async def kill_joy(trace_id: str, user_question: str) -> str:
     """저랑 놀려고 하지 마세요
@@ -18,7 +16,7 @@ async def kill_joy(trace_id: str, user_question: str) -> str:
     """
     logger.info(f"Processing non-financial question: {user_question}")
 
-    system_prompt = database_service.get_prompt(
+    system_prompt = get_prompt(
         node_nm='killjoy', prompt_nm='system'
     )[0]['prompt']
 

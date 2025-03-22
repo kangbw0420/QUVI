@@ -4,15 +4,13 @@ from datetime import datetime
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from database.database_service import DatabaseService
+from core.postgresql import get_prompt
 from graph.models import qwen_llm
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
-database_service = DatabaseService()
 qna_manager = QnAManager()
 logger = setup_logger('safeguard')
-
 
 async def guard_query(
         trace_id: str,
@@ -30,11 +28,11 @@ async def guard_query(
     prompt_today = today.strftime("%Y년 %m월 %d일")
 
     if flags["query_error"]:
-        system_prompt = database_service.get_prompt(
+        system_prompt = get_prompt(
             node_nm='safeguard', prompt_nm='error'
         )[0]['prompt'].format(user_question=user_question, today=prompt_today, unsafe_query=unsafe_query, sql_error=sql_error)
     else:
-        system_prompt = database_service.get_prompt(
+        system_prompt = get_prompt(
             node_nm='safeguard', prompt_nm=selected_table
         )[0]['prompt'].format(user_question=user_question, today=prompt_today, unsafe_query=unsafe_query)
 

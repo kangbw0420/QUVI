@@ -1,19 +1,17 @@
 import json
 import re
 from typing import Tuple
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-
-from database.database_service import DatabaseService
+from core.postgresql import get_prompt
 from graph.models import qwen_llm
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
-database_service = DatabaseService()
 qna_manager = QnAManager()
 logger = setup_logger('params')
 
@@ -56,7 +54,7 @@ async def parameters(
         prompt_today = today.strftime("%Y년 %m월 %d일")
         logger.info(f"Current date: {prompt_today}")
 
-        system_prompt = database_service.get_prompt(
+        system_prompt = get_prompt(
             node_nm="params", prompt_nm="system"
         )[0]["prompt"].format(today=prompt_today, json_format=json_format)
 
