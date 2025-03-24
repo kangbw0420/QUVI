@@ -261,6 +261,7 @@ async def executor(state: GraphState) -> GraphState:
         column_list = []
         state.update({"query_result": empty_result, "column_list": column_list})
         StateManager.update_state(trace_id, {
+            "sql_query": state.get("sql_query"),
             "query_result": empty_result,
             "column_list": column_list,
             "date_info": state.get("date_info", (None, None))
@@ -271,6 +272,7 @@ async def executor(state: GraphState) -> GraphState:
     logger.info(f"Query executed successfully, storing results")
     state.update({"query_result": result, "column_list": column_list})
     StateManager.update_state(trace_id, {
+        "sql_query": state.get("sql_query"),
         "query_result": result,
         "column_list": column_list,
         "date_info": state.get("date_info", (None, None))

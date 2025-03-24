@@ -15,34 +15,36 @@ logger = setup_logger('qna')
 
 class QnAManager:
     def format_message_str(self, msg_str: str) -> str:
-        """ChatPromptTemplate의 메시지 문자열을 role과 content로 파싱하여 포맷팅
-        Args:
-            msg_str: ChatPromptTemplate의 messages 속성을 str로 변환한 문자열
+        """
+        ChatPromptTemplate 메시지 문자열을 role과 content로 파싱하여 포맷팅
+
         Returns:
             'role\ncontent' 형식의 문자열들을 개행 2번으로 구분하여 연결한 문자열
         """
         messages = []
 
-        # 전체 메시지를 블록 단위로 추출
-        pattern = r"(SystemMessage\(.*?\)|HumanMessagePromptTemplate\(.*?\)|AIMessagePromptTemplate\(.*?\))"
-        matches = re.findall(pattern, msg_str, re.DOTALL)
+        # 메시지 전체 패턴 (template= 또는 content= 포함, 줄바꿈도 포함)
+        pattern = r"(SystemMessage|HumanMessagePromptTemplate|AIMessagePromptTemplate)\(.*?(?:content|template)=([\"'])(.*?)\2\s*\)\s*\)?"
+        matches = re.finditer(pattern, msg_str, re.DOTALL)
 
         for match in matches:
-            if match.startswith("SystemMessage"):
+            role_raw = match.group(1)
+            quote_type = match.group(2)
+            content = match.group(3)
+
+            # 역할 매핑
+            if role_raw == "SystemMessage":
                 role = "system"
-                content_match = re.search(r"content=['\"](.*?)['\"]\)?$", match, re.DOTALL)
-            elif match.startswith("HumanMessagePromptTemplate"):
+            elif role_raw == "HumanMessagePromptTemplate":
                 role = "user"
-                content_match = re.search(r"template=['\"](.*?)['\"]\)?$", match, re.DOTALL)
-            elif match.startswith("AIMessagePromptTemplate"):
+            elif role_raw == "AIMessagePromptTemplate":
                 role = "assistant"
-                content_match = re.search(r"template=['\"](.*?)['\"]\)?$", match, re.DOTALL)
             else:
                 continue
 
-            if content_match:
-                content = content_match.group(1)
-                messages.append(f"{role}\n{content.strip()}")
+            # 이스케이프된 따옴표 복원
+            content = content.replace(f"\\{quote_type}", quote_type)
+            messages.append(f"{role}\n{content.strip()}")
 
         return "\n\n".join(messages)
 
