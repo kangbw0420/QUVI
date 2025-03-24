@@ -63,7 +63,7 @@ def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None) -> 
 
     # ConcurrentTimedRotatingFileHandler 설정 (멀티프로세스 안전)
     file_handler = ConcurrentTimedRotatingFileHandler(
-        log_file,
+        filename=log_file,
         when='midnight',  # 자정에 로테이션
         interval=1,  # 1일 간격
         backupCount=30,  # 최대 30일치 보관
@@ -71,14 +71,18 @@ def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None) -> 
         delay=False,  # 즉시 파일 생성
         utc=False  # 로컬 시간 사용
     )
+
+    # 로그 파일 접미사 형식 설정: YYYY-MM-DD
+    file_handler.suffix = "%Y-%m-%d"
+
+    # 로테이션 파일 이름 설정 방식 변경
+    # namer는 제거하고 대신 정확한 suffix 형식만 사용
+
+    # extMatch를 True로 설정하여 suffix 패턴과 일치하는 파일만 백업으로 인식
+    file_handler.extMatch = True
+
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
-    # 로그 파일 접미사 형식을 정확하게 설정
-    file_handler.suffix = '%Y-%m-%d'
-    # 로테이션 파일 이름 패턴 커스터마이징
-    file_handler.namer = lambda name: name.replace(".log", "") + ".log"
-    # extMatch를 False로 설정하여 새 로그 파일이 시작될 때 기존 로그 파일을 모두 검사
-    file_handler.extMatch = False
     logger.addHandler(file_handler)
 
     # 다른 모듈로 로그가 전파되지 않도록 설정
