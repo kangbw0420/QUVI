@@ -20,48 +20,60 @@ class QnAManager:
             'role\ncontent' 형식의 문자열들을 개행 2번으로 구분하여 연결한 문자열
         """
         messages = []
-        # 각 메시지를 분리
-        parts = msg_str.strip('[]').split('), ')
-        
-        for part in parts:
-            # Role 추출 
-            if 'SystemMessage' in part:
-                role = 'system'
-                content_start = part.find("content='") + 9
-                content_end = part.find("')", content_start)
-                content = part[content_start:content_end]
-            elif 'HumanMessagePromptTemplate' in part:
-                role = 'user'
-                content_start = part.find("template='") + 10
-                content_end = part.rfind("')")
-                content = part[content_start:content_end]
-            elif 'AIMessagePromptTemplate' in part:
-                role = 'assistant'
-                # 작은따옴표와 큰따옴표 모두 체크
-                template_start_single = part.find("template='")
-                template_start_double = part.find('template="')
-                
-                if template_start_single != -1:
-                    content_start = template_start_single + 10
-                    yymm_pos = part[content_start:].find("YYMM')")
-                    if yymm_pos != -1:
-                        content_end = part.rfind("')")
-                    else:
-                        content_end = part.find("')", content_start)
-                elif template_start_double != -1:
-                    content_start = template_start_double + 10
-                    content_end = part.find('")', content_start)
-                else:
-                    continue
-                    
-                content = part[content_start:content_end]
-            else:
-                continue
-                
-            # 내용이 있는 경우만 추가
-            if content.strip():
-                messages.append(f"{role}\n{content}")
-        
+
+        # 정규식을 사용하여 메시지 파싱
+        import re
+
+        # SystemMessage 패턴 매칭
+        system_pattern = r"SystemMessage\(content='([^']*(?:'[^']*'[^']*)*)'\)"
+        system_matches = re.finditer(system_pattern, msg_str)
+        for match in system_matches:
+            content = match.group(1)
+            # 이스케이프된 따옴표 처리 (SQL 쿼리 등에서 발생할 수 있음)
+            content = content.replace("\\'", "'")
+            messages.append(f"system\n{content}")
+
+        # HumanMessagePromptTemplate 패턴 매칭
+        human_pattern = r"HumanMessagePromptTemplate\(prompt=PromptTemplate\(template='([^']*(?:'[^']*'[^']*)*)'"
+        human_matches = re.finditer(human_pattern, msg_str)
+        for match in human_matches:
+            content = match.group(1)
+            content = content.replace("\\'", "'")
+            messages.append(f"user\n{content}")
+
+        # AIMessagePromptTemplate 패턴 매칭
+        ai_pattern = r"AIMessagePromptTemplate\(prompt=PromptTemplate\(template='([^']*(?:'[^']*'[^']*)*)'"
+        ai_matches = re.finditer(ai_pattern, msg_str)
+        for match in ai_matches:
+            content = match.group(1)
+            content = content.replace("\\'", "'")
+            messages.append(f"assistant\n{content}")
+
+        # 쌍따옴표도 동일하게 처리
+        # SystemMessage 패턴 (쌍따옴표)
+        system_pattern_double = r'SystemMessage\(content="([^"]*(?:"[^"]*"[^"]*)*)"'
+        system_matches_double = re.finditer(system_pattern_double, msg_str)
+        for match in system_matches_double:
+            content = match.group(1)
+            content = content.replace('\\"', '"')
+            messages.append(f"system\n{content}")
+
+        # HumanMessagePromptTemplate 패턴 (쌍따옴표)
+        human_pattern_double = r'HumanMessagePromptTemplate\(prompt=PromptTemplate\(template="([^"]*(?:"[^"]*"[^"]*)*)"'
+        human_matches_double = re.finditer(human_pattern_double, msg_str)
+        for match in human_matches_double:
+            content = match.group(1)
+            content = content.replace('\\"', '"')
+            messages.append(f"user\n{content}")
+
+        # AIMessagePromptTemplate 패턴 (쌍따옴표)
+        ai_pattern_double = r'AIMessagePromptTemplate\(prompt=PromptTemplate\(template="([^"]*(?:"[^"]*"[^"]*)*)"'
+        ai_matches_double = re.finditer(ai_pattern_double, msg_str)
+        for match in ai_matches_double:
+            content = match.group(1)
+            content = content.replace('\\"', '"')
+            messages.append(f"assistant\n{content}")
+
         return "\n\n".join(messages)
 
     def create_question(self, trace_id: str, question: Any, model: str) -> str:

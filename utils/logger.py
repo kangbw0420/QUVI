@@ -1,8 +1,8 @@
 import logging
 import sys
 import os
+import fcntl
 from typing import Optional, Dict
-import time
 from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 # 싱글톤 패턴으로 로거 인스턴스 관리
@@ -31,7 +31,7 @@ def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None) -> 
         log_dir = os.environ.get('LOG_DIR', 'logs')
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        log_file = os.path.join(log_dir, 'agent.log')  # 'server.log' 대신 사용
+        log_file = os.path.join(log_dir, 'agent.log')
 
     # 로거 가져오기
     logger = logging.getLogger(name)
@@ -69,17 +69,61 @@ def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None) -> 
         backupCount=30,  # 최대 30일치 보관
         encoding='utf-8',
         delay=False,  # 즉시 파일 생성
-        utc=False  # 로컬 시간 사용
+        utc=False,  # 로컬 시간 사용
+        use_gzip=False,  # gzip 압축 사용 안함
     )
 
     # 로그 파일 접미사 형식 설정: YYYY-MM-DD
     file_handler.suffix = "%Y-%m-%d"
 
-    # 로테이션 파일 이름 설정 방식 변경
-    # namer는 제거하고 대신 정확한 suffix 형식만 사용
+    # lock_file 속성 설정 - 이 부분이 중요합니다!
+    # 이를 통해 모든 프로세스가 동일한 락 파일을 사용하게 됩니다
+    lock_file = f"{log_file}.lock"
+    setattr(file_handler, 'lockFilename', lock_file)
 
-    # extMatch를 True로 설정하여 suffix 패턴과 일치하는 파일만 백업으로 인식
-    file_handler.extMatch = True
+    # 커스텀 namer 함수 정의
+    def namer(name):
+        base_name = os.path.basename(log_file)
+        dir_name = os.path.dirname(log_file)
+        date_str = file_handler.suffix
+
+        # agent.log -> agent.log.2025-03-22
+        return os.path.join(dir_name, f"{base_name}.{date_str}")
+
+    file_handler.namer = namer
+
+    # 커스텀 rotator 함수
+    def rotator(source, dest):
+        # 락 파일 생성하여 다른 프로세스의 접근 제어
+        lock_file_path = f"{source}.rotate.lock"
+        with open(lock_file_path, 'w') as lock_file:
+            try:
+                # 파일 락 획득
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+
+                # 이미 대상 파일이 존재하면 내용 병합
+                if os.path.exists(dest):
+                    with open(source, 'rb') as sf:
+                        with open(dest, 'ab') as df:
+                            df.write(sf.read())
+                    os.remove(source)
+                else:
+                    # 파일 이름 변경
+                    os.rename(source, dest)
+            finally:
+                # 락 해제
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+        # 락 파일 삭제
+        try:
+            os.remove(lock_file_path)
+        except OSError:
+            pass
+
+    file_handler.rotator = rotator
+
+    # 로그 파일 패턴 설정을 간단하게 유지
+    file_handler.extMatch = False
 
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
