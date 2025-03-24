@@ -1,3 +1,4 @@
+import re
 import uuid
 from typing import Any
 
@@ -21,47 +22,27 @@ class QnAManager:
             'role\ncontent' 형식의 문자열들을 개행 2번으로 구분하여 연결한 문자열
         """
         messages = []
-        # 각 메시지를 분리
-        parts = msg_str.strip('[]').split('), ')
 
-        for part in parts:
-            # Role 추출
-            if 'SystemMessage' in part:
-                role = 'system'
-                content_start = part.find("content='") + 9
-                content_end = part.find("')", content_start)
-                content = part[content_start:content_end]
-            elif 'HumanMessagePromptTemplate' in part:
-                role = 'user'
-                content_start = part.find("template='") + 10
-                content_end = part.rfind("')")
-                content = part[content_start:content_end]
-            elif 'AIMessagePromptTemplate' in part:
-                role = 'assistant'
-                # 작은따옴표와 큰따옴표 모두 체크
-                template_start_single = part.find("template='")
-                template_start_double = part.find('template="')
+        # 전체 메시지를 블록 단위로 추출
+        pattern = r"(SystemMessage\(.*?\)|HumanMessagePromptTemplate\(.*?\)|AIMessagePromptTemplate\(.*?\))"
+        matches = re.findall(pattern, msg_str, re.DOTALL)
 
-                if template_start_single != -1:
-                    content_start = template_start_single + 10
-                    yymm_pos = part[content_start:].find("YYMM')")
-                    if yymm_pos != -1:
-                        content_end = part.rfind("')")
-                    else:
-                        content_end = part.find("')", content_start)
-                elif template_start_double != -1:
-                    content_start = template_start_double + 10
-                    content_end = part.find('")', content_start)
-                else:
-                    continue
-
-                content = part[content_start:content_end]
+        for match in matches:
+            if match.startswith("SystemMessage"):
+                role = "system"
+                content_match = re.search(r"content=['\"](.*?)['\"]\)?$", match, re.DOTALL)
+            elif match.startswith("HumanMessagePromptTemplate"):
+                role = "user"
+                content_match = re.search(r"template=['\"](.*?)['\"]\)?$", match, re.DOTALL)
+            elif match.startswith("AIMessagePromptTemplate"):
+                role = "assistant"
+                content_match = re.search(r"template=['\"](.*?)['\"]\)?$", match, re.DOTALL)
             else:
                 continue
 
-            # 내용이 있는 경우만 추가
-            if content.strip():
-                messages.append(f"{role}\n{content}")
+            if content_match:
+                content = content_match.group(1)
+                messages.append(f"{role}\n{content.strip()}")
 
         return "\n\n".join(messages)
 
