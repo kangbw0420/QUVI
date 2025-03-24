@@ -126,7 +126,7 @@ def compute_fstring(fstring_answer: str, result: List[Dict[str, Any]], column_li
     processed_answer = re.sub(pattern, lambda m: handle_computed_column(m.group(1), result, column_list), fstring_answer)
     
     # "Error: "가 포함되어 있는지 체크
-    if "Error: " in processed_answer:
+    if any(error_msg in processed_answer for error_msg in ["Error: ", "Error in"]):
         return (
             "요청주신 질문에 대한 데이터는 아래 표와 같습니다.\n\n"
             # "...라고 정식 출시 때는 나갈 예정입니다.\U0001F605 현재는 베타 기간이니 에러난 답변도 보시지요.\U0001f600:\n\n"
