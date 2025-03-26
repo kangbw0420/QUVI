@@ -18,7 +18,6 @@ graph = make_graph()
 async def process_input(request: Input) -> Output:
     """프로덕션용 엔드포인트"""
     chain_id = None
-    logger = setup_logger('api')
 
     try:
         # 노드들의 벡터 DB 검색과 경합을 피하기 위해 초반에 추천질의 벡터 검색

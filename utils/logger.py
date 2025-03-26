@@ -34,7 +34,7 @@ def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None) -> 
         log_file = os.path.join(log_dir, 'agent.log')  # 'server.log' 대신 사용
 
     # 로거 가져오기
-    logger = logging.getLogger(name)
+    logger = logging.getLogger(name or 'default_logger')
 
     # 이미 핸들러가 설정되어 있다면 모두 제거 (중복 방지)
     for handler in logger.handlers[:]:
@@ -64,12 +64,13 @@ def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None) -> 
     # ConcurrentTimedRotatingFileHandler 설정 (멀티프로세스 안전)
     file_handler = ConcurrentTimedRotatingFileHandler(
         filename=log_file,
-        when='midnight',  # 자정에 로테이션
-        interval=1,  # 1일 간격
-        backupCount=30,  # 최대 30일치 보관
+        mode='a',  # append 명시
+        when='midnight',
+        interval=1,
+        backupCount=30,
         encoding='utf-8',
-        delay=False,  # 즉시 파일 생성
-        utc=False  # 로컬 시간 사용
+        delay=False,
+        utc=False
     )
 
     # 로그 파일 접미사 형식 설정: YYYY-MM-DD
