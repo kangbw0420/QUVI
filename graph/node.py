@@ -3,7 +3,7 @@ from graph.types import GraphState
 from graph.task.classifier import check_joy, is_api, classify_yqmd
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
-from graph.task.respondent import response
+from graph.task.table_respondent import response
 from graph.task.executor import execute
 from graph.task.funk import func_select
 from graph.task.nodata import no_data
@@ -22,7 +22,7 @@ from utils.query.modify_name import modify_stock, modify_bank
 from utils.query.ever_note import ever_note
 from utils.dataframe.is_krw_null import is_krw, is_null_only
 from utils.dataframe.transform_col import transform_data
-from utils.compute.main_compute import compute_fstring
+from utils.compute.main_compute import compute_fstring, evaluate_pandas_expression, evaluate_fstring_template
 
 # 모듈 레벨 로거 생성
 logger = setup_logger('node')
@@ -322,13 +322,14 @@ async def respondent(state: GraphState) -> GraphState:
         date_info = state["date_info"]
     else:
         date_info = ()
-    fstring_answer = await response(trace_id, user_question, selected_table, column_list, date_info)
+    fstring_answer = await response(trace_id, user_question, selected_table, column_list, date_info, result_for_col)
 
     # debuging
     state.update({"yogeumjae": fstring_answer})
-
+    final_answer = fstring_answer
     logger.info("Computing final answer using fstring template")
-    final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
+    # node.py의 respondent 함수에 추가
+    logger.info(f"Final answer: {final_answer}")
 
     final_result = final_df_format(cleaned_result, selected_table)
     if selected_table == "api":

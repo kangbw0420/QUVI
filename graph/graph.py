@@ -86,7 +86,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("nodata", nodata) # 데이터가 없을 경우 답변 생성
         workflow.add_node("killjoy", killjoy) # 일상 대화 대응
 
-        workflow.set_entry_point("checkpoint")
+        workflow.set_entry_point("commander")
         # workflow.set_entry_point("commander")
         # workflow.set_entry_point("yadon")
         # 쉘더가 야돈의 꼬리를 물면 야도란으로 진화
