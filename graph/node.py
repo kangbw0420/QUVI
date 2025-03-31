@@ -322,7 +322,7 @@ async def respondent(state: GraphState) -> GraphState:
         date_info = state["date_info"]
     else:
         date_info = ()
-    fstring_answer = await response(trace_id, user_question, selected_table, column_list, date_info, result_for_col)
+    fstring_answer = await response(trace_id, user_question, column_list, date_info, result_for_col)
 
     # debuging
     state.update({"yogeumjae": fstring_answer})
