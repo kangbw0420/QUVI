@@ -13,7 +13,7 @@ from graph.task.safeguard import guard_query
 
 from utils.logger import setup_logger
 from utils.common.extract_data_info import extract_col_from_query, extract_col_from_dict
-from utils.common.date_checker import check_date
+from utils.common.date_checker import check_date, correct_date_range
 from utils.dataframe.format_df import delete_useless_col, final_df_format
 from utils.query.filter_com import add_com_condition
 from utils.query.view.view_table import view_table
@@ -96,6 +96,10 @@ async def params(state: GraphState) -> GraphState:
     sql_query, date_info = await parameters(
         trace_id, selected_api, user_question, company_id, user_info
     )
+
+    # 날짜 교정: 유효하지 않은 날짜를 가장 가까운 유효한 날짜로 교정
+    corrected_date_info = correct_date_range(date_info)
+    date_info = corrected_date_info
 
     invalid_date_message = check_date(date_info, flags)
     if invalid_date_message:
@@ -196,6 +200,11 @@ async def executor(state: GraphState) -> GraphState:
             query, view_dates = view_table(query_ordered, selected_table, company_id, user_info, flags)
             
             if 'main' in view_dates:
+                # 날짜 교정: 유효하지 않은 날짜를 가장 가까운 유효한 날짜로 교정
+                corrected_date_info = correct_date_range(view_dates['main'])
+                view_dates['main'] = corrected_date_info
+                
+                # 유효성 검사 후 처리
                 invalid_date_message = check_date(view_dates['main'], flags)
                 if invalid_date_message:
                     state.update({
