@@ -5,8 +5,9 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from core.postgresql import get_prompt
 from graph.models import solver
-from utils.compute.main_compute import evaluate_fstring_template
+from utils.table.main_table import evaluate_fstring_template
 from utils.retriever import retriever
+from utils.table.format_table import format_table_pipe
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
