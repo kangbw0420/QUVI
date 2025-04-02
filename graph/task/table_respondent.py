@@ -1,3 +1,5 @@
+import json
+import os
 from typing import Optional, Tuple
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
@@ -10,56 +12,94 @@ from utils.retriever import retriever
 from utils.table.format_table import format_table_pipe
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
+from rapidfuzz import fuzz, process
 
 qna_manager = QnAManager()
 logger = setup_logger('respondent')
 
-async def response(trace_id: str, user_question, column_list=None,
-                   date_info: Optional[Tuple[str, str]] = None, query_result=None) -> str:
+
+async def response(trace_id: str, user_question, selected_table: str, column_list=None,
+                   date_info: Optional[Tuple[str, str]] = None , query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다."""
+
+    final_response = "응답 생성 중 오류가 발생했습니다."  # 예외 발생 시 기본 응답
+
     try:
         output_parser = StrOutputParser()
         logger.info(f"Generating table response for question: {user_question[:50]}...")
 
-        # 데이터 로깅
         logger.debug(f"Query result type: {type(query_result)}")
         logger.debug(f"Query result size: {len(query_result) if query_result else 0}")
         logger.debug(f"Column list: {column_list}")
 
-        # 결과가 없으면 빈 리스트로 설정
         result = query_result or []
         cols = column_list or []
 
         # 간단한 프롬프트로 시작
-        simple_prompt ="""
-        당신은 사용자의 재무 데이터 조회 질문에 대해, 주어진 DataFrame을 기반으로 f-string 형태의 자연어 응답을 생성하는 전문가입니다.
-
+        simple_prompt = """
+        당신은 사용자의 재무 데이터 조회 질문에 대해, 주어진 DataFrame을 기반으로 f-string 형태의 자연어 답변을 생성하는 전문가입니다.
+        사용자의 질문을 그대로 응답하지 말고 사용자 질문과 주어진 결과 데이터를 활용하여 정확한 f-string 기반 답변 문장 한 줄을 생성하세요.
+        
+        다음은 가정입니다:
+        - 'df'는 아래 표로 주어진 pandas DataFrame입니다. 표의 헤더는 컬럼명을 의미합니다.
+        - 사용자는 이 df를 기반으로 질문을 했습니다.
+        
         다음 제약을 반드시 지켜야 합니다:
-
         1. DataFrame의 값을 직접 텍스트로 출력하지 말고, 반드시 pandas indexing을 활용한 f-string 표현으로 작성해야 합니다.
 
         2. DataFrame 컬럼에 접근할 때는 반드시 df[\'컬럼명\'] 또는 df.loc[...] 형식을 사용해야 하며,
            bank_nm, real_amt 같은 컬럼명을 단독 변수처럼 사용해서는 안 됩니다.
 
-        3. 주어진 데이터에 존재하지 않는 정보나 컬럼은 포함하지 마세요.
+        3. 주어진 데이터에 존재하지 않는 정보나 컬럼은 포함하지 마세요. 존재 여부는 주어진 컬럼 설명 항목을 기준으로 판단하세요.
 
         4. 답변은 한글로 된 간결하고 완성된 문장이어야 하며, f-string 이외의 설명 또는 주석은 허용되지 않습니다.
-        
+
         5. 사용자가 비교 데이터를 원할 경우 직접 정답을 생성하지 말고, 주어진 데이터를 통해 정답을 도출하는 f-string 문장을 만들어주세요.
-        
+
         6. 날짜나 항목 간 비교 결과를 문장에 포함시킬 때는 f-string 안에서 if-else 조건문을 사용할 수 있습니다.
             - 조건 비교는 숫자 컬럼의 개수나 합계 등을 기준으로 할 수 있습니다.
             - 반드시 f-string 내부에서 표현식을 완결된 문장으로 작성해야 하며, 조건 분기는 한 문장 안에서 처리해야 합니다.
             - 한 문장 안에 비교 결과를 자연스럽게 녹여야 하며, 조건은 숫자 기반으로 작성하세요.
-        
+
         7. f-string 표현식 안에 다시 f-string을 중첩하지 마세요. 바깥쪽 f"..."는 제거하고 내부 표현식만 중괄호로 감싸야 합니다.
+        
+        8. 문자열로 구성된 날짜 컬럼(ex: 'YYYYMM' 형식의 월)은 반드시 문자열 비교로 처리해야 합니다.
         """
 
+        if selected_table == 'api':
+            collection_name = "shots_respondent_api"
+        else:
+            collection_name = "shots_respondent_sql"
+
+        few_shots = await retriever.get_few_shots(
+            query_text=user_question,
+            collection_name=collection_name,
+            top_k=9
+        )
+        few_shot_prompt = []
+        for example in reversed(few_shots):
+            if "stats" in example:
+                # 날짜 정보가 있는 경우와 없는 경우를 구분
+                if "date" in example:
+                    human_with_stats_date = (
+                        f'사용 가능한 column_nm:\n{example["stats"]}\n\n'
+                        f'사용자의 질문:\n{example["date"]}. {example["input"]}'
+                    )
+                    few_shot_prompt.append(("human", human_with_stats_date))
+                else:
+                    human_with_stats = f'사용 가능한 column_nm:\n{example["stats"]}\n\n사용자의 질문:\n{example["input"]}'
+                    few_shot_prompt.append(("human", human_with_stats))
+            else:
+                few_shot_prompt.append(("human", example["input"]))
+            few_shot_prompt.append(("ai", example["output"]))
+
+        logger.info(f"Generated respondent few-shot examples: {few_shot_prompt}")
+        logger.info(f"Generated result: {result}")
         table_pipe = format_table_pipe(result, cols)
         logger.info(f"Created data table from query results")
 
         # 표 형식 데이터의 로그 확인
-        logger.debug(f"Generated table pipe format:\n{table_pipe}")
+        logger.info(f"Generated table pipe format:\n{table_pipe}")
 
         # 사용자 질문에 날짜 정보 추가
         formatted_user_question = user_question
@@ -87,7 +127,8 @@ async def response(trace_id: str, user_question, column_list=None,
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=simple_prompt),
-                ("human", human_prompt),
+                *few_shot_prompt,
+                ("human", human_prompt)
             ]
         )
         logger.debug("===== table_respondent(Q) =====")
@@ -119,7 +160,8 @@ async def response(trace_id: str, user_question, column_list=None,
 
         # ✅ f-string 평가 수행
         final_response = evaluate_fstring_template(fstring_answer, result)
-        logger.info(f"Final response: {final_response}")
 
-    finally:
-        return final_response
+    except Exception as e:
+        logger.exception("response() 실행 중 예외 발생")
+
+    return fstring_answer, final_response

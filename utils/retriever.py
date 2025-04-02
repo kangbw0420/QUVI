@@ -32,7 +32,6 @@ class FewShotRetriever:
                     'query_text': query_text,
                     'top_k': top_k
                 }
-
                 start_time = time.time()
 
                 response = await client.post(
@@ -59,7 +58,7 @@ class FewShotRetriever:
                                 "document": doc,
                                 "metadata": meta
                             })
-                        
+
                         return formatted_results
 
                 logger.warning("Unexpected response format from vector store")
@@ -70,49 +69,44 @@ class FewShotRetriever:
                 return []
 
     async def format_few_shots(self, results: List[Dict]) -> List[Dict]:
-        """벡터 스토어 검색 결과를 few-shot 예제 형식으로 변환합니다.
-        Returns:
-            List[Dict]: 입력(input)과 출력(output)을 포함하는 few-shot 예제 리스트.
-            빈 리스트는 변환할 결과가 없거나 변환 중 오류가 발생한 경우를 의미.
-        Raises:
-            KeyError: 필요한 필드가 results에 없는 경우.
-        """
+        """벡터 스토어 검색 결과를 few-shot 예제 형식으로 변환합니다."""
         few_shots = []
-        
-        try:            
+
+        try:
             for result in results:
                 if "document" in result:
-                    document = result["document"]
+                    document = result["document"].strip()
 
-                    # Extract the question from document
-                    question = document.strip()
+                    # ✅ "질문: ...\n답변: ..." 형식에서 분리
+                    if "질문:" in document and "답변:" in document:
+                        parts = document.split("\n")
+                        question = ""
+                        answer = ""
 
-                    # Find corresponding metadata with SQL
-                    metadata = result.get("metadata", {})
-                    answer = metadata.get("answer", "")
+                        for part in parts:
+                            if part.startswith("질문:"):
+                                question = part.replace("질문:", "").strip()
+                            elif part.startswith("답변:"):
+                                answer = part.replace("답변:", "").strip()
 
-                    if question and answer:
-                        few_shot = {
-                            "input": question,
-                            "output": answer
-                        }
+                        if question and answer:
+                            few_shot = {
+                                "input": question,
+                                "output": answer
+                            }
 
-                        # If metadata has date key, include it in few_shot
-                        if "date" in metadata:
-                            date = metadata.get("date", "")
-                            few_shot["date"] = date
+                            metadata = result.get("metadata", {})
+                            if "date" in metadata:
+                                few_shot["date"] = metadata["date"]
+                            if "stats" in metadata:
+                                few_shot["stats"] = metadata["stats"]
 
-                        # If metadata has stats key, include it in few_shot
-                        if "stats" in metadata:
-                            stats = metadata.get("stats", "")
-                            few_shot["stats"] = stats
-                            
-                        few_shots.append(few_shot)            
-                    
+                            few_shots.append(few_shot)
+
             return few_shots
 
         except Exception as e:
-            logger.error(f"Error formatting few-shots: {str(e)}")
+            logger.error(f"❌ Error formatting few-shots: {str(e)}")
             return []
 
     async def get_few_shots(self, query_text: str, collection_name: Optional[str] = None, top_k: int = 6) -> List[Dict]:

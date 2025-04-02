@@ -5,12 +5,14 @@ logger = setup_logger('format_table')
 
 def format_table_pipe(data: List[Dict[str, Any]], columns: List[str]) -> str:
     """
-    데이터를 파이프(|) 형식의 표로 변환
+    데이터를 파이프(|) 형식의 표로 변환.
+    10행 초과 시 상위 5개 + 하위 5개를 출력하고, 중간은 생략 메시지로 표시.
     """
     try:
         if not data or not columns:
             return "(데이터 없음)"
 
+        # 데이터 평탄화
         flattened_data = []
         for item in data:
             if isinstance(item, dict):
@@ -21,11 +23,8 @@ def format_table_pipe(data: List[Dict[str, Any]], columns: List[str]) -> str:
 
         processed_data = flattened_data if flattened_data else data
 
-        available_columns = []
-        for col in columns:
-            if any(col in row for row in processed_data):
-                available_columns.append(col)
-
+        # 사용 가능한 컬럼 필터링
+        available_columns = [col for col in columns if any(col in row for row in processed_data)]
         if not available_columns and processed_data:
             available_columns = list(processed_data[0].keys())[:5]
 
@@ -36,8 +35,19 @@ def format_table_pipe(data: List[Dict[str, Any]], columns: List[str]) -> str:
         table = " | ".join(available_columns) + "\n"
         table += "-" * (sum(len(col) for col in available_columns) + (len(available_columns) - 1) * 3) + "\n"
 
-        # ✅ 데이터 행 추가
-        for row in processed_data:
+        total_rows = len(processed_data)
+
+        # ✅ 행 개수에 따라 출력 방식 결정
+        if total_rows <= 10:
+            display_rows = processed_data
+        else:
+            display_rows = processed_data[:5] + [{"__ellipsis__": True}] + processed_data[-5:]
+
+        # 행 출력
+        for row in display_rows:
+            if row.get("__ellipsis__"):
+                table += "... (중간 생략) ...\n"
+                continue
             row_values = [str(row.get(col, "")) for col in available_columns]
             table += " | ".join(row_values) + "\n"
 
@@ -46,6 +56,7 @@ def format_table_pipe(data: List[Dict[str, Any]], columns: List[str]) -> str:
     except Exception as e:
         logger.error(f"Error formatting table: {str(e)}", exc_info=True)
         return f"(테이블 형식 변환 오류: {str(e)})"
+
 
 
 
