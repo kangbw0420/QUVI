@@ -4866,22 +4866,22 @@
     },
     {
     "question": "2월 순수익은 1월보다 많아",
-    "answer": "SELECT TO_CHAR(DATE_TRUNC('month', trsc_dt::timestamp), 'YYYYMM') AS trsc_month, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) AS total_incoming_amount, SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_outgoing_amount, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) - SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_net_profit FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND TO_CHAR(trsc_dt::timestamp, 'YYYYMM') IN ('202501', '202502') GROUP BY trsc_month ORDER BY trsc_month; ",
+    "answer": "SELECT TO_CHAR(DATE_TRUNC('month', trsc_dt::timestamp), 'YYYYMM') AS trsc_month, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) AS total_incoming_amount, SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_outgoing_amount, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) - SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_net_profit FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt BETWEEN '20250101' AND '20250228' GROUP BY trsc_month ORDER BY trsc_month; ",
     "date": "20250325 화요일"
     },
     {
     "question": "6월 순수익은 작년 7월보다 적어?",
-    "answer": "SELECT TO_CHAR(DATE_TRUNC('month', trsc_dt::timestamp), 'YYYYMM') AS trsc_month, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) AS total_incoming_amount, SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_outgoing_amount, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) - SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_net_profit FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND TO_CHAR(trsc_dt::timestamp, 'YYYYMM') IN ('202306', '202307') GROUP BY trsc_month ORDER BY trsc_month; ",
+    "answer": "SELECT TO_CHAR(DATE_TRUNC('month', trsc_dt::timestamp), 'YYYYMM') AS trsc_month, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) AS total_incoming_amount, SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_outgoing_amount, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) - SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_net_profit FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt BETWEEN '20240601' AND '20230731' GROUP BY trsc_month ORDER BY trsc_month; ",
     "date": "20241021 월요일"
     },
     {
     "question": "올해 3월 순수익이랑 2월 순수익 비교해줘",
-    "answer": "SELECT TO_CHAR(DATE_TRUNC('month', trsc_dt::timestamp), 'YYYYMM') AS trsc_month, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) AS total_incoming_amount, SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_outgoing_amount, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) - SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_net_profit FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND TO_CHAR(trsc_dt::timestamp, 'YYYYMM') IN ('202002', '202003') GROUP BY trsc_month ORDER BY trsc_month; ",
+    "answer": "SELECT TO_CHAR(DATE_TRUNC('month', trsc_dt::timestamp), 'YYYYMM') AS trsc_month, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) AS total_incoming_amount, SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_outgoing_amount, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) - SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_net_profit FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt BETWEEN '20200201' AND '20200331' GROUP BY trsc_month ORDER BY trsc_month; ",
     "date": "20200911 금요일"
     },
     {
     "question": "7월이랑 9월 순수익 보여줘",
-    "answer": "SELECT TO_CHAR(DATE_TRUNC('month', trsc_dt::timestamp), 'YYYYMM') AS trsc_month, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) AS total_incoming_amount, SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_outgoing_amount, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) - SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_net_profit FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND TO_CHAR(trsc_dt::timestamp, 'YYYYMM') IN ('202407', '202409') GROUP BY trsc_month ORDER BY trsc_month; ",
+    "answer": "SELECT TO_CHAR(DATE_TRUNC('month', trsc_dt::timestamp), 'YYYYMM') AS trsc_month, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) AS total_incoming_amount, SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_outgoing_amount, SUM(CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END) - SUM(CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END) AS total_net_profit FROM aicfo_get_all_trsc WHERE view_dv = '수시' AND curr_cd = 'KRW' AND trsc_dt BETWEEN '20240701' AND '20240930' GROUP BY trsc_month ORDER BY trsc_month; ",
     "date": "20241020 일요일"
     },
     {

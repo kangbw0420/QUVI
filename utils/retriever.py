@@ -77,31 +77,45 @@ class FewShotRetriever:
                 if "document" in result:
                     document = result["document"].strip()
 
-                    # ✅ "질문: ...\n답변: ..." 형식에서 분리
-                    if "질문:" in document and "답변:" in document:
-                        parts = document.split("\n")
-                        question = ""
-                        answer = ""
+                    # ✅ "결과 데이터:" 블럭 분리
+                    stats_block = ""
+                    if "결과 데이터:" in document:
+                        doc_parts = document.split("질문:")
+                        if len(doc_parts) >= 2:
+                            stats_block = doc_parts[0].replace("결과 데이터:", "").strip()
+                            remaining = "질문:" + doc_parts[1]
+                        else:
+                            remaining = document
+                    else:
+                        remaining = document
 
-                        for part in parts:
-                            if part.startswith("질문:"):
-                                question = part.replace("질문:", "").strip()
-                            elif part.startswith("답변:"):
-                                answer = part.replace("답변:", "").strip()
+                    # ✅ "질문: ...\n답변: ..." 분리
+                    question, answer = "", ""
+                    lines = remaining.split("\n")
+                    for line in lines:
+                        if line.startswith("질문:"):
+                            question = line.replace("질문:", "").strip()
+                        elif line.startswith("답변:"):
+                            answer = line.replace("답변:", "").strip()
 
-                        if question and answer:
-                            few_shot = {
-                                "input": question,
-                                "output": answer
-                            }
+                    if question and answer:
+                        few_shot = {
+                            "input": question,
+                            "output": answer
+                        }
 
-                            metadata = result.get("metadata", {})
-                            if "date" in metadata:
-                                few_shot["date"] = metadata["date"]
-                            if "stats" in metadata:
-                                few_shot["stats"] = metadata["stats"]
+                        # ✅ stats는 document에서 추출한 경우 우선 사용
+                        if stats_block:
+                            few_shot["stats"] = stats_block
 
-                            few_shots.append(few_shot)
+                        # ✅ 추가 metadata가 있으면 넣음
+                        metadata = result.get("metadata", {})
+                        if "date" in metadata:
+                            few_shot["date"] = metadata["date"]
+                        if "stats" in metadata and "stats" not in few_shot:
+                            few_shot["stats"] = metadata["stats"]
+
+                        few_shots.append(few_shot)
 
             return few_shots
 

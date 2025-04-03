@@ -3,7 +3,7 @@ import json
 import uuid
 import requests
 
-FILENAME = "shots_api_selector.json"  # 🔧 파일 이름만 바꿔서 실행
+FILENAME = "shots_trsc.json"  # 🔧 파일 이름만 바꿔서 실행
 FILEPATH = os.path.join("shots", FILENAME)
 
 CHROMA_URL = "http://183.102.124.135:8001/add"
@@ -25,14 +25,16 @@ try:
         if "question" in item and "answer" in item:
             question = item["question"].strip()
             answer = item["answer"].strip()
+            stats = item.get("stats", "").strip()
             date = item.get("date", "").strip()
 
-            # ✅ date가 있을 경우 질문에 포함
-            if date:
-                doc_str = f"질문: {question}, 오늘: {date}\n답변: {answer}"
-            else:
-                doc_str = f"질문: {question}\n답변: {answer}"
+            parts = []
+            if stats:
+                parts.append(f"결과 데이터:\n{stats}")
+            parts.append(f"질문: {question}" + (f", 오늘: {date}" if date else ""))
+            parts.append(f"답변: {answer}")
 
+            doc_str = "\n".join(parts)
             documents.append(doc_str)
 
     print(f"📄 총 문서 수: {len(documents)}")
