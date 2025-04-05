@@ -22,7 +22,7 @@ from utils.query.modify_name import modify_stock, modify_bank
 from utils.query.ever_note import ever_note
 from utils.dataframe.is_krw_null import is_krw, is_null_only
 from utils.dataframe.transform_col import transform_data
-# from utils.compute.main_compute import compute_fstring, evaluate_pandas_expression, evaluate_fstring_template
+from utils.compute.main_compute import compute_fstring, evaluate_pandas_expression, evaluate_fstring_template
 
 # 모듈 레벨 로거 생성
 logger = setup_logger('node')
@@ -326,7 +326,6 @@ async def respondent(state: GraphState) -> GraphState:
     # debuging
     state.update({"yogeumjae": fstring_answer})
     final_answer = fstring_answer
-    logger.info("Computing final answer using fstring template")
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")
 
