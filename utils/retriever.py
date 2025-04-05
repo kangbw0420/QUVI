@@ -32,6 +32,7 @@ class FewShotRetriever:
                     'query_text': query_text,
                     'top_k': top_k
                 }
+
                 start_time = time.time()
 
                 response = await client.post(
@@ -58,7 +59,7 @@ class FewShotRetriever:
                                 "document": doc,
                                 "metadata": meta
                             })
-
+                        
                         return formatted_results
 
                 logger.warning("Unexpected response format from vector store")
@@ -69,34 +70,26 @@ class FewShotRetriever:
                 return []
 
     async def format_few_shots(self, results: List[Dict]) -> List[Dict]:
-        """벡터 스토어 검색 결과를 few-shot 예제 형식으로 변환합니다."""
+        """벡터 스토어 검색 결과를 few-shot 예제 형식으로 변환합니다.
+        Returns:
+            List[Dict]: 입력(input)과 출력(output)을 포함하는 few-shot 예제 리스트.
+            빈 리스트는 변환할 결과가 없거나 변환 중 오류가 발생한 경우를 의미.
+        Raises:
+            KeyError: 필요한 필드가 results에 없는 경우.
+        """
         few_shots = []
-
-        try:
+        
+        try:            
             for result in results:
                 if "document" in result:
-                    document = result["document"].strip()
+                    document = result["document"]
 
-                    # ✅ "결과 데이터:" 블럭 분리
-                    stats_block = ""
-                    if "결과 데이터:" in document:
-                        doc_parts = document.split("질문:")
-                        if len(doc_parts) >= 2:
-                            stats_block = doc_parts[0].replace("결과 데이터:", "").strip()
-                            remaining = "질문:" + doc_parts[1]
-                        else:
-                            remaining = document
-                    else:
-                        remaining = document
+                    # Extract the question from document
+                    question = document.strip()
 
-                    # ✅ "질문: ...\n답변: ..." 분리
-                    question, answer = "", ""
-                    lines = remaining.split("\n")
-                    for line in lines:
-                        if line.startswith("질문:"):
-                            question = line.replace("질문:", "").strip()
-                        elif line.startswith("답변:"):
-                            answer = line.replace("답변:", "").strip()
+                    # Find corresponding metadata with SQL
+                    metadata = result.get("metadata", {})
+                    answer = metadata.get("answer", "")
 
                     if question and answer:
                         few_shot = {
@@ -104,23 +97,22 @@ class FewShotRetriever:
                             "output": answer
                         }
 
-                        # ✅ stats는 document에서 추출한 경우 우선 사용
-                        if stats_block:
-                            few_shot["stats"] = stats_block
-
-                        # ✅ 추가 metadata가 있으면 넣음
-                        metadata = result.get("metadata", {})
+                        # If metadata has date key, include it in few_shot
                         if "date" in metadata:
-                            few_shot["date"] = metadata["date"]
-                        if "stats" in metadata and "stats" not in few_shot:
-                            few_shot["stats"] = metadata["stats"]
+                            date = metadata.get("date", "")
+                            few_shot["date"] = date
 
-                        few_shots.append(few_shot)
-
+                        # If metadata has stats key, include it in few_shot
+                        if "stats" in metadata:
+                            stats = metadata.get("stats", "")
+                            few_shot["stats"] = stats
+                            
+                        few_shots.append(few_shot)            
+                    
             return few_shots
 
         except Exception as e:
-            logger.error(f"❌ Error formatting few-shots: {str(e)}")
+            logger.error(f"Error formatting few-shots: {str(e)}")
             return []
 
     async def get_few_shots(self, query_text: str, collection_name: Optional[str] = None, top_k: int = 6) -> List[Dict]:

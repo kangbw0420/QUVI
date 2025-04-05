@@ -35,11 +35,13 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
         result = query_result or []
         cols = column_list or []
 
-        # 간단한 프롬프트로 시작
-        simple_prompt = """
-        당신은 사용자의 재무 데이터 조회 질문에 대해, 주어진 DataFrame을 기반으로 f-string 형태의 자연어 답변을 생성하는 전문가입니다.
-        사용자의 질문을 그대로 응답하지 말고 사용자 질문과 주어진 결과 데이터를 활용하여 정확한 f-string 기반 답변 문장 한 줄을 생성하세요.
-        """
+        # if selected_table == 'api':
+        #     system_prompt = get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
+        # else:
+        #     system_prompt = get_prompt(node_nm='respondent', prompt_nm='sql')[0]['prompt']
+
+        system_prompt = """당신은 사용자의 재무 데이터 조회 질문에 대해, 주어진 DataFrame을 기반으로 f-string 형태의 자연어 답변을 생성하는 전문가입니다.
+        사용자 질문과 주어진 결과 데이터를 활용하여 정확한 f-string 기반 답변 문장 한 줄을 생성하세요."""
 
         if selected_table == 'api':
             collection_name = "shots_respondent_api"
@@ -88,20 +90,27 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
             except Exception as e:
                 logger.warning(f"Failed to format date info: {str(e)}")
 
-        # 최종 프롬프트 구성
-        human_prompt = f"""결과 데이터:
-        {table_pipe}
+        # human_prompt = get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
+        #     column_list=column_list_str, user_question=formatted_user_question
+        # )
         
-        사용자의 질문:
-        {formatted_user_question}
+        # human_prompt = f"""결과 데이터:
+        # {table_pipe}
         
-        컬럼 설명:
-        {', '.join(cols)}
-        """
+        # 사용자의 질문:
+        # {formatted_user_question}
+        
+        # 컬럼 설명:
+        # {', '.join(cols)}
+        # """
+        
+        human_prompt = get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
+            table_pipe=table_pipe, user_question=formatted_user_question
+        )
 
         prompt = ChatPromptTemplate.from_messages(
             [
-                SystemMessage(content=simple_prompt),
+                SystemMessage(content=system_prompt),
                 *few_shot_prompt,
                 ("human", human_prompt)
             ]
