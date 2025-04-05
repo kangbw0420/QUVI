@@ -12,7 +12,6 @@ from utils.retriever import retriever
 from utils.table.format_table import format_table_pipe
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
-from rapidfuzz import fuzz, process
 
 qna_manager = QnAManager()
 logger = setup_logger('respondent')
@@ -90,7 +89,7 @@ async def response(trace_id: str, user_question, selected_table: str,
 사용자의 질문:
 {formatted_user_question}"""
         
-        human_prompt = get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
+        human_prompt = get_prompt(node_nm='respondent', prompt_nm='human_table')[0]['prompt'].format(
             table_pipe=table_pipe, user_question=formatted_user_question
         )
 

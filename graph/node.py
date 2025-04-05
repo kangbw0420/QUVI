@@ -334,10 +334,9 @@ async def respondent(state: GraphState) -> GraphState:
     if selected_table == "api":
         final_result = is_krw(final_result)
 
-    state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
+    state.update({"final_answer": final_answer, "query_result": final_result})
     StateManager.update_state(trace_id, {
         "final_answer": final_answer,
-        "column_list": column_list,
         "query_result": final_result
     })
     return state
