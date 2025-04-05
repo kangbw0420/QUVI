@@ -3,13 +3,13 @@ from utils.logger import setup_logger
 
 logger = setup_logger('format_table')
 
-def format_table_pipe(data: List[Dict[str, Any]], columns: List[str]) -> str:
+def format_table_pipe(data: List[Dict[str, Any]]) -> str:
     """
     데이터를 파이프(|) 형식의 표로 변환.
     10행 초과 시 상위 5개 + 하위 5개를 출력하고, 중간은 생략 메시지로 표시.
     """
     try:
-        if not data or not columns:
+        if not data:
             return "(데이터 없음)"
 
         # 데이터 평탄화
@@ -27,9 +27,6 @@ def format_table_pipe(data: List[Dict[str, Any]], columns: List[str]) -> str:
         available_columns = [col for col in columns if any(col in row for row in processed_data)]
         if not available_columns and processed_data:
             available_columns = list(processed_data[0].keys())[:5]
-
-        if not available_columns:
-            return "(표시할 데이터 컬럼 없음)"
 
         # 헤더 생성
         table = " | ".join(available_columns) + "\n"
@@ -56,8 +53,6 @@ def format_table_pipe(data: List[Dict[str, Any]], columns: List[str]) -> str:
     except Exception as e:
         logger.error(f"Error formatting table: {str(e)}", exc_info=True)
         return f"(테이블 형식 변환 오류: {str(e)})"
-
-
 
 
 def format_table_html(data: List[Dict[str, Any]], columns: List[str]) -> str:

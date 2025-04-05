@@ -18,7 +18,7 @@ qna_manager = QnAManager()
 logger = setup_logger('respondent')
 
 
-async def response(trace_id: str, user_question, selected_table: str, column_list=None,
+async def response(trace_id: str, user_question, selected_table: str,
                    date_info: Optional[Tuple[str, str]] = None , query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다."""
 
@@ -30,27 +30,17 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
 
         logger.debug(f"Query result type: {type(query_result)}")
         logger.debug(f"Query result size: {len(query_result) if query_result else 0}")
-        logger.debug(f"Column list: {column_list}")
 
         result = query_result or []
-        cols = column_list or []
 
-        # if selected_table == 'api':
-        #     system_prompt = get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
-        # else:
-        #     system_prompt = get_prompt(node_nm='respondent', prompt_nm='sql')[0]['prompt']
+        system_prompt = get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
 
         system_prompt = """당신은 사용자의 재무 데이터 조회 질문에 대해, 주어진 DataFrame을 기반으로 f-string 형태의 자연어 답변을 생성하는 전문가입니다.
-        사용자 질문과 주어진 결과 데이터를 활용하여 정확한 f-string 기반 답변 문장 한 줄을 생성하세요."""
-
-        if selected_table == 'api':
-            collection_name = "shots_respondent_api"
-        else:
-            collection_name = "shots_respondent_sql"
+사용자 질문과 주어진 결과 데이터를 활용하여 정확한 f-string 기반 답변 문장 한 줄을 생성하세요."""
 
         few_shots = await retriever.get_few_shots(
             query_text=user_question,
-            collection_name=collection_name,
+            collection_name="shots_respondent_table",
             top_k=5
         )
         few_shot_prompt = []
@@ -72,7 +62,7 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
 
         logger.info(f"Generated respondent few-shot examples: {few_shot_prompt}")
         logger.info(f"Generated result: {result}")
-        table_pipe = format_table_pipe(result, cols)
+        table_pipe = format_table_pipe(result)
         logger.info(f"Created data table from query results")
 
         # 표 형식 데이터의 로그 확인
@@ -94,15 +84,11 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
         #     column_list=column_list_str, user_question=formatted_user_question
         # )
         
-        # human_prompt = f"""결과 데이터:
-        # {table_pipe}
-        
-        # 사용자의 질문:
-        # {formatted_user_question}
-        
-        # 컬럼 설명:
-        # {', '.join(cols)}
-        # """
+        human_prompt = f"""결과 데이터:
+{table_pipe}
+
+사용자의 질문:
+{formatted_user_question}"""
         
         human_prompt = get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
             table_pipe=table_pipe, user_question=formatted_user_question
