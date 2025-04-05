@@ -27,10 +27,7 @@ async def response(trace_id: str, user_question, date_info: Optional[Tuple[str, 
 
         result = query_result or []
 
-        system_prompt = get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
-
-#         system_prompt = """당신은 사용자의 재무 데이터 조회 질문에 대해, 주어진 DataFrame을 기반으로 f-string 형태의 자연어 답변을 생성하는 전문가입니다.
-# 사용자 질문과 주어진 결과 데이터를 활용하여 정확한 f-string 기반 답변 문장 한 줄을 생성하세요."""
+        system_prompt = get_prompt(node_nm='respondent', prompt_nm='table')[0]['prompt']
 
         few_shots = await retriever.get_few_shots(
             query_text=user_question,
@@ -56,7 +53,13 @@ async def response(trace_id: str, user_question, date_info: Optional[Tuple[str, 
 
         logger.info(f"Generated respondent few-shot examples: {few_shot_prompt}")
         logger.info(f"Generated result: {result}")
-        table_pipe = format_table_pipe(result)
+        
+        if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], list):
+            data_for_table = result[0]
+        else:
+            data_for_table = result
+
+        table_pipe = format_table_pipe(data_for_table)
 
         logger.info(f"Generated table pipe format:\n{table_pipe}")
 
@@ -71,12 +74,6 @@ async def response(trace_id: str, user_question, date_info: Optional[Tuple[str, 
                     formatted_user_question = f"시작 시점: {formatted_from}, 종료 시점: {formatted_to}. {user_question}"
             except Exception as e:
                 logger.warning(f"Failed to format date info: {str(e)}")
-        
-#         human_prompt = f"""결과 데이터:
-# {table_pipe}
-
-# 사용자의 질문:
-# {formatted_user_question}"""
         
         human_prompt = get_prompt(node_nm='respondent', prompt_nm='human_table')[0]['prompt'].format(
             table_pipe=table_pipe, user_question=formatted_user_question
