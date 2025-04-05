@@ -71,9 +71,7 @@ async def create_sql(
             few_shot_prompt.append(("human", human_with_date))
             few_shot_prompt.append(("ai", example["output"]))
 
-        # 개발계 테스트 용 날짜 변경
-        # formatted_today = today.strftime("%Y%m%d")
-        formatted_today = "20250108"
+        formatted_today = today.strftime("%Y%m%d")
         weekday = WEEKDAYS[today.weekday()]
 
         formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
