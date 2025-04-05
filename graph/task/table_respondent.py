@@ -17,25 +17,20 @@ qna_manager = QnAManager()
 logger = setup_logger('respondent')
 
 
-async def response(trace_id: str, user_question, selected_table: str,
-                   date_info: Optional[Tuple[str, str]] = None , query_result = None) -> str:
+async def response(trace_id: str, user_question, date_info: Optional[Tuple[str, str]] = None , query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다."""
 
     final_response = "응답 생성 중 오류가 발생했습니다."  # 예외 발생 시 기본 응답
 
     try:
         output_parser = StrOutputParser()
-        logger.info(f"Generating table response for question: {user_question[:50]}...")
-
-        logger.debug(f"Query result type: {type(query_result)}")
-        logger.debug(f"Query result size: {len(query_result) if query_result else 0}")
 
         result = query_result or []
 
         system_prompt = get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
 
-        system_prompt = """당신은 사용자의 재무 데이터 조회 질문에 대해, 주어진 DataFrame을 기반으로 f-string 형태의 자연어 답변을 생성하는 전문가입니다.
-사용자 질문과 주어진 결과 데이터를 활용하여 정확한 f-string 기반 답변 문장 한 줄을 생성하세요."""
+#         system_prompt = """당신은 사용자의 재무 데이터 조회 질문에 대해, 주어진 DataFrame을 기반으로 f-string 형태의 자연어 답변을 생성하는 전문가입니다.
+# 사용자 질문과 주어진 결과 데이터를 활용하여 정확한 f-string 기반 답변 문장 한 줄을 생성하세요."""
 
         few_shots = await retriever.get_few_shots(
             query_text=user_question,
@@ -62,9 +57,7 @@ async def response(trace_id: str, user_question, selected_table: str,
         logger.info(f"Generated respondent few-shot examples: {few_shot_prompt}")
         logger.info(f"Generated result: {result}")
         table_pipe = format_table_pipe(result)
-        logger.info(f"Created data table from query results")
 
-        # 표 형식 데이터의 로그 확인
         logger.info(f"Generated table pipe format:\n{table_pipe}")
 
         # 사용자 질문에 날짜 정보 추가
@@ -78,16 +71,12 @@ async def response(trace_id: str, user_question, selected_table: str,
                     formatted_user_question = f"시작 시점: {formatted_from}, 종료 시점: {formatted_to}. {user_question}"
             except Exception as e:
                 logger.warning(f"Failed to format date info: {str(e)}")
-
-        # human_prompt = get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
-        #     column_list=column_list_str, user_question=formatted_user_question
-        # )
         
-        human_prompt = f"""결과 데이터:
-{table_pipe}
+#         human_prompt = f"""결과 데이터:
+# {table_pipe}
 
-사용자의 질문:
-{formatted_user_question}"""
+# 사용자의 질문:
+# {formatted_user_question}"""
         
         human_prompt = get_prompt(node_nm='respondent', prompt_nm='human_table')[0]['prompt'].format(
             table_pipe=table_pipe, user_question=formatted_user_question

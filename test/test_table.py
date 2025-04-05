@@ -24,6 +24,11 @@ def sample_data():
     ]
 
 @pytest.fixture
+def tuple_wrapped_data(sample_data):
+    """튜플로 감싸진 데이터 샘플"""
+    return (sample_data,)
+
+@pytest.fixture
 def nested_data():
     return [
         {
@@ -50,7 +55,7 @@ def large_data():
         for i in range(1, 13)
     ]
 
-class TestFormatTable:
+class TestUpdatedFormatTable:
     
     def test_format_table_pipe_basic(self, sample_data):
         """기본 파이프 테이블 포맷 테스트"""
@@ -63,9 +68,20 @@ class TestFormatTable:
         assert "Bank A | 11111111 | 500.25 | 2000.00" in result
         assert "Bank B | 22222222 | 1500.75 | 8000.50" in result
 
-    def test_format_table_html_basic(self, sample_data):
-        """기본 HTML 테이블 포맷 테스트"""
-        result = format_table_html(sample_data)
+    def test_format_table_pipe_tuple_wrapped(self, tuple_wrapped_data):
+        """튜플로 감싸진 데이터 처리 테스트 - 파이프 포맷"""
+        result = format_table_pipe(tuple_wrapped_data)
+        
+        # 헤더 확인
+        assert "bank_nm | acct_no | trsc_amt | balance" in result
+        
+        # 데이터 행 확인
+        assert "Bank A | 11111111 | 500.25 | 2000.00" in result
+        assert "Bank B | 22222222 | 1500.75 | 8000.50" in result
+
+    def test_format_table_html_tuple_wrapped(self, tuple_wrapped_data):
+        """튜플로 감싸진 데이터 처리 테스트 - HTML 포맷"""
+        result = format_table_html(tuple_wrapped_data)
         
         # 테이블 태그 확인
         assert "<table>" in result
@@ -84,11 +100,16 @@ class TestFormatTable:
         result = format_table_pipe([])
         assert "(데이터 없음)" in result
 
-    def test_format_table_html_empty(self):
-        """빈 데이터 처리 테스트 - HTML 포맷"""
-        result = format_table_html([])
+    def test_format_table_pipe_invalid_type(self):
+        """유효하지 않은 데이터 타입 처리 테스트 - 파이프 포맷"""
+        result = format_table_pipe("not a list or tuple")
+        assert "(변환할 수 없는 데이터 형식)" in result
+
+    def test_format_table_html_invalid_type(self):
+        """유효하지 않은 데이터 타입 처리 테스트 - HTML 포맷"""
+        result = format_table_html("not a list or tuple")
         assert "<table>" in result
-        assert "(데이터 없음)" in result
+        assert "(변환할 수 없는 데이터 형식)" in result
         assert "</table>" in result
 
     def test_format_table_pipe_nested(self, nested_data):
@@ -143,3 +164,41 @@ class TestFormatTable:
         # 11, 12번 항목은 생략됨
         assert "Item 11" not in result
         assert "Item 12" not in result
+        
+    def test_real_world_query_result(self):
+        """실제 쿼리 결과와 같은 형태의 데이터 테스트"""
+        # 실제 query_result 형태를 모방
+        query_result = (
+            [
+                {
+                    "bank_nm": "Bank A",
+                    "acct_no": "11111111",
+                    "trsc_amt": Decimal("500.25"),
+                    "balance": Decimal("2000.00")
+                },
+                {
+                    "bank_nm": "Bank B",
+                    "acct_no": "22222222",
+                    "trsc_amt": Decimal("1500.75"),
+                    "balance": Decimal("8000.50")
+                },
+                {
+                    "bank_nm": "Bank C",
+                    "acct_no": "33333333333",
+                    "trsc_amt": Decimal("12310.75"),
+                    "balance": Decimal("8670.50")
+                }
+            ],
+        )
+        
+        # 파이프 포맷 테스트
+        pipe_result = format_table_pipe(query_result)
+        assert "bank_nm | acct_no | trsc_amt | balance" in pipe_result
+        assert "Bank A | 11111111 | 500.25 | 2000.00" in pipe_result
+        assert "Bank C | 33333333333 | 12310.75 | 8670.50" in pipe_result
+        
+        # HTML 포맷 테스트
+        html_result = format_table_html(query_result)
+        assert "<th>bank_nm</th>" in html_result
+        assert "<td>Bank B</td>" in html_result
+        assert "<td>33333333333</td>" in html_result
