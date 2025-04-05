@@ -4,6 +4,7 @@ from decimal import Decimal
 from utils.compute.formatter import format_number
 from utils.compute.computer import parse_function_params, compute_function
 from utils.compute.detector import split_by_operators, calculate_with_operator
+from utils.logger import setup_logger
 
 def handle_math_expression(match: re.Match, result: List[Dict[str, Any]], column_list: List[str]) -> str:
     expression = match.group(1)
@@ -124,6 +125,10 @@ def compute_fstring(fstring_answer: str, result: List[Dict[str, Any]], column_li
     # 중괄호 안에 있는 걸 찾아내기
     pattern = r'\{([^}]+)\}'
     processed_answer = re.sub(pattern, lambda m: handle_computed_column(m.group(1), result, column_list), fstring_answer)
+
+    logger = setup_logger('respondent')
+    # 처리된 답변 로깅 추가
+    logger.info(f"Computed fstring result: {processed_answer}")
     
     # "Error: "가 포함되어 있는지 체크
     if any(error_msg in processed_answer for error_msg in ["Error: ", "Error in"]):
