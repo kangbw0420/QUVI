@@ -32,53 +32,21 @@ async def command_join(trace_id: str, user_question: str) -> str:
 
     few_shots = await retriever.get_few_shots(
         query_text=user_question,
-        collection_name=collection_name,
+        collection_name="commander_join",
         top_k=3
     )
     few_shot_prompt = []
     for example in reversed(few_shots):
         if "stats" in example:
-            # 날짜 정보가 있는 경우와 없는 경우를 구분
-            if "date" in example:
-                human_with_stats_date = (
-                    f'사용 가능한 column_nm:\n{example["stats"]}\n\n'
-                    f'사용자의 질문:\n{example["date"]}. {example["input"]}'
-                )
-                few_shot_prompt.append(("human", human_with_stats_date))
-            else:
-                human_with_stats = f'사용 가능한 column_nm:\n{example["stats"]}\n\n사용자의 질문:\n{example["input"]}'
-                few_shot_prompt.append(("human", human_with_stats))
+            human_with_stats = f'사용자의 질문:\n{example["input"]}\n\n사용 가능한 column_nm:\n{example["stats"]}'
+            few_shot_prompt.append(("human", human_with_stats))
         else:
             few_shot_prompt.append(("human", example["input"]))
         few_shot_prompt.append(("ai", example["output"]))
 
-    # column_list를 문자열로 변환
-    column_list_str = ", ".join(column_list) if column_list else ""
-
-    if date_info:
-        (from_date, to_date) = date_info
-        try:
-            formatted_from = f"{from_date[:4]}년 {int(from_date[4:6])}월 {int(from_date[6:8])}일"
-            formatted_to = f"{to_date[:4]}년 {int(to_date[4:6])}월 {int(to_date[6:8])}일"
-            formatted_user_question = f"시작 시점: {formatted_from}, 종료 시점: {formatted_to}. {user_question}"
-        except:
-            formatted_user_question = f"시작 시점: {from_date}, 종료 시점: {to_date}. {user_question}"
-            logger.warning(f"Failed to format date info: {from_date}, {to_date}")
-    else:
-        formatted_user_question = user_question
-
     human_prompt = get_prompt(node_nm='respondent', prompt_nm='human')[0]['prompt'].format(
-        column_list=column_list_str, user_question=formatted_user_question
+        user_question=user_question
     )
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            SystemMessage(content=system_prompt),
-            *few_shot_prompt,
-            ("human", human_prompt),
-        ]
-    )
-
 
     COMMANDER_PROMPT = ChatPromptTemplate.from_messages(
         [
