@@ -22,18 +22,10 @@ async def command_join(trace_id: str, user_question: str) -> str:
 
     system_prompt = get_prompt(node_nm='commander', prompt_nm='join')[0]['prompt']
 
-    # few_shots = await retriever.get_few_shots(
-    #     query_text=user_question, collection_name="commander_join", top_k=5
-    # )
-    # few_shot_prompt = []
-    # for example in reversed(few_shots):
-    #     few_shot_prompt.append(("human", example["input"]))
-    #     few_shot_prompt.append(("ai", example["output"]))
-
     few_shots = await retriever.get_few_shots(
         query_text=user_question,
         collection_name="commander_join",
-        top_k=3
+        top_k=5
     )
     few_shot_prompt = []
     for example in reversed(few_shots):
