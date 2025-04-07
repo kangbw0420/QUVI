@@ -75,19 +75,19 @@ async def commander(state: GraphState) -> GraphState:
     })
     return state
 
-async def commander_join(state: GraphState) -> GraphState:
-    """사용자 질문에 검색해야 할 table을 선택"""
-    user_question = state["user_question"]
-    trace_id = state["trace_id"]
+# async def commander_join(state: GraphState) -> GraphState:
+#     """사용자 질문에 검색해야 할 table을 선택"""
+#     user_question = state["user_question"]
+#     trace_id = state["trace_id"]
 
-    selected_table = await command_join(trace_id, user_question)
+#     selected_table = await command_join(trace_id, user_question)
 
-    state.update({"selected_table": selected_table})
-    StateManager.update_state(trace_id, {
-        "user_question": user_question,
-        "selected_table": selected_table
-    })
-    return state
+#     state.update({"selected_table": selected_table})
+#     StateManager.update_state(trace_id, {
+#         "user_question": user_question,
+#         "selected_table": selected_table
+#     })
+#     return state
 
 async def funk(state: GraphState) -> GraphState:
     """사용자 질문에 검색해야 할 table을 선택"""

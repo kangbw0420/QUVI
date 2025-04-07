@@ -9,7 +9,7 @@ from .node import (
     checkpoint,
     isapi,
     commander,
-    commander_join,
+    # commander_join,
     funk,
     params,
     yqmd,
@@ -77,7 +77,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("checkpoint", checkpoint)
         workflow.add_node("isapi", isapi)
         workflow.add_node("commander", commander) # 처리 경로를 결정
-        workflow.add_node("commander_join", commander_join) # 처리 경로를 결정
+        # workflow.add_node("commander_join", commander_join) # 처리 경로를 결정
         workflow.add_node("funk", funk) # api 함수 선택
         workflow.add_node("params", params) # api 함수 파라미터 선택
         workflow.add_node("yqmd", yqmd)
