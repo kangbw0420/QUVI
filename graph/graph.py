@@ -4,8 +4,8 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from llm_admin.trace_manager import TraceManager
 
-from .node import (
-    GraphState,
+from graph.types import GraphState
+from graph.node import (
     checkpoint,
     isapi,
     commander,
