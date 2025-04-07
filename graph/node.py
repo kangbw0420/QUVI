@@ -2,6 +2,7 @@ from llm_admin.state_manager import StateManager
 from graph.types import GraphState
 from graph.task.classifier import check_joy, is_api, classify_yqmd
 from graph.task.commander import command
+from graph.task.commander_join import command_join
 from graph.task.nl2sql import create_sql
 from graph.task.table_respondent import response
 from graph.task.executor import execute
@@ -66,6 +67,20 @@ async def commander(state: GraphState) -> GraphState:
     trace_id = state["trace_id"]
 
     selected_table = await command(trace_id, user_question)
+
+    state.update({"selected_table": selected_table})
+    StateManager.update_state(trace_id, {
+        "user_question": user_question,
+        "selected_table": selected_table
+    })
+    return state
+
+async def commander_join(state: GraphState) -> GraphState:
+    """사용자 질문에 검색해야 할 table을 선택"""
+    user_question = state["user_question"]
+    trace_id = state["trace_id"]
+
+    selected_table = await command_join(trace_id, user_question)
 
     state.update({"selected_table": selected_table})
     StateManager.update_state(trace_id, {

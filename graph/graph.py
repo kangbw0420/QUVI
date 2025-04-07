@@ -9,6 +9,7 @@ from .node import (
     checkpoint,
     isapi,
     commander,
+    commander_join,
     funk,
     params,
     yqmd,
@@ -76,6 +77,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_node("checkpoint", checkpoint)
         workflow.add_node("isapi", isapi)
         workflow.add_node("commander", commander) # 처리 경로를 결정
+        workflow.add_node("commander_join", commander_join) # 처리 경로를 결정
         workflow.add_node("funk", funk) # api 함수 선택
         workflow.add_node("params", params) # api 함수 파라미터 선택
         workflow.add_node("yqmd", yqmd)
@@ -123,6 +125,17 @@ def make_graph() -> CompiledStateGraph:
                 "commander": "commander"
             }
         )
+        # workflow.add_conditional_edges(
+        #     "isapi",
+        #     lambda x: (
+        #         "funk" if x["selected_table"] == "api" else
+        #         "commander_join"
+        #     ),
+        #     {
+        #         "funk": "funk",
+        #         "commander_join": "commander_join"
+        #     }
+        # )
         workflow.add_edge("funk", "params")
         workflow.add_conditional_edges(
             "params",
@@ -140,6 +153,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_edge("yqmd", "executor")
 
         workflow.add_edge("commander", "nl2sql")
+        # workflow.add_edge("commander_join", "nl2sql")
         workflow.add_edge("nl2sql", "executor")
         
         workflow.add_conditional_edges(
