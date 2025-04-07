@@ -37,7 +37,7 @@ async def checkpoint(state: GraphState) -> GraphState:
     is_joy = await check_joy(user_question)
     if is_joy['checkpoint'] == 'joy':
         flags["is_joy"] = True
-        state.update({"selected_table": ""})
+        state.update({"selected_table": []})
 
     StateManager.update_state(trace_id, {"user_question": user_question})
     return state
@@ -145,7 +145,7 @@ async def executor(state: GraphState) -> GraphState:
     if "safe_count" not in flags:
         flags["safe_count"] = 0
 
-    if selected_table == "api":
+    if selected_table == ["api"]:
         query = state.get("sql_query")
         logger.info(f"Executing API query: {query}")
         try:
@@ -171,13 +171,13 @@ async def executor(state: GraphState) -> GraphState:
         company_id = state["company_id"]
 
         # 회사명을 권한 있는 회사로 변환
-        query_com = add_com_condition(raw_query, company_id)
+        query_right_com = add_com_condition(raw_query, company_id)
 
-        # stock 종목명 체크 맟 변환
-        if selected_table == 'stock':
-            query_com = modify_stock(query_com)
+        # 주식종목/은행명 매핑 변환
+        query_right_stock = modify_stock(query_right_com)
+        query_right_bank = modify_bank(query_right_stock)
         
-        query_right_bank = modify_bank(query_com)
+        # order by 추가
         query_ordered = add_order_by(query_right_bank, selected_table)
         
         user_info = state.get("user_info")
@@ -211,7 +211,7 @@ async def executor(state: GraphState) -> GraphState:
             state.update({"sql_query": query})
 
             # If no results found and it's a trsc query, try vector search for note1
-            if (not result or is_null_only(result)) and selected_table == 'trsc':
+            if (not result or is_null_only(result)) and selected_table == ['trsc']:
                 evernote_result = await ever_note(query)
                 
                 # Get original and similar notes from the result
@@ -313,7 +313,7 @@ async def respondent(state: GraphState) -> GraphState:
     cleaned_result = delete_useless_col(result, raw_column_list)
     # 테이블 데이터에서는 입출금과 통화 변환이 필요 없음음
 
-    if selected_table == "api":
+    if selected_table == ["api"]:
         date_info = state["date_info"]
     else:
         date_info = ()
@@ -326,7 +326,7 @@ async def respondent(state: GraphState) -> GraphState:
     logger.info(f"Final answer: {final_answer}")
 
     final_result = final_df_format(cleaned_result, selected_table)
-    if selected_table == "api":
+    if selected_table == ["api"]:
         final_result = is_krw(final_result)
 
     state.update({"final_answer": final_answer, "query_result": final_result})
@@ -348,7 +348,7 @@ async def respondent(state: GraphState) -> GraphState:
 #     # 컬럼과 데이터에서 입출금과 통화 구분
 #     result_for_col, column_list = transform_data(cleaned_result, cleaned_column_list)
 
-#     if selected_table == "api":
+#     if selected_table == ["api"]:
 #         date_info = state["date_info"]
 #     else:
 #         date_info = ()
@@ -361,7 +361,7 @@ async def respondent(state: GraphState) -> GraphState:
 #     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
 
 #     final_result = final_df_format(cleaned_result, selected_table)
-#     if selected_table == "api":
+#     if selected_table == ["api"]:
 #         final_result = is_krw(final_result)
 
 #     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})

@@ -1,5 +1,6 @@
 import re
 import json
+from typing import List
 from utils.config import Config
 import httpx
 from utils.logger import setup_logger
@@ -32,7 +33,7 @@ async def check_joy(query_text: str) -> dict:
             return {"checkpoint": "fin"}  # 기본값은 금융 관련 질문으로 설정
 
 
-async def is_api(query_text: str) -> str:
+async def is_api(query_text: str) -> List[str]:
     sanitized_query = sanitize_query(query_text)
     url = f"{BASE_URL}/isapi/{sanitized_query}"
     async with httpx.AsyncClient() as client:
@@ -46,9 +47,9 @@ async def is_api(query_text: str) -> str:
                 logger.debug(f"Full API classification results: {json.dumps(result, indent=2, ensure_ascii=False)}")
 
             if result["isapi"] == "1":
-                selected_table = "api"
+                selected_table = ["api"]
             else:
-                selected_table = ""
+                selected_table = []
 
             return selected_table
 
