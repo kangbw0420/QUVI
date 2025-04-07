@@ -2,7 +2,6 @@ from llm_admin.state_manager import StateManager
 from graph.types import GraphState
 from graph.task.classifier import check_joy, is_api, classify_yqmd
 from graph.task.commander import command
-from graph.task.commander_join import command_join
 from graph.task.nl2sql import create_sql
 from graph.task.table_respondent import response
 from graph.task.executor import execute
@@ -29,9 +28,8 @@ from utils.table.main_table import evaluate_pandas_expression, evaluate_fstring_
 # 모듈 레벨 로거 생성
 logger = setup_logger('node')
 
-
 async def checkpoint(state: GraphState) -> GraphState:
-    """금융 관련 질의 fin과 쓸데없는 질의 joy의 임베딩 모델 활용 이진분류"""
+    # 금융 관련 질의 fin과 쓸데없는 질의 joy의 임베딩 모델 활용 이진분류
     user_question = state["user_question"]
     trace_id = state["trace_id"]
     flags = state.get("flags")
@@ -45,7 +43,7 @@ async def checkpoint(state: GraphState) -> GraphState:
     return state
 
 async def isapi(state: GraphState) -> GraphState:
-    """사용자 질문을 api로 처리할 수 있을지 판단"""
+    # 사용자 질문을 api로 처리할 수 있을지 판단
     user_question = state["user_question"]
     trace_id = state["trace_id"]
 
@@ -59,7 +57,7 @@ async def isapi(state: GraphState) -> GraphState:
     return state
 
 async def commander(state: GraphState) -> GraphState:
-    """사용자 질문에 검색해야 할 table을 선택"""
+    # 사용자 질문에 검색해야 할 table을 선택
     user_question = state["user_question"]
     trace_id = state["trace_id"]
 
@@ -72,22 +70,8 @@ async def commander(state: GraphState) -> GraphState:
     })
     return state
 
-async def commander_join(state: GraphState) -> GraphState:
-    """사용자 질문에 검색해야 할 table을 선택"""
-    user_question = state["user_question"]
-    trace_id = state["trace_id"]
-
-    selected_table = await command_join(trace_id, user_question)
-
-    state.update({"selected_table": selected_table})
-    StateManager.update_state(trace_id, {
-        "user_question": user_question,
-        "selected_table": selected_table
-    })
-    return state
-
 async def funk(state: GraphState) -> GraphState:
-    """사용자 질문에 검색해야 할 table을 선택"""
+    # api 함수를 선택
     user_question = state["user_question"]
     trace_id = state["trace_id"]
 
@@ -97,11 +81,7 @@ async def funk(state: GraphState) -> GraphState:
     return state
 
 async def params(state: GraphState) -> GraphState:
-    """사용자 질문을 기반으로 SQL 쿼리를 생성(sql함수에 paramsa만 채워넣음)
-    Raises:
-        KeyError: state에 필요한 값이 없는 경우.
-        ValueError: SQL 쿼리 생성에 실패한 경우.
-    """
+    # api 함수의 파라미터(뷰 파라미터)를 채워넣음
     trace_id = state["trace_id"]
     selected_api = state["selected_api"]
     user_question = state["user_question"]
@@ -113,9 +93,7 @@ async def params(state: GraphState) -> GraphState:
         trace_id, selected_api, user_question, company_id, user_info
     )
 
-    # 날짜 교정: 유효하지 않은 날짜를 가장 가까운 유효한 날짜로 교정
-    corrected_date_info = correct_date_range(date_info)
-    date_info = corrected_date_info
+    date_info = correct_date_range(date_info)
 
     invalid_date_message = check_date(date_info, flags)
     if invalid_date_message:
@@ -133,7 +111,7 @@ async def params(state: GraphState) -> GraphState:
     return state
 
 async def yqmd(state: GraphState) -> GraphState:
-    """자금 흐름 api에서 연간/분기간/월간/일간 파라미터 결정"""
+    # 자금 흐름 api에서 연간/분기간/월간/일간 파라미터 결정
     user_question = state["user_question"]
     sql_query = state["sql_query"]
 
@@ -143,11 +121,7 @@ async def yqmd(state: GraphState) -> GraphState:
     return state
 
 async def nl2sql(state: GraphState) -> GraphState:
-    """사용자 질문을 기반으로 SQL 쿼리를 생성(NL2SQL)
-    Raises:
-        KeyError: state에 필요한 값이 없는 경우.
-        ValueError: SQL 쿼리 생성에 실패한 경우.
-    """
+    # 사용자 질문을 기반으로 SQL 쿼리를 생성
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
@@ -163,10 +137,7 @@ async def nl2sql(state: GraphState) -> GraphState:
     return state
 
 async def executor(state: GraphState) -> GraphState:
-    """SQL 쿼리를 실행하고 결과를 분석
-    Raises:
-        ValueError: SQL 쿼리가 state에 없거나 실행에 실패한 경우.
-    """
+    # SQL 쿼리를 실행하고 결과를 분석
     trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     flags = state.get("flags")
@@ -332,7 +303,7 @@ async def safeguard(state: GraphState) -> GraphState:
         return state
 
 async def respondent(state: GraphState) -> GraphState:
-    """쿼리 결과를 바탕으로 최종 응답을 생성"""
+    # 쿼리 결과를 바탕으로 최종 응답을 생성"""
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     result = state["query_result"]
@@ -402,7 +373,7 @@ async def respondent(state: GraphState) -> GraphState:
 #     return state
 
 async def nodata(state: GraphState) -> GraphState:
-    """데이터가 없음을 설명하는 노드"""
+    # 데이터가 없음을 설명하는 노드"""
     trace_id = state["trace_id"]
     user_question = state["user_question"]
     flags = state.get("flags")
@@ -423,7 +394,7 @@ async def nodata(state: GraphState) -> GraphState:
     return state
 
 async def killjoy(state: GraphState) -> GraphState:
-    """장난하지 말고 재무 데이터나 물어보라는 노드"""
+    # 장난하지 말고 재무 데이터나 물어보라는 노드"""
     trace_id = state["trace_id"]
     user_question = state["user_question"]
 
