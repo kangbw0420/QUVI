@@ -1,6 +1,6 @@
 from typing import Dict, Any, List, Tuple
 
-def delete_useless_col(result: List[Dict[str, Any]], column_list: List[str]) -> Tuple[List[Dict[str, Any]], List[str]]:
+def delete_useless_col(result: List[Dict[str, Any]], column_list: List[str]) -> List[Dict[str, Any]]:
     """결과 데이터와 컬럼 리스트에서 불필요한 컬럼을 제거합니다.
     
     Args:
@@ -38,11 +38,11 @@ def delete_useless_col(result: List[Dict[str, Any]], column_list: List[str]) -> 
                 # 데이터가 없는 그룹은 그대로 추가
                 new_result.append(group)
                 
-        return new_result, new_column_list
+        return new_result
     else:
         # 일반 리스트 형식인 경우 각 항목에서 컬럼 제거
         new_result = [{k: v for k, v in item.items() if k not in columns_to_delete} for item in result]
-        return new_result, new_column_list
+        return new_result
 
 def final_df_format(result: List[Dict[str, Any]], selected_table: str) -> List[Dict[str, Any]]:
     """선택된 테이블이 trsc인 경우 데이터를 은행명과 계좌번호로 그룹화
