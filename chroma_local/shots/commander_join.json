@@ -1,0 +1,1002 @@
+[
+  {
+    "question": "최근 3개월간 입출금 내역이 있는 계좌의 현재 잔액 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 trsc_dt가 최근 3개월 이내인 레코드를 선택하고, 해당 acct_no를 기준으로 잔액 테이블과 조인하여 현재 잔액(acct_bal_amt)을 조회합니다."
+  },
+  {
+    "question": "올해 해지된 계좌의 최종 거래일 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 trmn_yn이 'Y'이고 trmn_dt가 올해인 계좌를 선택한 후, 해당 acct_no를 거래내역 테이블과 조인하여 최종 거래일(MAX(trsc_dt))을 조회합니다."
+  },
+  {
+    "question": "거래내역이 있으나 아직 증권자산이 없는 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역 테이블에 존재하지만 증권잔액 테이블에는 없는 acct_no를 찾아 해당 계좌를 조회합니다."
+  },
+  {
+    "question": "외화예수금이 있는 계좌의 최근 거래내역 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 deposit_foreign이 0보다 큰 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 가장 최근의 거래내역을 조회합니다."
+  },
+  {
+    "question": "개설 이후 한 번도 거래가 없는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에 존재하지만 거래내역 테이블에는 없는 acct_no를 찾아 해당 계좌를 조회합니다."
+  },
+  {
+    "question": "특정 은행에서 가장 거래가 활발한 계좌 상위 5개 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 특정 bank_nm을 가진 레코드를 선택하고, acct_no별로 거래 건수를 집계하여 상위 5개 계좌를 조회합니다."
+  },
+  {
+    "question": "증권 평가손익이 있는 계좌의 입출금 내역 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액 테이블에서 valu_gain_loss가 0이 아닌 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 입출금 내역을 조회합니다."
+  },
+  {
+    "question": "월납입금액이 존재하는 계좌의 월별 거래 총액 비교",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 mnth_pay_amt가 0보다 큰 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 월별 거래 총액을 계산합니다."
+  },
+  {
+    "question": "가용자금이 약정금액보다 낮은 계좌의 최근 거래금액 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 real_amt가 cntrct_amt보다 낮은 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 가장 최근의 거래금액을 조회합니다."
+  },
+  {
+    "question": "올해 입금과 출금 모두 10건 이상 발생한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 trsc_dt가 올해인 레코드를 선택하고, in_out_dv별로 acct_no별 거래 건수를 집계하여 입금과 출금이 각각 10건 이상인 계좌를 조회합니다."
+  },
+  {
+    "question": "수익률이 마이너스인 증권계좌의 입금 내역 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액 테이블에서 return_rate가 0보다 작은 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 입금(in_out_dv가 '입금') 내역을 조회합니다."
+  },
+  {
+    "question": "올해 해지된 계좌 중 마지막 입금 내역이 있는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 trmn_yn이 'Y'이고 trmn_dt가 올해인 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 마지막 입금 내역을 조회합니다."
+  },
+  {
+    "question": "등록일자와 개설일자가 다른 계좌의 최초 거래일 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 reg_dt와 open_dt가 다른 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 최초 거래일(MIN(trsc_dt))을 조회합니다."
+  },
+  {
+    "question": "금잔금액이 존재하는 계좌의 최근 증권 평가금액 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역 테이블에서 pres_amt가 0보다 큰 계좌를 선택하고, 해당 acct_no를 증권잔액 테이블과 조인한 후 reg_dtm_upd를 기준으로 가장 최근의 평가금액(appr_amt)을 조회합니다."
+  },
+  {
+    "question": "올해 개설된 계좌 중 5건 이상 거래가 발생한 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 open_dt가 올해인 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 거래 건수를 집계하여 5건 이상인 계좌를 조회합니다."
+  },
+  {
+    "question": "만기일이 지난 후에도 거래가 있는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 due_dt가 현재 날짜보다 이전인 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 만기일 이후의 거래내역이 있는지 확인합니다."
+  },
+  {
+    "question": "매입총액 대비 현재가치가 2배 이상 증가한 증권 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "증권잔액 테이블에서 appr_amt가 prchs_amt의 2배 이상인 계좌를 선택하고, 해당 acct_no를 잔액 테이블과 조인하여 계좌 정보를 조회합니다."
+  },
+  {
+    "question": "이자율이 0%인데도 입금 내역이 있는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 intr_rate = 0인 계좌의 acct_no를 기준으로 거래내역에서 in_out_dv = '입금'인 거래 조회"
+  },
+  {
+    "question": "최근 1년간 가장 많이 입금된 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역에서 trsc_dt가 최근 1년 이내이고 in_out_dv = '입금'인 데이터를 acct_no로 그룹화 후 합계 기준 정렬"
+  },
+  {
+    "question": "월납입일 기준으로 실제로 해당 일자에 거래된 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 mnth_pay_dt가 있는 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인한 후 trsc_dt의 일(day) 부분이 mnth_pay_dt와 일치하는 거래를 필터링합니다."
+  },
+  {
+    "question": "외화예수금이 있는 계좌 중 최근에 증권 매입이 있었던 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "잔액의 deposit_foreign > 0인 계좌의 acct_no로 증권잔액 테이블에서 최근 등록일(reg_dtm_upd) 기준 매입 기록 조회"
+  },
+  {
+    "question": "평가손익이 가장 큰 계좌의 최근 거래 적요 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액에서 valu_gain_loss가 가장 높은 계좌 acct_no를 찾아 거래내역 테이블과 조인 후 note1 확인"
+  },
+  {
+    "question": "올해 거래금액 합계가 가장 큰 계좌의 잔액 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역에서 trsc_dt가 올해이고 trsc_amt 합계를 acct_no별 집계 후 가장 큰 계좌를 잔액 테이블과 조인"
+  },
+  {
+    "question": "동일 계좌번호인데 은행명이 다른 데이터 조회",
+    "answer": "amt, trsc",
+    "stats": "동일한 acct_no인데 bank_nm 값이 서로 다른 경우를 조인 후 비교"
+  },
+  {
+    "question": "만기일이 지난 후 증권 매입이 이루어진 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "잔액의 due_dt 이후에 증권잔액의 reg_dt가 존재하는 계좌 acct_no 조합 조회"
+  },
+  {
+    "question": "통화코드가 같은 계좌 간 최근 거래 비교",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 동일한 통화코드(curr_cd)를 가진 계좌들을 그룹화하고, 각 그룹 내에서 계좌별 최근 거래일(trsc_dt)을 찾아 잔액 테이블과 조인하여 비교합니다."
+  },
+  {
+    "question": "입출금 구분 없이 동일 금액이 반복된 거래가 있는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "동일한 trsc_amt가 여러 번 등장하는 acct_no를 필터링 후 잔액과 조인"
+  },
+  {
+    "question": "금잔수량이 존재하지만 현재가는 0인 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "증권잔액에서 bal_qunt > 0이지만 curr_price = 0인 계좌를 거래내역과 조인"
+  },
+  {
+    "question": "등록일이 동일한 계좌들 간 평가금액 평균 비교",
+    "answer": "amt, stock",
+    "stats": "잔액의 reg_dt로 그룹화 후 증권잔액의 appr_amt 평균 계산"
+  },
+  {
+    "question": "특정 종목에만 집중 투자된 계좌의 총 평가손익 조회",
+    "answer": "stock, amt",
+    "stats": "하나의 stock_nm만 가진 계좌를 필터링 후 valu_gain_loss 총합 계산"
+  },
+  {
+    "question": "개설일 기준 첫 거래까지 걸린 일 수가 30일 이상인 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "open_dt와 거래내역의 MIN(trsc_dt) 날짜 차이를 계산하여 30일 이상인 계좌 추출"
+  },
+  {
+    "question": "동일 계좌번호 기준으로 주기적으로 거래가 발생하는 계좌 패턴 조회",
+    "answer": "trsc, amt",
+    "stats": "acct_no별로 거래 주기(trsc_dt 간격)를 분석하여 일정한 패턴이 존재하는 계좌 조회"
+  },
+  {
+    "question": "대출이자율이 입력된 거래가 있는 계좌의 평균 수익률 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역의 intr_rate > 0 조건을 가진 acct_no에 대해 증권잔액에서 return_rate 평균 계산"
+  },
+  {
+    "question": "한화잔고가 1억원 이상인 계좌의 입출금 빈도 분석",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 acct_bal_won >= 100000000인 계좌 기준으로 거래내역에서 입출금 건수 조회"
+  },
+  {
+    "question": "증권 매입금액이 총 잔액을 초과한 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "증권잔액의 prchs_amt 합계가 잔액 테이블의 acct_bal_amt보다 큰 계좌 필터링"
+  },
+  {
+    "question": "총 매입금액이 0인데도 평가금액이 존재하는 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "잔액 테이블의 total_prchs_amt = 0이지만, 증권잔액의 appr_amt > 0인 계좌 조합 조회"
+  },
+  {
+    "question": "월납입일이 15일 이상인 계좌의 15일 당일 거래 여부 확인",
+    "answer": "amt, trsc",
+    "stats": "mnth_pay_dt >= 15인 계좌에서 거래내역의 trsc_dt 일자가 15인지 여부 확인"
+  },
+  {
+    "question": "최근 6개월간 증권 거래 내역이 10건 이상인 계좌의 평가금액 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 trsc_dt가 최근 6개월이고 증권 관련 stock_trsc_type이 있는 거래를 acct_no로 그룹핑하여 10건 이상인 계좌의 appr_amt 조회"
+  },
+  {
+    "question": "대출 이자율이 입력된 거래가 있는 계좌 중 가용자금이 0인 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역에서 intr_rate > 0인 계좌의 acct_no 기준으로 잔액에서 real_amt = 0 조건 확인"
+  },
+  {
+    "question": "거래 후 잔액이 예수금보다 항상 낮았던 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 trsc_bal이 잔액의 deposit_amt보다 항상 작은 계좌 필터링"
+  },
+  {
+    "question": "월납입일과 실제 거래일이 매번 5일 이상 차이 나는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액의 mnth_pay_dt와 거래내역의 trsc_dt 일자 간 차이가 5 이상인 거래만 존재하는 계좌"
+  },
+  {
+    "question": "이자율이 높은 순으로 정렬된 계좌 중 증권 손익이 마이너스인 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "잔액의 intr_rate 내림차순 정렬 후 증권잔액에서 valu_gain_loss < 0인 계좌 필터링"
+  },
+  {
+    "question": "개설일 이후 최초 입금이 30일 이상 지난 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액의 open_dt와 거래내역에서 in_out_dv = '입금'인 MIN(trsc_dt) 간 차이 30일 이상"
+  },
+  {
+    "question": "입출금 내역 중 적요가 가장 다양한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역에서 note1의 고유값 개수가 많은 acct_no 필터링"
+  },
+  {
+    "question": "동일 종목을 반복해서 매입한 계좌의 평균 매입 단가와 현재가 비교",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 동일 stock_nm 반복된 acct_no의 증권잔액 prchs_price와 curr_price 비교"
+  },
+  {
+    "question": "수익률이 마이너스인데 가용자금이 많은 계좌 상위 10개 조회",
+    "answer": "stock, amt",
+    "stats": "증권잔액의 return_rate < 0인 계좌 기준으로 잔액의 real_amt 내림차순 상위 10개 조회"
+  },
+  {
+    "question": "매입가격이 0이면서 평가금액이 1,000만 원 이상인 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "증권잔액의 prchs_price = 0 이고 appr_amt >= 10000000인 계좌 필터링"
+  },
+  {
+    "question": "증권 거래 중 수수료가 0인 거래만 있는 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역의 fee_amt = 0 조건만 존재하는 acct_no 기준 증권잔액 조인"
+  },
+  {
+    "question": "개설일이 등록일보다 늦은 계좌 조회 (비정상 케이스)",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블의 open_dt > reg_dt 조건 만족하는 계좌 필터링"
+  },
+  {
+    "question": "평가금액보다 매입총액이 큰 증권계좌 중 금잔수량이 있는 계좌 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액 테이블에서 appr_amt < prchs_amt 조건을 만족하는 계좌를 선택하고, 해당 acct_no를 거래내역 테이블과 조인하여 pres_qunt > 0인 계좌를 조회합니다."
+  },
+  {
+    "question": "총 평가금액이 동일한 계좌를 그룹화하여 수익률 비교",
+    "answer": "amt, stock",
+    "stats": "잔액의 total_appr_amt 기준 그룹화 후 증권잔액의 return_rate 비교"
+  },
+  {
+    "question": "이자율이 입력된 거래의 금액 합계와 동일 계좌의 월납입금액 비교",
+    "answer": "trsc, amt",
+    "stats": "거래내역에서 intr_rate > 0 조건의 trsc_amt 합과 잔액 mnth_pay_amt 비교"
+  },
+  {
+    "question": "주식 종목 중 특정 종목만 집중적으로 거래한 계좌의 손익 분석",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 하나의 stock_nm만 거래된 acct_no 기준으로 증권잔액의 valu_gain_loss 분석"
+  },
+  {
+    "question": "만기일이 등록일보다 빠른 이상 케이스의 계좌 거래 내역 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액의 due_dt < reg_dt 조건 만족하는 acct_no의 거래내역 조회"
+  },
+  {
+    "question": "최근 거래일이 등록일과 동일한 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블과 거래내역 테이블을 acct_no로 조인한 후, 각 계좌별 최근 거래일자(MAX(trsc_dt))가 해당 계좌의 등록일자(reg_dt)와 동일한 경우를 필터링합니다."
+  },
+  {
+    "question": "거래 금액 대비 수수료가 5% 이상인 거래가 포함된 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 fee_amt / trsc_amt >= 0.05 조건 만족하는 거래 존재하는 acct_no 조인"
+  },
+  {
+    "question": "등록일자 기준으로 증권잔액이 가장 빠르게 갱신된 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "잔액의 reg_dt와 증권잔액 reg_dtm_upd 비교하여 갱신 차이가 짧은 계좌 추출"
+  },
+  {
+    "question": "동일한 상품명(acct_dv)을 보유한 계좌들의 평균 수익률 비교",
+    "answer": "amt, trsc",
+    "stats": "잔액의 acct_dv 기준 그룹화하여 거래내역 조인 후 return_rate 비교"
+  },
+  {
+    "question": "외화예수금이 많은 순으로 정렬했을 때 최근 거래가 없는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액에서 deposit_foreign 기준 내림차순 정렬 후 거래내역 존재하지 않는 acct_no 조회"
+  },
+  {
+    "question": "입금 금액이 항상 100만 원 단위로 이루어진 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 in_out_dv = '입금'이면서 trsc_amt % 1000000 = 0 조건만 있는 acct_no 필터"
+  },
+  {
+    "question": "계좌번호는 같지만 회사명이 다른 데이터 존재 여부 조회",
+    "answer": "amt, trsc",
+    "stats": "동일 acct_no에서 com_nm이 서로 다른 경우 존재하는지 확인"
+  },
+  {
+    "question": "총 평가금액은 높지만 매입총액이 0인 계좌만 필터링",
+    "answer": "stock, amt",
+    "stats": "증권잔액의 prchs_amt = 0이고 appr_amt > 0인 계좌 필터링"
+  },
+  {
+    "question": "동일한 종목을 보유한 계좌 중 수익률 격차가 큰 케이스 비교",
+    "answer": "stock, amt",
+    "stats": "동일 stock_nm을 가진 계좌들에서 return_rate 편차가 큰 조합 추출"
+  },
+  {
+    "question": "적요에 특정 키워드(예: “급여”)가 포함된 거래가 있는 계좌의 잔액 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 note1 LIKE '%급여%' 조건 만족하는 acct_no 기준 잔액 조인"
+  },
+  {
+    "question": "거래일과 거래시간 조합으로 야간거래(예: 18시 이후)만 있는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 trsc_tm >= 180000 조건만 존재하는 acct_no 필터링"
+  },
+  {
+    "question": "매입총액과 평가금액이 정확히 일치하는 계좌만 필터링",
+    "answer": "stock, amt",
+    "stats": "증권잔액의 prchs_amt = appr_amt 조건 만족하는 acct_no 조회"
+  },
+  {
+    "question": "수익률이 100% 이상인데도 현재가가 낮은 종목 보유 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "return_rate >= 100이면서 curr_price < 평균가격인 종목 보유 acct_no"
+  },
+  {
+    "question": "상품명이 같은 계좌끼리 최근 거래액 평균 비교",
+    "answer": "amt, trsc",
+    "stats": "잔액의 acct_dv로 그룹핑하여 각 그룹의 최근 거래내역의 trsc_amt 평균 계산"
+  },
+  {
+    "question": "동일 계좌에서 여러 통화를 사용한 거래 내역이 있는지 여부 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역에서 curr_cd가 서로 다른 값이 존재하는 acct_no 필터"
+  },
+  {
+    "question": "금잔수량이 0인데 금잔금액이 남아있는 비정상 거래 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 pres_qunt = 0이지만 pres_amt > 0인 거래 존재하는 acct_no 조회"
+  },
+  {
+    "question": "특정 수익률 구간별 계좌 분포 및 거래패턴 분석",
+    "answer": "stock, trsc",
+    "stats": "return_rate 구간별로 증권잔액을 그룹화하고 해당 acct_no의 거래패턴 분석"
+  },
+  {
+    "question": "거래적요와 종목명이 항상 일치하는 계좌 필터링",
+    "answer": "trsc, stock",
+    "stats": "거래내역의 note1과 증권잔액의 stock_nm이 동일한 경우만 있는 acct_no 조회"
+  },
+  {
+    "question": "매입가격이 가장 높은 종목을 보유한 계좌의 잔액 조회",
+    "answer": "stock, amt",
+    "stats": "증권잔액에서 prchs_price 최고값 보유 acct_no를 잔액과 조인"
+  },
+  {
+    "question": "평가손익이 매입총액보다 높은 계좌의 거래 빈도 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액의 valu_gain_loss > prchs_amt 조건 만족하는 acct_no의 거래 건수 확인"
+  },
+  {
+    "question": "통화 단위가 외화인데도 예수금 항목이 높은 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "잔액의 curr_cd != 'KRW' 이면서 deposit_amt가 높은 계좌 조회"
+  },
+  {
+    "question": "평가금액이 동일한 종목을 여러 계좌에서 보유 중인 경우 조회",
+    "answer": "stock, amt",
+    "stats": "stock_nm과 appr_amt가 같고 acct_no가 다른 경우 추출"
+  },
+  {
+    "question": "동일 은행명이지만 회사명이 다른 계좌들의 거래 패턴 비교",
+    "answer": "amt, trsc",
+    "stats": "동일 bank_nm에 대해 com_nm이 다른 acct_no들의 거래내역 비교"
+  },
+  {
+    "question": "총 매입금액이 1억 이상인데 최근 거래가 1건도 없는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액의 total_prchs_amt >= 100000000이고 거래내역에 acct_no 미존재"
+  },
+  {
+    "question": "수수료가 있는 거래만으로 구성된 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 fee_amt > 0만 존재하는 acct_no 조회 후 증권잔액 조인"
+  },
+  {
+    "question": "거래일 기준 매월 첫 번째 거래만 존재하는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 trsc_dt 월별 MIN만 존재하는 acct_no 추출"
+  },
+  {
+    "question": "입금과 출금이 동일한 금액으로 반복된 거래 내역만 존재하는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "동일 trsc_amt의 in_out_dv='입금','출금'만 존재하는 acct_no 필터"
+  },
+  {
+    "question": "평가손익이 매입총액 대비 -50% 이하인 종목 보유 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "valu_gain_loss / prchs_amt <= -0.5인 종목 보유 acct_no 조회"
+  },
+  {
+    "question": "보유수량이 1이지만 총 평가금액이 1천만 원 이상인 종목 조회",
+    "answer": "stock, amt",
+    "stats": "bal_qunt = 1이고 appr_amt >= 10000000 조건 만족하는 acct_no"
+  },
+  {
+    "question": "월납입일에만 거래가 발생한 계좌의 적요 유형 분석",
+    "answer": "amt, trsc",
+    "stats": "거래내역 trsc_dt 일자가 잔액의 mnth_pay_dt와 일치하는 acct_no 필터 후 note1 분석"
+  },
+  {
+    "question": "최종 잔액변경일 이후 거래가 계속 존재하는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "거래내역의 trsc_dt > acct_bal_upd_dtm 조건 만족하는 acct_no 조회"
+  },
+  {
+    "question": "입금만으로 이루어진 계좌 중 증권자산이 존재하는 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 in_out_dv='입금'만 존재하는 acct_no가 증권잔액에 존재"
+  },
+  {
+    "question": "월납입금액이 0인데도 거래가 활발한 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액의 mnth_pay_amt = 0이지만 거래 건수가 많은 acct_no 필터"
+  },
+  {
+    "question": "이자납부액이 존재하는 거래가 포함된 계좌의 잔액 비교",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 loan_intr_amt > 0인 acct_no 기준 잔액 조회"
+  },
+  {
+    "question": "계좌별로 보유한 종목 수가 5개 이상인 계좌의 평균 수익률 조회",
+    "answer": "stock, amt",
+    "stats": "acct_no 기준 stock_nm count >= 5인 계좌의 return_rate 평균"
+  },
+  {
+    "question": "상품명과 종목명이 유사한 계좌의 손익 패턴 비교",
+    "answer": "trsc, stock",
+    "stats": "거래내역의 acct_dv와 증권잔액의 stock_nm 유사한 acct_no의 valu_gain_loss 분석"
+  },
+  {
+    "question": "동일 종목을 여러 은행 계좌에 나눠서 보유한 경우의 평가금액 비교",
+    "answer": "stock, amt",
+    "stats": "동일 stock_nm이 bank_nm 다른 여러 acct_no에 존재하는 경우 그룹화하여 appr_amt 비교"
+  },
+  {
+    "question": "개설일로부터 첫 증권 거래까지 소요된 일수 계산하여 30일 이상인 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "잔액의 open_dt와 증권잔액 reg_dt 차이가 30일 이상인 acct_no 필터링"
+  },
+  {
+    "question": "최근 3개월간 거래가 없는 계좌 중 잔액이 500만 원 이상인 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 최근 3개월간 거래가 없는 acct_no를 찾고, 해당 계좌의 잔액이 500만 원 이상인 경우를 잔액 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "올해 입금 거래가 10회 이상 발생한 계좌의 평균 입금액 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 올해 in_out_dv가 '입금'인 거래가 10회 이상 발생한 acct_no를 그룹화하고, 해당 그룹의 평균 입금액을 계산하여 잔액 테이블과 조인합니다."
+  },
+  {
+    "question": "만기일이 지났지만 해지되지 않은 계좌 목록 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 due_dt가 현재 날짜보다 이전이지만 trmn_yn이 'N'인 계좌를 선택하고, 해당 계좌의 최근 거래내역을 거래내역 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "최근 1년간 입금 총액이 출금 총액보다 많은 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 최근 1년간 in_out_dv가 '입금'인 거래와 '출금'인 거래의 총액을 각각 계산하고, 입금 총액이 더 큰 acct_no를 선택하여 잔액 테이블과 조인합니다."
+  },
+  {
+    "question": "이자율이 3% 이상인 계좌 중 최근 6개월간 거래가 없는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 intr_rate가 3% 이상인 계좌를 선택하고, 해당 acct_no가 거래내역 테이블에서 최근 6개월간 거래가 없는 경우를 조회합니다."
+  },
+  {
+    "question": "월납입금액이 설정된 계좌의 월별 실제 납입일과 납입금액 비교",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 mnth_pay_amt가 0보다 큰 계좌를 선택하고, 해당 acct_no의 거래내역에서 실제 납입일(trsc_dt)과 납입금액(trsc_amt)을 추출하여 비교합니다."
+  },
+  {
+    "question": "외화예수금이 1만 달러 이상인 계좌의 최근 거래내역 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 deposit_foreign이 10,000 이상인 계좌를 선택하고, 해당 acct_no의 가장 최근 거래내역을 거래내역 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "개설 이후 한 번도 입금이 없는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에 존재하지만 거래내역 테이블에서 in_out_dv가 '입금'인 기록이 없는 acct_no를 찾아 해당 계좌를 조회합니다."
+  },
+  {
+    "question": "최근 3개월간 거래 빈도가 가장 높은 상위 5개 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 최근 3개월간 acct_no별 거래 건수를 집계하여 상위 5개를 선정하고, 해당 계좌의 정보를 잔액 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "수익률이 10% 이상인 증권 계좌의 최근 입출금 내역 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액 테이블에서 return_rate가 10% 이상인 계좌를 선택하고, 해당 acct_no의 최근 입출금 내역을 거래내역 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "약정금액 대비 가용자금이 50% 이하인 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 real_amt가 cntrct_amt의 50% 이하인 계좌를 선택하고, 해당 acct_no의 최근 거래내역을 거래내역 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "올해 입금과 출금이 각각 5회 이상 발생한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블에서 trsc_dt가 올해인 레코드를 선택하고, in_out_dv별로 acct_no별 거래 건수를 집계하여 입금과 출금이 각각 5회 이상인 계좌를 조회합니다."
+  },
+  {
+    "question": "수익률이 음수인 증권 계좌의 최근 입금 내역 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액 테이블에서 return_rate가 0보다 작은 계좌를 선택하고, 해당 acct_no의 최근 입금(in_out_dv가 '입금') 내역을 거래내역 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "올해 해지된 계좌 중 마지막 출금 내역이 있는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 trmn_yn이 'Y'이고 trmn_dt가 올해인 계좌를 선택하고, 해당 acct_no의 마지막 출금(in_out_dv가 '출금') 내역을 거래내역 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "등록일자와 개설일자가 7일 이상 차이 나는 계좌의 최초 거래일 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 reg_dt와 open_dt의 차이가 7일 이상인 계좌를 선택하고, 해당 acct_no의 최초 거래일(MIN(trsc_dt))을 거래내역 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "금잔수량이 100주 이상인 계좌의 최근 증권 평가금액 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역 테이블에서 pres_qunt가 100주 이상인 계좌를 선택하고, 해당 acct_no의 가장 최근 평가금액(appr_amt)을 증권잔액 테이블과 조인하여 조회합니다."
+  },
+  {
+    "question": "올해 개설된 계좌 중 거래 건수가 3건 이상인 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 open_dt가 올해인 계좌를 선택하고, 해당 acct_no의 거래 건수를 거래내역 테이블과 조인하여 집계하여 3건 이상인 계좌를 조회합니다"
+  },
+  {
+    "question": "만기일이 지난 후에도 입금 거래가 있는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블에서 due_dt < 현재 날짜인 계좌를 선택하고, 해당 acct_no의 거래내역 중 in_out_dv='입금'이고 trsc_dt > due_dt 조건으로 필터링하여 조회"
+  },
+  {
+    "question": "증권 평가손익이 같은 계좌들 간 최근 입금액 비교",
+    "answer": "stock, trsc",
+    "stats": "증권잔액 테이블에서 valu_gain_loss로 그룹화하고, 각 acct_no의 가장 최근 입금 거래(trsc_amt, in_out_dv='입금')를 거래내역 테이블과 조인"
+  },
+  {
+    "question": "올해 개설된 계좌 중 수익률이 음수인 증권만 보유한 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "잔액에서 open_dt가 올해인 계좌 중 증권잔액에서 return_rate < 0인 종목만 존재하는 acct_no 필터링"
+  },
+  {
+    "question": "최근 6개월간 증권 평가금액이 1천만 원 이상인 계좌의 출금 내역 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액에서 appr_amt >= 10,000,000이고 reg_dtm_upd가 6개월 이내인 계좌의 acct_no 기준으로 거래내역의 in_out_dv='출금' 거래 조회"
+  },
+  {
+    "question": "월납입일보다 3일 이내에 입금 거래가 집중된 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 테이블의 mnth_pay_dt와 거래내역의 trsc_dt 일(day) 차이가 3일 이하이고 in_out_dv='입금'인 acct_no 필터링"
+  },
+  {
+    "question": "최근 거래가 특정 요일(예: 금요일)에만 일어난 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 trsc_dt를 요일로 변환하여 금요일만 거래가 존재하는 acct_no 조회"
+  },
+  {
+    "question": "이자율이 0%인데 이자납부액이 발생한 비정상 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "잔액 테이블에서 intr_rate = 0인 acct_no 중 거래내역의 loan_intr_amt > 0인 거래 존재하는 계좌 필터링"
+  },
+  {
+    "question": "최종 거래일이 등록일과 동일한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 테이블의 MAX(trsc_dt)와 잔액 테이블의 reg_dt가 동일한 acct_no 필터링"
+  },
+  {
+    "question": "총 매입금액이 0인데 평가금액이 존재하는 증권 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "증권잔액 테이블에서 prchs_amt = 0이고 appr_amt > 0인 acct_no 필터링 후 잔액과 조인"
+  },
+  {
+    "question": "하나의 종목만 집중 보유하고 있는 계좌의 손익 조회",
+    "answer": "stock, amt",
+    "stats": "acct_no별 stock_nm 고유값이 1개인 경우만 필터링하여 해당 계좌의 valu_gain_loss를 조회"
+  },
+  {
+    "question": "증권 매입일과 입금일이 동일한 거래 존재 계좌 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액의 reg_dt와 거래내역의 trsc_dt가 동일하고 in_out_dv='입금' 조건 만족하는 acct_no 조회"
+  },
+  {
+    "question": "매달 첫 입금이 발생한 날짜만 거래가 있는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "trsc_dt 기준 월별 MIN(trsc_dt)만 존재하는 in_out_dv='입금'인 acct_no 필터링"
+  },
+  {
+    "question": "최근 1년간 매월 거래가 2건 이하인 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역 trsc_dt 기준 최근 1년간 월별 거래 횟수 2건 이하인 acct_no 필터링"
+  },
+  {
+    "question": "외화예수금이 존재하지만 거래가 모두 원화로 된 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "잔액 테이블에서 deposit_foreign > 0인 acct_no 기준 거래내역의 curr_cd가 'KRW'만 존재하는 경우"
+  },
+  {
+    "question": "최근 입금액이 예수금보다 많은 비정상 거래 존재 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역에서 in_out_dv='입금'이며 trsc_amt > 잔액의 deposit_amt인 경우 필터링"
+  },
+  {
+    "question": "최근 3개월간 거래가 매주 반복된 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "trsc_dt 기준 주 단위 그룹화 후 각 주에 거래가 1건 이상 존재하는 acct_no 필터링"
+  },
+  {
+    "question": "대출 이자율이 높은 거래가 있는 계좌 중 수익률이 낮은 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역의 intr_rate > 5인 acct_no 기준으로 증권잔액 return_rate < 3인 계좌 필터링"
+  },
+  {
+    "question": "입출금 적요의 다양성이 가장 큰 계좌 상위 5개 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역에서 note1의 고유값 수를 acct_no별로 집계 후 상위 5개 조회"
+  },
+  {
+    "question": "최근 6개월간 매입된 종목의 현재가 변화량이 가장 큰 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "reg_dt 최근 6개월 조건 만족하고, curr_price와 prchs_price 차이가 가장 큰 acct_no 필터링"
+  },
+  {
+    "question": "통화코드가 서로 다른 거래가 발생한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "동일 acct_no에 대해 curr_cd가 2개 이상 존재하는 계좌 필터링"
+  },
+  {
+    "question": "입금·출금 금액이 동일하게 반복된 거래만 있는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "동일 trsc_amt에 대해 in_out_dv가 모두 존재하는 경우만 남김"
+  },
+  {
+    "question": "외화예수금 대비 수익률이 가장 낮은 계좌 상위 5개 조회",
+    "answer": "amt, stock",
+    "stats": "deposit_foreign > 0인 계좌 중 return_rate 기준 오름차순 상위 5개 조회"
+  },
+  {
+    "question": "보유한 모든 종목의 평가금액이 동일한 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "동일 acct_no에서 stock_nm별 appr_amt가 모두 동일한 경우 필터링"
+  },
+  {
+    "question": "최근 거래일과 잔액 갱신일이 일치하지 않는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "거래내역의 MAX(trsc_dt) != 잔액의 acct_bal_upd_dtm인 acct_no 추출"
+  },
+  {
+    "question": "예수금보다 거래 후 잔액이 항상 낮았던 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 trsc_bal이 잔액의 deposit_amt보다 항상 낮은 acct_no 필터링"
+  },
+  {
+    "question": "보유수량이 1인데 평가금액이 높은 종목 보유 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "bal_qunt = 1이고 appr_amt >= 1천만 원인 종목 보유 acct_no 조회"
+  },
+  {
+    "question": "통장 해지 후에도 입금 거래가 기록된 비정상 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "trmn_yn='Y'인데 trsc_dt > trmn_dt이며 in_out_dv='입금'인 거래 존재하는 계좌 조회"
+  },
+  {
+    "question": "이자율이 높은 계좌 중 거래 건수가 적은 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "intr_rate 상위 계좌 중 거래내역 건수 기준 오름차순 정렬 후 소수 추출"
+  },
+  {
+    "question": "한 종목만 반복 매입한 계좌의 평균 매입단가와 현재가 비교",
+    "answer": "trsc, stock",
+    "stats": "동일 stock_nm만 존재하는 acct_no의 prchs_price와 curr_price 비교"
+  },
+  {
+    "question": "증권 평가손익이 마이너스인데 입금만 존재하는 계좌 조회",
+    "answer": "stock, trsc",
+    "stats": "return_rate < 0이고 in_out_dv='입금'만 존재하는 거래내역 조합 조회"
+  },
+  {
+    "question": "예수금이 높은 계좌지만 최근 1년 거래가 전혀 없는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "deposit_amt >= 1천만 원이지만 거래내역의 trsc_dt가 최근 1년 내 미존재"
+  },
+  {
+    "question": "거래금액 대비 수수료 비율이 10% 이상인 거래만 있는 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "fee_amt/trsc_amt >= 0.1 조건만 존재하는 acct_no 추출"
+  },
+  {
+    "question": "가용자금이 증가한 계좌의 최근 거래 적요 조회",
+    "answer": "amt, trsc",
+    "stats": "acct_bal_upd_dtm 이후 real_amt 증가 조건 만족하는 acct_no의 거래 note1 조회"
+  },
+  {
+    "question": "최근 3개월간 평가금액이 2배 이상 증가한 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "appr_amt 변화가 2배 이상인 acct_no 필터링 (기간 비교 포함)"
+  },
+  {
+    "question": "종목당 평균 평가금액이 가장 낮은 계좌 상위 5개 조회",
+    "answer": "stock, amt",
+    "stats": "acct_no별 appr_amt 평균 산출 후 오름차순 정렬"
+  },
+  {
+    "question": "최근 6개월간 거래 없이도 평가금액이 상승한 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역 없음 + appr_amt가 증가한 계좌 필터링"
+  },
+  {
+    "question": "상품명(acct_dv) 기준 동일 계좌 간 수익률 분포 비교",
+    "answer": "amt, stock",
+    "stats": "잔액 테이블의 acct_dv 기준 그룹화하여 증권잔액 return_rate 비교"
+  },
+  {
+    "question": "외화예수금이 존재하는 계좌 중 외화 입출금만 발생한 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "deposit_foreign > 0이면서 거래내역 curr_cd가 KRW 제외 조건"
+  },
+  {
+    "question": "보유종목이 모두 동일하지만 수익률이 다른 계좌 쌍 조회",
+    "answer": "stock, amt",
+    "stats": "stock_nm 동일 acct_no 그룹 중 return_rate가 다른 쌍 필터링"
+  },
+  {
+    "question": "예수금이 0인데 입금 거래가 존재하는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "deposit_amt = 0인데 거래내역에 in_out_dv='입금' 존재하는 acct_no 조회"
+  },
+  {
+    "question": "증권 잔액이 있는 계좌 중 최근 1년간 거래가 없는 계좌 조회",
+    "answer": "stock, trsc",
+    "stats": "증권잔액 존재하지만 거래내역의 trsc_dt가 최근 1년 내 미존재"
+  },
+  {
+    "question": "수익률 0%인 계좌 중 매입금액이 1천만 원 이상인 경우 조회",
+    "answer": "stock, amt",
+    "stats": "return_rate = 0이고 prchs_amt >= 10,000,000 조건 만족하는 acct_no 조회"
+  },
+  {
+    "question": "만기일 기준으로 평가금액이 급감한 계좌 조회",
+    "answer": "amt, stock",
+    "stats": "due_dt 기준 평가금액 변화 추적하여 급감한 acct_no 필터링"
+  },
+  {
+    "question": "상품명이 같고 평가금액 차이가 2배 이상인 계좌 그룹 조회",
+    "answer": "amt, stock",
+    "stats": "acct_dv 기준 그룹화 후 max(appr_amt) / min(appr_amt) >= 2 필터링"
+  },
+  {
+    "question": "종목별 매입총액과 평가손익의 비율이 가장 높은 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "valu_gain_loss / prchs_amt 비율 기준 내림차순 정렬"
+  },
+  {
+    "question": "월납입금액이 없는 계좌 중 매달 동일 날짜에 입금 발생한 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "mnth_pay_amt = 0이지만 trsc_dt의 일자가 월별 동일한 acct_no"
+  },
+  {
+    "question": "동일 은행 내 가장 높은 이자율을 가진 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "bank_nm으로 그룹화 후 intr_rate 최댓값 가진 acct_no 필터링"
+  },
+  {
+    "question": "이자율은 높은데 월납입금액은 낮은 계좌 상위 5개 조회",
+    "answer": "amt, trsc",
+    "stats": "intr_rate 기준 내림차순, mnth_pay_amt 기준 오름차순 정렬"
+  },
+  {
+    "question": "최근 입금 금액이 전체 잔고의 50% 이상인 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "마지막 입금 trsc_amt가 acct_bal_amt의 절반 이상인 경우 필터링"
+  },
+  {
+    "question": "한 달 동안 출금만 발생한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "특정 월에 in_out_dv = '출금'만 존재하는 acct_no 필터링"
+  },
+  {
+    "question": "현재가가 0인데 수익률이 양수인 종목 보유 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "curr_price = 0이지만 return_rate > 0인 종목 존재하는 acct_no"
+  },
+  {
+    "question": "개설 후 첫 거래까지 60일 이상 소요된 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "open_dt와 거래내역의 MIN(trsc_dt) 차이가 60일 이상인 경우"
+  },
+  {
+    "question": "외화예수금이 있는 계좌 중 한 번도 외화로 거래된 적 없는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "deposit_foreign > 0이고 거래 curr_cd가 모두 KRW인 경우"
+  },
+  {
+    "question": "만기일이 한 달 이내인 계좌의 평균 평가금액 조회",
+    "answer": "amt, stock",
+    "stats": "due_dt가 오늘 기준 한 달 이내인 acct_no의 평균 appr_amt 계산"
+  },
+  {
+    "question": "입출금 없이 평가금액만 증가한 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역 미존재 + 증권잔액의 appr_amt 증가 조건 만족하는 acct_no"
+  },
+  {
+    "question": "보유종목 수가 10개 이상인 계좌의 평균 수익률 조회",
+    "answer": "stock, amt",
+    "stats": "acct_no 기준 stock_nm 고유 개수가 10개 이상인 그룹의 return_rate 평균"
+  },
+  {
+    "question": "하루에 두 번 이상 거래된 적 있는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "trsc_dt, acct_no 기준 COUNT > 1인 날이 존재하는 계좌 필터링"
+  },
+  {
+    "question": "최근 거래 시각이 항상 오전(12시 이전)인 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래 trsc_tm이 120000 미만인 거래만 존재하는 acct_no 필터링"
+  },
+  {
+    "question": "보유 수량은 0인데 평가금액이 남아있는 증권계좌 조회",
+    "answer": "stock, amt",
+    "stats": "bal_qunt = 0인데 appr_amt > 0인 비정상 데이터 필터링"
+  },
+  {
+    "question": "최근 1년간 거래 건수 변화가 급격히 줄어든 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "전년도 대비 올해 거래 건수 급감한 acct_no 조회"
+  },
+  {
+    "question": "보유 종목 중 하나라도 매입가보다 현재가가 절반 이하인 경우 조회",
+    "answer": "stock, amt",
+    "stats": "curr_price <= prchs_price * 0.5인 종목 존재하는 acct_no"
+  },
+  {
+    "question": "최근 6개월간 월납입일에만 거래가 존재하는 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "mnth_pay_dt와 trsc_dt의 일자가 일치하는 거래만 있는 acct_no"
+  },
+  {
+    "question": "최근 거래 후 잔액보다 수수료가 높은 거래가 존재한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래내역의 fee_amt > trsc_bal 조건 존재하는 acct_no"
+  },
+  {
+    "question": "이자율이 마이너스인 계좌 조회 (데이터 입력 오류)",
+    "answer": "amt, trsc",
+    "stats": "intr_rate < 0 조건 만족하는 비정상 계좌 필터링"
+  },
+  {
+    "question": "최근 1년간 외화 거래가 1건이라도 있었던 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "curr_cd != 'KRW'이고 trsc_dt 최근 1년 내 조건"
+  },
+  {
+    "question": "월납입금액이 일정하게 증가 중인 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "잔액 갱신 순서별 mnth_pay_amt가 증가하는 acct_no 분석"
+  },
+  {
+    "question": "최근 3건의 거래 모두 출금인 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "최근 3건 in_out_dv='출금'인 거래만 존재하는 acct_no 필터링"
+  },
+  {
+    "question": "보유한 모든 종목의 수익률이 음수인 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "acct_no 기준 모든 stock_nm의 return_rate < 0인 경우 필터링"
+  },
+  {
+    "question": "하루 거래금액이 1억 원을 초과한 적 있는 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "trsc_dt 기준 일별 trsc_amt 합계가 1억 이상인 acct_no 필터링"
+  },
+  {
+    "question": "평균 수익률이 20% 이상인 계좌 중 최근 거래가 없는 계좌 조회",
+    "answer": "stock, trsc",
+    "stats": "return_rate 평균 20% 이상이지만 최근 거래 없음"
+  },
+  {
+    "question": "월납입일에 맞춰 자동이체처럼 거래가 발생한 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "mnth_pay_dt와 trsc_dt의 일자가 대부분 일치하는 acct_no"
+  },
+  {
+    "question": "개설일 이후 거래가 주기적으로 발생한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "거래 주기가 일정한 간격으로 발생하는 acct_no 패턴 분석"
+  },
+  {
+    "question": "하나의 종목만 다량 보유하고 있는 집중 투자 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "특정 stock_nm 하나만 있고 bal_qunt > 평균보다 큰 acct_no"
+  },
+  {
+    "question": "최근 3개월간 거래 후 잔액이 계속 감소한 계좌 조회",
+    "answer": "trsc, amt",
+    "stats": "trsc_bal이 최근 거래마다 감소하는 추세인 acct_no 필터링"
+  },
+  {
+    "question": "최근 3개월간 외화예수금이 매달 감소한 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "월별 deposit_foreign이 지속적으로 줄어든 acct_no 조회"
+  },
+  {
+    "question": "평가금액이 매입총액보다 낮지만 수익률은 양수인 계좌 조회",
+    "answer": "stock, amt",
+    "stats": "appr_amt < prchs_amt 이면서 return_rate > 0인 종목 보유 acct_no 조회"
+  },
+  {
+    "question": "월납입일 이전 3일 동안 입금이 집중된 계좌 조회",
+    "answer": "amt, trsc",
+    "stats": "mnth_pay_dt 기준 trsc_dt의 일자가 (mnth_pay_dt - 3) ~ (mnth_pay_dt - 1) 범위 내에 입금 존재하는 acct_no 조회"
+  },
+  {
+    "question": "매입금액이 높은데 수수료가 전혀 없는 거래만 존재하는 계좌 조회",
+    "answer": "trsc, stock",
+    "stats": "거래내역 fee_amt = 0만 존재하고 prchs_amt >= 1000만 원인 종목 보유 acct_no 조회"
+  },
+  {
+    "question": "최근 1년간 외화로만 거래된 계좌의 수익률 조회 ",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 최근 1년간 curr_cd ≠ 'KRW'만 존재하는 acct_no 기준으로, 해당 계좌의 return_rate를 증권잔액 테이블에서 조회"
+  },
+  {
+    "question": "보유 종목의 현재가가 급락한 계좌의 최근 입출금 내역 조회 ",
+    "answer": "stock, trsc",
+    "stats": "curr_price가 prchs_price의 절반 이하인 종목을 보유한 acct_no 기준으로, 해당 계좌의 최근 거래내역 조회"
+  },
+  {
+    "question": "만기일이 지난 증권 보유 계좌 중 이자율이 높은 순 상위 10개 조회 ",
+    "answer": "amt, stock",
+    "stats": "잔액의 due_dt < 현재 날짜인 계좌 중 intr_rate 기준 내림차순 정렬 후 상위 10개 acct_no에 대해 증권잔액 조회"
+  },
+  {
+    "question": "최근 증권 매입이 있었으나 입금 거래가 없었던 계좌 조회 ",
+    "answer": "stock, trsc",
+    "stats": "reg_dtm_upd 최근 6개월 조건의 증권잔액 acct_no 중 in_out_dv = '입금' 거래가 없는 계좌 필터링"
+  },
+  {
+    "question": "대출이자율이 높은 거래가 있었던 계좌의 평가손익 조회 ",
+    "answer": "trsc, stock",
+    "stats": "거래내역의 intr_rate > 5인 거래 존재하는 acct_no 기준, 증권잔액의 valu_gain_loss 조회"
+  },
+  {
+    "question": "월납입일 3일 전부터 연속 입금된 계좌의 증권 현재가 조회 ",
+    "answer": "amt, trsc",
+    "stats": "잔액의 mnth_pay_dt 기준 trsc_dt가 해당 일자 -3부터 연속 존재하는 acct_no를 거래내역에서 찾고, 해당 acct_no의 증권 curr_price 조회"
+  },
+  {
+    "question": "등록일로부터 30일 내에 입출금이 활발했던 계좌의 총 잔고 조회 ",
+    "answer": "amt, trsc",
+    "stats": "잔액의 reg_dt 기준 30일 이내에 거래내역이 10건 이상인 acct_no를 필터링하여 잔액 정보 조회"
+  },
+  {
+    "question": "예수금이 0인데 주식 거래가 활발한 계좌 조회 ",
+    "answer": "amt, trsc",
+    "stats": "deposit_amt = 0인 acct_no 기준으로 stock_trsc_type이 존재하는 다수 거래가 있는 계좌 조회"
+  },
+  {
+    "question": "금잔금액이 급감한 종목을 보유한 계좌의 최근 거래 적요 조회 ",
+    "answer": "trsc, stock",
+    "stats": "pres_amt가 전월 대비 급감한 증권 종목의 acct_no 기준으로 거래내역에서 note1 조회"
+  },
+  {
+    "question": "최근 거래 이후 수익률이 급감한 계좌 조회 ",
+    "answer": "trsc, stock",
+    "stats": "거래내역의 trsc_dt 기준 최근 거래일 이후 return_rate가 크게 하락한 증권잔액 acct_no 조회"
+  },
+  {
+    "question": "외화예수금이 있는 계좌 중 증권 보유 종목 수가 1개인 계좌 조회 ",
+    "answer": "amt, stock",
+    "stats": "deposit_foreign > 0 조건의 acct_no 중 증권잔액에서 stock_nm 고유값이 1개인 계좌 조회"
+  },
+  {
+    "question": "예수금이 증가했지만 수익률이 하락한 계좌 조회 ",
+    "answer": "trsc, stock",
+    "stats": "in_out_dv = '입금' 거래 증가 후 증권잔액의 return_rate가 감소한 acct_no 조회"
+  },
+  {
+    "question": "매달 동일 종목을 매입한 계좌의 총 평가금액 추이 분석 ",
+    "answer": "trsc, stock",
+    "stats": "거래내역에서 동일 stock_nm이 매월 trsc_dt에 등장한 acct_no의 appr_amt 추이 조회"
+  }
+]
