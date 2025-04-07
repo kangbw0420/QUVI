@@ -11,7 +11,7 @@ from utils.logger import setup_logger
 qna_manager = QnAManager()
 logger = setup_logger('commander')
 
-async def command(trace_id: str, user_question: str) -> str:
+async def command_join(trace_id: str, user_question: str) -> str:
     """사용자의 질문으로부터 테이블을 선택
     Returns:
         str: 'aicfo_get_all_XXXX'의 테이블
