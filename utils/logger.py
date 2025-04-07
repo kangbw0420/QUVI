@@ -1,6 +1,6 @@
 import logging
 from typing import Optional, Dict
-
+import sys
 _loggers: Dict[str, logging.Logger] = {}
 
 def setup_logger(name: Optional[str] = None) -> logging.Logger:
@@ -27,10 +27,9 @@ def setup_logger(name: Optional[str] = None) -> logging.Logger:
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    # ✅ StreamHandler 제거 (tee가 파일에 저장하므로)
-    # handler = logging.StreamHandler(sys.stdout)
-    # handler.setFormatter(formatter)
-    # logger.addHandler(handler)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
     # propagate 비활성화
     logger.propagate = False
