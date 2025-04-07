@@ -119,4 +119,4 @@ async def response(trace_id: str, user_question, date_info: Optional[Tuple[str, 
     except Exception as e:
         logger.exception("response() 실행 중 예외 발생")
 
-    return table_pipe, final_response
+    return final_response
