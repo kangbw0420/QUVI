@@ -29,12 +29,12 @@ async def command(trace_id: str, user_question: str) -> str:
     )
     few_shot_prompt = []
     for example in reversed(few_shots):
+        few_shot_prompt.append(("human", example["input"]))
         if "stats" in example:
-            human_with_stats = f'사용자의 질문:\n{example["input"]}\n\n판단:\n{example["stats"]}'
-            few_shot_prompt.append(("human", human_with_stats))
+            ouput_with_reason = f'[{example["output"]}, {example["stats"]}]'
+            few_shot_prompt.append(("ai", ouput_with_reason))
         else:
-            few_shot_prompt.append(("human", example["input"]))
-        few_shot_prompt.append(("ai", example["output"]))
+            few_shot_prompt.append(("ai", example["output"]))
 
     COMMANDER_PROMPT = ChatPromptTemplate.from_messages(
         [
