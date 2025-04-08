@@ -26,7 +26,13 @@ COLUMN_ORDER_RULES = {
 DEFAULT_ORDER_RULES = {
     "amt": "reg_dt DESC",
     "trsc": "trsc_dt DESC",
-    "stock": "reg_dt DESC"
+    "stock": "reg_dt DESC",
+    ("amt", "trsc"): "trsc_dt DESC, trsc_tm DESC",   # ✅ 조인 질의용
+    ("trsc", "amt"): "trsc_dt DESC, trsc_tm DESC",   # ✅ 순서 반대도 커버
+    ("amt", "stock"): "reg_dt DESC",
+    ("stock", "amt"): "reg_dt DESC",
+    ("trsc", "stock"): "trsc_dt DESC, trsc_tm DESC",
+    ("stock", "trsc"): "trsc_dt DESC, trsc_tm DESC",
 }
 
 # 알려진 모든 컬럼들의 집합
@@ -81,27 +87,45 @@ def detect_group_by_aliases(query: str) -> List[str]:
     
     return aliases
 
-def find_matching_rule(columns: List[str], selected_table: str) -> str:
-    """추출된 컬럼 조합에 맞는 ORDER BY 규칙 찾기. *는 테이블별 기본정렬, 알려지지 않은 컬럼은 DESC 정렬"""
+def get_default_order_rule(selected_table: List[str]) -> str:
+    # 리스트를 튜플로 변환하여 키 조회 시도
+    key_as_tuple = tuple(sorted(selected_table))
+
+    # 튜플 키가 있는지 확인
+    if key_as_tuple in DEFAULT_ORDER_RULES:
+        return DEFAULT_ORDER_RULES[key_as_tuple]
+
+    # 단일 테이블만 있으면 그대로 사용
+    if len(selected_table) == 1:
+        return DEFAULT_ORDER_RULES.get(selected_table[0], DEFAULT_ORDER_RULES["trsc"])
+
+    # 모든 fallback 실패 시
+    return DEFAULT_ORDER_RULES["trsc"]
+
+def find_matching_rule(columns: List[str], selected_table: List[str]) -> str:
+    """
+    추출된 컬럼 조합에 맞는 ORDER BY 규칙 찾기.
+    *는 테이블별 기본정렬, 알려지지 않은 컬럼은 DESC 정렬
+    """
     columns_set = set(columns)
-    
-    # SELECT * 인 경우 테이블별 기본 정렬
+
+    # 1. SELECT * 인 경우 테이블별 기본 정렬
     if '*' in columns_set:
-        return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
-    
-    # 알려지지 않은 컬럼들 찾기
+        return get_default_order_rule(selected_table)
+
+    # 2. 알려지지 않은 컬럼에 대해 DESC 정렬
     unknown_columns = [col for col in columns if col not in KNOWN_COLUMNS]
     if unknown_columns:
-        # 알려지지 않은 컬럼들을 순서대로 DESC 정렬
         return ', '.join(f"{col} DESC" for col in unknown_columns)
-        
-    # 컬럼 조합에 맞는 규칙 찾기
+
+    # 3. 컬럼 조합에 맞는 규칙 찾기
     for rule_columns, order_by in COLUMN_ORDER_RULES.items():
         if all(col in columns_set for col in rule_columns):
             return order_by
-            
-    # 매칭되는 규칙이 없으면 테이블별 기본값 반환
-    return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
+
+    # 4. 매칭 안되면 기본값 반환
+    return get_default_order_rule(selected_table)
+
 
 def has_subquery(query: str) -> bool:
     """
@@ -121,7 +145,7 @@ def has_subquery(query: str) -> bool:
         # 기타 예외 발생 시도 안전하게 True 반환
         return True
 
-def add_order_by(query: str, selected_table: str) -> str:
+def add_order_by(query: str, selected_table: List[str]) -> str:
     """SQL 쿼리에 ORDER BY절 추가. 기존 ORDER BY가 있으면 그대로 반환, 없으면 규칙에 따라 ORDER BY 추가
     Returns:
         ORDER BY절이 추가된 SQL 쿼리문 (맨 뒤 세미콜론 포함)

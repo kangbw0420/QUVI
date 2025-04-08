@@ -145,7 +145,7 @@ async def executor(state: GraphState) -> GraphState:
     if "safe_count" not in flags:
         flags["safe_count"] = 0
 
-    if selected_table == ["api"]:
+    if "api" in selected_table:
         query = state.get("sql_query")
         logger.info(f"Executing API query: {query}")
         try:
@@ -211,7 +211,7 @@ async def executor(state: GraphState) -> GraphState:
             state.update({"sql_query": query})
 
             # If no results found and it's a trsc query, try vector search for note1
-            if (not result or is_null_only(result)) and selected_table == ['trsc']:
+            if (not result or is_null_only(result)) and "trsc" in selected_table:
                 evernote_result = await ever_note(query)
                 
                 # Get original and similar notes from the result
@@ -313,7 +313,7 @@ async def respondent(state: GraphState) -> GraphState:
     cleaned_result = delete_useless_col(result, raw_column_list)
     # 테이블 데이터에서는 입출금과 통화 변환이 필요 없음음
 
-    if selected_table == ["api"]:
+    if "api" in selected_table:
         date_info = state["date_info"]
     else:
         date_info = ()
@@ -326,7 +326,7 @@ async def respondent(state: GraphState) -> GraphState:
     logger.info(f"Final answer: {final_answer}")
 
     final_result = final_df_format(cleaned_result, selected_table)
-    if selected_table == ["api"]:
+    if "api" in selected_table:
         final_result = is_krw(final_result)
 
     state.update({"final_answer": final_answer, "query_result": final_result})

@@ -30,7 +30,7 @@ class GraphState(TypedDict):
     sql_error: str
     column_list: List[str]
     date_info: Tuple[str, str]
-    query_result: dict
+    query_result: List[str]
     final_answer: str
     vector_notes: VectorNotes
     flags: ProcessingFlags

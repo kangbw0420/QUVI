@@ -22,7 +22,7 @@ class DateCondition:
     secondary_value: Optional[str] = None  # BETWEEN의 두 번째 값
 
 class DateExtractor:
-    def __init__(self, selected_table: str = None):
+    def __init__(self, selected_table: List[str] = None):
         self.selected_table = selected_table
         self.date_column = 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
         self.today = datetime.now()

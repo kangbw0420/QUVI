@@ -27,11 +27,24 @@ async def command(trace_id: str, user_question: str) -> List[str]:
     few_shot_prompt = []
     for example in reversed(few_shots):
         few_shot_prompt.append(("human", example["input"]))
+
+        try:
+            parsed_answer = json.loads(example["output"]) if isinstance(example["output"], str) else example["output"]
+        except json.JSONDecodeError:
+            parsed_answer = [example["output"]]
+
         if "stats" in example:
-            ouput_with_reason = f'{{"table": "{example["output"]}", "reason": "{example["stats"]}"}}'
-            few_shot_prompt.append(("ai", ouput_with_reason))
+            output_with_reason = json.dumps({
+                "table": parsed_answer,
+                "reason": example["stats"]
+            }, ensure_ascii=False)
         else:
-            few_shot_prompt.append(("ai", example["output"]))
+            output_with_reason = json.dumps({
+                "table": parsed_answer
+            }, ensure_ascii=False)
+
+        wrapped_output = "{" + output_with_reason + "}"
+        few_shot_prompt.append(("ai", wrapped_output))
 
     COMMANDER_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -51,7 +64,7 @@ async def command(trace_id: str, user_question: str) -> List[str]:
     commander_chain = COMMANDER_PROMPT | qwen_llm | output_parser
     response_json = commander_chain.invoke({"user_question": user_question})
     logger.debug("===== commander_join(A) =====")
-    logger.info("response_json")
+    logger.info(f"response_json : {response_json}")
     qna_manager.record_answer(qna_id, str(response_json))
     
     # JSON 응답에서 'table' 키의 값 추출

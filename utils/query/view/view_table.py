@@ -6,6 +6,8 @@ from sqlglot import exp
 from sqlglot.errors import ParseError
 from datetime import datetime, timedelta
 
+from typing_extensions import List
+
 from utils.query.view.classify_query import QueryClassifier
 from utils.query.view.extract_date import DateExtractor
 
@@ -22,7 +24,7 @@ class ViewFunction:
 
 class ViewTableTransformer:
     """SQL query transformer for view table functionality"""
-    def __init__(self, selected_table: str, user_info: Tuple[str, str], 
+    def __init__(self, selected_table: List[str], user_info: Tuple[str, str],
                  view_com: str, flags: Dict[str, bool]):
         self.selected_table = selected_table
         self.user_id, self.use_intt_id = user_info
@@ -316,7 +318,7 @@ class ViewTableTransformer:
         except ParseError:
             return False
 
-def view_table(query_ordered: str, selected_table: str, 
+def view_table(query_ordered: str, selected_table: List[str],
                company_id: str, user_info: Tuple[str, str], flags: dict) -> Tuple[str, Dict[str, Tuple[str, str]]]:
     """
     view_table을 적용하여 최종 변환된 날짜정보와 쿼리를 반환

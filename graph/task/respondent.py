@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,7 +13,7 @@ qna_manager = QnAManager()
 logger = setup_logger('respondent')
 
 
-async def response(trace_id: str, user_question, selected_table: str, column_list=None,
+async def response(trace_id: str, user_question, selected_table: List[str], column_list=None,
                    date_info: Optional[Tuple[str, str]] = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다.
     Returns:
@@ -25,12 +25,12 @@ async def response(trace_id: str, user_question, selected_table: str, column_lis
 
     logger.info(f"Generating response for question: {user_question[:50]}...")
 
-    if selected_table == 'api':
+    if "api" in selected_table:
         system_prompt = get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
     else:
         system_prompt = get_prompt(node_nm='respondent', prompt_nm='sql')[0]['prompt']
 
-    if selected_table == 'api':
+    if "api" in selected_table:
         collection_name = "shots_respondent_api"
     else:
         collection_name = "shots_respondent_sql"

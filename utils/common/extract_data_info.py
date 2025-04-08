@@ -2,6 +2,9 @@ import sqlparse
 from typing import List, Dict, Any
 import re
 
+from typing_extensions import Sequence
+
+
 def extract_col_from_query(query: str) -> List[str]:
     """SELECT절에서 컬럼명을 추출하며 복잡한 표현식과 별칭을 올바르게 처리
     Returns:
@@ -165,7 +168,7 @@ def split_column_expressions(select_text: str) -> List[str]:
     
     return expressions
 
-def extract_col_from_dict(result: List[Dict[str, Any]]) -> List[str]:
+def extract_col_from_dict(result: Sequence[dict[str, Any]]) -> List[str]:
     """데이터프레임 형태의 쿼리 결과에서 컬럼명(키)을 추출합니다.
     Returns:
         List[str]: 추출된 컬럼명 리스트        
