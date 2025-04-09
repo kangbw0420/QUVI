@@ -1,7 +1,6 @@
 import pytest
 import pandas as pd
-import os
-from utils.table.calc_table import eval_fstring_template, SafeExpressionEvaluator
+from utils.table.template_eval import eval_fstring_template
 
 @pytest.fixture
 def sample_data():
