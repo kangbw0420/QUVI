@@ -25,12 +25,12 @@ async def response(trace_id: str, user_question, selected_table: List[str], colu
 
     logger.info(f"Generating response for question: {user_question[:50]}...")
 
-    if "api" in selected_table:
+    if selected_table == ["api"]:
         system_prompt = get_prompt(node_nm='respondent', prompt_nm='api')[0]['prompt']
     else:
         system_prompt = get_prompt(node_nm='respondent', prompt_nm='sql')[0]['prompt']
 
-    if "api" in selected_table:
+    if selected_table == ["api"]:
         collection_name = "shots_respondent_api"
     else:
         collection_name = "shots_respondent_sql"

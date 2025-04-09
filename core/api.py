@@ -74,7 +74,7 @@ async def process_input(request: Input) -> Output:
             date_info = final_state["date_info"]
         
         # recommend_list 갱신
-        if "api" in selected_table:
+        if selected_table == ["api"]:
             recommend_list = api_recommend(final_state["selected_api"])
 
         # for shot making

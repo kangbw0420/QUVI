@@ -55,7 +55,7 @@ async def is_api(query_text: str) -> List[str]:
 
         except httpx.HTTPError as e:
             logger.error(f"Error checking if query is API: {e}")
-            return ""  # 에러 시 빈 문자열 반환
+            return []  # 에러 시 빈 문자열 반환
 
 async def classify_yqmd(query_text: str, sql_query: str) -> str:
     """연간/분기/월간/일간 파라미터를 결정하여 SQL 쿼리에 추가

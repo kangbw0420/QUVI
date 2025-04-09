@@ -115,7 +115,7 @@ def make_graph() -> CompiledStateGraph:
         workflow.add_conditional_edges(
             "isapi",
             lambda x: (
-                "funk" if x["selected_table"] == "api" else
+                "funk" if x["selected_table"] == ["api"] else
                 "commander"
             ),
             {
