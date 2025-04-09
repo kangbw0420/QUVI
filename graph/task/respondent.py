@@ -7,7 +7,6 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from core.postgresql import get_prompt
 from graph.models import solver
-from utils.table.main_table import evaluate_fstring_template
 from utils.retriever import retriever
 from utils.table.format_table import format_table_pipe
 from llm_admin.qna_manager import QnAManager
@@ -20,7 +19,7 @@ logger = setup_logger('respondent')
 async def response(trace_id: str, user_question, date_info: Optional[Tuple[str, str]] = None , query_result = None) -> str:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다."""
 
-    final_response = "응답 생성 중 오류가 발생했습니다."  # 예외 발생 시 기본 응답
+    fstring_answer = "응답 생성 중 오류가 발생했습니다."  # 예외 발생 시 기본 응답
 
     try:
         output_parser = StrOutputParser()
@@ -113,10 +112,7 @@ async def response(trace_id: str, user_question, date_info: Optional[Tuple[str, 
         logger.info(f"Answer content: {fstring_answer}")
         qna_manager.record_answer(qna_id, fstring_answer)
 
-        # ✅ f-string 평가 수행
-        final_response = evaluate_fstring_template(fstring_answer, result)
-
     except Exception as e:
         logger.exception("response() 실행 중 예외 발생")
 
-    return final_response
+    return fstring_answer
