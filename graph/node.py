@@ -3,7 +3,7 @@ from graph.types import GraphState
 from graph.task.classifier import check_joy, is_api, classify_yqmd
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
-from graph.task.table_respondent import response
+from graph.task.respondent import response
 from graph.task.executor import execute
 from graph.task.funk import func_select
 from graph.task.nodata import no_data
@@ -21,11 +21,8 @@ from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.query.ever_note import ever_note
 from utils.dataframe.is_krw_null import is_krw, is_null_only
-from utils.dataframe.transform_col import transform_data
-from utils.compute.main_compute import compute_fstring
 from utils.table.main_table import evaluate_pandas_expression, evaluate_fstring_template
 
-# 모듈 레벨 로거 생성
 logger = setup_logger('node')
 
 async def checkpoint(state: GraphState) -> GraphState:
@@ -311,7 +308,7 @@ async def respondent(state: GraphState) -> GraphState:
     raw_column_list = state["column_list"]
 
     cleaned_result = delete_useless_col(result, raw_column_list)
-    # 테이블 데이터에서는 입출금과 통화 변환이 필요 없음음
+    # 테이블 데이터에서는 입출금과 통화 변환이 필요 없음
 
     if selected_table == ["api"]:
         date_info = state["date_info"]
@@ -335,42 +332,6 @@ async def respondent(state: GraphState) -> GraphState:
         "query_result": final_result
     })
     return state
-
-# async def respondent(state: GraphState) -> GraphState:
-#     """쿼리 결과를 바탕으로 최종 응답을 생성"""
-#     trace_id = state["trace_id"]
-#     user_question = state["user_question"]
-#     result = state["query_result"]
-#     selected_table = state["selected_table"]
-#     raw_column_list = state["column_list"]
-
-#     cleaned_result, cleaned_column_list = delete_useless_col(result, raw_column_list)
-#     # 컬럼과 데이터에서 입출금과 통화 구분
-#     result_for_col, column_list = transform_data(cleaned_result, cleaned_column_list)
-
-#     if selected_table == ["api"]:
-#         date_info = state["date_info"]
-#     else:
-#         date_info = ()
-#     fstring_answer = await response(trace_id, user_question, selected_table, column_list, date_info)
-
-#     # debuging
-#     state.update({"yogeumjae": fstring_answer})
-
-#     logger.info("Computing final answer using fstring template")
-#     final_answer = compute_fstring(fstring_answer, result_for_col, column_list)
-
-#     final_result = final_df_format(cleaned_result, selected_table)
-#     if selected_table == ["api"]:
-#         final_result = is_krw(final_result)
-
-#     state.update({"final_answer": final_answer, "column_list": column_list, "query_result": final_result})
-#     StateManager.update_state(trace_id, {
-#         "final_answer": final_answer,
-#         "column_list": column_list,
-#         "query_result": final_result
-#     })
-#     return state
 
 async def nodata(state: GraphState) -> GraphState:
     # 데이터가 없음을 설명하는 노드"""
