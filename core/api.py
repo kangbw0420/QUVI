@@ -49,8 +49,6 @@ async def process_input(request: Input) -> Output:
                 "invalid_date": False,
                 "query_error": False,
                 "query_changed": False,
-                # "stock_sec": False,
-                # "past_date": False
             },
             # "last_data": last_data if last_data else []
         }
@@ -63,10 +61,8 @@ async def process_input(request: Input) -> Output:
         # 결과 추출
         answer = final_state["final_answer"]
         raw_data = final_state["query_result"]
-        # user_question = final_state["user_question"]
         sql_query = final_state["sql_query"]
         selected_table = final_state["selected_table"]
-        # flags = final_state["flags"]
 
         if "date_info" not in final_state or not final_state["date_info"]:
             date_info = (None, None)
@@ -77,16 +73,12 @@ async def process_input(request: Input) -> Output:
         if selected_table == ["api"]:
             recommend_list = api_recommend(final_state["selected_api"])
 
-        # for shot making
-        column_list = final_state["column_list"]
-        column_list_str = ", ".join(str(col) for col in column_list)
+        # debugging
         fstring = final_state["yogeumjae"]
-        kabigon = f"{sql_query}\n\n\n{column_list_str}\n\n\n{fstring}"
+        kabigon = f"{sql_query}\n\n\n{fstring}"
         
-        # 기존 레코드 저장
         # save_record(conversation_id, user_question, answer, sql_query)
 
-        # 체인 완료 기록
         ChainManager.complete_chain(chain_id, answer)
 
         return Output(

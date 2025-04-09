@@ -9,8 +9,6 @@ class ProcessingFlags(TypedDict):
     query_error: bool
     query_changed: bool
     safe_count: int
-    # stock_sec: bool
-    # past_date: bool
 
 class VectorNotes(TypedDict):
     origin_note: str

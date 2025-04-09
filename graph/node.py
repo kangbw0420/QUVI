@@ -96,8 +96,7 @@ async def params(state: GraphState) -> GraphState:
     if invalid_date_message:
         state.update({
             "final_answer": invalid_date_message,
-            "query_result": [],
-            "column_list": []
+            "query_result": []
         })
 
     state.update({"sql_query": sql_query, "date_info": date_info})
@@ -126,7 +125,7 @@ async def nl2sql(state: GraphState) -> GraphState:
 
     sql_query = await create_sql(trace_id, selected_table, company_id, user_question)
 
-    state.update({"sql_query": sql_query,})
+    state.update({"sql_query": sql_query})
     StateManager.update_state(trace_id, {
         "company_id": company_id,
         "sql_query": sql_query
@@ -193,8 +192,7 @@ async def executor(state: GraphState) -> GraphState:
                 if invalid_date_message:
                     state.update({
                         "final_answer": invalid_date_message,
-                        "query_result": [],
-                        "column_list": []
+                        "query_result": []
                     })
                     return state
 
@@ -251,12 +249,10 @@ async def executor(state: GraphState) -> GraphState:
         logger.warning("No data found in query results")
         flags["no_data"] = True
         empty_result = []
-        column_list = []
-        state.update({"query_result": empty_result, "column_list": column_list})
+        state.update({"query_result": empty_result})
         StateManager.update_state(trace_id, {
             "sql_query": state.get("sql_query"),
             "query_result": empty_result,
-            "column_list": column_list,
             "date_info": state.get("date_info", (None, None))
         })
 
@@ -307,24 +303,20 @@ async def respondent(state: GraphState) -> GraphState:
     selected_table = state["selected_table"]
     raw_column_list = state["column_list"]
 
-    cleaned_result = delete_useless_col(result, raw_column_list)
+    final_result = delete_useless_col(result, raw_column_list)
     # 테이블 데이터에서는 입출금과 통화 변환이 필요 없음
 
     if selected_table == ["api"]:
         date_info = state["date_info"]
     else:
         date_info = ()
-    fstring_answer = await response(trace_id, user_question, date_info, cleaned_result)
+    fstring_answer = await response(trace_id, user_question, date_info, final_result)
 
     # debuging
     state.update({"yogeumjae": fstring_answer})
     final_answer = fstring_answer
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")
-
-    final_result = final_df_format(cleaned_result, selected_table)
-    if selected_table == ["api"]:
-        final_result = is_krw(final_result)
 
     state.update({"final_answer": final_answer, "query_result": final_result})
     StateManager.update_state(trace_id, {
@@ -364,8 +356,7 @@ async def killjoy(state: GraphState) -> GraphState:
     state.update({
         "final_answer": final_answer,
         "query_result": [],
-        "sql_query": "",
-        "column_list": []
+        "sql_query": ""
     })
 
     StateManager.update_state(trace_id, {"final_answer": final_answer})
