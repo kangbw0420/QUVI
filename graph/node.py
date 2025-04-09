@@ -14,13 +14,12 @@ from graph.task.safeguard import guard_query
 from utils.logger import setup_logger
 from utils.common.extract_data_info import extract_col_from_query, extract_col_from_dict
 from utils.common.date_checker import check_date, correct_date_range
-from utils.dataframe.format_df import delete_useless_col, final_df_format
+from utils.dataframe.check_df import delete_useless_col, is_null_only
 from utils.query.filter_com import add_com_condition
 from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.query.ever_note import ever_note
-from utils.dataframe.is_krw_null import is_krw, is_null_only
 from utils.table.main_table import evaluate_pandas_expression, evaluate_fstring_template
 
 logger = setup_logger('node')
@@ -166,7 +165,7 @@ async def executor(state: GraphState) -> GraphState:
         
         company_id = state["company_id"]
 
-        # 회사명을 권한 있는 회사로 변환
+        # 권한 있는 회사/계좌 검사
         query_right_com = add_com_condition(raw_query, company_id)
 
         # 주식종목/은행명 매핑 변환
@@ -235,7 +234,6 @@ async def executor(state: GraphState) -> GraphState:
                 if modified_query and modified_query != query:
                     result = execute(modified_query)
                     state.update({"sql_query": modified_query})
-                    result = final_df_format(result, selected_table)
 
             state.update({"date_info": view_dates["main"]})
 
