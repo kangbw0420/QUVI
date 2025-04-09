@@ -1,89 +1,19 @@
 import ast
-import operator
 import re
 import pandas as pd
 from string import Formatter
 from typing import List, Dict, Any, Union
-
+from utils.table.allowed_list import (
+    ALLOWED_OPERATORS, 
+    ALLOWED_DF_METHODS, 
+    ALLOWED_BUILTINS, 
+    FUNCTION_ALIASES,
+    ALLOWED_ATTRIBUTES
+)
 
 class SafeExpressionEvaluator:
     """안전한 표현식 평가를 위한 클래스"""
-    
-    # 허용된 연산자 및 함수 목록
-    ALLOWED_OPERATORS = {
-        ast.Add: operator.add,
-        ast.Sub: operator.sub,
-        ast.Mult: operator.mul,
-        ast.Div: operator.truediv,
-        ast.FloorDiv: operator.floordiv,
-        ast.Mod: operator.mod,
-        ast.Pow: operator.pow,
-        ast.Eq: operator.eq,
-        ast.NotEq: operator.ne,
-        ast.Lt: operator.lt,
-        ast.LtE: operator.le,
-        ast.Gt: operator.gt,
-        ast.GtE: operator.ge,
-    }
-    
-    # 허용된 DataFrame/Series 메서드
-    ALLOWED_DF_METHODS = {
-        'sum', 'mean', 'count', 'min', 'max', 'median', 'std', 'var', 
-        'describe', 'info', 'head', 'tail', 'unique', 'nunique', 'value_counts',
-        'tolist', 'to_list', 'shape', 'size', 'apply', 'map', 'iloc', 'loc',
-        'dtypes', 'drop', 'dropna', 'fillna', 'isna', 'isnull', 'notna',
-        'notnull', 'reset_index', 'set_index', 'sort_values', 'sort_index',
-        'groupby', 'copy', 'all', 'any', 'filter', 'idxmax', 'idxmin',
-        'sample', 'shift', 'first', 'last', 'rolling', 'to_dict', 'values',
-        'agg', 'aggregate', 'groups'
-    }
-    
-    # 허용된 내장 함수
-    ALLOWED_BUILTINS = {
-        'len': len,
-        'sum': sum,
-        'int': int,
-        'float': float,
-        'str': str,
-        'bool': bool,
-        'list': list,
-        'dict': dict,
-        'set': set,
-        'tuple': tuple,
-        'abs': abs,
-        'all': all,
-        'any': any,
-        'min': min,
-        'max': max,
-        'round': round,
-        'sorted': sorted,
-        'zip': zip,
-        'map': map,
-        'filter': filter,
-        'enumerate': enumerate,
-    }
-    
-    # 허용된 속성 접근
-    ALLOWED_ATTRIBUTES = {
-        'shape', 'size', 'index', 'columns', 'values', 'T'
-    }
-    
-    # 특수 함수 매핑
-    FUNCTION_ALIASES = {
-        'count': lambda column: len(column.dropna()),
-        'average': lambda column: column.mean(),
-        'unique': lambda column: column.unique(),
-        'list': lambda column: column.tolist(),
-    }
-    
     def __init__(self, data: Union[List[Dict[str, Any]], pd.DataFrame]):
-        """
-        안전한 표현식 평가기 초기화
-        
-        Args:
-            data: 데이터프레임이나 딕셔너리 리스트
-        """
-        # 데이터프레임 변환
         if isinstance(data, pd.DataFrame):
             self.df = data
         else:
@@ -92,7 +22,7 @@ class SafeExpressionEvaluator:
                 any(isinstance(val, list) for val in data[0].values())):
                 
                 # 첫 번째 딕셔너리의 값들 중 리스트 찾기
-                for key, val in data[0].items():
+                for val in data[0].items():
                     if isinstance(val, list) and all(isinstance(item, dict) for item in val):
                         data = val
                         break
@@ -103,22 +33,18 @@ class SafeExpressionEvaluator:
         self.context = {
             'df': self.df,
             **{col: self.df[col] for col in self.df.columns},
-            **self.ALLOWED_BUILTINS,  # 허용된 내장 함수 추가
+            **ALLOWED_BUILTINS,
         }
         
-        for name, func in self.FUNCTION_ALIASES.items():
+        for name, func in FUNCTION_ALIASES.items():
             self.context[name] = func
     
     def _eval_node(self, node: ast.AST) -> Any:
-        """
-        AST 노드를 안전하게 평가
-        
+        """AST 노드를 안전하게 평가
         Args:
             node: 평가할 AST 노드
-            
         Returns:
             평가 결과
-            
         Raises:
             ValueError: 허용되지 않은 노드 유형이나 연산을 만난 경우
         """
@@ -139,7 +65,7 @@ class SafeExpressionEvaluator:
             attr = node.attr
             
             # DataFrame/Series 메서드 호출 체크
-            if isinstance(obj, (pd.DataFrame, pd.Series)) and attr in self.ALLOWED_DF_METHODS:
+            if isinstance(obj, (pd.DataFrame, pd.Series)) and attr in ALLOWED_DF_METHODS:
                 return getattr(obj, attr)
             
             # numpy.ndarray 메서드 접근 허용 (unique 결과)
@@ -148,7 +74,7 @@ class SafeExpressionEvaluator:
                     return getattr(obj, attr)
             
             # 일반 속성 접근 체크
-            elif attr in self.ALLOWED_ATTRIBUTES:
+            elif attr in ALLOWED_ATTRIBUTES:
                 return getattr(obj, attr)
             
             else:
@@ -159,8 +85,8 @@ class SafeExpressionEvaluator:
             left = self._eval_node(node.left)
             right = self._eval_node(node.right)
             
-            if type(node.op) in self.ALLOWED_OPERATORS:
-                return self.ALLOWED_OPERATORS[type(node.op)](left, right)
+            if type(node.op) in ALLOWED_OPERATORS:
+                return ALLOWED_OPERATORS[type(node.op)](left, right)
             else:
                 raise ValueError(f"연산자 {type(node.op).__name__}는 허용되지 않았습니다")
         
@@ -177,8 +103,8 @@ class SafeExpressionEvaluator:
                     result = left in right
                 elif isinstance(op, ast.NotIn):
                     result = left not in right
-                elif type(op) in self.ALLOWED_OPERATORS:
-                    result = self.ALLOWED_OPERATORS[type(op)](left, right)
+                elif type(op) in ALLOWED_OPERATORS:
+                    result = ALLOWED_OPERATORS[type(op)](left, right)
                 else:
                     raise ValueError(f"비교 연산자 {type(op).__name__}는 허용되지 않았습니다")
                 
@@ -218,17 +144,17 @@ class SafeExpressionEvaluator:
             kwargs = {kw.arg: self._eval_node(kw.value) for kw in node.keywords}
             
             # 내장 함수인지 확인
-            if func.__name__ in self.ALLOWED_BUILTINS or func in self.ALLOWED_BUILTINS.values():
+            if func.__name__ in ALLOWED_BUILTINS or func in ALLOWED_BUILTINS.values():
                 return func(*args, **kwargs)
             
             # 별칭 함수인지 확인
-            elif any(func == alias_func for alias_func in self.FUNCTION_ALIASES.values()):
+            elif any(func == alias_func for alias_func in FUNCTION_ALIASES.values()):
                 return func(*args, **kwargs)
             
             # pandas 메서드인지 확인
             elif hasattr(func, '__self__') and isinstance(func.__self__, (pd.DataFrame, pd.Series)):
                 method_name = func.__name__
-                if method_name in self.ALLOWED_DF_METHODS:
+                if method_name in ALLOWED_DF_METHODS:
                     return func(*args, **kwargs)
                 else:
                     raise ValueError(f"메서드 '{method_name}'는 허용되지 않았습니다")
@@ -337,15 +263,11 @@ class SafeExpressionEvaluator:
             raise ValueError(f"표현식 유형 {type(node).__name__}는 허용되지 않았습니다")
     
     def eval_expression(self, expr: str) -> Any:
-        """
-        문자열 표현식을 안전하게 평가
-        
+        """문자열 표현식을 안전하게 평가
         Args:
-            expr: 평가할 표현식 문자열
-            
+            expr: 평가할 표현식 문자열            
         Returns:
             평가 결과
-            
         Raises:
             ValueError: 허용되지 않은 노드 유형이나 연산을 만난 경우
         """
@@ -386,16 +308,6 @@ class SafeExpressionEvaluator:
             return f"표현식 '{expr}' 평가 중 오류: {str(e)}"
     
     def eval_fstring(self, fstring_template: str) -> str:
-        """
-        f-string 형식 템플릿 평가
-        
-        Args:
-            fstring_template: f-string 형식 템플릿
-            
-        Returns:
-            평가된 문자열
-        """
-        # 표현식 형식 확인 및 추출
         result_parts = []
         formatter = Formatter()
         
@@ -407,7 +319,6 @@ class SafeExpressionEvaluator:
             if field_name is None:
                 continue
             
-            # 표현식 평가
             try:
                 value = self.eval_expression(field_name)
                 
@@ -432,16 +343,6 @@ class SafeExpressionEvaluator:
 
 
 def eval_fstring_template(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
-    """
-    f-string 템플릿을 안전하게 평가
-    
-    Args:
-        fstring: f-string 형식 템플릿
-        data: 데이터프레임이나 딕셔너리 리스트
-        
-    Returns:
-        평가된 문자열
-    """
     try:
         # f-string 마커 제거 (f"..." 또는 f'...')
         if fstring.startswith('f"') and fstring.endswith('"'):
