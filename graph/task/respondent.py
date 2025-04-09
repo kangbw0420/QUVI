@@ -108,7 +108,6 @@ async def response(trace_id: str, user_question, date_info: Optional[Tuple[str, 
             fstring_answer = fstring_answer[:-3]
 
         logger.debug("===== table_respondent(A) =====")
-        logger.info(f"Generated table answer (length: {len(fstring_answer)})")
         logger.info(f"Answer content: {fstring_answer}")
         qna_manager.record_answer(qna_id, fstring_answer)
 

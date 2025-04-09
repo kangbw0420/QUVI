@@ -1,21 +1,10 @@
 from string import Formatter
-
 import pandas as pd
-import re
 from typing import List, Dict, Any
 
 from utils.logger import setup_logger
 
 logger = setup_logger('main_table')
-
-def evaluate_pandas_expression(expr: str, data: List[Dict[str, Any]]) -> Any:
-    """단일 pandas 표현식 평가"""
-    try:
-        df = pd.DataFrame(data)
-        safe_globals = {"df": df, "pd": pd, "__builtins__": {}}
-        return eval(expr, safe_globals, {})
-    except Exception as e:
-        return f"Error evaluating pandas expression: {str(e)}"
 
 
 def evaluate_fstring_template(fstring: str, data: List[Dict[str, Any]]) -> str:
