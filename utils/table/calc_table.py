@@ -192,13 +192,7 @@ class SafeExpressionEvaluator:
         elif isinstance(node, ast.Subscript):
             container = self._eval_node(node.value)
             
-            # 인덱스 값 추출
-            if isinstance(node.slice, ast.Index):
-                # Python 3.8 이전
-                idx = self._eval_node(node.slice.value)
-            else:
-                # Python 3.9+
-                idx = self._eval_node(node.slice)
+            idx = self._eval_node(node.slice)
             
             # 문자열 리터럴은 문자열로 변환 (ast가 Constant로 파싱)
             if isinstance(idx, ast.Constant) and isinstance(idx.value, str):
