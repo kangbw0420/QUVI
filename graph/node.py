@@ -86,7 +86,7 @@ async def params(state: GraphState) -> GraphState:
     flags = state.get("flags")
 
     sql_query, date_info = await parameters(
-        trace_id, selected_api, user_question, company_id, user_info
+        trace_id, selected_api, user_question, company_id, user_info, flags
     )
 
     date_info = correct_date_range(date_info)

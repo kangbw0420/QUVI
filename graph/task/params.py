@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Tuple
+from typing import Tuple, Dict
 from datetime import datetime
 
 from langchain_core.messages import SystemMessage
@@ -11,6 +11,7 @@ from graph.models import qwen_llm
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
+from utils.common.date_checker import correct_date, is_valid_date
 
 qna_manager = QnAManager()
 logger = setup_logger('params')
@@ -35,24 +36,37 @@ async def parameters(
         selected_api: str,
         user_question: str,
         company_id: str,
-        user_info: Tuple[str, str]
+        user_info: Tuple[str, str],
+        flags: Dict = None
 ) -> Tuple[str, Tuple[str, str]]:
     """분석된 질문으로부터 SQL 쿼리를 생성
+    Args:
+        trace_id: 추적 ID
+        selected_api: 선택된 API 함수명
+        user_question: 사용자 질문
+        company_id: 회사 ID
+        user_info: 사용자 정보 튜플 (user_id, use_intt_id)
+        flags: 상태 플래그 딕셔너리 (옵션)
+        
     Returns:
-        str: 생성된 SQL 쿼리문
-    Raises:
-        ValueError: SQL 쿼리를 생성할 수 없거나, 추출 패턴이 매치되지 않는 경우
-        TypeError: LLM 응답이 예상된 형식이 아닌 경우.
+        Tuple[str, Tuple[str, str]]: 
+            - 생성된 SQL 쿼리문
+            - (from_date, to_date) 형식의 날짜 범위 튜플
     """
     logger.info(f"Generating parameters for API '{selected_api}', question: '{user_question[:50]}...'")
     user_id, use_intt_id = user_info
+    
+    # flags가 None이면 빈 딕셔너리로 초기화
+    if flags is None:
+        flags = {}
 
     try:
         json_format = '"from_date": from_date, "to_date": to_date'
         
         today = datetime.now()
         prompt_today = today.strftime("%Y년 %m월 %d일")
-        logger.info(f"Current date: {prompt_today}")
+        today_str = today.strftime("%Y%m%d")
+        logger.info(f"Current date: {prompt_today} ({today_str})")
 
         system_prompt = get_prompt(
             node_nm="params", prompt_nm="system"
@@ -71,7 +85,7 @@ async def parameters(
             few_shot_prompt.append(("human", human_with_date))
             few_shot_prompt.append(("ai", formatted_output))
 
-        formatted_today = today.strftime("%Y%m%d")
+        formatted_today = today_str
         weekday = WEEKDAYS[today.weekday()]
 
         formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
@@ -120,7 +134,20 @@ async def parameters(
         # from_date와 to_date 형식 변환
         from_date = convert_date_format(output["from_date"])
         to_date = convert_date_format(output["to_date"])
+        
+        # 미래 날짜 교정: api는 sql 로직과 달리 교정할 날짜 부분이 명확하므로(sql을 view_date에서 복잡하게 처리) 따로 간단히 처리
+        if from_date > today_str:
+            logger.warning(f"Future from_date: {from_date}, correcting to today: {today_str}")
+            from_date = today_str
+            flags["future_date"] = True
+            
+        if to_date > today_str:
+            logger.warning(f"Future to_date: {to_date}, correcting to today: {today_str}")
+            to_date = today_str
+            flags["future_date"] = True
 
+        logger.info(f"Final parameters: from_date={from_date}, to_date={to_date}")
+        
         # 출력에서 SQL 쿼리 조합
         sql_query = (
             SQL_TEMPLATE.replace("sql_func", selected_api)
