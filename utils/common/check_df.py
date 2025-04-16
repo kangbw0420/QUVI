@@ -1,10 +1,9 @@
 from typing import Dict, Any, List
 
-def delete_useless_col(result: Dict[str, Any], column_list: List[str]) -> List[Dict[str, Any]]:
+def delete_useless_col(result: Dict[str, Any]) -> List[Dict[str, Any]]:
     """결과 데이터와 컬럼 리스트에서 불필요한 컬럼을 제거합니다.
     Args:
         result: SQL 쿼리 실행 결과 데이터
-        column_list: 현재 컬럼 리스트
     Returns:
         Tuple[List[Dict[str, Any]], List[str]]: 
             - 불필요한 컬럼이 제거된 결과 데이터
@@ -12,9 +11,6 @@ def delete_useless_col(result: Dict[str, Any], column_list: List[str]) -> List[D
     """
     # 제거할 컬럼들
     columns_to_delete = {'acct_bal_upd_dtm', 'reg_dtm_upd'}
-    
-    # 컬럼 리스트에서 제거
-    new_column_list = [col for col in column_list if col not in columns_to_delete]
     
     # 결과 형식이 그룹화된 데이터인지 확인
     if isinstance(result, list) and result and isinstance(result[0], dict) and 'data' in result[0]:

@@ -14,7 +14,7 @@ from graph.task.safeguard import guard_query
 from utils.logger import setup_logger
 from utils.common.extract_data_info import extract_col_from_query, extract_col_from_dict
 from utils.common.date_checker import check_date, correct_date_range
-from utils.dataframe.check_df import delete_useless_col, is_null_only
+from utils.common.check_df import delete_useless_col, is_null_only
 from utils.query.filter_com import add_com_condition
 from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
@@ -146,23 +146,13 @@ async def executor(state: GraphState) -> GraphState:
         try:
             result = execute(query)
             state.update({"sql_query": query})
-            if result:
-                column_list = extract_col_from_dict(result)
-            else:
-                # nodata로 가기 전에 flags 참조
+            if not result:
                 flags["no_data"] = True
         except Exception as e:
             raise
     
     else:
         raw_query = state.get("sql_query")
-        if not raw_query:
-            logger.error("No SQL query in state")
-            raise ValueError("SQL 쿼리가 state에 포함되어 있지 않습니다.")
-
-        # 쿼리 길어지기 전에 컬럼부터 추출
-        column_list = extract_col_from_query(raw_query)
-        
         company_id = state["company_id"]
 
         # 권한 있는 회사/계좌 검사
@@ -181,6 +171,7 @@ async def executor(state: GraphState) -> GraphState:
             # 날짜를 추출하고, 미래 시제일 경우 변환
             query, view_dates = view_table(query_ordered, selected_table, company_id, user_info, flags)
             
+            # 메인 쿼리의 날짜 정보가 있는지 확인
             if 'main' in view_dates:
                 # 날짜 교정: 유효하지 않은 날짜를 가장 가까운 유효한 날짜로 교정
                 corrected_date_info = correct_date_range(view_dates['main'])
@@ -238,7 +229,7 @@ async def executor(state: GraphState) -> GraphState:
             state.update({"date_info": view_dates["main"]})
 
         except Exception as e:
-            logger.error(f"Error in view table processing: {str(e)}")
+            logger.error(f"Error in executor: {str(e)}")
             result = execute(query_ordered)
             state.update({"sql_query": query_ordered})
 
@@ -257,11 +248,10 @@ async def executor(state: GraphState) -> GraphState:
         return state
 
     logger.info(f"Query executed successfully, storing results")
-    state.update({"query_result": result, "column_list": column_list})
+    state.update({"query_result": result})
     StateManager.update_state(trace_id, {
         "sql_query": state.get("sql_query"),
         "query_result": result,
-        "column_list": column_list,
         "date_info": state.get("date_info", (None, None))
     })
 
@@ -299,10 +289,8 @@ async def respondent(state: GraphState) -> GraphState:
     user_question = state["user_question"]
     result = state["query_result"]
     selected_table = state["selected_table"]
-    raw_column_list = state["column_list"]
 
-    final_result = delete_useless_col(result, raw_column_list)
-    # 테이블 데이터에서는 입출금과 통화 변환이 필요 없음
+    final_result = delete_useless_col(result)
 
     if selected_table == ["api"]:
         date_info = state["date_info"]
