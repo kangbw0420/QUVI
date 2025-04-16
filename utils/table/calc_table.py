@@ -2,24 +2,9 @@ from typing import Dict, List, Any, Union
 import pandas as pd
 
 from utils.logger import setup_logger
+from utils.table.template_eval import TemplateEvaluator
 
 logger = setup_logger('calc_table')
-
-def eval_fstring_template(template: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
-    """
-    Python f-string 형식의 템플릿을 평가합니다.
-    이 함수는 하위 호환성을 위해 유지됩니다.
-    
-    Args:
-        template: f-string 형식의 템플릿 문자열 (예: f"이름: {df['name']}")
-        data: 표현식 평가에 사용할 데이터
-        
-    Returns:
-        평가된 결과 문자열
-    """
-    # 실제 구현은 template_evaluator.py로 이동
-    from utils.table.template_evaluator import eval_fstring_template as eval_template
-    return eval_template(template, data)
 
 
 def compute_template(template: str, data: Union[List[Dict[str, Any]], pd.DataFrame], 
@@ -35,7 +20,7 @@ def compute_template(template: str, data: Union[List[Dict[str, Any]], pd.DataFra
     Returns:
         평가된 결과 문자열
     """
-    from utils.table.template_evaluator import TemplateEvaluator
+    
     
     try:
         # 템플릿 유형에 맞는 평가기 클래스 가져오기
