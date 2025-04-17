@@ -296,10 +296,13 @@ async def respondent(state: GraphState) -> GraphState:
         date_info = state["date_info"]
     else:
         date_info = ()
-    fstring_answer = await response(trace_id, user_question, date_info, final_result)
+    fstring_answer, table_pipe = await response(trace_id, user_question, date_info, final_result)
 
     # debuging
-    state.update({"yogeumjae": fstring_answer})
+    debug_str = f"{fstring_answer}\n\n\n{table_pipe}"
+    state.update({"yogeumjae": debug_str})
+    # debuging
+    
     final_answer = compute_template(fstring_answer, result, 'fstring')
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")

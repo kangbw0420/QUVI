@@ -38,7 +38,7 @@ async def process_input(request: Input) -> Output:
         initial_state = {
             "chain_id": chain_id,
             "user_info": user_info,
-            "yogeumjae" : "debug",
+            "fstring" : "",
             "company_id": request.company_id,
             "user_question": request.user_question,
             "flags": {
@@ -74,8 +74,8 @@ async def process_input(request: Input) -> Output:
             recommend_list = api_recommend(final_state["selected_api"])
 
         # debugging
-        fstring = final_state["yogeumjae"]
-        kabigon = f"{sql_query}\n\n\n{fstring}"
+        fstring_n_pipe = final_state["yogeumjae"]
+        kabigon = f"{sql_query}\n\n\n{fstring_n_pipe}"
         
         # save_record(conversation_id, user_question, answer, sql_query)
 
