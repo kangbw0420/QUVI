@@ -26,7 +26,7 @@ WEEKDAYS = {
 
 async def create_sql(
         trace_id: str,
-        selected_table: List[str],
+        selected_table: str,
         company_id: str,
         user_question: str
 ) -> str:

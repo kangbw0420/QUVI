@@ -139,7 +139,7 @@ async def executor(state: GraphState) -> GraphState:
     if "safe_count" not in flags:
         flags["safe_count"] = 0
 
-    if selected_table == ["api"]:
+    if selected_table == "api":
         query = state.get("sql_query")
         logger.info(f"Executing API query: {query}")
         try:
@@ -291,7 +291,7 @@ async def respondent(state: GraphState) -> GraphState:
 
     final_result = delete_useless_col(result)
 
-    if selected_table == ["api"]:
+    if selected_table == "api":
         date_info = state["date_info"]
     else:
         date_info = ()

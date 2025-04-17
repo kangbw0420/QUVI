@@ -17,7 +17,7 @@ async def guard_query(
         trace_id: str,
         unsafe_query: str,
         user_question: str,
-        selected_table: List[str],
+        selected_table: str,
         flags: dict,
         sql_error: str = ""
 ) -> str:

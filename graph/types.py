@@ -22,7 +22,8 @@ class GraphState(TypedDict):
     yogeumjae: str # debugging: 이제 필요 없지만 fstring을 전달하기 위한 흔적 기관
     # shellder: boolean
     user_question: str
-    selected_table: List[str]
+    # selected_table: List[str]
+    selected_table: str
     selected_api: str
     sql_query: str
     sql_error: str

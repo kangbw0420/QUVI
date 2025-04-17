@@ -87,7 +87,7 @@ def detect_group_by_aliases(query: str) -> List[str]:
     
     return aliases
 
-def get_default_order_rule(selected_table: List[str]) -> str:
+def get_default_order_rule(selected_table: str) -> str:
     # 리스트를 튜플로 변환하여 키 조회 시도
     key_as_tuple = tuple(sorted(selected_table))
 
@@ -97,12 +97,12 @@ def get_default_order_rule(selected_table: List[str]) -> str:
 
     # 단일 테이블만 있으면 그대로 사용
     if len(selected_table) == 1:
-        return DEFAULT_ORDER_RULES.get(selected_table[0], DEFAULT_ORDER_RULES["trsc"])
+        return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
 
     # 모든 fallback 실패 시
     return DEFAULT_ORDER_RULES["trsc"]
 
-def find_matching_rule(columns: List[str], selected_table: List[str]) -> str:
+def find_matching_rule(columns: List[str], selected_table: str) -> str:
     """
     추출된 컬럼 조합에 맞는 ORDER BY 규칙 찾기.
     *는 테이블별 기본정렬, 알려지지 않은 컬럼은 DESC 정렬
@@ -145,7 +145,7 @@ def has_subquery(query: str) -> bool:
         # 기타 예외 발생 시도 안전하게 True 반환
         return True
 
-def add_order_by(query: str, selected_table: List[str]) -> str:
+def add_order_by(query: str, selected_table: str) -> str:
     """SQL 쿼리에 ORDER BY절 추가. 기존 ORDER BY가 있으면 그대로 반환, 없으면 규칙에 따라 ORDER BY 추가
     Returns:
         ORDER BY절이 추가된 SQL 쿼리문 (맨 뒤 세미콜론 포함)

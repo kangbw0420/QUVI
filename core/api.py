@@ -70,7 +70,7 @@ async def process_input(request: Input) -> Output:
             date_info = final_state["date_info"]
         
         # recommend_list 갱신
-        if selected_table == ["api"]:
+        if selected_table == "api":
             recommend_list = api_recommend(final_state["selected_api"])
 
         # debugging
@@ -92,7 +92,7 @@ async def process_input(request: Input) -> Output:
                 "session_id": conversation_id,
                 "chain_id": chain_id,
                 "recommend": recommend_list,
-                "is_api": selected_table == ["api"],
+                "is_api": selected_table == "api",
                 "date_info": date_info,
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, debug)
             }
