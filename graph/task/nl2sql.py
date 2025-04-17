@@ -30,23 +30,21 @@ async def create_sql(
         company_id: str,
         user_question: str
 ) -> str:
+    """분석된 질문으로부터 SQL 쿼리를 생성
+    Returns:
+        str: 생성된 SQL 쿼리문
+    Raises:
+        ValueError: SQL 쿼리를 생성할 수 없거나, 추출 패턴이 매치되지 않는 경우
+        TypeError: LLM 응답이 예상된 형식이 아닌 경우.
+    """
     try:
         today = datetime.now()
         prompt_today = today.strftime("%Y년 %m월 %d일")
         logger.info(f"nl2sql prompt_today: {prompt_today}")
-
-        # prompt 및 shots 분기 처리
-        if len(selected_table) == 1:
-            prompt_nm = selected_table[0]
-            collection_name = f"shots_{selected_table[0]}"
-        else:
-            prompt_nm = "join"
-            collection_name = "shots_join"
-
         try:
             system_prompt = get_prompt(
                 node_nm='nl2sql',
-                prompt_nm=prompt_nm
+                prompt_nm=selected_table
             )[0]['prompt'].format(
                 today=prompt_today,
                 main_com=company_id
@@ -54,7 +52,36 @@ async def create_sql(
         except:
             system_prompt = get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(
                 today=today)
-            logger.warning(f"Failed to get specific prompt for {prompt_nm}, using default system prompt")
+            logger.warning(f"Failed to get specific prompt for {selected_table}, using default system prompt")
+
+#     try:
+#         today = datetime.now()
+#         prompt_today = today.strftime("%Y년 %m월 %d일")
+#         logger.info(f"nl2sql prompt_today: {prompt_today}")
+
+#         # prompt 및 shots 분기 처리
+#         if len(selected_table) == 1:
+#             prompt_nm = selected_table[0]
+#             collection_name = f"shots_{selected_table[0]}"
+#         else:
+#             prompt_nm = "join"
+#             collection_name = "shots_join"
+
+#         try:
+#             system_prompt = get_prompt(
+#                 node_nm='nl2sql',
+#                 prompt_nm=prompt_nm
+#             )[0]['prompt'].format(
+#                 today=prompt_today,
+#                 main_com=company_id
+#             )
+#         except:
+#             system_prompt = get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(
+#                 today=today)
+#             logger.warning(f"Failed to get specific prompt for {prompt_nm}, using default system prompt")
+
+        # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
+        collection_name = f"shots_{selected_table}"
 
         few_shots = await retriever.get_few_shots(
             query_text=user_question,
@@ -72,6 +99,7 @@ async def create_sql(
 
         formatted_today = today.strftime("%Y%m%d")
         weekday = WEEKDAYS[today.weekday()]
+
         formatted_question = f"{user_question}, 오늘: {formatted_today} {weekday}요일."
 
         prompt = ChatPromptTemplate.from_messages(
@@ -94,7 +122,7 @@ async def create_sql(
             {"user_question": formatted_question, "main_com": company_id}
         )
 
-        # SQL 추출
+        # 출력에서 SQL 쿼리 추출
         match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
         if match:
             sql_query = match.group(1)
@@ -102,6 +130,7 @@ async def create_sql(
             match = re.search(r"SELECT.*", output, re.DOTALL)
             if match:
                 sql_query = match.group(0)
+
             else:
                 logger.error("SQL query not found in output")
                 raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
