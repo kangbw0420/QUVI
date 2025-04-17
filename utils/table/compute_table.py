@@ -7,12 +7,12 @@ from utils.table.safe_eval import SafeExpressionEvaluator
 
 logger = setup_logger('calc_table')
 
-def evaluate_fstring_template(template: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
+def evaluate_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
     """
     f-string 형식의 템플릿 문자열을 평가하여 결과 문자열을 반환합니다.
     
     Args:
-        template: f-string 형식의 템플릿 문자열 (예: "이름: {df['name']}")
+        fstring: f-string 형식의 템플릿 문자열 (예: "이름: {df['name']}")
         data: 표현식 평가에 사용할 데이터
         
     Returns:
@@ -20,16 +20,16 @@ def evaluate_fstring_template(template: str, data: Union[List[Dict[str, Any]], p
     """
     try:
         # f-string 마커 제거 (f"..." 또는 f'...')
-        if template.startswith('f"') and template.endswith('"'):
-            template = template[2:-1]
-        elif template.startswith("f'") and template.endswith("'"):
-            template = template[2:-1]
+        if fstring.startswith('f"') and fstring.endswith('"'):
+            fstring = fstring[2:-1]
+        elif fstring.startswith("f'") and fstring.endswith("'"):
+            fstring = fstring[2:-1]
         
         evaluator = SafeExpressionEvaluator(data)
         formatter = Formatter()
         result_parts = []
         
-        for literal_text, field_name, format_spec, conversion in formatter.parse(template):
+        for literal_text, field_name, format_spec, conversion in formatter.parse(fstring):
             # 리터럴 텍스트 추가
             result_parts.append(literal_text)
             
@@ -64,19 +64,13 @@ def evaluate_fstring_template(template: str, data: Union[List[Dict[str, Any]], p
         logger.error(f"템플릿 평가 중 오류: {str(e)}")
         return f"템플릿 평가 중 오류: {str(e)}"
 
-def compute_template(template: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
-    """
-    f-string 템플릿을 계산합니다.
-    
-    Args:
-        template: 계산할 템플릿 문자열
-        data: 계산에 사용할 데이터
-        
+def compute_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
+    """f-string 템플릿을 계산합니다.
     Returns:
         계산 결과과 반영된 문자열
     """
     try:
-        result = evaluate_fstring_template(template, data)
+        result = evaluate_fstring(fstring, data)
         
         # 결과 로깅
         logger.info(f"템플릿 평가 결과: {result[:100]}..." if len(result) > 100 else result)

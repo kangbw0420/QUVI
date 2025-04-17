@@ -19,7 +19,7 @@ from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.query.ever_note import ever_note
-from utils.table.compute_table import compute_template
+from utils.table.compute_table import compute_fstring
 
 logger = setup_logger('node')
 
@@ -302,7 +302,7 @@ async def respondent(state: GraphState) -> GraphState:
     state.update({"yogeumjae": debug_str})
     # debuging
     
-    final_answer = compute_template(fstring_answer, result, 'fstring')
+    final_answer = compute_fstring(fstring_answer, result, 'fstring')
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")
 
