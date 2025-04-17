@@ -10,6 +10,7 @@ from utils.table.allowed_list import (
     FUNCTION_ALIASES,
     ALLOWED_ATTRIBUTES
 )
+from utils.table.formatter import format_number
 
 class SafeExpressionEvaluator:
     """안전한 표현식 평가를 위한 클래스"""
@@ -48,16 +49,33 @@ class SafeExpressionEvaluator:
         Raises:
             ValueError: 허용되지 않은 노드 유형이나 연산을 만난 경우
         """
-        # 리터럴 (숫자, 문자열 등)
-        if isinstance(node, ast.Constant):
-            return node.value
-        
-        # 변수 이름
+        if isinstance(node, ast.Num):
+            return node.n
+        elif isinstance(node, ast.Str):
+            return node.s
         elif isinstance(node, ast.Name):
             if node.id in self.context:
                 return self.context[node.id]
-            else:
-                raise ValueError(f"변수 '{node.id}'는 허용되지 않거나 정의되지 않았습니다")
+            raise ValueError(f"허용되지 않은 변수: {node.id}")
+        elif isinstance(node, ast.BinOp):
+            if not isinstance(node.op, tuple(ALLOWED_OPERATORS.keys())):
+                raise ValueError(f"허용되지 않은 연산자: {type(node.op).__name__}")
+            
+            left = self._eval_node(node.left)
+            right = self._eval_node(node.right)
+            
+            # 연산 결과가 숫자인 경우 포맷팅 적용
+            result = ALLOWED_OPERATORS[type(node.op)](left, right)
+            if isinstance(result, (int, float)):
+                # 컬럼 이름 추출 (가능한 경우)
+                column = None
+                if isinstance(node.left, ast.Name) and node.left.id in self.df.columns:
+                    column = node.left.id
+                elif isinstance(node.right, ast.Name) and node.right.id in self.df.columns:
+                    column = node.right.id
+                
+                return format_number(result, column or '')
+            return result
         
         # 속성 접근 (예: df.shape)
         elif isinstance(node, ast.Attribute):
@@ -79,16 +97,6 @@ class SafeExpressionEvaluator:
             
             else:
                 raise ValueError(f"속성 '{attr}'는 허용되지 않았습니다")
-        
-        # 이항 연산 (a + b, a * b 등)
-        elif isinstance(node, ast.BinOp):
-            left = self._eval_node(node.left)
-            right = self._eval_node(node.right)
-            
-            if type(node.op) in ALLOWED_OPERATORS:
-                return ALLOWED_OPERATORS[type(node.op)](left, right)
-            else:
-                raise ValueError(f"연산자 {type(node.op).__name__}는 허용되지 않았습니다")
         
         # 비교 연산 (a > b, a == b 등)
         elif isinstance(node, ast.Compare):
