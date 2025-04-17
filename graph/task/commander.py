@@ -6,7 +6,8 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from core.postgresql import get_prompt
-from graph.models import qwen_llm
+# from graph.models import qwen_llm
+from graph.models import selector
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
@@ -17,11 +18,13 @@ logger = setup_logger('commander')
 async def command(trace_id: str, user_question: str) -> List[str]:
     output_parser = StrOutputParser()
 
-    system_prompt = get_prompt(node_nm='commander', prompt_nm='join')[0]['prompt']
+    system_prompt = get_prompt(node_nm='commander', prompt_nm='system')[0]['prompt']
+    # system_prompt = get_prompt(node_nm='commander', prompt_nm='join')[0]['prompt']
 
     few_shots = await retriever.get_few_shots(
         query_text=user_question,
-        collection_name="commander_join",
+        collection_name="shots_selector",
+        # collection_name="commander_join",
         top_k=5
     )
     few_shot_prompt = []
@@ -54,16 +57,18 @@ async def command(trace_id: str, user_question: str) -> List[str]:
         ]
     )
 
-    logger.debug("===== commander_join(Q) =====")
+    logger.debug("===== commander(Q) =====")
     qna_id = qna_manager.create_question(
         trace_id=trace_id,
         question=COMMANDER_PROMPT,
-        model="qwen_llm"
+        # model="qwen_llm"
+        model="selector"
     )
 
-    commander_chain = COMMANDER_PROMPT | qwen_llm | output_parser
+    commander_chain = COMMANDER_PROMPT | selector | output_parser
+    # commander_chain = COMMANDER_PROMPT | qwen_llm | output_parser
     response_json = commander_chain.invoke({"user_question": user_question})
-    logger.debug("===== commander_join(A) =====")
+    logger.debug("===== commander(A) =====")
     logger.info(f"response_json : {response_json}")
     qna_manager.record_answer(qna_id, str(response_json))
     

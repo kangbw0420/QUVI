@@ -12,7 +12,6 @@ from graph.task.killjoy import kill_joy
 from graph.task.safeguard import guard_query
 
 from utils.logger import setup_logger
-from utils.common.extract_data_info import extract_col_from_query, extract_col_from_dict
 from utils.common.date_checker import check_date, correct_date_range
 from utils.common.check_df import delete_useless_col, is_null_only
 from utils.query.filter_com import add_com_condition
