@@ -87,20 +87,20 @@ def detect_group_by_aliases(query: str) -> List[str]:
     
     return aliases
 
-def get_default_order_rule(selected_table: str) -> str:
-    # 리스트를 튜플로 변환하여 키 조회 시도
-    key_as_tuple = tuple(sorted(selected_table))
+# def get_default_order_rule(selected_table: str) -> str:
+#     # 리스트를 튜플로 변환하여 키 조회 시도
+#     key_as_tuple = tuple(sorted(selected_table))
 
-    # 튜플 키가 있는지 확인
-    if key_as_tuple in DEFAULT_ORDER_RULES:
-        return DEFAULT_ORDER_RULES[key_as_tuple]
+#     # 튜플 키가 있는지 확인
+#     if key_as_tuple in DEFAULT_ORDER_RULES:
+#         return DEFAULT_ORDER_RULES[key_as_tuple]
 
-    # 단일 테이블만 있으면 그대로 사용
-    if len(selected_table) == 1:
-        return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
+#     # 단일 테이블만 있으면 그대로 사용
+#     if len(selected_table) == 1:
+#         return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
 
-    # 모든 fallback 실패 시
-    return DEFAULT_ORDER_RULES["trsc"]
+#     # 모든 fallback 실패 시
+#     return DEFAULT_ORDER_RULES["trsc"]
 
 def find_matching_rule(columns: List[str], selected_table: str) -> str:
     """
@@ -111,7 +111,8 @@ def find_matching_rule(columns: List[str], selected_table: str) -> str:
 
     # 1. SELECT * 인 경우 테이블별 기본 정렬
     if '*' in columns_set:
-        return get_default_order_rule(selected_table)
+        return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
+        # return get_default_order_rule(selected_table)
 
     # 2. 알려지지 않은 컬럼에 대해 DESC 정렬
     unknown_columns = [col for col in columns if col not in KNOWN_COLUMNS]
@@ -124,7 +125,8 @@ def find_matching_rule(columns: List[str], selected_table: str) -> str:
             return order_by
 
     # 4. 매칭 안되면 기본값 반환
-    return get_default_order_rule(selected_table)
+    return DEFAULT_ORDER_RULES.get(selected_table, DEFAULT_ORDER_RULES["trsc"])
+    # return get_default_order_rule(selected_table)
 
 
 def has_subquery(query: str) -> bool:
