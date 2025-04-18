@@ -19,7 +19,7 @@ from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.query.ever_note import ever_note
-from utils.table.compute_table import compute_fstring
+from utils.table.compute_fstring import compute_fstring
 
 logger = setup_logger('node')
 

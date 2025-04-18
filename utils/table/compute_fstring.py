@@ -7,16 +7,15 @@ from utils.table.safe_eval import SafeExpressionEvaluator
 
 logger = setup_logger('calc_table')
 
-def evaluate_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
-    """
-    f-string 형식의 템플릿 문자열을 평가하여 결과 문자열을 반환합니다.
+def compute_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
+    """f-string 템플릿을 계산하고 결과를 반환합니다.
     
     Args:
         fstring: f-string 형식의 템플릿 문자열 (예: "이름: {df['name']}")
         data: 표현식 평가에 사용할 데이터
         
     Returns:
-        평가된 결과 문자열
+        계산 결과가 반영된 문자열
     """
     try:
         # f-string 마커 제거 (f"..." 또는 f'...')
@@ -58,19 +57,7 @@ def evaluate_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFram
                 logger.error(f"필드 '{field_name}' 평가 중 오류: {str(e)}")
                 result_parts.append(f"[오류: {str(e)}]")
         
-        return ''.join(result_parts)
-        
-    except Exception as e:
-        logger.error(f"템플릿 평가 중 오류: {str(e)}")
-        return f"템플릿 평가 중 오류: {str(e)}"
-
-def compute_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
-    """f-string 템플릿을 계산합니다.
-    Returns:
-        계산 결과과 반영된 문자열
-    """
-    try:
-        result = evaluate_fstring(fstring, data)
+        result = ''.join(result_parts)
         
         # 결과 로깅
         logger.info(f"템플릿 평가 결과: {result[:100]}..." if len(result) > 100 else result)
@@ -78,9 +65,7 @@ def compute_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame
         # 오류 검사
         if any(error_msg in result for error_msg in ["Error: ", "Error in", "오류: "]):
             logger.warning(f"템플릿 평가 중 오류 감지: {result}")
-            return (
-                "요청주신 질문에 대한 데이터는 아래 표와 같습니다.\n\n"
-            )
+            return "요청주신 질문에 대한 데이터는 아래 표와 같습니다.\n\n"
             
         if "Division by zero" in result:
             logger.warning("0으로 나누기 오류 감지")
