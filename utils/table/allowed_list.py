@@ -27,7 +27,7 @@ ALLOWED_DF_METHODS = {
     'notnull', 'reset_index', 'set_index', 'sort_values', 'sort_index',
     'groupby', 'copy', 'all', 'any', 'filter', 'idxmax', 'idxmin',
     'sample', 'shift', 'first', 'last', 'rolling', 'to_dict', 'values',
-    'agg', 'aggregate', 'groups'
+    'agg', 'aggregate', 'groups', 'join'
 }
 
 # 허용된 내장 함수
@@ -53,11 +53,12 @@ ALLOWED_BUILTINS = {
     'map': map,
     'filter': filter,
     'enumerate': enumerate,
+    'format': format,
 }
 
 # 허용된 속성 접근
 ALLOWED_ATTRIBUTES = {
-    "shape", "size", "index", "columns", "values", "T"
+    "shape", "size", "index", "columns", "values", "T", "join"
 }
 
 # 특수 함수 매핑

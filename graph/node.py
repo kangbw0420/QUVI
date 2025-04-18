@@ -302,7 +302,7 @@ async def respondent(state: GraphState) -> GraphState:
     state.update({"yogeumjae": debug_str})
     # debuging
     
-    final_answer = compute_fstring(fstring_answer, result, 'fstring')
+    final_answer = compute_fstring(fstring_answer, result)
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")
 
