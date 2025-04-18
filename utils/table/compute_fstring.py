@@ -9,11 +9,6 @@ logger = setup_logger('calc_table')
 
 def compute_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame]) -> str:
     """f-string 템플릿을 계산하고 결과를 반환합니다.
-    
-    Args:
-        fstring: f-string 형식의 템플릿 문자열 (예: "이름: {df['name']}")
-        data: 표현식 평가에 사용할 데이터
-        
     Returns:
         계산 결과가 반영된 문자열
     """
@@ -28,11 +23,15 @@ def compute_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame
         formatter = Formatter()
         result_parts = []
         
+        # qv를 잘 다루기 위해서는 Formatter의 구성을 잘 알아야 함
+        # literal_text: 중괄호 외부의 일반 텍스트
+        # field_name: 중괄호 내부의 필드 이름
+        # format_spec: 콜론 뒤에 오는 형식 지정자
+        # conversion: 느낌표 뒤에 오는 변환 지정자
         for literal_text, field_name, format_spec, conversion in formatter.parse(fstring):
             # 리터럴 텍스트 추가
             result_parts.append(literal_text)
             
-            # 표현식 필드가 없으면 건너뛰기
             if field_name is None:
                 continue
             
