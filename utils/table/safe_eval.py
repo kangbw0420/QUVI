@@ -10,7 +10,6 @@ from utils.table.allowed_list import (
     FUNCTION_ALIASES,
     ALLOWED_ATTRIBUTES
 )
-from utils.table.formatter import format_number
 
 class SafeExpressionEvaluator:
     """안전한 표현식 평가를 위한 클래스"""
