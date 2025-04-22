@@ -47,9 +47,9 @@ async def is_api(query_text: str) -> str:
                 logger.debug(f"Full API classification results: {json.dumps(result, indent=2, ensure_ascii=False)}")
 
             if result["isapi"] == "1":
-                selected_table = ["api"]
+                selected_table = "api"
             else:
-                selected_table = []
+                selected_table = ""
 
             return selected_table
 
