@@ -1,5 +1,5 @@
-from llm_admin.state_manager import StateManager
 from graph.types import GraphState
+from graph.trace_state import trace_state
 from graph.task.classifier import check_joy, is_api, classify_yqmd
 from graph.task.commander import command
 from graph.task.nl2sql import create_sql
@@ -23,10 +23,10 @@ from utils.table.compute_fstring import compute_fstring
 
 logger = setup_logger('node')
 
+@trace_state("user_question")
 async def checkpoint(state: GraphState) -> GraphState:
     # 금융 관련 질의 fin과 쓸데없는 질의 joy의 임베딩 모델 활용 이진분류
     user_question = state["user_question"]
-    trace_id = state["trace_id"]
     flags = state.get("flags")
 
     is_joy = await check_joy(user_question)
@@ -34,37 +34,29 @@ async def checkpoint(state: GraphState) -> GraphState:
         flags["is_joy"] = True
         state.update({"selected_table": []})
 
-    StateManager.update_state(trace_id, {"user_question": user_question})
     return state
 
+@trace_state("user_question", "selected_table")
 async def isapi(state: GraphState) -> GraphState:
     # 사용자 질문을 api로 처리할 수 있을지 판단
     user_question = state["user_question"]
-    trace_id = state["trace_id"]
-
+    
     selected_table = await is_api(user_question)
-
+    
     state.update({"selected_table": selected_table})
-    StateManager.update_state(trace_id, {
-        "user_question": user_question,
-        "selected_table": selected_table
-    })
     return state
 
-async def commander(state: GraphState) -> GraphState:
+@trace_state("user_question", "selected_table")
+async def commander(state: GraphState, trace_id=None) -> GraphState:
     # 사용자 질문에 검색해야 할 table을 선택
     user_question = state["user_question"]
-    trace_id = state["trace_id"]
 
     selected_table = await command(trace_id, user_question)
 
     state.update({"selected_table": selected_table})
-    StateManager.update_state(trace_id, {
-        "user_question": user_question,
-        "selected_table": selected_table
-    })
     return state
 
+@trace_state("selected_api")
 async def funk(state: GraphState) -> GraphState:
     # api 함수를 선택
     user_question = state["user_question"]
@@ -75,9 +67,9 @@ async def funk(state: GraphState) -> GraphState:
     state.update({"selected_api": selected_api})
     return state
 
-async def params(state: GraphState) -> GraphState:
+@trace_state("sql_query", "date_info")
+async def params(state: GraphState, trace_id=None) -> GraphState:
     # api 함수의 파라미터(뷰 파라미터)를 채워넣음
-    trace_id = state["trace_id"]
     selected_api = state["selected_api"]
     user_question = state["user_question"]
     company_id = state["company_id"]
@@ -98,10 +90,6 @@ async def params(state: GraphState) -> GraphState:
         })
 
     state.update({"sql_query": sql_query, "date_info": date_info})
-    StateManager.update_state(trace_id, {
-        "company_id": company_id,
-        "sql_query": sql_query
-    })
     return state
 
 async def yqmd(state: GraphState) -> GraphState:
@@ -114,9 +102,9 @@ async def yqmd(state: GraphState) -> GraphState:
 
     return state
 
-async def nl2sql(state: GraphState) -> GraphState:
+@trace_state("company_id", "sql_query")
+async def nl2sql(state: GraphState, trace_id=None) -> GraphState:
     # 사용자 질문을 기반으로 SQL 쿼리를 생성
-    trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     user_question = state["user_question"]
     company_id = state["company_id"]
@@ -124,15 +112,11 @@ async def nl2sql(state: GraphState) -> GraphState:
     sql_query = await create_sql(trace_id, selected_table, company_id, user_question)
 
     state.update({"sql_query": sql_query})
-    StateManager.update_state(trace_id, {
-        "company_id": company_id,
-        "sql_query": sql_query
-    })
     return state
 
+@trace_state("sql_query", "query_result", "date_info")
 async def executor(state: GraphState) -> GraphState:
     # SQL 쿼리를 실행하고 결과를 분석
-    trace_id = state["trace_id"]
     selected_table = state["selected_table"]
     flags = state.get("flags")
 
@@ -143,9 +127,9 @@ async def executor(state: GraphState) -> GraphState:
         query = state.get("sql_query")
         logger.info(f"Executing API query: {query}")
         try:
-            result = execute(query)
+            query_result = execute(query)
             state.update({"sql_query": query})
-            if not result:
+            if not query_result:
                 flags["no_data"] = True
         except Exception as e:
             raise
@@ -191,11 +175,11 @@ async def executor(state: GraphState) -> GraphState:
                 state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
 
             logger.info(f"Executing final SQL query (length: {len(query)})")
-            result = execute(query)
+            query_result = execute(query)
             state.update({"sql_query": query})
 
             # If no results found and it's a trsc query, try vector search for note1
-            if (not result or is_null_only(result)) and "trsc" in selected_table:
+            if (not query_result or is_null_only(query_result)) and "trsc" in selected_table:
                 evernote_result = await ever_note(query)
                 
                 # Get original and similar notes from the result
@@ -222,42 +206,30 @@ async def executor(state: GraphState) -> GraphState:
 
                 # Try executing the modified query if available
                 if modified_query and modified_query != query:
-                    result = execute(modified_query)
+                    query_result = execute(modified_query)
                     state.update({"sql_query": modified_query})
 
             state.update({"date_info": view_dates["main"]})
 
         except Exception as e:
             logger.error(f"Error in executor: {str(e)}")
-            result = execute(query_ordered)
+            query_result = execute(query_ordered)
             state.update({"sql_query": query_ordered})
 
     # 결과가 없는 경우 처리
-    if not result or is_null_only(result):
+    if not query_result or is_null_only(query_result):
         logger.warning("No data found in query results")
         flags["no_data"] = True
-        empty_result = []
-        state.update({"query_result": empty_result})
-        StateManager.update_state(trace_id, {
-            "sql_query": state.get("sql_query"),
-            "query_result": empty_result,
-            "date_info": state.get("date_info", (None, None))
-        })
-
+        query_result = []
+        state.update({"query_result": query_result})
         return state
 
     logger.info(f"Query executed successfully, storing results")
-    state.update({"query_result": result})
-    StateManager.update_state(trace_id, {
-        "sql_query": state.get("sql_query"),
-        "query_result": result,
-        "date_info": state.get("date_info", (None, None))
-    })
-
+    state.update({"query_result": query_result})
     return state
 
-async def safeguard(state: GraphState) -> GraphState:
-    trace_id = state["trace_id"]
+@trace_state("sql_query", "sql_error")
+async def safeguard(state: GraphState, trace_id=None) -> GraphState:
     user_question = state["user_question"]
     selected_table = state["selected_table"]
     unsafe_query = state["sql_query"]
@@ -266,25 +238,20 @@ async def safeguard(state: GraphState) -> GraphState:
     
     flags["safe_count"] = flags.get("safe_count", 0) + 1
 
-    safe_query = await guard_query(trace_id, unsafe_query, user_question, selected_table, flags, sql_error)
+    sql_query = await guard_query(trace_id, unsafe_query, user_question, selected_table, flags, sql_error)
 
-    if safe_query == unsafe_query:
+    if sql_query == unsafe_query:
         flags["query_changed"] = False
         return state
 
-    if safe_query != unsafe_query:
+    if sql_query != unsafe_query:
         flags["query_changed"] = True
-        state.update({"sql_query": safe_query})
-
-        StateManager.update_state(trace_id, {
-            "sql_query": safe_query,
-            "sql_error": sql_error
-        })
+        state.update({"sql_query": sql_query})
         return state
 
-async def respondent(state: GraphState) -> GraphState:
+@trace_state("final_answer", "query_result")
+async def respondent(state: GraphState, trace_id=None) -> GraphState:
     # 쿼리 결과를 바탕으로 최종 응답을 생성"""
-    trace_id = state["trace_id"]
     user_question = state["user_question"]
     result = state["query_result"]
     selected_table = state["selected_table"]
@@ -302,20 +269,16 @@ async def respondent(state: GraphState) -> GraphState:
     state.update({"yogeumjae": debug_str})
     # debuging
     
-    final_answer = compute_fstring(fstring_answer, result)
+    final_answer = compute_fstring(fstring_answer, result, 'fstring')
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")
 
     state.update({"final_answer": final_answer, "query_result": final_result})
-    StateManager.update_state(trace_id, {
-        "final_answer": final_answer,
-        "query_result": final_result
-    })
     return state
 
-async def nodata(state: GraphState) -> GraphState:
+@trace_state("final_answer")
+async def nodata(state: GraphState, trace_id=None) -> GraphState:
     # 데이터가 없음을 설명하는 노드"""
-    trace_id = state["trace_id"]
     user_question = state["user_question"]
     flags = state.get("flags")
     
@@ -331,12 +294,11 @@ async def nodata(state: GraphState) -> GraphState:
         final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
 
     state.update({"final_answer": final_answer})
-    StateManager.update_state(trace_id, {"final_answer": final_answer})
     return state
 
-async def killjoy(state: GraphState) -> GraphState:
+@trace_state("final_answer")
+async def killjoy(state: GraphState, trace_id=None) -> GraphState:
     # 장난하지 말고 재무 데이터나 물어보라는 노드"""
-    trace_id = state["trace_id"]
     user_question = state["user_question"]
 
     final_answer = await kill_joy(trace_id, user_question)
@@ -346,6 +308,5 @@ async def killjoy(state: GraphState) -> GraphState:
         "query_result": [],
         "sql_query": ""
     })
-
-    StateManager.update_state(trace_id, {"final_answer": final_answer})
+    
     return state
