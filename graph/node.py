@@ -253,27 +253,27 @@ async def safeguard(state: GraphState, trace_id=None) -> GraphState:
 async def respondent(state: GraphState, trace_id=None) -> GraphState:
     # 쿼리 결과를 바탕으로 최종 응답을 생성"""
     user_question = state["user_question"]
-    result = state["query_result"]
+    query_result = state["query_result"]
     selected_table = state["selected_table"]
 
-    final_result = delete_useless_col(result)
+    query_result = delete_useless_col(query_result)
 
     if selected_table == "api":
         date_info = state["date_info"]
     else:
         date_info = ()
-    fstring_answer, table_pipe = await response(trace_id, user_question, date_info, final_result)
+    fstring_answer, table_pipe = await response(trace_id, user_question, date_info, query_result)
 
     # debuging
     debug_str = f"{fstring_answer}\n\n\n{table_pipe}"
     state.update({"yogeumjae": debug_str})
     # debuging
     
-    final_answer = compute_fstring(fstring_answer, result, 'fstring')
+    final_answer = compute_fstring(fstring_answer, query_result)
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")
 
-    state.update({"final_answer": final_answer, "query_result": final_result})
+    state.update({"final_answer": final_answer, "query_result": query_result})
     return state
 
 @trace_state("final_answer")
