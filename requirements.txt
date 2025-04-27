@@ -4,7 +4,6 @@ fastapi-cache2==0.2.2
 langchain==0.3.8
 langchain_core==0.3.25
 langgraph==0.2.59
-pandas==1.5.3
 psycopg2-binary==2.9.10
 pydantic==2.10.3
 pymongo==4.10.1
