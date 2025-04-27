@@ -62,7 +62,7 @@ def compute_fstring(fstring: str, data: Union[List[Dict[str, Any]], pd.DataFrame
         logger.info(f"템플릿 평가 결과: {result[:100]}..." if len(result) > 100 else result)
         
         # 오류 검사
-        if any(error_msg in result for error_msg in ["Error: ", "Error in", "오류: "]):
+        if any(error_msg in result for error_msg in ["Error", "오류"]):
             logger.warning(f"템플릿 평가 중 오류 감지: {result}")
             return "요청주신 질문에 대한 데이터는 아래 표와 같습니다.\n\n"
             
