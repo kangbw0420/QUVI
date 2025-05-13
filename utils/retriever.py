@@ -50,8 +50,8 @@ class FewShotRetriever:
                 if isinstance(data, dict) and "results" in data:
                     results = data["results"]
                     if "documents" in results and "metadatas" in results:
-                        documents = results["documents"][0]  # First list contains documents
-                        metadatas = results["metadatas"][0]  # First list contains metadatas
+                        documents = results["documents"]
+                        metadatas = results["metadatas"]
 
                         # Pair documents with their metadata
                         for doc, meta in zip(documents, metadatas):
