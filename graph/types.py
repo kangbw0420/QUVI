@@ -1,4 +1,4 @@
-from typing import TypedDict, Tuple, List
+from typing import TypedDict, Tuple, List, Dict, Any
 
 class ProcessingFlags(TypedDict):
     is_joy: bool
@@ -20,15 +20,12 @@ class GraphState(TypedDict):
     user_info: Tuple[str, str]
     company_id: str
     yogeumjae: str # debugging: 이제 필요 없지만 fstring을 전달하기 위한 흔적 기관
-    # shellder: boolean
     user_question: str
-    # selected_table: List[str]
-    selected_table: str
     selected_api: str
     sql_query: str
     sql_error: str
     date_info: Tuple[str, str]
-    query_result: List[str]
+    query_result: Dict[str, Any]
     final_answer: str
     vector_notes: VectorNotes
     flags: ProcessingFlags

@@ -105,11 +105,10 @@ async def yqmd(state: GraphState) -> GraphState:
 @trace_state("company_id", "sql_query")
 async def nl2sql(state: GraphState, trace_id=None) -> GraphState:
     # 사용자 질문을 기반으로 SQL 쿼리를 생성
-    selected_table = state["selected_table"]
     user_question = state["user_question"]
     company_id = state["company_id"]
 
-    sql_query = await create_sql(trace_id, selected_table, company_id, user_question)
+    sql_query = await create_sql(trace_id, company_id, user_question)
 
     state.update({"sql_query": sql_query})
     return state

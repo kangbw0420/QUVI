@@ -1,6 +1,7 @@
 import os
 import argparse
 import time
+import sys
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -12,15 +13,18 @@ from fastapi_cache.backends.inmemory import InMemoryBackend
 from core.api import api
 from core.postgresql import connect_postgresql_pool
 from utils.logger import setup_logger
+from utils.pid import PIDManager
 
 # 로그 디렉토리 설정
 log_dir = os.environ.get('LOG_DIR', 'logs')
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
+# PID 매니저 초기화
+pid_manager = PIDManager()
+
 # 애플리케이션 루트 로거 설정
 logger = setup_logger('main')
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="FastAPI Uvicorn Server")
@@ -34,6 +38,7 @@ def parse_arguments():
 async def lifespan(app: FastAPI):
     # 애플리케이션 시작 로깅
     logger.info("Application startup")
+    pid_manager.write_pid()
 
     try:
         # postgresql 커넥션풀 연결
@@ -51,10 +56,9 @@ async def lifespan(app: FastAPI):
     finally:
         # 애플리케이션 종료 로깅
         logger.info("Application shutdown")
-
+        pid_manager.remove_pid()
 
 app = FastAPI(lifespan=lifespan)
-
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

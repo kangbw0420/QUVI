@@ -5,21 +5,23 @@ from typing import List
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from core.postgresql import get_prompt
-from graph.models import qwen_llm
+from graph.models import qwen_llm as llm
+from graph.prompts.prompts_core import PROMPT_NL2SQL
+from graph.prompts.prompts_guardian import PROMPT_SAFEGUARD
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
 qna_manager = QnAManager()
-logger = setup_logger('safeguard')
+logger = setup_logger("safeguard")
+
 
 async def guard_query(
-        trace_id: str,
-        unsafe_query: str,
-        user_question: str,
-        selected_table: str,
-        flags: dict,
-        sql_error: str = ""
+    trace_id: str,
+    unsafe_query: str,
+    user_question: str,
+    selected_table: str,
+    flags: dict,
+    sql_error: str = "",
 ) -> str:
     """에러가 발생했거나 날짜가 틀릴 수 있는 쿼리를 체크
     Returns:
@@ -29,31 +31,31 @@ async def guard_query(
     prompt_today = today.strftime("%Y년 %m월 %d일")
 
     if flags["query_error"]:
-        system_prompt = get_prompt(
-            node_nm='safeguard', prompt_nm='error'
-        )[0]['prompt'].format(user_question=user_question, today=prompt_today, unsafe_query=unsafe_query, sql_error=sql_error)
+        system_prompt = PROMPT_SAFEGUARD.format(
+            user_question=user_question,
+            today=prompt_today,
+            unsafe_query=unsafe_query,
+            sql_error=sql_error,
+        )
     else:
-        system_prompt = get_prompt(
-            node_nm='safeguard', prompt_nm=selected_table
-        )[0]['prompt'].format(user_question=user_question, today=prompt_today, unsafe_query=unsafe_query)
+        question_with_error = f"{user_question}, SQL오류: {sql_error}"
+        system_prompt = PROMPT_NL2SQL.format(
+            user_question=question_with_error,
+            today=prompt_today
+        )
 
     prompt = ChatPromptTemplate.from_messages(
-        [
-            SystemMessage(content=system_prompt),
-            ("human", user_question)
-        ]
+        [SystemMessage(content=system_prompt), ("human", user_question)]
     )
 
     logger.debug("===== safeguard(Q) =====")
     qna_id = qna_manager.create_question(
-        trace_id=trace_id,
-        question=prompt,
-        model="qwen_14b"
+        trace_id=trace_id, question=prompt, model="qwen_14b"
     )
 
-    guard_chain = prompt | qwen_llm
+    guard_chain = prompt | llm
     output = guard_chain.invoke({"user_question": user_question})
-    
+
     match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
     if match:
         safe_query = match.group(1)

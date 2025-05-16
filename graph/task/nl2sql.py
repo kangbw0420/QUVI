@@ -1,34 +1,26 @@
 import re
-from typing import List
 from datetime import datetime
 
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from core.postgresql import get_prompt
 from graph.models import nl2sql
+from graph.prompts.prompts_core import PROMPT_NL2SQL
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
 
 qna_manager = QnAManager()
-logger = setup_logger('nl2sql')
+logger = setup_logger("nl2sql")
 
-WEEKDAYS = {
-    0: '월',
-    1: '화',
-    2: '수',
-    3: '목',
-    4: '금',
-    5: '토',
-    6: '일'
-}
+WEEKDAYS = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}
+
 
 async def create_sql(
-        trace_id: str,
-        selected_table: str,
-        company_id: str,
-        user_question: str
+    trace_id: str,
+    company_id: str,
+    user_question: str,
+    chat_history_prompt: list[tuple[str, str]],
 ) -> str:
     """분석된 질문으로부터 SQL 쿼리를 생성
     Returns:
@@ -41,52 +33,10 @@ async def create_sql(
         today = datetime.now()
         prompt_today = today.strftime("%Y년 %m월 %d일")
         logger.info(f"nl2sql prompt_today: {prompt_today}")
-        try:
-            system_prompt = get_prompt(
-                node_nm='nl2sql',
-                prompt_nm=selected_table
-            )[0]['prompt'].format(
-                today=prompt_today,
-                main_com=company_id
-            )
-        except:
-            system_prompt = get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(
-                today=today)
-            logger.warning(f"Failed to get specific prompt for {selected_table}, using default system prompt")
-
-#     try:
-#         today = datetime.now()
-#         prompt_today = today.strftime("%Y년 %m월 %d일")
-#         logger.info(f"nl2sql prompt_today: {prompt_today}")
-
-#         # prompt 및 shots 분기 처리
-#         if len(selected_table) == 1:
-#             prompt_nm = selected_table[0]
-#             collection_name = f"shots_{selected_table[0]}"
-#         else:
-#             prompt_nm = "join"
-#             collection_name = "shots_join"
-
-#         try:
-#             system_prompt = get_prompt(
-#                 node_nm='nl2sql',
-#                 prompt_nm=prompt_nm
-#             )[0]['prompt'].format(
-#                 today=prompt_today,
-#                 main_com=company_id
-#             )
-#         except:
-#             system_prompt = get_prompt(node_nm='nl2sql', prompt_nm='system')[0]['prompt'].format(
-#                 today=today)
-#             logger.warning(f"Failed to get specific prompt for {prompt_nm}, using default system prompt")
-
-        # 콜렉션 이름은 shots_trsc, shots_amt와 같이 구성됨
-        collection_name = f"shots_{selected_table}"
+        system_prompt = PROMPT_NL2SQL.format(today=prompt_today, main_com=company_id)
 
         few_shots = await retriever.get_few_shots(
-            query_text=user_question,
-            collection_name=collection_name,
-            top_k=3
+            query_text=user_question, collection_name="shots_nl2sql", top_k=3
         )
         few_shot_prompt = []
         for example in reversed(few_shots):
@@ -97,6 +47,13 @@ async def create_sql(
             few_shot_prompt.append(("human", human_with_date))
             few_shot_prompt.append(("ai", example["output"]))
 
+        # 시스템 메시지와 퓨샷 합치기
+        flattend_few_shot_prompt = "\n".join(
+            f"{role}: {text}" for role, text in few_shot_prompt
+        )
+        concat_few_shot_prompt = f"{system_prompt}\n{flattend_few_shot_prompt}"
+
+        # 사용자의 질문 포맷팅
         formatted_today = today.strftime("%Y%m%d")
         weekday = WEEKDAYS[today.weekday()]
 
@@ -104,17 +61,15 @@ async def create_sql(
 
         prompt = ChatPromptTemplate.from_messages(
             [
-                SystemMessage(content=system_prompt),
-                *few_shot_prompt,
+                SystemMessage(content=concat_few_shot_prompt),
+                *chat_history_prompt,
                 ("human", formatted_question),
             ]
         )
 
         logger.debug("===== nl2sql(Q) =====")
         qna_id = qna_manager.create_question(
-            trace_id=trace_id,
-            question=prompt,
-            model="qwen_nl2sql"
+            trace_id=trace_id, question=prompt, model="qwen_nl2sql"
         )
 
         chain = prompt | nl2sql

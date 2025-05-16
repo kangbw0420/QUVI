@@ -6,12 +6,13 @@ from datetime import datetime
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from core.postgresql import get_prompt
+
 from graph.models import qwen_llm
+from graph.prompts.prompts_api import PROMPT_PARAMS
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
 from utils.logger import setup_logger
-from utils.common.date_checker import correct_date, is_valid_date
+
 
 qna_manager = QnAManager()
 logger = setup_logger('params')
@@ -68,9 +69,7 @@ async def parameters(
         today_str = today.strftime("%Y%m%d")
         logger.info(f"Current date: {prompt_today} ({today_str})")
 
-        system_prompt = get_prompt(
-            node_nm="params", prompt_nm="system"
-        )[0]["prompt"].format(today=prompt_today, json_format=json_format)
+        system_prompt = PROMPT_PARAMS.format(today=prompt_today, json_format=json_format)
 
         few_shots = await retriever.get_few_shots(
             query_text=user_question, collection_name="shots_params_creator", top_k=5
