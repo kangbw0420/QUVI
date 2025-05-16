@@ -38,6 +38,7 @@ async def process_input(request: Input) -> Output:
         initial_state = {
             "chain_id": chain_id,
             "user_info": user_info,
+            "is_api": False,
             "fstring" : "",
             "company_id": request.company_id,
             "user_question": request.user_question,
@@ -62,7 +63,7 @@ async def process_input(request: Input) -> Output:
         answer = final_state["final_answer"]
         raw_data = final_state["query_result"]
         sql_query = final_state["sql_query"]
-        selected_table = final_state["selected_table"]
+        is_api = final_state["is_api"]
 
         if "date_info" not in final_state or not final_state["date_info"]:
             date_info = (None, None)
@@ -70,7 +71,7 @@ async def process_input(request: Input) -> Output:
             date_info = final_state["date_info"]
         
         # recommend_list 갱신
-        if selected_table == "api":
+        if is_api:
             recommend_list = api_recommend(final_state["selected_api"])
 
         # debugging
@@ -92,7 +93,7 @@ async def process_input(request: Input) -> Output:
                 "session_id": conversation_id,
                 "chain_id": chain_id,
                 "recommend": recommend_list,
-                "is_api": selected_table == "api",
+                "is_api": is_api,
                 "date_info": date_info,
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, debug)
                 "selected_table": "trsc", # temporary

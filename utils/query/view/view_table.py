@@ -1,15 +1,15 @@
 import re
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
+from datetime import datetime, timedelta
+
 import sqlglot
 from sqlglot import exp
 from sqlglot.errors import ParseError
-from datetime import datetime, timedelta
-
-from typing_extensions import List
 
 from utils.query.view.classify_query import QueryClassifier
 from utils.query.view.extract_date import DateExtractor
+from graph.types import UserInfo
 
 @dataclass
 class ViewFunction:
@@ -24,14 +24,14 @@ class ViewFunction:
 
 class ViewTableTransformer:
     """SQL query transformer for view table functionality"""
-    def __init__(self, selected_table: str, user_info: Tuple[str, str],
+    def __init__(self, user_info: UserInfo,
                  view_com: str, flags: Dict[str, bool]):
-        self.selected_table = selected_table
-        self.user_id, self.use_intt_id = user_info
+        self.user_id = user_info["user_id"]
+        self.use_intt_id = user_info["use_intt_id"]
         self.view_com = view_com
         self.flags = flags
         self.classifier = QueryClassifier()
-        self.date_extractor = DateExtractor(selected_table)
+        self.date_extractor = DateExtractor('trsc_dt') # 기본값 trsc_dt
         self.date_ranges = {}  # 쿼리 ID별 날짜 범위 저장
         self.query_counter = 0  # 서브쿼리에 고유 ID 부여를 위한 카운터
 
@@ -318,29 +318,19 @@ class ViewTableTransformer:
         except ParseError:
             return False
 
-def view_table(query_ordered: str, selected_table: str,
-               company_id: str, user_info: Tuple[str, str], flags: dict) -> Tuple[str, Dict[str, Tuple[str, str]]]:
+def view_table(query_ordered: str, company_id: str, 
+               user_info: UserInfo, flags: dict) -> Tuple[str, Dict[str, Tuple[str, str]]]:
     """
-    view_table을 적용하여 최종 변환된 날짜정보와 쿼리를 반환
+    Transform SQL query for view table functionality
     
     Args:
-        query_ordered: ORDER BY가 추가된 SQL 쿼리
-        selected_table: 선택된 테이블 (amt, trsc, stock 등)
-        company_id: 메인 회사명
-        user_info: (user_id, use_intt_id) 튜플
-        flags: 상태 플래그 딕셔너리 (미래 날짜 등)
+        query_ordered: SQL query to transform
+        company_id: Company ID
+        user_info: UserInfo dictionary containing user information
+        flags: Dictionary containing processing flags
         
     Returns:
-        Tuple[str, Tuple[str, str]]: 변환된 SQL 쿼리와 메인 쿼리의 날짜 범위
+        Tuple containing transformed query and date information
     """
-    transformer = ViewTableTransformer(
-        selected_table=selected_table,
-        user_info=user_info,
-        view_com=company_id,
-        flags=flags
-    )
-    
-    # 쿼리 변환 및 날짜 정보 추출
-    transformed_query, date_ranges = transformer.transform_query(query_ordered)
-
-    return transformed_query, date_ranges
+    transformer = ViewTableTransformer(user_info, company_id, flags)
+    return transformer.transform_query(query_ordered)

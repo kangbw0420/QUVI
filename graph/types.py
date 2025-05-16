@@ -21,6 +21,7 @@ class GraphState(TypedDict):
     company_id: str
     yogeumjae: str # debugging: 이제 필요 없지만 fstring을 전달하기 위한 흔적 기관
     user_question: str
+    is_api: bool
     selected_api: str
     sql_query: str
     sql_error: str

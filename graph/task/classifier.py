@@ -1,8 +1,8 @@
 import re
 import json
-from typing import List
-from utils.config import Config
 import httpx
+
+from utils.config import Config
 from utils.logger import setup_logger
 
 logger = setup_logger('classifier')
@@ -13,7 +13,7 @@ def sanitize_query(query_text: str) -> str:
     sanitized = re.sub(r'[\\/"\'&?#]', '-', query_text)
     return sanitized
 
-async def check_joy(query_text: str) -> dict:
+async def classify_joy(query_text: str) -> dict:
     sanitized_query = sanitize_query(query_text)
     url = f"{BASE_URL}/checkpoint/{sanitized_query}"
     async with httpx.AsyncClient() as client:
@@ -33,7 +33,7 @@ async def check_joy(query_text: str) -> dict:
             return {"checkpoint": "fin"}  # 기본값은 금융 관련 질문으로 설정
 
 
-async def is_api(query_text: str) -> str:
+async def classify_api(query_text: str) -> str:
     sanitized_query = sanitize_query(query_text)
     url = f"{BASE_URL}/isapi/{sanitized_query}"
     async with httpx.AsyncClient() as client:
@@ -47,15 +47,16 @@ async def is_api(query_text: str) -> str:
                 logger.debug(f"Full API classification results: {json.dumps(result, indent=2, ensure_ascii=False)}")
 
             if result["isapi"] == "1":
-                selected_table = "api"
+                is_api = True
             else:
-                selected_table = ""
+                is_api = False
 
-            return selected_table
+            return is_api
 
         except httpx.HTTPError as e:
             logger.error(f"Error checking if query is API: {e}")
-            return []  # 에러 시 빈 문자열 반환
+            return False
+
 
 async def classify_yqmd(query_text: str, sql_query: str) -> str:
     """연간/분기/월간/일간 파라미터를 결정하여 SQL 쿼리에 추가

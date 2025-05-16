@@ -1,6 +1,5 @@
 import re
 from datetime import datetime
-from typing import List
 
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -19,7 +18,6 @@ async def guard_query(
     trace_id: str,
     unsafe_query: str,
     user_question: str,
-    selected_table: str,
     flags: dict,
     sql_error: str = "",
 ) -> str:

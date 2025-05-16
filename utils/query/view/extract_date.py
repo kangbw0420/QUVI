@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List, Tuple, Optional, Set, Dict, Any
+from typing import List, Tuple, Optional
 import sqlglot
 from sqlglot import exp
-from sqlglot.errors import ParseError
 import re
 
 @dataclass
@@ -22,9 +21,8 @@ class DateCondition:
     secondary_value: Optional[str] = None  # BETWEEN의 두 번째 값
 
 class DateExtractor:
-    def __init__(self, selected_table: str = None):
-        self.selected_table = selected_table
-        self.date_column = 'reg_dt' if selected_table in ['amt', 'stock'] else 'trsc_dt'
+    def __init__(self, date_column: str = 'trsc_dt'):
+        self.date_column = date_column
         self.today = datetime.now()
         self.today_str = self.today.strftime("%Y%m%d")
 
@@ -48,9 +46,17 @@ class DateExtractor:
                 date_conditions = self._extract_date_conditions(ast)
                 due_date_conditions = self._extract_due_date_conditions(ast)
             
-            date_range = self._determine_date_range(date_conditions, due_date_conditions)
+            # 현재 date_column에 대한 조건이 있는지 확인
+            has_conditions = any(cond.column == self.date_column for cond in date_conditions)
             
-            return date_range.from_date, date_range.to_date
+            if has_conditions:
+                date_range = self._determine_date_range(date_conditions, due_date_conditions)
+                return date_range.from_date, date_range.to_date
+            else:
+                # 현재 date_column에 대한 조건이 없으면 다른 컬럼으로 시도
+                other_column = 'reg_dt' if self.date_column == 'trsc_dt' else 'trsc_dt'
+                other_extractor = DateExtractor(other_column)
+                return other_extractor.extract_dates(query, node_scope)
             
         except Exception as e:
             print(f"Error in extract_dates: {e}")
@@ -76,27 +82,25 @@ class DateExtractor:
 
             # extract date condition
             if isinstance(node, exp.Between):
-                if (isinstance(node.this, exp.Column) and
-                    (node.this.name == 'reg_dt' or node.this.name == 'trsc_dt')):
+                if (isinstance(node.this, exp.Column) and node.this.name == self.date_column):
                     low_value = str(node.args["low"].this).strip("'")
                     high_value = str(node.args["high"].this).strip("'")
 
                     if date_pattern.match(low_value) and date_pattern.match(high_value):
                         conditions.append(DateCondition(
-                            column=node.this.name,
+                            column=self.date_column,
                             operator='BETWEEN',
                             value=low_value,
                             secondary_value=high_value
                         ))
             elif isinstance(node, (exp.EQ, exp.GT, exp.LT, exp.GTE, exp.LTE)):
-                if (isinstance(node.this, exp.Column) and 
-                    (node.this.name == 'reg_dt' or node.this.name == 'trsc_dt')):
+                if (isinstance(node.this, exp.Column) and node.this.name == self.date_column):
                     value = str(node.expression.this).strip("'")
                     op_name = node.__class__.__name__
                     
                     if date_pattern.match(value):
                         conditions.append(DateCondition(
-                            column=node.this.name,
+                            column=self.date_column,
                             operator=op_name,
                             value=value
                         ))
