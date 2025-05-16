@@ -95,7 +95,7 @@ async def process_input(request: Input) -> Output:
                 "is_api": selected_table == "api",
                 "date_info": date_info,
                 "sql_query": kabigon, # (SQL 잘 뜨는지 확인용, debug)
-                "selected_table": selected_table
+                "selected_table": "trsc", # temporary
             }
         )
 
