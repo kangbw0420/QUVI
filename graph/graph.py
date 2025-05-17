@@ -6,7 +6,6 @@ from graph.trace_state import TrackedStateGraph
 from graph.node import (
     checkpoint,
     isapi,
-    commander,
     funk,
     params,
     yqmd,
@@ -26,7 +25,6 @@ def make_graph() -> CompiledStateGraph:
 
         workflow.add_node("checkpoint", checkpoint)
         workflow.add_node("isapi", isapi)
-        workflow.add_node("commander", commander) # 처리 경로를 결정
         workflow.add_node("funk", funk) # api 함수 선택
         workflow.add_node("params", params) # api 함수 파라미터 선택
         workflow.add_node("yqmd", yqmd)
@@ -54,11 +52,11 @@ def make_graph() -> CompiledStateGraph:
             "isapi",
             lambda x: (
                 "funk" if x["is_api"] else
-                "commander"
+                "nl2sql"
             ),
             {
                 "funk": "funk",
-                "commander": "commander"
+                "nl2sql": "nl2sql"
             }
         )
         workflow.add_edge("funk", "params")
@@ -76,8 +74,6 @@ def make_graph() -> CompiledStateGraph:
             }
         )
         workflow.add_edge("yqmd", "executor")
-
-        workflow.add_edge("commander", "nl2sql")
         workflow.add_edge("nl2sql", "executor")
         
         workflow.add_conditional_edges(

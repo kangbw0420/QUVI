@@ -9,7 +9,6 @@ from sqlglot.errors import ParseError
 
 from utils.query.view.classify_query import QueryClassifier
 from utils.query.view.extract_date import DateExtractor
-from graph.types import UserInfo
 
 @dataclass
 class ViewFunction:
@@ -24,7 +23,7 @@ class ViewFunction:
 
 class ViewTableTransformer:
     """SQL query transformer for view table functionality"""
-    def __init__(self, user_info: UserInfo,
+    def __init__(self, user_info: Tuple[str, str],
                  view_com: str, flags: Dict[str, bool]):
         self.user_id = user_info["user_id"]
         self.use_intt_id = user_info["use_intt_id"]
@@ -319,18 +318,6 @@ class ViewTableTransformer:
             return False
 
 def view_table(query_ordered: str, company_id: str, 
-               user_info: UserInfo, flags: dict) -> Tuple[str, Dict[str, Tuple[str, str]]]:
-    """
-    Transform SQL query for view table functionality
-    
-    Args:
-        query_ordered: SQL query to transform
-        company_id: Company ID
-        user_info: UserInfo dictionary containing user information
-        flags: Dictionary containing processing flags
-        
-    Returns:
-        Tuple containing transformed query and date information
-    """
+               user_info: Tuple[str, str], flags: dict) -> Tuple[str, Dict[str, Tuple[str, str]]]:
     transformer = ViewTableTransformer(user_info, company_id, flags)
     return transformer.transform_query(query_ordered)
