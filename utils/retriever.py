@@ -50,8 +50,8 @@ class FewShotRetriever:
                 if isinstance(data, dict) and "results" in data:
                     results = data["results"]
                     if "documents" in results and "metadatas" in results:
-                        documents = results["documents"]
-                        metadatas = results["metadatas"]
+                        documents = results["documents"]  # First list contains documents
+                        metadatas = results["metadatas"]  # First list contains metadatas
 
                         # Pair documents with their metadata
                         for doc, meta in zip(documents, metadatas):
@@ -214,13 +214,15 @@ class FewShotRetriever:
 def api_recommend(selected_api: str):
     # 자금현황
     if selected_api == 'aicfo_get_financial_status':
-        recommendations = ['수시 잔액 상세', '예적금 잔액 상세', '대출 잔액 상세']
+        return ['수시 잔액 상세', '예적금 잔액 상세', '대출 잔액 상세']
     # 자금변동현황
     elif selected_api == 'aicfo_get_variation_status':
-        recommendations = ['어제 수시입출 계좌 거래내역', '어제 예적금 계좌 거래내역', '어제 외화계좌 거래내역']
+        return ['어제 수시입출 계좌 거래내역', '어제 예적금 계좌 거래내역', '어제 외화계좌 거래내역']
+    elif selected_api == 'aicfo_get_financial_flow':
+        return ['월간 거래내역', '지난달 거래내역', '지난달 잔액']
     # 월간자금흐름
     elif selected_api == 'aicfo_get_monthly_flow':
-        recommendations = ['2개월 전 자금 흐름', '지난 달 수시입출계좌 출금만 보여줘', '증권 계좌 수익률']
+        return ['2개월 전 자금 흐름', '지난 달 수시입출계좌 출금만 보여줘', '증권 계좌 수익률']
     # 가용자금
     if selected_api == 'aicfo_get_available_fund':
         return ['수시 잔액 상세', '외화 잔액 상세', '달러 잔액 상세']

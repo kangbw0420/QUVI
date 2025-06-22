@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import Set
-
+from typing import Dict, List, Optional, Set
 import sqlglot
 from sqlglot import exp
 from sqlglot.errors import ParseError

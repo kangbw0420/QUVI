@@ -2,8 +2,8 @@ from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
+from core.postgresql import get_prompt
 from graph.models import qwen_llm
-from graph.prompts.prompts_api import PROMPT_FUNK
 from utils.logger import setup_logger
 from utils.retriever import retriever
 from llm_admin.qna_manager import QnAManager
@@ -11,12 +11,9 @@ from llm_admin.qna_manager import QnAManager
 qna_manager = QnAManager()
 
 # 모듈 상단에 로거 정의
-logger = setup_logger("funk")
+logger = setup_logger('funk')
 
-
-async def func_select(
-    trace_id: str, user_question: str, chat_history_prompt: list[tuple[str, str]]
-) -> str:
+async def func_select(trace_id: str, user_question: str) -> str:
     """사용자의 질문으로부터 테이블을 선택
     Returns:
         str: 'aicfo_get_xxxx'의 테이블 (예: aicfo_get_financial_status)
@@ -24,6 +21,10 @@ async def func_select(
         ValueError: 질문이 분석 가능한 형식이 아닌 경우.
     """
     output_parser = StrOutputParser()
+
+    system_prompt = get_prompt(
+        node_nm="funk", prompt_nm="system"
+    )[0]["prompt"]
 
     few_shots = await retriever.get_few_shots(
         query_text=user_question, collection_name="shots_api_selector", top_k=5
@@ -33,16 +34,10 @@ async def func_select(
         few_shot_prompt.append(("human", example["input"]))
         few_shot_prompt.append(("ai", example["output"]))
 
-    # 시스템 메시지와 퓨샷 합치기
-    flattend_few_shot_prompt = "\n".join(
-        f"{role}: {text}" for role, text in few_shot_prompt
-    )
-    concat_few_shot_prompt = f"{PROMPT_FUNK}\n{flattend_few_shot_prompt}"
-
     FUNK_PROMPT = ChatPromptTemplate.from_messages(
         [
-            SystemMessage(content=concat_few_shot_prompt),
-            *chat_history_prompt,
+            SystemMessage(content=system_prompt),
+            *few_shot_prompt,
             ("human", user_question),
         ]
     )

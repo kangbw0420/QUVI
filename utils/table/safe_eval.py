@@ -114,7 +114,7 @@ class SafeExpressionEvaluator:
                     result = ALLOWED_OPERATORS[type(op)](left, right)
                 else:
                     raise ValueError(f"비교 연산자 {type(op).__name__}는 허용되지 않았습니다")
-
+                
                 if isinstance(result, pd.Series):
                     return result
 
@@ -158,10 +158,10 @@ class SafeExpressionEvaluator:
             func = self._eval_node(node.func)
             args = [self._eval_node(arg) for arg in node.args]
             kwargs = {kw.arg: self._eval_node(kw.value) for kw in node.keywords}
-
-            if hasattr(func, '__self__') and isinstance(func.__self__, str) and func.__name__ == 'join':
+            
+            if hasattr(func, '__self__') and isinstance(func.__self__, str) and func.__name__=='join':
                 return func(*args, **kwargs)
-
+            
             # 내장 함수인지 확인
             if func.__name__ in ALLOWED_BUILTINS or func in ALLOWED_BUILTINS.values():
                 return func(*args, **kwargs)

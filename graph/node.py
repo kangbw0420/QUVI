@@ -1,6 +1,7 @@
+from llm_admin.state_manager import StateManager
 from graph.types import GraphState
-from graph.trace_state import trace_state
-from graph.task.classifier import classify_joy, classify_api, classify_yqmd
+from graph.task.classifier import check_joy, is_api, classify_yqmd
+from graph.task.commander import command
 from graph.task.nl2sql import create_sql
 from graph.task.respondent import response
 from graph.task.executor import execute
@@ -18,44 +19,65 @@ from utils.query.view.view_table import view_table
 from utils.query.orderby import add_order_by
 from utils.query.modify_name import modify_stock, modify_bank
 from utils.query.ever_note import ever_note
-from utils.query.find_column import find_column_conditions
 from utils.table.compute_fstring import compute_fstring
 
 logger = setup_logger('node')
 
-@trace_state("user_question")
 async def checkpoint(state: GraphState) -> GraphState:
     # 금융 관련 질의 fin과 쓸데없는 질의 joy의 임베딩 모델 활용 이진분류
     user_question = state["user_question"]
+    trace_id = state["trace_id"]
     flags = state.get("flags")
 
-    is_joy = await classify_joy(user_question)
+    is_joy = await check_joy(user_question)
     if is_joy['checkpoint'] == 'joy':
         flags["is_joy"] = True
+        state.update({"selected_table": []})
 
+    StateManager.update_state(trace_id, {"user_question": user_question})
     return state
 
-@trace_state("user_question", "is_api")
 async def isapi(state: GraphState) -> GraphState:
     # 사용자 질문을 api로 처리할 수 있을지 판단
     user_question = state["user_question"]
-    is_api = await classify_api(user_question)
-    state.update({"is_api": is_api})
+    trace_id = state["trace_id"]
+
+    selected_table = await is_api(user_question)
+
+    state.update({"selected_table": selected_table})
+    StateManager.update_state(trace_id, {
+        "user_question": user_question,
+        "selected_table": selected_table
+    })
     return state
 
-@trace_state("selected_api")
-async def funk(state: GraphState, trace_id=None) -> GraphState:
+async def commander(state: GraphState) -> GraphState:
+    # 사용자 질문에 검색해야 할 table을 선택
+    user_question = state["user_question"]
+    trace_id = state["trace_id"]
+
+    selected_table = await command(trace_id, user_question)
+
+    state.update({"selected_table": selected_table})
+    StateManager.update_state(trace_id, {
+        "user_question": user_question,
+        "selected_table": selected_table
+    })
+    return state
+
+async def funk(state: GraphState) -> GraphState:
     # api 함수를 선택
     user_question = state["user_question"]
+    trace_id = state["trace_id"]
 
     selected_api = await func_select(trace_id, user_question)
 
     state.update({"selected_api": selected_api})
     return state
 
-@trace_state("sql_query", "date_info")
-async def params(state: GraphState, trace_id=None) -> GraphState:
+async def params(state: GraphState) -> GraphState:
     # api 함수의 파라미터(뷰 파라미터)를 채워넣음
+    trace_id = state["trace_id"]
     selected_api = state["selected_api"]
     user_question = state["user_question"]
     company_id = state["company_id"]
@@ -76,6 +98,10 @@ async def params(state: GraphState, trace_id=None) -> GraphState:
         })
 
     state.update({"sql_query": sql_query, "date_info": date_info})
+    StateManager.update_state(trace_id, {
+        "company_id": company_id,
+        "sql_query": sql_query
+    })
     return state
 
 async def yqmd(state: GraphState) -> GraphState:
@@ -88,32 +114,38 @@ async def yqmd(state: GraphState) -> GraphState:
 
     return state
 
-@trace_state("company_id", "sql_query")
-async def nl2sql(state: GraphState, trace_id=None) -> GraphState:
+async def nl2sql(state: GraphState) -> GraphState:
     # 사용자 질문을 기반으로 SQL 쿼리를 생성
+    trace_id = state["trace_id"]
+    selected_table = state["selected_table"]
     user_question = state["user_question"]
     company_id = state["company_id"]
 
-    sql_query = await create_sql(trace_id, company_id, user_question)
+    sql_query = await create_sql(trace_id, selected_table, company_id, user_question)
 
     state.update({"sql_query": sql_query})
+    StateManager.update_state(trace_id, {
+        "company_id": company_id,
+        "sql_query": sql_query
+    })
     return state
 
-@trace_state("sql_query", "query_result", "date_info")
 async def executor(state: GraphState) -> GraphState:
     # SQL 쿼리를 실행하고 결과를 분석
+    trace_id = state["trace_id"]
+    selected_table = state["selected_table"]
     flags = state.get("flags")
 
     if "safe_count" not in flags:
         flags["safe_count"] = 0
 
-    if state["is_api"]:
+    if selected_table == "api":
         query = state.get("sql_query")
         logger.info(f"Executing API query: {query}")
         try:
-            query_result = execute(query)
+            result = execute(query)
             state.update({"sql_query": query})
-            if not query_result:
+            if not result:
                 flags["no_data"] = True
         except Exception as e:
             raise
@@ -130,13 +162,13 @@ async def executor(state: GraphState) -> GraphState:
         query_right_bank = modify_bank(query_right_stock)
         
         # order by 추가
-        query_ordered = add_order_by(query_right_bank)
+        query_ordered = add_order_by(query_right_bank, selected_table)
         
         user_info = state.get("user_info")
         flags = state.get("flags")
         try:
             # 날짜를 추출하고, 미래 시제일 경우 변환
-            query, view_dates = view_table(query_ordered, company_id, user_info, flags)
+            query, view_dates = view_table(query_ordered, selected_table, company_id, user_info, flags)
             
             # 메인 쿼리의 날짜 정보가 있는지 확인
             if 'main' in view_dates:
@@ -159,118 +191,131 @@ async def executor(state: GraphState) -> GraphState:
                 state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
 
             logger.info(f"Executing final SQL query (length: {len(query)})")
-            query_result = execute(query)
+            result = execute(query)
             state.update({"sql_query": query})
 
-            # note1 조건이 있고 결과가 없는 경우에만 vector search 시도
-            try:
-                note_conditions = find_column_conditions(query, 'note1')
+            # If no results found and it's a trsc query, try vector search for note1
+            if (not result or is_null_only(result)) and "trsc" in selected_table:
+                evernote_result = await ever_note(query)
                 
-                if (
-                    not query_result or is_null_only(query_result)
-                ) and note_conditions:
-                    evernote_result = await ever_note(query)
+                # Get original and similar notes from the result
+                origin_note = evernote_result.get("origin_note", [])
+                vector_notes = evernote_result.get("vector_notes", [])
+                modified_query = evernote_result.get("query", query)
 
-                    # Get original and similar notes from the result
-                    origin_note = evernote_result.get("origin_note", [])
-                    vector_notes = evernote_result.get("vector_notes", [])
-                    modified_query = evernote_result.get("query", query)
+                if vector_notes:
+                    logger.info(f"Found {len(vector_notes)} similar notes")
+                    # Store vector notes in state
+                    vector_notes_data = {
+                        "origin_note": origin_note,
+                        "vector_notes": vector_notes
+                    }
+                    state.update({"vector_notes": vector_notes_data})
 
-                    if vector_notes:
-                        logger.info(f"Found {len(vector_notes)} similar notes")
-                        # Store vector notes in state
-                        vector_notes_data = {
-                            "origin_note": origin_note,
-                            "vector_notes": vector_notes,
-                        }
-                        state.update({"vector_notes": vector_notes_data})
+                    # Update user question to mention the similar notes
+                    origin_note_str = "', '".join(origin_note)
+                    vector_note_str = "', '".join(vector_notes)
 
-                        # Update user question to mention the similar notes
-                        origin_note_str = "', '".join(origin_note)
-                        vector_note_str = "', '".join(vector_notes)
+                    final_answer = f"요청을 처리하기 위해 '{origin_note_str}' 노트의 거래내역을 찾아 보았으나 검색된 결과가 없었습니다. 해당 기간 거래내역의 노트 중 유사한 노트('{vector_note_str}')로 검색한 결과는 다음과 같습니다."
+                    state.update({"final_answer": final_answer})
+                    flags["note_changed"] = True
 
-                        final_answer = f"요청을 처리하기 위해 '{origin_note_str}' 노트의 거래내역을 찾아 보았으나 검색된 결과가 없었습니다. 해당 기간 거래내역의 노트 중 유사한 노트('{vector_note_str}')로 검색한 결과는 다음과 같습니다."
-                        state.update({"final_answer": final_answer})
-                        flags["note_changed"] = True
-
-                    # Try executing the modified query if available
-                    if modified_query and modified_query != query:
-                        query_result = execute(
-                            query, user_info["intt_biz_no"], user_info["intt_cntrct_id"]
-                        )
-                        state.update({"sql_query": modified_query})
-            except Exception as e:
-                logger.error(f"Error checking note conditions: {str(e)}")
+                # Try executing the modified query if available
+                if modified_query and modified_query != query:
+                    result = execute(modified_query)
+                    state.update({"sql_query": modified_query})
 
             state.update({"date_info": view_dates["main"]})
 
         except Exception as e:
             logger.error(f"Error in executor: {str(e)}")
-            query_result = execute(query_ordered)
+            result = execute(query_ordered)
             state.update({"sql_query": query_ordered})
 
     # 결과가 없는 경우 처리
-    if not query_result or is_null_only(query_result):
+    if not result or is_null_only(result):
         logger.warning("No data found in query results")
         flags["no_data"] = True
-        query_result = []
-        state.update({"query_result": query_result})
+        empty_result = []
+        state.update({"query_result": empty_result})
+        StateManager.update_state(trace_id, {
+            "sql_query": state.get("sql_query"),
+            "query_result": empty_result,
+            "date_info": state.get("date_info", (None, None))
+        })
+
         return state
 
     logger.info(f"Query executed successfully, storing results")
-    state.update({"query_result": query_result})
+    state.update({"query_result": result})
+    StateManager.update_state(trace_id, {
+        "sql_query": state.get("sql_query"),
+        "query_result": result,
+        "date_info": state.get("date_info", (None, None))
+    })
+
     return state
 
-@trace_state("sql_query", "sql_error")
-async def safeguard(state: GraphState, trace_id=None) -> GraphState:
+async def safeguard(state: GraphState) -> GraphState:
+    trace_id = state["trace_id"]
     user_question = state["user_question"]
+    selected_table = state["selected_table"]
     unsafe_query = state["sql_query"]
     sql_error = state.get("sql_error", "")
     flags = state.get("flags")
     
     flags["safe_count"] = flags.get("safe_count", 0) + 1
 
-    sql_query = await guard_query(trace_id, unsafe_query, user_question, flags, sql_error)
+    safe_query = await guard_query(trace_id, unsafe_query, user_question, selected_table, flags, sql_error)
 
-    if sql_query == unsafe_query:
+    if safe_query == unsafe_query:
         flags["query_changed"] = False
         return state
 
-    if sql_query != unsafe_query:
+    if safe_query != unsafe_query:
         flags["query_changed"] = True
-        state.update({"sql_query": sql_query})
+        state.update({"sql_query": safe_query})
+
+        StateManager.update_state(trace_id, {
+            "sql_query": safe_query,
+            "sql_error": sql_error
+        })
         return state
 
-@trace_state("final_answer", "query_result")
-async def respondent(state: GraphState, trace_id=None) -> GraphState:
+async def respondent(state: GraphState) -> GraphState:
     # 쿼리 결과를 바탕으로 최종 응답을 생성"""
+    trace_id = state["trace_id"]
     user_question = state["user_question"]
-    query_result = state["query_result"]
-    is_api = state["is_api"]
+    result = state["query_result"]
+    selected_table = state["selected_table"]
 
-    query_result = delete_useless_col(query_result)
+    final_result = delete_useless_col(result)
 
-    if is_api:
+    if selected_table == "api":
         date_info = state["date_info"]
     else:
         date_info = ()
-    fstring_answer, table_pipe = await response(trace_id, user_question, date_info, query_result)
+    fstring_answer, table_pipe = await response(trace_id, user_question, date_info, final_result)
 
     # debuging
     debug_str = f"{fstring_answer}\n\n\n{table_pipe}"
     state.update({"yogeumjae": debug_str})
     # debuging
     
-    final_answer = compute_fstring(fstring_answer, query_result)
+    final_answer = compute_fstring(fstring_answer, result)
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")
 
-    state.update({"final_answer": final_answer, "query_result": query_result})
+    state.update({"final_answer": final_answer, "query_result": final_result})
+    StateManager.update_state(trace_id, {
+        "final_answer": final_answer,
+        "query_result": final_result
+    })
     return state
 
-@trace_state("final_answer")
-async def nodata(state: GraphState, trace_id=None) -> GraphState:
+async def nodata(state: GraphState) -> GraphState:
     # 데이터가 없음을 설명하는 노드"""
+    trace_id = state["trace_id"]
     user_question = state["user_question"]
     flags = state.get("flags")
     
@@ -286,11 +331,12 @@ async def nodata(state: GraphState, trace_id=None) -> GraphState:
         final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
 
     state.update({"final_answer": final_answer})
+    StateManager.update_state(trace_id, {"final_answer": final_answer})
     return state
 
-@trace_state("final_answer")
-async def killjoy(state: GraphState, trace_id=None) -> GraphState:
+async def killjoy(state: GraphState) -> GraphState:
     # 장난하지 말고 재무 데이터나 물어보라는 노드"""
+    trace_id = state["trace_id"]
     user_question = state["user_question"]
 
     final_answer = await kill_joy(trace_id, user_question)
@@ -300,5 +346,6 @@ async def killjoy(state: GraphState, trace_id=None) -> GraphState:
         "query_result": [],
         "sql_query": ""
     })
-    
+
+    StateManager.update_state(trace_id, {"final_answer": final_answer})
     return state
