@@ -10,22 +10,6 @@ from sqlglot.expressions import Subquery
 # 포함될 경우 order by의 대상이 되는 컬럼들
 DEFAULT_ORDER_COLUMNS = ["reg_dt", "trsc_dt", "trsc_tm"]
 
-# 컬럼에 따른 ORDER BY 규칙 정의
-COLUMN_ORDER_RULES = {
-    ('bank_nm', 'acct_dv', 'acct_no', 'acct_bal_amt',
-     'real_amt', 'acct_bal_upd_dtm'
-     ): 'acct_bal_amt DESC',
-    ('bank_nm', 'acct_no', 'acct_bal_amt', 'real_amt',
-     'curr_cd', 'acct_dv', 'acct_nick_nm', 'acct_bal_upd_dtm'
-     ): 'curr_cd DESC, acct_bal_amt DESC',
-    ('bank_nm', 'acct_no', 'trsc_dt', 'trsc_tm', 'note1',
-     'in_out_dv', 'trsc_amt', 'trsc_bal'
-     ): 'trsc_dt DESC, trsc_tm DESC',
-    ('bank_nm', 'acct_no', 'trsc_dt', 'trsc_tm',  'curr_cd',
-     'note1', 'in_out_dv', 'trsc_amt','trsc_bal'
-     ): 'curr_cd DESC, trsc_dt DESC, trsc_tm DESC'
-}
-
 # 알려진 모든 컬럼들의 집합
 KNOWN_COLUMNS = {
     "amt": [
@@ -86,7 +70,7 @@ def find_matching_rule(columns: List[str]) -> str:
     """
     columns_set = set(columns)
 
-    # 1. SELECT * 인 경우 테이블별 기본 정렬(누가 원 테이블에서 SELECT * 함?)
+    # 1. SELECT * 인 경우 테이블별 기본 정렬
     if '*' in columns_set:
         return ""
 
@@ -95,12 +79,7 @@ def find_matching_rule(columns: List[str]) -> str:
     if unknown_columns:
         return ', '.join(f"{col} DESC" for col in unknown_columns)
 
-    # 3. 컬럼 조합에 맞는 규칙 찾기
-    for rule_columns, order_by in COLUMN_ORDER_RULES.items():
-        if all(col in columns_set for col in rule_columns):
-            return order_by
-
-    # 4. 매칭 안되면 DEFAULT_ORDER_COLUMNS 중 있는 컬럼으로 정렬
+    # 3. 매칭 안되면 DEFAULT_ORDER_COLUMNS 중 있는 컬럼으로 정렬
     for col in DEFAULT_ORDER_COLUMNS:
         if col in columns_set:
             return f"{col} DESC"
