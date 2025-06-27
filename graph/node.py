@@ -35,7 +35,7 @@ async def next_page(state: GraphState) -> GraphState:
         recent_query = get_recent_history(chain_id, "sql_query")
         next_page_query = pagination(recent_query)
 
-        limit = 100
+        limit = 10000
         rows = count_rows(next_page_query, limit)
         state["total_rows"] = rows
         if rows > limit:
@@ -208,7 +208,7 @@ async def safeguard(state: GraphState, trace_id=None) -> GraphState:
     )
     await send_ws_message(state["websocket"], "safeguard_end", sql_query=sql_query)
 
-    limit = 100
+    limit = 10000
     rows = count_rows(sql_query, limit)
     state["total_rows"] = rows
     if rows > limit:

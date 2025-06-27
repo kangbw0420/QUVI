@@ -7,7 +7,7 @@ from core.postgresql import query_execute
 logger = setup_logger("add_limit")
 
 
-def count_rows(query: str, limit_value: int = 100) -> int:
+def count_rows(query: str, limit_value: int = 10000) -> int:
     """
     SQL 쿼리가 반환할 총 행 수를 계산합니다.
     LIMIT이 limit_value이고 OFFSET이 있는 경우에는 LIMIT을 제거하고 카운트합니다.(남은 페이지 카운트)
@@ -83,7 +83,7 @@ def count_rows(query: str, limit_value: int = 100) -> int:
         return limit_value + 1
 
 
-def add_limit(query: str, limit_value: int = 100, offset_value: int = 0) -> str:
+def add_limit(query: str, limit_value: int = 10000, offset_value: int = 0) -> str:
     """
     SQL 쿼리에 LIMIT과 OFFSET을 추가합니다.
     컬럼명이나 테이블명에 'limit'이 포함되어 있어도 정확하게 동작합니다.
@@ -118,7 +118,7 @@ def add_limit(query: str, limit_value: int = 100, offset_value: int = 0) -> str:
         return f"{query} LIMIT {limit_value} OFFSET {offset_value}"
 
 
-def pagination(query: str, limit_value: int = 100) -> str:
+def pagination(query: str, limit_value: int = 10000) -> str:
     """
     기존 쿼리의 OFFSET 값을 찾아서 100을 더한 새로운 OFFSET 값으로 업데이트합니다.
     add_limit 함수의 효과로 모든 쿼리에는 LIMIT과 OFFSET이 포함되어 있다고 가정합니다.

@@ -63,7 +63,7 @@ async def executor(state: GraphState) -> GraphState:
         try:
             view_query = view_table(query_ordered, company_id, user_info, date_info, flags)
 
-            limit = 100
+            limit = 10000
             rows = count_rows(view_query, limit)
             state["total_rows"] = rows
             if rows > limit:
