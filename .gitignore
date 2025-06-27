@@ -1,5 +1,6 @@
 .env
 /venv
+/.venv
 /.vscode
 .vscode
 .DS_Store
@@ -7,3 +8,5 @@ __pycache__
 .db
 .pytest_cache
 .idea
+python==3.12
+pyproject.toml
