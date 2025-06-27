@@ -3,9 +3,12 @@ import time
 
 from psycopg2 import OperationalError, InterfaceError
 from psycopg2.extras import RealDictCursor
-from psycopg2.pool import SimpleConnectionPool, ThreadedConnectionPool
+from psycopg2.pool import ThreadedConnectionPool
 
 from utils.config import Config
+from utils.logger import setup_logger
+
+logger = setup_logger('postgresql')
 
 # PostgreSQL 클래스 정의
 class PostgreSQL:
@@ -21,7 +24,6 @@ class PostgreSQL:
 # PostgreSQL 연결 풀 생성
 def connect_postgresql_pool():
     if PostgreSQL.pool_data is None:
-        # PostgreSQL.pool_data = SimpleConnectionPool(
         PostgreSQL.pool_data = ThreadedConnectionPool(
             minconn=1,
             maxconn=10,
@@ -32,7 +34,6 @@ def connect_postgresql_pool():
             password=Config.DB_PASSWORD
         )
     if PostgreSQL.pool_prompt is None:
-        # PostgreSQL.pool_prompt = SimpleConnectionPool(
         PostgreSQL.pool_prompt = ThreadedConnectionPool(
             minconn=1,
             maxconn=10,
@@ -47,19 +48,15 @@ def connect_postgresql_pool():
 connect_postgresql_pool()
 
 
-# def get_connection(pool: SimpleConnectionPool):
 def get_connection(pool: ThreadedConnectionPool):
     """끊어진 연결이 있으면 감지하고, 새로 연결을 가져옴"""
-    if pool is None:
-        connect_postgresql_pool()
-
     conn = pool.getconn()
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT 1;")  # 연결 상태 체크
         return conn
     except (OperationalError, InterfaceError):
-        print("Connection Failed. Retry...")
+        logger.error("Connection Failed. Retry...")
         pool.putconn(conn, close=True)  # 기존 연결 폐기
         return pool.getconn()  # 새 연결 가져오기
 
@@ -75,77 +72,89 @@ def expire_connections():
             for _ in range(PostgreSQL.pool_prompt.maxconn):
                 conn = PostgreSQL.pool_prompt.getconn()
                 PostgreSQL.pool_prompt.putconn(conn, close=True)  # 강제 종료 후 다시 연결
-            # print("Connection pool refreshed")
         except Exception as e:
-            print(f"Connection pool refresh error : {e}")
+            logger.error(f"Connection pool refresh error : {e}")
 
 # 백그라운드에서 실행
 threading.Thread(target=expire_connections, daemon=True).start()
 
-
-# 쿼리를 실행하는 일반 함수
-def execute_query(query):
-    return query_execute(query)
-
-
 # 일반 쿼리 실행 함수
-def query_execute(query, params=None, use_prompt_db=False):
+def query_execute(query, params=None, use_prompt_db=True):
     connection = None
     pool = None
+    
+    from utils.profiler import profiler
+    request_id = profiler.get_current_request()
+    start_time = time.time()
+    
     try:
         # 사용하려는 데이터베이스 풀 선택
         pool = PostgreSQL.pool_prompt if use_prompt_db else PostgreSQL.pool_data
-        # connection = pool.getconn()  # 선택된 풀에서 연결 가져오기
+
         connection = get_connection(pool)  # 선택된 풀에서 연결 가져오기
         cursor = connection.cursor(cursor_factory=RealDictCursor)
 
-        # 사용하려는 스키마 지정
-        schema = Config.DB_SCHEMA_PROMPT if use_prompt_db else Config.DB_SCHEMA
-        cursor.execute("SET search_path TO '%s'" % schema)
-
-        # 쿼리 실행
-        cursor.execute(query, params if params else ())
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
 
         # SELECT 쿼리라면 결과 반환
-        if query.strip().upper().startswith("SELECT"):
-            return cursor.fetchall()
-        # voc_list INSERT 쿼리라면 신규row 의 seq 반환
-        elif query.strip().upper().startswith("INSERT INTO voc_list"):
-            result = cursor.fetchone()
-            if result is None:
-                raise
+        if query.strip().upper().startswith(("SELECT", "WITH")):
+            result = cursor.fetchall()
             connection.commit()
             cursor.close()
-            return result['seq']
+            
+            # 프로파일링 시간 기록
+            elapsed_time = time.time() - start_time
+            if request_id:
+                profiler.record_db_call(request_id, elapsed_time, use_prompt_db)
+                
+            return result
+        # INSERT 쿼리에서 RETURNING 절이 있다면 결과 반환
+        elif "RETURNING" in query.upper():
+            result = cursor.fetchone()
+            connection.commit()
+            cursor.close()
+            
+            # 프로파일링 시간 기록
+            elapsed_time = time.time() - start_time
+            if request_id:
+                profiler.record_db_call(request_id, elapsed_time, use_prompt_db)
+                
+            return result
 
         connection.commit()
         cursor.close()
+
+        elapsed_time = time.time() - start_time
+        if request_id:
+            profiler.record_db_call(request_id, elapsed_time, use_prompt_db)
+
         return True
+    except OperationalError as e:
+        # 예외가 발생해도 프로파일링 시간 기록
+        elapsed_time = time.time() - start_time
+        if request_id:
+            profiler.record_db_call(request_id, elapsed_time, use_prompt_db)
+        logger.error(f"OperationalError: {e}")
+        raise
+    except InterfaceError as e:
+        # 예외가 발생해도 프로파일링 시간 기록
+        elapsed_time = time.time() - start_time
+        if request_id:
+            profiler.record_db_call(request_id, elapsed_time, use_prompt_db)
+        logger.error(f"InterfaceError: {e}")
+        raise
     except Exception as error:
-        print(f"Error executing query: {error}")
+        # 예외가 발생해도 프로파일링 시간 기록
+        elapsed_time = time.time() - start_time
+        if request_id:
+            profiler.record_db_call(request_id, elapsed_time, use_prompt_db)
+        logger.error(f"Error executing query: {error}")
         if connection:
             connection.rollback()
         raise
     finally:
         if connection:
             pool.putconn(connection)
-
-def get_prompt(node_nm: str, prompt_nm: str):
-    query = """
-        SELECT *
-        FROM prompt
-        WHERE node_nm = %s
-        AND prompt_nm = %s
-        AND version = (
-            SELECT MAX(version)
-            FROM prompt
-            WHERE node_nm = %s
-            AND prompt_nm = %s
-        )
-        AND del_yn = 'N'
-    """
-    return query_execute(
-        query,
-        params=(node_nm, prompt_nm, node_nm, prompt_nm),
-        use_prompt_db=True
-    )

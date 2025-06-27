@@ -1,12 +1,13 @@
+import re
+from typing import Dict, Any, Tuple
+
 import sqlglot
 from sqlglot import exp
 from sqlglot.errors import ParseError
+
 from utils.retriever import retriever
-import asyncio
-from typing import Dict, List, Any, Set, Tuple, Optional
-import re
-import json
 from utils.logger import setup_logger
+from utils.column.find_column import find_column_conditions
 
 # 모듈별 로거 설정
 logger = setup_logger('ever_note')
@@ -29,55 +30,8 @@ async def ever_note(query: str) -> Dict[str, Any]:
             logger.error("Could not extract function parameters from query")
             return {"query": query, "origin_note": [], "vector_notes": []}
 
-        def find_note_conditions(ast: exp.Expression) -> List[Dict]:
-            """
-            AST에서 모든 note1 조건을 찾아 반환
-
-            노드 ID를 기반으로 이미 처리한 노드를 추적하여 중복 처리를 방지
-            """
-            note_conditions: List[Dict] = []
-            visited_nodes = set()
-
-            def process_node(node):
-                # 이미 방문한 노드는 처리하지 않음
-                node_id = id(node)
-                if node_id in visited_nodes:
-                    return
-                visited_nodes.add(node_id)
-
-                # note1 조건인지 확인
-                if isinstance(node, (exp.EQ, exp.Like, exp.ILike)):
-                    if (isinstance(node.this, exp.Column) and
-                        node.this.name == 'note1'):
-                        # 값 추출
-                        if isinstance(node.expression, exp.Literal):
-                            note_str = str(node.expression.this).strip("'%")
-                        else:
-                            note_str = str(node.expression).strip("'%")
-
-                        # 조건 정보 저장
-                        note_conditions.append({
-                            'type': type(node).__name__,
-                            'value': note_str,
-                            'node': node
-                        })
-
-                # 자식 노드 처리 (arguments 메서드 사용)
-                for arg_name, arg_value in node.args.items():
-                    if isinstance(arg_value, exp.Expression):
-                        process_node(arg_value)
-                    elif isinstance(arg_value, list):
-                        for item in arg_value:
-                            if isinstance(item, exp.Expression):
-                                process_node(item)
-
-            # 루트 노드부터 시작
-            process_node(ast)
-
-            return note_conditions
-
-        # Find all note1 conditions in the query (using our improved function)
-        note_conditions = find_note_conditions(ast)
+        # Find all note1 conditions in the query using the new module
+        note_conditions = find_column_conditions(query, 'note1')
 
         if not note_conditions:
             logger.info("No note1 conditions found in query")
@@ -91,8 +45,8 @@ async def ever_note(query: str) -> Dict[str, Any]:
         note_query = f"SELECT * FROM aicfo_get_all_note('{use_intt_id}', '{user_id}', '{company}', '{from_date}', '{to_date}')"
 
         try:
-            from graph.task.executor import execute
-            note_results = execute(note_query)
+            from core.postgresql import query_execute
+            note_results = query_execute(note_query, use_prompt_db=False)
             # 쿼리 실행 결과 리스트로 바꾸기
             available_notes = [note['every_note'] for note in note_results] if note_results else []
 

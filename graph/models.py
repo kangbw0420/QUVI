@@ -1,3 +1,4 @@
+import time
 import requests
 import traceback
 from typing import List, Optional, Any, Dict
@@ -10,6 +11,7 @@ from langchain.llms import BaseLLM
 from utils.config import Config
 
 load_dotenv()
+
 
 class CustomChatLLM(BaseLLM, BaseModel):
     api_url: str = Config.API_URL
@@ -29,9 +31,18 @@ class CustomChatLLM(BaseLLM, BaseModel):
             "temperature": self.temperature,
         }
 
+        from utils.profiler import profiler
+        request_id = profiler.get_current_request()
+        start_time = time.time()
+
         try:
             response = requests.post(self.api_url, json=payload)
             response.raise_for_status()
+
+            elapsed_time = time.time() - start_time
+
+            if request_id:
+                profiler.record_llm_call(request_id, elapsed_time)
 
             response_data = response.json()
             choices = response_data.get("choices", [])
@@ -49,26 +60,34 @@ class CustomChatLLM(BaseLLM, BaseModel):
             return content.strip()
 
         except requests.RequestException as e:
+            # 예외가 발생해도 프로파일링 시간 기록
+            elapsed_time = time.time() - start_time
+            if request_id:
+                profiler.record_llm_call(request_id, elapsed_time)
             raise ValueError(f"HTTP request error: {str(e)}")
         except (ValueError, KeyError, TypeError) as e:
+            # 예외가 발생해도 프로파일링 시간 기록
+            elapsed_time = time.time() - start_time
+            if request_id:
+                profiler.record_llm_call(request_id, elapsed_time)
             raise ValueError(f"API response error: {str(e)}")
 
     def _generate(
-            self, prompts: List[str], stop: Optional[List[str]] = None
-        ) -> LLMResult:
-            
-            generations = []
-            for i, prompt in enumerate(prompts, 1):
-                try:
-                    response = self._call(prompt, stop)
+        self, prompts: List[str], stop: Optional[List[str]] = None
+    ) -> LLMResult:
 
-                    generations.append([Generation(text=response)])
+        generations = []
+        for i, prompt in enumerate(prompts, 1):
+            try:
+                response = self._call(prompt, stop)
 
-                except Exception as e:
-                    traceback.print_exc()
-                    raise ValueError(f"오류 발생: {str(e)}")
-            
-            return LLMResult(generations=generations)
+                generations.append([Generation(text=response)])
+
+            except Exception as e:
+                traceback.print_exc()
+                raise ValueError(f"오류 발생: {str(e)}")
+
+        return LLMResult(generations=generations)
 
     @property
     def _llm_type(self) -> str:
@@ -82,10 +101,17 @@ class CustomChatLLM(BaseLLM, BaseModel):
             "max_tokens": self.max_tokens,
         }
 
+
 # Create model instances, max_token 설정 안 하면 기본값 125
-qwen_llm = CustomChatLLM(model="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", temperature=0.01, max_tokens=1000)
-qwen_high = CustomChatLLM(model="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", temperature=0.7, max_tokens=1000)
-qwen_boolean = CustomChatLLM(model="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", temperature=0.01, max_tokens=1)
+qwen_llm = CustomChatLLM(
+    model="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", temperature=0.01, max_tokens=1000
+)
+qwen_high = CustomChatLLM(
+    model="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", temperature=0.7, max_tokens=1000
+)
+qwen_boolean = CustomChatLLM(
+    model="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", temperature=0.01, max_tokens=1
+)
 
 selector = CustomChatLLM(model="selector", temperature=0.01, max_tokens=300)
 nl2sql = CustomChatLLM(model="nl2sql", temperature=0.01, max_tokens=3000)

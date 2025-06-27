@@ -1,108 +1,138 @@
-from llm_admin.state_manager import StateManager
 from graph.types import GraphState
-from graph.task.classifier import check_joy, is_api, classify_yqmd
-from graph.task.commander import command
+from graph.trace_state import trace_state
+from graph.task.classifier import classify_joy, classify_api, classify_yqmd, classify_opendue
 from graph.task.nl2sql import create_sql
-from graph.task.respondent import response
-from graph.task.executor import execute
+from graph.task.respondent import response, paginated_response
 from graph.task.funk import func_select
 from graph.task.nodata import no_data
 from graph.task.params import parameters
 from graph.task.killjoy import kill_joy
 from graph.task.safeguard import guard_query
+from graph.task.dater import date_selector
 
+from utils.common.date_utils import get_today_str
+from utils.fstring.fstring_assistant import pipe_table
 from utils.logger import setup_logger
-from utils.common.date_checker import check_date, correct_date_range
-from utils.common.check_df import delete_useless_col, is_null_only
-from utils.query.filter_com import add_com_condition
-from utils.query.view.view_table import view_table
-from utils.query.orderby import add_order_by
-from utils.query.modify_name import modify_stock, modify_bank
-from utils.query.ever_note import ever_note
-from utils.table.compute_fstring import compute_fstring
+from utils.common.correct_date import check_date, correct_date_range
+from utils.query.pagination import count_rows, add_limit, pagination
+from utils.column.check_df import delete_useless_col
+from utils.fstring.compute_fstring import compute_fstring
+from utils.websocket_utils import send_ws_message
+from llm_admin.history_manager import get_history, get_recent_history
+from core.postgresql import query_execute
 
-logger = setup_logger('node')
 
+logger = setup_logger("node")
+
+
+@trace_state("user_question", "sql_query")
+async def next_page(state: GraphState) -> GraphState:
+    # 사용자 질문을 기반으로 처리할 수 있는 노드
+    user_question = state["user_question"]
+    chain_id = state["chain_id"]
+    if user_question == "next_page":
+        recent_query = get_recent_history(chain_id, "sql_query")
+        next_page_query = pagination(recent_query)
+
+        limit = 100
+        rows = count_rows(next_page_query, limit)
+        state["total_rows"] = rows
+        if rows > limit:
+            flags = state.get("flags")
+            flags["has_next"] = True
+
+        query_result = query_execute(next_page_query, use_prompt_db=False)
+
+        state.update(
+            {
+                "sql_query": next_page_query,
+                "query_result": query_result,
+                "final_answer": "next_page",
+                "date_info": get_recent_history(chain_id, "date_info"),
+            }
+        )
+    return state
+
+
+@trace_state("user_question")
 async def checkpoint(state: GraphState) -> GraphState:
     # 금융 관련 질의 fin과 쓸데없는 질의 joy의 임베딩 모델 활용 이진분류
     user_question = state["user_question"]
-    trace_id = state["trace_id"]
     flags = state.get("flags")
 
-    is_joy = await check_joy(user_question)
-    if is_joy['checkpoint'] == 'joy':
+    is_joy = await classify_joy(user_question)
+    if is_joy["checkpoint"] == "joy":
         flags["is_joy"] = True
-        state.update({"selected_table": []})
 
-    StateManager.update_state(trace_id, {"user_question": user_question})
     return state
 
+
+@trace_state("user_question")
 async def isapi(state: GraphState) -> GraphState:
     # 사용자 질문을 api로 처리할 수 있을지 판단
     user_question = state["user_question"]
-    trace_id = state["trace_id"]
-
-    selected_table = await is_api(user_question)
-
-    state.update({"selected_table": selected_table})
-    StateManager.update_state(trace_id, {
-        "user_question": user_question,
-        "selected_table": selected_table
-    })
+    is_api = await classify_api(user_question)
+    state.update({"is_api": is_api})
     return state
 
-async def commander(state: GraphState) -> GraphState:
+@trace_state("selected_table")
+async def commander(state: GraphState, trace_id=None) -> GraphState:
     # 사용자 질문에 검색해야 할 table을 선택
     user_question = state["user_question"]
-    trace_id = state["trace_id"]
+    chain_id = state["chain_id"]
 
-    selected_table = await command(trace_id, user_question)
+    commander_history = get_history(chain_id, ["user_question", "selected_table"], "commander")
+
+    selected_table = await command(trace_id, user_question, commander_history)
 
     state.update({"selected_table": selected_table})
-    StateManager.update_state(trace_id, {
-        "user_question": user_question,
-        "selected_table": selected_table
-    })
     return state
 
-async def funk(state: GraphState) -> GraphState:
+@trace_state("selected_api")
+async def funk(state: GraphState, trace_id=None) -> GraphState:
     # api 함수를 선택
     user_question = state["user_question"]
-    trace_id = state["trace_id"]
+    chain_id = state["chain_id"]
 
-    selected_api = await func_select(trace_id, user_question)
+    funk_history = get_history(chain_id, ["user_question", "selected_api"], "funk")
+
+    selected_api = await func_select(trace_id, user_question, funk_history)
 
     state.update({"selected_api": selected_api})
     return state
 
-async def params(state: GraphState) -> GraphState:
+
+@trace_state("sql_query", "date_info")
+async def params(state: GraphState, trace_id=None) -> GraphState:
     # api 함수의 파라미터(뷰 파라미터)를 채워넣음
-    trace_id = state["trace_id"]
     selected_api = state["selected_api"]
     user_question = state["user_question"]
     company_id = state["company_id"]
     user_info = state["user_info"]
     flags = state.get("flags")
+    chain_id = state["chain_id"]
+
+    params_history = get_history(chain_id, ["user_question", "date_info"], "params")
 
     sql_query, date_info = await parameters(
-        trace_id, selected_api, user_question, company_id, user_info, flags
+        trace_id,
+        selected_api,
+        user_question,
+        company_id,
+        user_info,
+        flags,
+        params_history,
     )
 
     date_info = correct_date_range(date_info)
 
     invalid_date_message = check_date(date_info, flags)
     if invalid_date_message:
-        state.update({
-            "final_answer": invalid_date_message,
-            "query_result": []
-        })
+        state.update({"final_answer": invalid_date_message, "query_result": []})
 
     state.update({"sql_query": sql_query, "date_info": date_info})
-    StateManager.update_state(trace_id, {
-        "company_id": company_id,
-        "sql_query": sql_query
-    })
     return state
+
 
 async def yqmd(state: GraphState) -> GraphState:
     # 자금 흐름 api에서 연간/분기간/월간/일간 파라미터 결정
@@ -114,238 +144,185 @@ async def yqmd(state: GraphState) -> GraphState:
 
     return state
 
-async def nl2sql(state: GraphState) -> GraphState:
+@trace_state("date_info")
+async def opendue(state: GraphState) -> GraphState:
+    user_question = state["user_question"]
+    flags = state.get("flags")
+    is_opendue = await classify_opendue(user_question)
+    if is_opendue == "1":
+        flags["is_opendue"] = False
+        # flags["is_opendue"] = True
+        # date_info = (get_today_str(), get_today_str())
+        # state.update({"date_info": date_info})
+    else:
+        flags["is_opendue"] = False
+    return state
+
+@trace_state("date_info")
+async def dater(state: GraphState, trace_id=None) -> GraphState:
+    user_question = state["user_question"]
+    chain_id = state["chain_id"]
+    date_history = get_history(chain_id, ["user_question", "date_info"], "dater")
+    
+    date_info = await date_selector(trace_id, user_question, date_history)
+    state.update({"date_info": date_info})
+    return state
+
+@trace_state("company_id", "sql_query")
+async def nl2sql(state: GraphState, trace_id=None) -> GraphState:
     # 사용자 질문을 기반으로 SQL 쿼리를 생성
-    trace_id = state["trace_id"]
-    selected_table = state["selected_table"]
     user_question = state["user_question"]
     company_id = state["company_id"]
+    chain_id = state["chain_id"]
+    date_info = state.get("date_info", (get_today_str(), get_today_str()))
 
-    sql_query = await create_sql(trace_id, selected_table, company_id, user_question)
+    nl2sql_history = get_history(chain_id, ["user_question", "sql_query"], "nl2sql")
+
+    sql_query = await create_sql(
+        trace_id, company_id, user_question, date_info, nl2sql_history
+    )
+    await send_ws_message(state["websocket"], "nl2sql", sql_query=sql_query)
 
     state.update({"sql_query": sql_query})
-    StateManager.update_state(trace_id, {
-        "company_id": company_id,
-        "sql_query": sql_query
-    })
     return state
 
-async def executor(state: GraphState) -> GraphState:
-    # SQL 쿼리를 실행하고 결과를 분석
-    trace_id = state["trace_id"]
-    selected_table = state["selected_table"]
-    flags = state.get("flags")
 
-    if "safe_count" not in flags:
-        flags["safe_count"] = 0
-
-    if selected_table == "api":
-        query = state.get("sql_query")
-        logger.info(f"Executing API query: {query}")
-        try:
-            result = execute(query)
-            state.update({"sql_query": query})
-            if not result:
-                flags["no_data"] = True
-        except Exception as e:
-            raise
-    
-    else:
-        raw_query = state.get("sql_query")
-        company_id = state["company_id"]
-
-        # 권한 있는 회사/계좌 검사
-        query_right_com = add_com_condition(raw_query, company_id)
-
-        # 주식종목/은행명 매핑 변환
-        query_right_stock = modify_stock(query_right_com)
-        query_right_bank = modify_bank(query_right_stock)
-        
-        # order by 추가
-        query_ordered = add_order_by(query_right_bank, selected_table)
-        
-        user_info = state.get("user_info")
-        flags = state.get("flags")
-        try:
-            # 날짜를 추출하고, 미래 시제일 경우 변환
-            query, view_dates = view_table(query_ordered, selected_table, company_id, user_info, flags)
-            
-            # 메인 쿼리의 날짜 정보가 있는지 확인
-            if 'main' in view_dates:
-                # 날짜 교정: 유효하지 않은 날짜를 가장 가까운 유효한 날짜로 교정
-                corrected_date_info = correct_date_range(view_dates['main'])
-                view_dates['main'] = corrected_date_info
-                
-                # 유효성 검사 후 처리
-                invalid_date_message = check_date(view_dates['main'], flags)
-                if invalid_date_message:
-                    state.update({
-                        "final_answer": invalid_date_message,
-                        "query_result": []
-                    })
-                    return state
-
-            # 미래 시제를 오늘 날짜로 변경했다면 답변도 이를 반영하기 위해 user_question을 수정
-            if flags.get("future_date"):
-                user_question = state["user_question"]
-                state["user_question"] = f"{user_question}..아니다, 오늘 날짜 기준으로 해줘"
-
-            logger.info(f"Executing final SQL query (length: {len(query)})")
-            result = execute(query)
-            state.update({"sql_query": query})
-
-            # If no results found and it's a trsc query, try vector search for note1
-            if (not result or is_null_only(result)) and "trsc" in selected_table:
-                evernote_result = await ever_note(query)
-                
-                # Get original and similar notes from the result
-                origin_note = evernote_result.get("origin_note", [])
-                vector_notes = evernote_result.get("vector_notes", [])
-                modified_query = evernote_result.get("query", query)
-
-                if vector_notes:
-                    logger.info(f"Found {len(vector_notes)} similar notes")
-                    # Store vector notes in state
-                    vector_notes_data = {
-                        "origin_note": origin_note,
-                        "vector_notes": vector_notes
-                    }
-                    state.update({"vector_notes": vector_notes_data})
-
-                    # Update user question to mention the similar notes
-                    origin_note_str = "', '".join(origin_note)
-                    vector_note_str = "', '".join(vector_notes)
-
-                    final_answer = f"요청을 처리하기 위해 '{origin_note_str}' 노트의 거래내역을 찾아 보았으나 검색된 결과가 없었습니다. 해당 기간 거래내역의 노트 중 유사한 노트('{vector_note_str}')로 검색한 결과는 다음과 같습니다."
-                    state.update({"final_answer": final_answer})
-                    flags["note_changed"] = True
-
-                # Try executing the modified query if available
-                if modified_query and modified_query != query:
-                    result = execute(modified_query)
-                    state.update({"sql_query": modified_query})
-
-            state.update({"date_info": view_dates["main"]})
-
-        except Exception as e:
-            logger.error(f"Error in executor: {str(e)}")
-            result = execute(query_ordered)
-            state.update({"sql_query": query_ordered})
-
-    # 결과가 없는 경우 처리
-    if not result or is_null_only(result):
-        logger.warning("No data found in query results")
-        flags["no_data"] = True
-        empty_result = []
-        state.update({"query_result": empty_result})
-        StateManager.update_state(trace_id, {
-            "sql_query": state.get("sql_query"),
-            "query_result": empty_result,
-            "date_info": state.get("date_info", (None, None))
-        })
-
-        return state
-
-    logger.info(f"Query executed successfully, storing results")
-    state.update({"query_result": result})
-    StateManager.update_state(trace_id, {
-        "sql_query": state.get("sql_query"),
-        "query_result": result,
-        "date_info": state.get("date_info", (None, None))
-    })
-
-    return state
-
-async def safeguard(state: GraphState) -> GraphState:
-    trace_id = state["trace_id"]
+@trace_state("sql_query", "sql_error")
+async def safeguard(state: GraphState, trace_id=None) -> GraphState:
     user_question = state["user_question"]
-    selected_table = state["selected_table"]
     unsafe_query = state["sql_query"]
     sql_error = state.get("sql_error", "")
     flags = state.get("flags")
-    
+
     flags["safe_count"] = flags.get("safe_count", 0) + 1
 
-    safe_query = await guard_query(trace_id, unsafe_query, user_question, selected_table, flags, sql_error)
+    sql_query = await guard_query(
+        trace_id, unsafe_query, user_question, flags, sql_error
+    )
+    await send_ws_message(state["websocket"], "safeguard_end", sql_query=sql_query)
 
-    if safe_query == unsafe_query:
+    limit = 100
+    rows = count_rows(sql_query, limit)
+    state["total_rows"] = rows
+    if rows > limit:
+        flags["has_next"] = True
+        sql_query = add_limit(sql_query)
+
+    if sql_query == unsafe_query:
         flags["query_changed"] = False
         return state
 
-    if safe_query != unsafe_query:
+    if sql_query != unsafe_query:
         flags["query_changed"] = True
-        state.update({"sql_query": safe_query})
-
-        StateManager.update_state(trace_id, {
-            "sql_query": safe_query,
-            "sql_error": sql_error
-        })
+        state.update({"sql_query": sql_query})
         return state
 
-async def respondent(state: GraphState) -> GraphState:
+
+@trace_state("fstring_answer", "final_answer", "table_pipe", "query_result")
+async def respondent(state: GraphState, trace_id=None) -> GraphState:
     # 쿼리 결과를 바탕으로 최종 응답을 생성"""
-    trace_id = state["trace_id"]
     user_question = state["user_question"]
-    result = state["query_result"]
-    selected_table = state["selected_table"]
+    query_result = state["query_result"]
+    is_api = state["is_api"]
+    chain_id = state["chain_id"]
+    has_next = state.get("flags", {}).get("has_next", False)
+    total_rows = state.get("total_rows", 0)
 
-    final_result = delete_useless_col(result)
+    respondent_history = get_history(
+        chain_id, ["user_question", "table_pipe", "fstring_answer", "final_answer"], "respondent"
+    )
 
-    if selected_table == "api":
+    query_result = delete_useless_col(query_result)
+
+    # paginated answer의 경우 paginated_response를 사용해서 final_answer 생성
+    if has_next:
+        if isinstance(query_result, tuple) and len(query_result) == 2 and isinstance(query_result[0], list):
+            data_for_table = query_result[0]
+        else:
+            data_for_table = query_result
+        table_pipe = pipe_table(data_for_table)
+
+        final_answer = await paginated_response(trace_id, user_question, total_rows, respondent_history)
+
+        # paginated response의 경우 여기서 끝
+        state.update(
+            {
+                "final_answer": final_answer,
+                "query_result": query_result,
+                "table_pipe": table_pipe,
+            }
+        )
+        logger.info(f"Final answer (paginated): {final_answer}")
+        return state
+
+    if is_api:
         date_info = state["date_info"]
     else:
         date_info = ()
-    fstring_answer, table_pipe = await response(trace_id, user_question, date_info, final_result)
+    fstring_answer, table_pipe = await response(
+        trace_id, user_question, date_info, query_result, respondent_history
+    )
 
-    # debuging
-    debug_str = f"{fstring_answer}\n\n\n{table_pipe}"
-    state.update({"yogeumjae": debug_str})
-    # debuging
-    
-    final_answer = compute_fstring(fstring_answer, result)
+    final_answer = compute_fstring(fstring_answer, query_result)
     # node.py의 respondent 함수에 추가
     logger.info(f"Final answer: {final_answer}")
 
-    state.update({"final_answer": final_answer, "query_result": final_result})
-    StateManager.update_state(trace_id, {
-        "final_answer": final_answer,
-        "query_result": final_result
-    })
+    state.update(
+        {
+            "fstring_answer": fstring_answer,
+            "table_pipe": table_pipe,
+            "final_answer": final_answer,
+            "query_result": query_result,
+        }
+    )
+
     return state
 
-async def nodata(state: GraphState) -> GraphState:
+
+@trace_state("final_answer")
+async def nodata(state: GraphState, trace_id=None) -> GraphState:
     # 데이터가 없음을 설명하는 노드"""
-    trace_id = state["trace_id"]
     user_question = state["user_question"]
     flags = state.get("flags")
-    
+    chain_id = state["chain_id"]
+
+    await send_ws_message(state["websocket"], "nodata_start")
+
+    nodata_history = get_history(chain_id, ["user_question", "final_answer"], "nodata")
+
     if flags.get("note_changed"):
         logger.info("Note changed flag detected, updating question context")
         vector_notes = state.get("vector_notes", {})
         vector_note_str = "', '".join(vector_notes.get("vector_notes", []))
-        user_question = user_question + f" 유사한 노트('{vector_note_str}')를 활용해서도 검색해줘"
+        user_question = (
+            user_question + f" 유사한 노트('{vector_note_str}')를 활용해서도 검색해줘"
+        )
 
-    final_answer = await no_data(trace_id, user_question)
+    final_answer = await no_data(trace_id, user_question, nodata_history)
 
     if flags.get("future_date"):
-        final_answer = "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. " + final_answer
+        final_answer = (
+            "요청주신 시점은 제가 조회가 불가능한 시점이기에 오늘 날짜를 기준으로 조회했습니다. "
+            + final_answer
+        )
 
     state.update({"final_answer": final_answer})
-    StateManager.update_state(trace_id, {"final_answer": final_answer})
     return state
 
-async def killjoy(state: GraphState) -> GraphState:
+
+@trace_state("final_answer")
+async def killjoy(state: GraphState, trace_id=None) -> GraphState:
     # 장난하지 말고 재무 데이터나 물어보라는 노드"""
-    trace_id = state["trace_id"]
     user_question = state["user_question"]
+    chain_id = state["chain_id"]
 
-    final_answer = await kill_joy(trace_id, user_question)
+    await send_ws_message(state["websocket"], "killjoy_start")
     
-    state.update({
-        "final_answer": final_answer,
-        "query_result": [],
-        "sql_query": ""
-    })
+    killjoy_history = get_history(
+        chain_id, ["user_question", "final_answer"], "killjoy"
+    )
 
-    StateManager.update_state(trace_id, {"final_answer": final_answer})
+    final_answer = await kill_joy(trace_id, user_question, killjoy_history)
+
+    state.update({"final_answer": final_answer, "query_result": [], "sql_query": ""})
     return state

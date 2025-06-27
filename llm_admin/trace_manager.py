@@ -1,9 +1,5 @@
 import uuid
 
-from sqlalchemy import create_engine, text
-from urllib.parse import quote_plus
-
-from utils.config import Config
 from core.postgresql import query_execute
 from utils.logger import setup_logger
 
@@ -68,27 +64,15 @@ class TraceManager:
             bool: 성공 여부
         """
         try:
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
-                command = text("""
-                    UPDATE trace 
-                    SET 
-                        trace_end = CURRENT_TIMESTAMP,
-                        trace_status = 'error'
-                    WHERE id = :trace_id
-                """)
-                
-                connection.execute(command, {
-                    'trace_id': trace_id
-                })
-
-            return True
+            query = """
+                UPDATE trace 
+                SET 
+                    trace_end = CURRENT_TIMESTAMP,
+                    trace_status = 'error'
+                WHERE id = %(trace_id)s
+            """
+            
+            return query_execute(query, {'trace_id': trace_id}, use_prompt_db=True)
 
         except Exception as e:
             logger.error(f"Error in mark_trace_error: {str(e)}")

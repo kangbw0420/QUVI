@@ -1,88 +1,134 @@
-import traceback
-from urllib.parse import quote_plus
-from typing import Union, Sequence, Dict, Any
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Result
-from sqlalchemy.sql.expression import Executable
+from graph.types import GraphState
+from graph.trace_state import trace_state
+from core.postgresql import query_execute
 
-from utils.config import Config
-from llm_admin.qna_manager import QnAManager
+from utils.query.pagination import count_rows, add_limit
+from utils.query.ever_note import ever_note
+from utils.query.view.view_table import view_table
+from utils.query.filter_com import add_com_condition
+from utils.query.modify_name import modify_stock, modify_bank
+from utils.query.orderby import add_order_by
+from utils.column.find_column import find_column_conditions
+from utils.column.check_df import is_null_only
 from utils.logger import setup_logger
+from utils.websocket_utils import send_ws_message
 
-logger = setup_logger('executor')
+logger = setup_logger("executor")
 
-qna_manager = QnAManager()
+@trace_state("sql_query", "query_result", "date_info")
+async def executor(state: GraphState) -> GraphState:
+    # SQL 쿼리를 실행하고 결과를 분석
+    flags = state.get("flags")
+    date_info = state.get("date_info")
+    raw_query = state.get("sql_query")
+    query_result = []
 
-def execute(command: Union[str, Executable], fetch="all") -> Union[Sequence[Dict[str, Any]], Result]:  # type: ignore
-    """SQL 쿼리를 실행하고 결과를 반환합니다.
-    Returns:
-        Union[Sequence[Dict[str, Any]], Result]: 쿼리 실행 결과.
-        fetch='all': 모든 결과 행을 딕셔너리 리스트로 반환.
-        fetch='one': 첫 번째 결과 행을 딕셔너리로 반환.
-        fetch='cursor': 커서 객체 직접 반환.
-    Raises:
-        ValueError: fetch 파라미터가 유효하지 않은 경우.
-        TypeError: command가 문자열이나 Executable이 아닌 경우.
-        Exception: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생시.
-    """
-    try:
-        parameters = {}
-        execution_options = {}
+    if "safe_count" not in flags:
+        flags["safe_count"] = 0
 
-        logger.info("Setting up database connection")
-        # URL encode the password to handle special characters
-        password = quote_plus(str(Config.DB_PASSWORD))
-        db_url = f"postgresql://{Config.DB_USER}:{password}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}"
+    if state["is_api"]:
+        
+        logger.info(f"Executing API query: {raw_query}")
+        try:
+            query_result = query_execute(raw_query, use_prompt_db=False)
+            if query_result:
+                await send_ws_message(
+                    state["websocket"],
+                    "executor",
+                    result_row=len(query_result),
+                    result_column=len(query_result[0])
+                )
+            state.update({"sql_query": raw_query, "query_result": query_result})
+            if not query_result:
+                flags["no_data"] = True
+        except Exception as e:
+            raise
 
-        engine = create_engine(db_url)
+    else:
+        company_id = state["company_id"]
 
-        with engine.begin() as connection:
-            # SQLAlchemy를 활용해 실행 가능한 쿼리 객체로 변경
-            if isinstance(command, str):
-                command = text(command)
-            elif isinstance(command, Executable):
-                pass
-            else:
-                err_msg = f"Query expression has unknown type: {type(command)}"
-                logger.error(err_msg)
-                raise TypeError(err_msg)
+        # 권한 있는 회사/계좌 검사
+        query_right_com = add_com_condition(raw_query, company_id)
 
-            logger.info("Executing query")
-            cursor = connection.execute(
-                command,
-                parameters,
-                execution_options=execution_options,
-            )
-            logger.info("Query execution completed")
+        # 주식종목/은행명 매핑 변환
+        query_right_stock = modify_stock(query_right_com)
+        query_right_bank = modify_bank(query_right_stock)
 
-            if cursor.returns_rows:
-                if fetch == "all":
-                    rows = cursor.fetchall()
-                    result = [x._asdict() for x in rows]
-                elif fetch == "one":
-                    first_result = cursor.fetchone()
-                    if first_result is None:
-                        logger.info("No results found")
-                        result = []
-                    else:
-                        logger.info("Converting single row to dictionary")
-                        result = [first_result._asdict()]
-                elif fetch == "cursor":
-                    logger.info("Returning cursor directly")
-                    return cursor
-                else:
-                    err_msg = f"Invalid fetch mode: {fetch}"
-                    logger.error(err_msg)
-                    raise ValueError(
-                        "Fetch parameter must be either 'one', 'all', or 'cursor'"
-                    )
+        # order by 추가
+        query_ordered = add_order_by(query_right_bank)
 
-                return result
-            else:
-                logger.info("Query does not return any rows")
-                return []
+        user_info = state.get("user_info")
+        flags = state.get("flags")
+        try:
+            view_query = view_table(query_ordered, company_id, user_info, date_info, flags)
 
-    except Exception as e:
-        logger.error(f"Error executing query: {type(e).__name__}: {str(e)}")
-        logger.debug("Detailed traceback:", exc_info=True)
-        raise
+            limit = 100
+            rows = count_rows(view_query, limit)
+            state["total_rows"] = rows
+            if rows > limit:
+                flags = state.get("flags")
+                flags["has_next"] = True
+                view_query = add_limit(view_query)
+
+            query_result = query_execute(view_query, use_prompt_db=False)
+            if query_result:
+                await send_ws_message(
+                    state["websocket"],
+                    "executor",
+                    result_row=len(query_result),
+                    result_column=len(query_result[0])
+                )
+            state.update({"sql_query": view_query})
+
+            # note1 조건이 있고 결과가 없는 경우에만 vector search 시도
+            try:
+                note_conditions = find_column_conditions(view_query, "note1")
+
+                if (not query_result or is_null_only(query_result)) and note_conditions:
+                    evernote_result = await ever_note(view_query)
+
+                    # Get original and similar notes from the result
+                    origin_note = evernote_result.get("origin_note", [])
+                    vector_notes = evernote_result.get("vector_notes", [])
+                    modified_query = evernote_result.get("query", view_query)
+
+                    if vector_notes:
+                        logger.info(f"Found {len(vector_notes)} similar notes")
+                        # Store vector notes in state
+                        vector_notes_data = {
+                            "origin_note": origin_note,
+                            "vector_notes": vector_notes,
+                        }
+                        state.update({"vector_notes": vector_notes_data})
+
+                        # Update user question to mention the similar notes
+                        origin_note_str = "', '".join(origin_note)
+                        vector_note_str = "', '".join(vector_notes)
+
+                        final_answer = f"요청을 처리하기 위해 '{origin_note_str}' 노트의 거래내역을 찾아 보았으나 검색된 결과가 없었습니다. 해당 기간 거래내역의 노트 중 유사한 노트('{vector_note_str}')로 검색한 결과는 다음과 같습니다."
+                        state.update({"final_answer": final_answer})
+                        flags["note_changed"] = True
+
+                    # Try executing the modified query if available
+                    if modified_query and modified_query != view_query:
+                        query_result = query_execute(
+                            modified_query, use_prompt_db=False
+                        )
+                        state.update({"sql_query": modified_query})
+            except Exception as e:
+                logger.error(f"Error checking note conditions: {str(e)}")
+
+        except Exception as e:
+            logger.error(f"Error in executor: {str(e)}")
+
+    # 결과가 없는 경우 처리
+    if not query_result or is_null_only(query_result):
+        logger.warning("No data found in query results")
+        flags["no_data"] = True
+        query_result = []
+        state.update({"query_result": query_result})
+        return state
+
+    logger.info("Query executed successfully, storing results")
+    state.update({"query_result": query_result})
+    return state

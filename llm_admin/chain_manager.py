@@ -1,8 +1,5 @@
 import uuid
-from sqlalchemy import create_engine, text
-from urllib.parse import quote_plus
 
-from utils.config import Config
 from core.postgresql import query_execute
 from utils.logger import setup_logger
 
@@ -75,29 +72,20 @@ class ChainManager:
             bool: 성공 여부
         """
         try:
-            password = quote_plus(str(Config.DB_PASSWORD_PROMPT))
-            db_url = f"postgresql://{Config.DB_USER_PROMPT}:{password}@{Config.DB_HOST_PROMPT}:{Config.DB_PORT_PROMPT}/{Config.DB_DATABASE_PROMPT}"
-            engine = create_engine(db_url)
-
-            with engine.begin() as connection:
-                # 사용하려는 스키마 지정
-                connection.execute(text("SET search_path TO '%s'" % Config.DB_SCHEMA_PROMPT))
-
-                command = text("""
-                    UPDATE chain 
-                    SET 
-                        chain_answer = :error_message,
-                        chain_end = CURRENT_TIMESTAMP,
-                        chain_status = 'error'
-                    WHERE id = :chain_id
-                """)
-                
-                connection.execute(command, {
-                    'error_message': error_message,
-                    'chain_id': chain_id
-                })
-
-            return True
+            query = """
+                UPDATE chain 
+                SET 
+                    chain_answer = %(error_message)s,
+                    chain_end = CURRENT_TIMESTAMP,
+                    chain_status = 'error'
+                WHERE id = %(chain_id)s
+            """
+            params = {
+                'error_message': error_message,
+                'chain_id': chain_id
+            }
+            
+            return query_execute(query, params, use_prompt_db=True)
 
         except Exception as e:
             logger.error(f"Error in mark_chain_error: {str(e)}")

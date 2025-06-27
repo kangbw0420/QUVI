@@ -1,38 +1,36 @@
-## Agent Architecture(goodbye yadon...)
-yadon --> yadoran: shellder = "1"
-yadon --> commander: shellder = "0"
-
-yadoran --> commander
-
+## Agent Architecture
 ```mermaid
 stateDiagram-v2
-    [*] --> checkpoint
+    [*] --> next_page
+    next_page --> checkpoint
+    next_page --> END: user_question == "next_page"
 
     checkpoint --> isapi: not is_joy
     checkpoint --> killjoy: is_joy
     
-    isapi --> funk: selected_table = "api"
-    isapi --> commander: selected_table != "api"
-    
-    commander --> nl2sql
+    isapi --> funk: is_api
+    isapi --> nl2sql: not is_api
     
     funk --> params
-    params --> executor
-
+    params --> yqmd: selected_api == "aicfo_get_financial_flow"
+    params --> executor: selected_api != "aicfo_get_financial_flow"
+    params --> END: invalid_date
+    
+    yqmd --> executor
+    
     nl2sql --> executor
     
-    executor --> nodata: no_data = true
-    executor --> respondent
-    executor --> note_embedding: no_data + note
-    executor --> safeguard: query_error
-
+    executor --> nodata: no_data
+    executor --> respondent: not no_data and not note_changed and not query_error
+    executor --> END: note_changed
+    executor --> safeguard: query_error and safe_count < 2
+    executor --> END: invalid_date
+    
     safeguard --> executor
     
-    note_embedding --> END
     killjoy --> END
     nodata --> END
     respondent --> END
-
 ```
 
 

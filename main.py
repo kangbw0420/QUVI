@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 
-from core.api import api
+from core.quvi_api import api
 from core.postgresql import connect_postgresql_pool
 from utils.logger import setup_logger
 
@@ -20,7 +20,6 @@ if not os.path.exists(log_dir):
 
 # 애플리케이션 루트 로거 설정
 logger = setup_logger('main')
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="FastAPI Uvicorn Server")
@@ -52,9 +51,7 @@ async def lifespan(app: FastAPI):
         # 애플리케이션 종료 로깅
         logger.info("Application shutdown")
 
-
 app = FastAPI(lifespan=lifespan)
-
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -81,6 +78,27 @@ async def log_requests(request: Request, call_next):
             f"{str(e)} - {process_time:.2f}ms"
         )
         raise
+
+@app.middleware("http")
+async def profiler_middleware(request: Request, call_next):
+    """각 HTTP 요청에 프로파일링 ID를 할당하는 미들웨어"""
+    from utils.profiler import profiler
+    
+    # 프로파일링이 필요한 엔드포인트만 처리
+    if request.url.path == "/process":
+        # 요청 ID 생성
+        request_id = profiler.start_request()
+        
+        # 요청 처리
+        response = await call_next(request)
+        
+        # 프로파일 정보 삭제 (메모리 누수 방지)
+        profiler.clear_profile(request_id)
+        
+        return response
+    else:
+        # 프로파일링이 필요없는 일반 요청
+        return await call_next(request)
 
 app.add_middleware(
     CORSMiddleware,

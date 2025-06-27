@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional
 from decimal import Decimal
 
 from core.postgresql import query_execute

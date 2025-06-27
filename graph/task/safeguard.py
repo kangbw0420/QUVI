@@ -1,78 +1,71 @@
-import re
-from datetime import datetime
-from typing import List
-
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from core.postgresql import get_prompt
-from graph.models import qwen_llm
+from graph.models import qwen_llm as llm
+from graph.prompts.prompts_core import PROMPT_NL2SQL
+from graph.prompts.prompts_guardian import PROMPT_SAFEGUARD
 from llm_admin.qna_manager import QnAManager
+from utils.common.llm_output_handler import handle_sql_code_block
 from utils.logger import setup_logger
+from utils.common.date_utils import get_today_formatted
+
 
 qna_manager = QnAManager()
-logger = setup_logger('safeguard')
+logger = setup_logger("safeguard")
+
 
 async def guard_query(
-        trace_id: str,
-        unsafe_query: str,
-        user_question: str,
-        selected_table: str,
-        flags: dict,
-        sql_error: str = ""
+    trace_id: str,
+    unsafe_query: str,
+    user_question: str,
+    flags: dict,
+    sql_error: str = "",
 ) -> str:
     """에러가 발생했거나 날짜가 틀릴 수 있는 쿼리를 체크
     Returns:
         수정된 쿼리(문제 없으면 쿼리 그대로 return)
     """
-    today = datetime.now()
-    prompt_today = today.strftime("%Y년 %m월 %d일")
+    prompt_today = get_today_formatted()
 
     if flags["query_error"]:
-        system_prompt = get_prompt(
-            node_nm='safeguard', prompt_nm='error'
-        )[0]['prompt'].format(user_question=user_question, today=prompt_today, unsafe_query=unsafe_query, sql_error=sql_error)
+        system_prompt = PROMPT_SAFEGUARD.format(
+            user_question=user_question,
+            today=prompt_today,
+            unsafe_query=unsafe_query,
+            sql_error=sql_error,
+        )
     else:
-        system_prompt = get_prompt(
-            node_nm='safeguard', prompt_nm=selected_table
-        )[0]['prompt'].format(user_question=user_question, today=prompt_today, unsafe_query=unsafe_query)
+        question_with_error = f"{user_question}, SQL오류: {sql_error}"
+        system_prompt = PROMPT_NL2SQL.format(
+            user_question=question_with_error,
+            today=prompt_today
+        )
+
+    qna_id = qna_manager.create_qna_id(trace_id)
 
     prompt = ChatPromptTemplate.from_messages(
-        [
-            SystemMessage(content=system_prompt),
-            ("human", user_question)
-        ]
+        [SystemMessage(content=system_prompt), ("human", user_question)]
     )
 
-    logger.debug("===== safeguard(Q) =====")
-    qna_id = qna_manager.create_question(
-        trace_id=trace_id,
+    logger.info("===== safeguard(Q) =====")
+    qna_manager.update_question(
+        qna_id=qna_id,
         question=prompt,
         model="qwen_14b"
     )
 
-    guard_chain = prompt | qwen_llm
+    guard_chain = prompt | llm
     output = guard_chain.invoke({"user_question": user_question})
-    
-    match = re.search(r"```sql\s*(.*?)\s*```", output, re.DOTALL)
-    if match:
-        safe_query = match.group(1)
-    else:
-        match = re.search(r"SELECT.*", output, re.DOTALL)
-        if match:
-            safe_query = match.group(0)
 
-        else:
-            logger.error("Failed to extract SQL query from response")
-            raise ValueError("SQL 쿼리를 찾을 수 없습니다.")
+    safe_query = handle_sql_code_block(output)
 
-    logger.debug("===== safeguard(A) =====")
+    logger.info("===== safeguard(A) =====")
 
     # 쿼리 변경 여부 로깅
     if safe_query != unsafe_query:
         logger.info("Query was modified by safeguard")
-        logger.debug(f"Original query: {unsafe_query}")
-        logger.debug(f"Modified query: {safe_query}")
+        logger.info(f"Original query: {unsafe_query}")
+        logger.info(f"Modified query: {safe_query}")
     else:
         logger.info("Query was not modified by safeguard")
 
