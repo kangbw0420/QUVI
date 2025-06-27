@@ -9,6 +9,7 @@ from graph.node import (
     checkpoint,
     isapi,
     funk,
+    commander,
     params,
     yqmd,
     opendue,

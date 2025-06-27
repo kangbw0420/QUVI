@@ -46,7 +46,8 @@ async def executor(state: GraphState) -> GraphState:
 
     else:
         company_id = state["company_id"]
-
+        selected_table = state["selected_table"]
+        
         # 권한 있는 회사/계좌 검사
         query_right_com = add_com_condition(raw_query, company_id)
 
@@ -60,7 +61,7 @@ async def executor(state: GraphState) -> GraphState:
         user_info = state.get("user_info")
         flags = state.get("flags")
         try:
-            view_query = view_table(query_ordered, company_id, user_info, date_info, flags)
+            view_query = view_table(query_ordered, selected_table, company_id, user_info, date_info, flags)
 
             limit = 100
             rows = count_rows(view_query, limit)

@@ -125,6 +125,7 @@ async def process_natural_language(request: Input, websocket: WebSocket = None) 
         sql_query = final_state["sql_query"]
         is_api = final_state["is_api"]
         flags = final_state["flags"]
+        selected_table = final_state["selected_table"]
 
         if "date_info" not in final_state or not final_state["date_info"]:
             date_info = (None, None)
@@ -174,7 +175,7 @@ async def process_natural_language(request: Input, websocket: WebSocket = None) 
                 date_info=date_info,
                 has_next=flags["has_next"],
                 sql_query=sql_query,  # (SQL 잘 뜨는지 확인용, debug)
-                selected_table="trsc", # temporary
+                selected_table=selected_table,
                 profile=profile_result
             )
         )
