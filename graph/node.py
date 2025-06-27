@@ -9,6 +9,7 @@ from graph.task.params import parameters
 from graph.task.killjoy import kill_joy
 from graph.task.safeguard import guard_query
 from graph.task.dater import date_selector
+from graph.task.commander import command
 
 from utils.common.date_utils import get_today_str
 from utils.fstring.fstring_assistant import pipe_table
@@ -49,6 +50,7 @@ async def next_page(state: GraphState) -> GraphState:
                 "query_result": query_result,
                 "final_answer": "next_page",
                 "date_info": get_recent_history(chain_id, "date_info"),
+                "selected_table": get_recent_history(chain_id, "selected_table"),
             }
         )
     return state
@@ -162,9 +164,11 @@ async def opendue(state: GraphState) -> GraphState:
 async def dater(state: GraphState, trace_id=None) -> GraphState:
     user_question = state["user_question"]
     chain_id = state["chain_id"]
+    selected_table = state["selected_table"]
+    flags = state.get("flags")
     date_history = get_history(chain_id, ["user_question", "date_info"], "dater")
     
-    date_info = await date_selector(trace_id, user_question, date_history)
+    date_info = await date_selector(trace_id, user_question, selected_table, flags, date_history)
     state.update({"date_info": date_info})
     return state
 
@@ -173,13 +177,14 @@ async def nl2sql(state: GraphState, trace_id=None) -> GraphState:
     # 사용자 질문을 기반으로 SQL 쿼리를 생성
     user_question = state["user_question"]
     company_id = state["company_id"]
+    selected_table = state["selected_table"]
     chain_id = state["chain_id"]
     date_info = state.get("date_info", (get_today_str(), get_today_str()))
 
     nl2sql_history = get_history(chain_id, ["user_question", "sql_query"], "nl2sql")
 
     sql_query = await create_sql(
-        trace_id, company_id, user_question, date_info, nl2sql_history
+        trace_id, company_id, user_question, selected_table, date_info, nl2sql_history
     )
     await send_ws_message(state["websocket"], "nl2sql", sql_query=sql_query)
 
@@ -191,13 +196,14 @@ async def nl2sql(state: GraphState, trace_id=None) -> GraphState:
 async def safeguard(state: GraphState, trace_id=None) -> GraphState:
     user_question = state["user_question"]
     unsafe_query = state["sql_query"]
+    selected_table = state["selected_table"]
     sql_error = state.get("sql_error", "")
     flags = state.get("flags")
 
     flags["safe_count"] = flags.get("safe_count", 0) + 1
 
     sql_query = await guard_query(
-        trace_id, unsafe_query, user_question, flags, sql_error
+        trace_id, unsafe_query, user_question, selected_table, flags, sql_error
     )
     await send_ws_message(state["websocket"], "safeguard_end", sql_query=sql_query)
 
@@ -324,5 +330,10 @@ async def killjoy(state: GraphState, trace_id=None) -> GraphState:
 
     final_answer = await kill_joy(trace_id, user_question, killjoy_history)
 
-    state.update({"final_answer": final_answer, "query_result": [], "sql_query": ""})
+    state.update({
+        "final_answer": final_answer,
+        "query_result": [],
+        "sql_query": "",
+        "selected_table": ""
+    })
     return state

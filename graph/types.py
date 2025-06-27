@@ -25,6 +25,7 @@ class GraphState(TypedDict):
     user_question: str
     is_api: bool
     selected_api: str
+    selected_table: str
     sql_query: str
     sql_error: str
     date_info: Tuple[str, str]

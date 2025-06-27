@@ -1,11 +1,13 @@
+import re
+
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from graph.models import qwen_llm as llm
+from utils.common.llm_output_handler import handle_sql_code_block
+from graph.models import nl2sql as llm
 from graph.prompts.prompts_core import PROMPT_NL2SQL
 from graph.prompts.prompts_guardian import PROMPT_SAFEGUARD
 from llm_admin.qna_manager import QnAManager
-from utils.common.llm_output_handler import handle_sql_code_block
 from utils.logger import setup_logger
 from utils.common.date_utils import get_today_formatted
 
@@ -18,6 +20,7 @@ async def guard_query(
     trace_id: str,
     unsafe_query: str,
     user_question: str,
+    selected_table: str,
     flags: dict,
     sql_error: str = "",
 ) -> str:
@@ -42,7 +45,6 @@ async def guard_query(
         )
 
     qna_id = qna_manager.create_qna_id(trace_id)
-
     prompt = ChatPromptTemplate.from_messages(
         [SystemMessage(content=system_prompt), ("human", user_question)]
     )

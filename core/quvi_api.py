@@ -99,6 +99,7 @@ async def process_natural_language(request: Input, websocket: WebSocket = None) 
             "company_id": request.company_id,
             "user_question": request.user_question,
             "websocket": websocket,
+            "selected_table": "",
             "flags": {
                 "is_joy": False,
                 "is_opendue": False,
