@@ -4,7 +4,7 @@ from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from graph.models import solver
+from graph.models import solver, qwen_llm
 from graph.prompts.prompts_core import PROMPT_RESPONDENT_HUMAN, PROMPT_RESPONDENT_SYSTEM, PROMPT_PAGE_RESPONDENT_SYSTEM
 from llm_admin.qna_manager import QnAManager
 from utils.common.llm_output_handler import handle_python_code_block
@@ -59,7 +59,7 @@ async def paginated_response(
             model="qwen_14b"
         )
 
-        chain = prompt | solver | output_parser
+        chain = prompt | qwen_llm | output_parser
         answer = chain.invoke({"human_prompt": user_question})
 
         logger.info("===== table_respondent(A) =====")
