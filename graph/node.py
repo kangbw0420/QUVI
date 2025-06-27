@@ -43,6 +43,7 @@ async def next_page(state: GraphState) -> GraphState:
             flags["has_next"] = True
 
         query_result = query_execute(next_page_query, use_prompt_db=False)
+        query_result = delete_useless_col(query_result)
 
         state.update(
             {
