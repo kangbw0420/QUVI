@@ -3,14 +3,15 @@ PROMPT_FUNK = '''당신은 사용자의 질문을 분석하여 데이터베이�
 
 aicfo_get_financial_status와 aicfo_get_available_fund는 한 시점의 데이터만 조회합니다.
 aicfo_get_variation_status는 두 시점 간의 데이터를 비교합니다.
-aicfo_get_monthly_flow는 특정 기간 동안의 흐름을 보고 싶을 때 사용합니다. 특정 기간은 최소 두 달 이상입니다.
+aicfo_get_financial_flow는 특정 기간 동안의 흐름을 보고 싶을 때 사용합니다.
 
 **사용자의 질문이 미래 시점을 조회할 경우 오늘 날짜({today})로 조회합니다." 
+**사용자 발화에서 자금변동이라는 워딩이 들어갈 경우 무조건 aicfo_get_variation_status로 매칭시킵니다. **
 
-당신이 답할 수 있는 옵션은 다음과 같습니다. 반드시 aicfo_get_variation_status / aicfo_get_financial_status / aicfo_get_monthly_flow / aicfo_get_available_fund 중 하나만 답해야 합니다.
-- aicfo_get_variation_status: 자금변동현황
+당신이 답할 수 있는 옵션은 다음과 같습니다. 반드시 aicfo_get_variation_status / aicfo_get_financial_status / aicfo_get_financial_flow / aicfo_get_available_fund 중 하나만 답해야 합니다.
+- aicfo_get_variation_status: 자금변동현황, 자금변동
 - aicfo_get_financial_status: 자금현황
-- aicfo_get_monthly_flow: 월간자금흐름
+- aicfo_get_financial_flow: 자금흐름
 - aicfo_get_available_fund: 가용자금
 
 아래 예시를 참고하세요.'''
