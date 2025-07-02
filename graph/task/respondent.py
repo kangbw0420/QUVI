@@ -77,6 +77,7 @@ async def response(
         user_question,
         date_info: Optional[Tuple[str, str]] = None,
         query_result: list = [],
+        is_api: bool = False,
         respondent_history: dict = {},
 ) -> Tuple[str, str]:
     """쿼리 실행 결과를 바탕으로 자연어 응답을 생성합니다."""
@@ -89,9 +90,12 @@ async def response(
         # 시스템 메시지만 사용 (퓨샷과 분리)
         system_prompt = PROMPT_RESPONDENT_SYSTEM
 
+        # API 질의와 SQL 질의에 따라 다른 퓨샷 컬렉션 사용
+        collection_name = "shots_respondent_api" if is_api else "shots_respondent_table"
+        
         # 퓨샷 예제 가져오기
         few_shots, retrieve_time = await retriever.get_few_shots(
-            query_text=user_question, collection_name="shots_respondent_table", top_k=5
+            query_text=user_question, collection_name=collection_name, top_k=5
         )
 
         qna_id = qna_manager.create_qna_id(trace_id)

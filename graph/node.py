@@ -267,7 +267,7 @@ async def respondent(state: GraphState, trace_id=None) -> GraphState:
     else:
         date_info = ()
     fstring_answer, table_pipe = await response(
-        trace_id, user_question, date_info, query_result, respondent_history
+        trace_id, user_question, date_info, query_result, is_api, respondent_history
     )
 
     final_answer = compute_fstring(fstring_answer, query_result)
