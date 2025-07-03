@@ -104,6 +104,7 @@ async def create_sql(
             required_fields=["user_question", "sql_query"],
             human_field="user_question",
             ai_field="sql_query",
+            add_date_to_question=True
         )
 
         prompt = ChatPromptTemplate.from_messages(

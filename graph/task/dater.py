@@ -101,7 +101,8 @@ async def date_selector(
             date_history,
             required_fields=["user_question", "date_info"],
             human_field="user_question",
-            ai_field="date_info"
+            ai_field="date_info",
+            add_date_to_question=True
         )
 
         prompt = ChatPromptTemplate.from_messages(
