@@ -1,0 +1,535 @@
+package com.daquv.agent.workflow.prompt;
+
+import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.HistoryService;
+import com.daquv.agent.quvi.requests.VectorRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Component
+public class PromptBuilder {
+
+    @Autowired
+    private VectorRequest vectorRequest;
+    
+    @Autowired
+    private QnaService qnaService;
+    
+    @Autowired
+    private HistoryService historyService;
+
+    // Commander 프롬프트 생성 (테이블 선택)
+    public PromptTemplate buildCommanderPrompt(String userQuestion) {
+        PromptTemplate template = PromptTemplate.fromFile("commander");
+        String prompt = template.replace("{user_question}", userQuestion);
+        return PromptTemplate.from(prompt);
+    }
+
+    // Commander 프롬프트 생성 (few-shot 포함)
+    public PromptTemplate buildCommanderPromptWithFewShots(String userQuestion) {
+        return buildCommanderPromptWithFewShots(userQuestion, null);
+    }
+    
+    // Commander 프롬프트 생성 (few-shot 포함 + QnA 저장)
+    public PromptTemplate buildCommanderPromptWithFewShots(String userQuestion, String qnaId) {
+        // 기본 시스템 프롬프트 로드
+        PromptTemplate template = PromptTemplate.fromFile("commander");
+        String systemPrompt = template.replace("{user_question}", userQuestion);
+        
+        // Few-shot 예제 검색
+        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+            userQuestion, "shots_commander_slp", 5, null);
+        
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+        
+        // QnA ID가 있으면 few-shot 저장
+        if (qnaId != null && fewShots != null) {
+            for (int i = 0; i < fewShots.size(); i++) {
+                Map<String, Object> shot = fewShots.get(i);
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+                if (input != null && output != null) {
+                    qnaService.recordFewshot(qnaId, input, input, output, i + 1);
+                }
+            }
+        }
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withFewShots(fewShots)
+            .withUserMessage(userQuestion);
+    }
+
+    // NL2SQL 프롬프트 생성
+    public PromptTemplate buildNL2SQLPrompt(String targetTable, String schema) {
+        String today = PromptBuilder.getTodayDash();
+        
+        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
+        
+        String prompt = template.replaceAll(
+            "{today}", today,
+            "{schema}", schema
+        );
+            
+        return PromptTemplate.from(prompt);
+    }
+
+    // NL2SQL 프롬프트 생성 (few-shot 포함)
+    public PromptTemplate buildNL2SQLPromptWithFewShots(String targetTable, String schema, String userQuestion) {
+        return buildNL2SQLPromptWithFewShots(targetTable, schema, userQuestion, null);
+    }
+    
+    // NL2SQL 프롬프트 생성 (few-shot 포함 + QnA 저장)
+    public PromptTemplate buildNL2SQLPromptWithFewShots(String targetTable, String schema, String userQuestion, String qnaId) {
+        String today = PromptBuilder.getTodayDash();
+        
+        // 기본 시스템 프롬프트 로드
+        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
+        String systemPrompt = template.replaceAll(
+            "{today}", today,
+            "{schema}", schema
+        );
+        
+        // Few-shot 예제 검색
+        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+            userQuestion, "shots_" + targetTable.toLowerCase(), 3, null);
+        
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+        
+        // QnA ID가 있으면 few-shot 저장
+        if (qnaId != null && fewShots != null) {
+            for (int i = 0; i < fewShots.size(); i++) {
+                Map<String, Object> shot = fewShots.get(i);
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+                if (input != null && output != null) {
+                    // 날짜 정보가 있으면 질문에 추가
+                    String humanWithDate = input;
+                    if (shot.containsKey("date")) {
+                        String date = (String) shot.get("date");
+                        humanWithDate = input + ", 오늘: " + date + ".";
+                    }
+                    qnaService.recordFewshot(qnaId, input, humanWithDate, output, i + 1);
+                }
+            }
+        }
+        
+        // 사용자 질문 포맷팅 (날짜 정보 포함)
+        String formattedQuestion = formatQuestionWithDate(userQuestion);
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withFewShots(fewShots)
+            .withUserMessage(formattedQuestion);
+    }
+
+    // NL2SQL 프롬프트 생성 (few-shot + history 포함)
+    public PromptTemplate buildNL2SQLPromptWithFewShotsAndHistory(
+            String targetTable, String schema, String userQuestion, Map<String, List<Map<String, Object>>> nl2sqlHistory) {
+        String today = PromptBuilder.getTodayDash();
+        
+        // 기본 시스템 프롬프트 로드
+        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
+        String systemPrompt = template.replaceAll(
+            "{today}", today,
+            "{schema}", schema
+        );
+        
+        // Few-shot 예제 검색
+        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+            userQuestion, "shots_" + targetTable.toLowerCase(), 3, null);
+        
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+        
+        // 사용자 질문 포맷팅 (날짜 정보 포함)
+        String formattedQuestion = formatQuestionWithDate(userQuestion);
+        
+        // Chat history 변환
+        List<Map<String, Object>> chatHistory = convertToChatHistory(nl2sqlHistory);
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withFewShots(fewShots)
+            .withHistory(chatHistory)
+            .withUserMessage(formattedQuestion);
+    }
+
+    // NL2SQL 프롬프트 생성 (few-shot + history + QnA 저장 포함)
+    public PromptTemplate buildNL2SQLPromptWithFewShotsAndHistory(
+            String targetTable, String schema, String userQuestion, List<Map<String, Object>> nl2sqlHistory, String qnaId) {
+        String today = PromptBuilder.getTodayDash();
+        
+        // 기본 시스템 프롬프트 로드
+        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
+        String systemPrompt = template.replaceAll(
+            "{today}", today,
+            "{schema}", schema
+        );
+        
+        // Few-shot 예제 검색
+        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+            userQuestion, "shots_" + targetTable.toLowerCase(), 3, null);
+        
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+        
+        // QnA ID가 있으면 few-shot 저장
+        if (qnaId != null && fewShots != null) {
+            for (int i = 0; i < fewShots.size(); i++) {
+                Map<String, Object> shot = fewShots.get(i);
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+                if (input != null && output != null) {
+                    // 날짜 정보가 있으면 질문에 추가
+                    String humanWithDate = input;
+                    if (shot.containsKey("date")) {
+                        String date = (String) shot.get("date");
+                        humanWithDate = input + ", 오늘: " + date + ".";
+                    }
+                    qnaService.recordFewshot(qnaId, input, humanWithDate, output, i + 1);
+                }
+            }
+        }
+        
+        // 사용자 질문 포맷팅 (날짜 정보 포함)
+        String formattedQuestion = formatQuestionWithDate(userQuestion);
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withFewShots(fewShots)
+            .withHistory(nl2sqlHistory)
+            .withUserMessage(formattedQuestion);
+    }
+
+    // Respondent 프롬프트 생성
+    public PromptTemplate buildRespondentPrompt(String userQuestion, String tablePipe) {
+        PromptTemplate template = PromptTemplate.fromFile("respondent");
+        String prompt = template.replaceAll(
+            "{user_question}", userQuestion,
+            "{table_pipe}", tablePipe
+        );
+        return PromptTemplate.from(prompt);
+    }
+
+    // Respondent 프롬프트 생성 (few-shot 포함)
+    public PromptTemplate buildRespondentPromptWithFewShots(String userQuestion, String tablePipe) {
+        return buildRespondentPromptWithFewShots(userQuestion, tablePipe, null);
+    }
+    
+    // Respondent 프롬프트 생성 (few-shot 포함 + QnA 저장)
+    public PromptTemplate buildRespondentPromptWithFewShots(String userQuestion, String tablePipe, String qnaId) {
+        // 기본 시스템 프롬프트 로드
+        PromptTemplate template = PromptTemplate.fromFile("respondent");
+        String systemPrompt = template.replaceAll(
+            "{user_question}", userQuestion,
+            "{table_pipe}", tablePipe
+        );
+        
+        // Few-shot 예제 검색
+        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+            userQuestion, "shots_respondent_slp", 5, null);
+        
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+        
+        // QnA ID가 있으면 few-shot 저장
+        if (qnaId != null && fewShots != null) {
+            for (int i = 0; i < fewShots.size(); i++) {
+                Map<String, Object> shot = fewShots.get(i);
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+                if (input != null && output != null) {
+                    // stats 정보가 있으면 질문에 추가
+                    String humanWithStats = input;
+                    if (shot.containsKey("stats")) {
+                        String stats = (String) shot.get("stats");
+                        if (shot.containsKey("date")) {
+                            String date = (String) shot.get("date");
+                            humanWithStats = "결과 데이터:\n" + stats + "\n\n사용자의 질문:\n" + date + ". " + input;
+                        } else {
+                            humanWithStats = "결과 데이터:\n" + stats + "\n\n사용자의 질문:\n" + input;
+                        }
+                    }
+                    qnaService.recordFewshot(qnaId, input, humanWithStats, output, i + 1);
+                }
+            }
+        }
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withFewShots(fewShots)
+            .withUserMessage(userQuestion);
+    }
+
+    // Respondent 프롬프트 생성 (few-shot + history + QnA 저장 포함)
+    public PromptTemplate buildRespondentPromptWithFewShotsAndHistory(
+            String userQuestion, String tablePipe, List<Map<String, Object>> respondentHistory, String qnaId) {
+        // 기본 시스템 프롬프트 로드
+        PromptTemplate template = PromptTemplate.fromFile("respondent");
+        String systemPrompt = template.replaceAll(
+            "{user_question}", userQuestion,
+            "{table_pipe}", tablePipe
+        );
+        
+        // Few-shot 예제 검색
+        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+            userQuestion, "shots_respondent_slp", 5, null);
+        
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+        
+        // QnA ID가 있으면 few-shot 저장
+        if (qnaId != null && fewShots != null) {
+            for (int i = 0; i < fewShots.size(); i++) {
+                Map<String, Object> shot = fewShots.get(i);
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+                if (input != null && output != null) {
+                    // stats 정보가 있으면 질문에 추가
+                    String humanWithStats = input;
+                    if (shot.containsKey("stats")) {
+                        String stats = (String) shot.get("stats");
+                        if (shot.containsKey("date")) {
+                            String date = (String) shot.get("date");
+                            humanWithStats = "결과 데이터:\n" + stats + "\n\n사용자의 질문:\n" + date + ". " + input;
+                        } else {
+                            humanWithStats = "결과 데이터:\n" + stats + "\n\n사용자의 질문:\n" + input;
+                        }
+                    }
+                    qnaService.recordFewshot(qnaId, input, humanWithStats, output, i + 1);
+                }
+            }
+        }
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withFewShots(fewShots)
+            .withHistory(respondentHistory)
+            .withUserMessage(userQuestion);
+    }
+
+    // Nodata 프롬프트 생성 (데이터 없음 응답)
+    public PromptTemplate buildNodataPrompt(String userQuestion) {
+        PromptTemplate template = PromptTemplate.fromFile("nodata");
+        String prompt = template.replace("{user_question}", userQuestion);
+        return PromptTemplate.from(prompt);
+    }
+
+    // Nodata 프롬프트 생성 (history 포함)
+    public PromptTemplate buildNodataPromptWithHistory(String userQuestion, List<Map<String, Object>> nodataHistory) {
+        PromptTemplate template = PromptTemplate.fromFile("nodata");
+        String systemPrompt = template.replace("{user_question}", userQuestion);
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withHistory(nodataHistory)
+            .withUserMessage(userQuestion);
+    }
+
+    // Killjoy 프롬프트 생성 (상품권 외 질문 차단)
+    public PromptTemplate buildKilljoyPrompt(String userQuestion) {
+        PromptTemplate template = PromptTemplate.fromFile("killjoy");
+        String prompt = template.replace("{user_question}", userQuestion);
+        return PromptTemplate.from(prompt);
+    }
+
+    // Killjoy 프롬프트 생성 (history 포함)
+    public PromptTemplate buildKilljoyPromptWithHistory(String userQuestion, List<Map<String, Object>> killjoyHistory) {
+        PromptTemplate template = PromptTemplate.fromFile("killjoy");
+        String systemPrompt = template.replace("{user_question}", userQuestion);
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withHistory(killjoyHistory)
+            .withUserMessage(userQuestion);
+    }
+
+    // Safeguard 프롬프트 생성 (SQL 에러 수정)
+    public PromptTemplate buildSafeguardPrompt(String userQuestion, String unsafeQuery, String sqlError) {
+        String today = PromptBuilder.getTodayDash();
+        
+        PromptTemplate template = PromptTemplate.fromFile("safeguard");
+        String prompt = template.replaceAll(
+            "{user_question}", userQuestion,
+            "{today}", today,
+            "{unsafe_query}", unsafeQuery,
+            "{sql_error}", sqlError != null ? sqlError : ""
+        );
+        return PromptTemplate.from(prompt);
+    }
+
+    // Safeguard용 NL2SQL 프롬프트 생성 (테이블별 에러 수정)
+    public PromptTemplate buildSafeguardNL2SQLPrompt(String selectedTable, String userQuestion, String sqlError) {
+        String today = PromptBuilder.getTodayDash();
+        
+        // 에러 정보를 포함한 질문 생성
+        String questionWithError = userQuestion + ", SQL오류: " + (sqlError != null ? sqlError : "");
+        
+        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + selectedTable.toLowerCase());
+        String prompt = template.replaceAll(
+            "{user_question}", questionWithError,
+            "{today}", today
+        );
+        return PromptTemplate.from(prompt);
+    }
+
+    // 유틸리티: 오늘 날짜 반환
+    public static String getTodayDash() {
+        return LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    }
+
+    // 유틸리티: 질문에 날짜 정보 추가
+    private String formatQuestionWithDate(String userQuestion) {
+        LocalDate today = LocalDate.now();
+        String formattedToday = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String weekday = getWeekday(today.getDayOfWeek().getValue());
+        
+        return userQuestion + ", 오늘: " + formattedToday + " " + weekday + "요일.";
+    }
+
+    // 유틸리티: 요일 변환
+    private String getWeekday(int dayOfWeek) {
+        String[] weekdays = {"", "월", "화", "수", "목", "금", "토", "일"};
+        return weekdays[dayOfWeek];
+    }
+
+    // 유틸리티: Chat history 변환 (Python의 chat_history.py와 동일한 로직)
+    private List<Map<String, Object>> convertToChatHistory(Map<String, List<Map<String, Object>>> historyDict) {
+        List<Map<String, Object>> chatHistory = new java.util.ArrayList<>();
+        
+        if (historyDict == null) {
+            return chatHistory;
+        }
+        
+        for (List<Map<String, Object>> historyList : historyDict.values()) {
+            for (Map<String, Object> historyItem : historyList) {
+                // 필수 필드가 존재하고 None이 아닌 경우에만 추가
+                if (historyItem.containsKey("user_question") && 
+                    historyItem.containsKey("sql_query") &&
+                    historyItem.get("user_question") != null &&
+                    historyItem.get("sql_query") != null) {
+
+                    Map<String, Object> historyEntry = new HashMap<>();
+                    historyEntry.put("user_question", historyItem.get("user_question"));
+                    historyEntry.put("final_answer", historyItem.get("sql_query"));
+
+                    chatHistory.add(historyEntry);
+                }
+            }
+        }
+        
+        return chatHistory;
+    }
+
+    // 유틸리티: Chat history 변환 (노드별 필드 매핑 지원)
+    private List<Map<String, Object>> convertToChatHistory(Map<String, List<Map<String, Object>>> historyDict,
+                                                          List<String> requiredFields,
+                                                          String humanField,
+                                                          String aiField) {
+        List<Map<String, Object>> chatHistory = new java.util.ArrayList<>();
+        
+        if (historyDict == null) {
+            return chatHistory;
+        }
+        
+        for (List<Map<String, Object>> historyList : historyDict.values()) {
+            for (Map<String, Object> historyItem : historyList) {
+                // 모든 필수 필드가 존재하고 None이 아닌 경우에만 추가
+                boolean allFieldsPresent = requiredFields.stream()
+                    .allMatch(field -> historyItem.containsKey(field) && historyItem.get(field) != null);
+                
+                if (allFieldsPresent) {
+                    Object humanValue = historyItem.get(humanField);
+                    Object aiValue = historyItem.get(aiField);
+                    
+                    // null 체크 추가
+                    if (humanValue != null && aiValue != null) {
+                        Map<String, Object> historyEntry = new HashMap<>();
+                        historyEntry.put("user_question", humanValue);
+                        historyEntry.put("final_answer", aiValue);
+                        chatHistory.add(historyEntry);
+                    }
+                }
+            }
+        }
+        
+        return chatHistory;
+    }
+
+    // History 관련 메서드들
+
+    /**
+     * NL2SQL 노드용 history 조회 및 변환
+     */
+    public List<Map<String, Object>> getNl2sqlHistory(String chainId) {
+        List<String> requiredFields = Arrays.asList("user_question", "sql_query");
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "nl2sql", 5);
+        return convertToChatHistory(historyDict, requiredFields, "user_question", "sql_query");
+    }
+
+    /**
+     * Respondent 노드용 history 조회 및 변환
+     */
+    public List<Map<String, Object>> getRespondentHistory(String chainId) {
+        List<String> requiredFields = Arrays.asList("user_question", "table_pipe", "fstring_answer", "final_answer");
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "respondent", 5);
+        return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
+    }
+
+    /**
+     * Nodata 노드용 history 조회 및 변환
+     */
+    public List<Map<String, Object>> getNodataHistory(String chainId) {
+        List<String> requiredFields = Arrays.asList("user_question", "final_answer");
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "nodata", 5);
+        return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
+    }
+
+    /**
+     * Killjoy 노드용 history 조회 및 변환
+     */
+    public List<Map<String, Object>> getKilljoyHistory(String chainId) {
+        List<String> requiredFields = Arrays.asList("user_question", "final_answer");
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "killjoy", 5);
+        return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
+    }
+
+    /**
+     * 일반적인 history 조회 및 변환 (필드명 지정 가능)
+     */
+    public List<Map<String, Object>> getHistory(String chainId, List<String> requiredFields, String nodeType, int limit) {
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, nodeType, limit);
+        return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
+    }
+
+    // Page Respondent 프롬프트 생성 (페이지네이션 응답)
+    public PromptTemplate buildPageRespondentPrompt(String userQuestion, Integer totalRows, List<Map<String, Object>> respondentHistory, String qnaId) {
+        // 기본 시스템 프롬프트 로드
+        PromptTemplate template = PromptTemplate.fromFile("page-respondent");
+        String systemPrompt = template.replace("{total_rows}", String.valueOf(totalRows));
+        
+        // 프롬프트 구성
+        return PromptTemplate.from("")
+            .withSystemPrompt(systemPrompt)
+            .withHistory(respondentHistory)
+            .withUserMessage(userQuestion);
+    }
+}

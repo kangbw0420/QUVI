@@ -1,0 +1,99 @@
+server:
+  port: 8005
+  address: 0.0.0.0
+  servlet:
+    context-path: /
+
+customer:
+  name: slp
+
+spring:
+  config:
+    activate:
+      on-profile: daquv
+  jackson:
+    time-zone: Asia/Seoul
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+      write-date-timestamps-as-nanoseconds: false
+
+  # prompt db
+  datasource:
+    url: jdbc:postgresql://dev.daquv.com:5432/slp_admin
+    username: daquv
+    password: daquv123!@()
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: public
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: public
+        use_sql_comments: true
+
+# finance db
+db:
+  url: jdbc:postgresql://dev.daquv.com:5432/slp_real
+  username: daquv
+  password: daquv123!@()
+  driver-class-name: org.postgresql.Driver
+  hikari:
+    schema: public
+
+system:
+  expire:
+    date: 20251211
+  company:
+    id: seoul_pay
+
+master:
+  user-id: daquv_master
+  password: Daquv!@#123
+  user-name: 마스터계정
+  company-id: daquv
+
+jwt:
+  secret: uI9xvH1zMf+jrD9PbCkA2JGz0r3YVx/EoMdiZtJd2+E
+  expiration: 86400000 # 24시간
+
+# Jasypt 설정
+jasypt:
+  encryptor:
+    bean: jasyptStringEncryptor
+
+# FLOW API 설정
+flow:
+  project:
+    id: 2605967
+  api:
+    key: 20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144
+    url: https://api.flow.team/v1/posts/projects/2605967/tasks
+  register:
+    email: silicao3o@daquv.com
+
+
+admin:
+  email: anriver@daquv.com
+
+# API 설정
+api:
+  url: http://121.78.145.49:8001/v1/chat/completions
+  vector-store-domain: http://121.78.145.49:8005
+
+# 로깅 설정
+logging:
+  level:
+    com.daquv: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: DEBUG
+
+profiling:
+  enabled: false
