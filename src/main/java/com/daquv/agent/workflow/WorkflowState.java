@@ -42,6 +42,8 @@ public class WorkflowState {
     @Builder.Default
     private Boolean isApi = false;
     @Builder.Default
+    private Boolean isOpendue = false;
+    @Builder.Default
     private Boolean noData = false;
     @Builder.Default
     private Boolean futureDate = false;
