@@ -194,12 +194,12 @@ public class PromptBuilder {
     }
 
     // NL2SQL 프롬프트 생성 (few-shot 포함)
-    public PromptTemplate buildNL2SQLPromptWithFewShots(String targetTable, String schema, String userQuestion) {
+    public PromptWithRetrieveTime buildNL2SQLPromptWithFewShots(String targetTable, String schema, String userQuestion) {
         return buildNL2SQLPromptWithFewShots(targetTable, schema, userQuestion, null);
     }
     
     // NL2SQL 프롬프트 생성 (few-shot 포함 + QnA 저장)
-    public PromptTemplate buildNL2SQLPromptWithFewShots(String targetTable, String schema, String userQuestion, String qnaId) {
+    public PromptWithRetrieveTime buildNL2SQLPromptWithFewShots(String targetTable, String schema, String userQuestion, String qnaId) {
         String today = PromptBuilder.getTodayDash();
         
         // 기본 시스템 프롬프트 로드
@@ -208,20 +208,30 @@ public class PromptBuilder {
             "{today}", today,
             "{schema}", schema
         );
-        
+
         // Few-shot 예제 검색
         Map<String, Object> fewShotResult = vectorRequest.getFewShots(
             userQuestion, "shots_" + targetTable.toLowerCase(), 3, null);
         
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
-        
+
+        BigDecimal lastRetrieveTimeFromResults = BigDecimal.ZERO;
+
         // QnA ID가 있으면 few-shot 저장
         if (qnaId != null && fewShots != null) {
             for (int i = 0; i < fewShots.size(); i++) {
                 Map<String, Object> shot = fewShots.get(i);
                 String input = (String) shot.get("input");
                 String output = (String) shot.get("output");
+                Object retrieveTimeObj = shot.getOrDefault("retrieve_time", 0.0);
+                if (retrieveTimeObj instanceof Double) {
+                    lastRetrieveTimeFromResults = BigDecimal.valueOf((Double) retrieveTimeObj);
+                } else if (retrieveTimeObj instanceof BigDecimal) {
+                    lastRetrieveTimeFromResults = (BigDecimal) retrieveTimeObj;
+                } else if (retrieveTimeObj instanceof Number) {
+                    lastRetrieveTimeFromResults = BigDecimal.valueOf(((Number) retrieveTimeObj).doubleValue());
+                }
                 if (input != null && output != null) {
                     // 날짜 정보가 있으면 질문에 추가
                     String humanWithDate = input;
@@ -238,55 +248,26 @@ public class PromptBuilder {
         String formattedQuestion = formatQuestionWithDate(userQuestion);
         
         // 프롬프트 구성
-        return PromptTemplate.from("")
+        PromptTemplate.from("")
             .withSystemPrompt(systemPrompt)
             .withFewShots(fewShots)
             .withUserMessage(formattedQuestion);
-    }
 
-    // NL2SQL 프롬프트 생성 (few-shot + history 포함)
-    public PromptTemplate buildNL2SQLPromptWithFewShotsAndHistory(
-            String targetTable, String schema, String userQuestion, Map<String, List<Map<String, Object>>> nl2sqlHistory) {
-        String today = PromptBuilder.getTodayDash();
-        
-        // 기본 시스템 프롬프트 로드
-        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
-        String systemPrompt = template.replaceAll(
-            "{today}", today,
-            "{schema}", schema
-        );
-        
-        // Few-shot 예제 검색
-        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-            userQuestion, "shots_" + targetTable.toLowerCase(), 3, null);
-        
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
-        
-        // 사용자 질문 포맷팅 (날짜 정보 포함)
-        String formattedQuestion = formatQuestionWithDate(userQuestion);
-        
-        // Chat history 변환
-        List<Map<String, Object>> chatHistory = convertToChatHistory(nl2sqlHistory);
-        
-        // 프롬프트 구성
-        return PromptTemplate.from("")
-            .withSystemPrompt(systemPrompt)
-            .withFewShots(fewShots)
-            .withHistory(chatHistory)
-            .withUserMessage(formattedQuestion);
+        return new  PromptWithRetrieveTime(template, lastRetrieveTimeFromResults);
     }
 
     // NL2SQL 프롬프트 생성 (few-shot + history + QnA 저장 포함)
-    public PromptTemplate buildNL2SQLPromptWithFewShotsAndHistory(
-            String targetTable, String schema, String userQuestion, List<Map<String, Object>> nl2sqlHistory, String qnaId) {
-        String today = PromptBuilder.getTodayDash();
+    public PromptWithRetrieveTime buildNL2SQLPromptWithFewShotsAndHistory(
+            String targetTable, String userQuestion, List<Map<String, Object>> nl2sqlHistory,
+            String qnaId, String companyId, String startDate, String endDate
+    ) {
+        String dateInfoStr = String.format("(%s, %s)", startDate, endDate);
         
         // 기본 시스템 프롬프트 로드
         PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
         String systemPrompt = template.replaceAll(
-            "{today}", today,
-            "{schema}", schema
+            "{main_com}", companyId,
+            "{date_info}", dateInfoStr
         );
         
         // Few-shot 예제 검색
@@ -295,6 +276,8 @@ public class PromptBuilder {
         
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+
+        BigDecimal lastRetrieveTimeFromResults = BigDecimal.ZERO;
         
         // QnA ID가 있으면 few-shot 저장
         if (qnaId != null && fewShots != null) {
@@ -302,6 +285,14 @@ public class PromptBuilder {
                 Map<String, Object> shot = fewShots.get(i);
                 String input = (String) shot.get("input");
                 String output = (String) shot.get("output");
+                Object retrieveTimeObj = shot.getOrDefault("retrieve_time", 0.0);
+                if (retrieveTimeObj instanceof Double) {
+                    lastRetrieveTimeFromResults = BigDecimal.valueOf((Double) retrieveTimeObj);
+                } else if (retrieveTimeObj instanceof BigDecimal) {
+                    lastRetrieveTimeFromResults = (BigDecimal) retrieveTimeObj;
+                } else if (retrieveTimeObj instanceof Number) {
+                    lastRetrieveTimeFromResults = BigDecimal.valueOf(((Number) retrieveTimeObj).doubleValue());
+                }
                 if (input != null && output != null) {
                     // 날짜 정보가 있으면 질문에 추가
                     String humanWithDate = input;
@@ -318,11 +309,13 @@ public class PromptBuilder {
         String formattedQuestion = formatQuestionWithDate(userQuestion);
         
         // 프롬프트 구성
-        return PromptTemplate.from("")
-            .withSystemPrompt(systemPrompt)
-            .withFewShots(fewShots)
-            .withHistory(nl2sqlHistory)
-            .withUserMessage(formattedQuestion);
+        PromptTemplate promptTemplate = PromptTemplate.from("")
+                .withSystemPrompt(systemPrompt)
+                .withFewShots(fewShots)
+                .withHistory(nl2sqlHistory)
+                .withUserMessage(formattedQuestion);
+
+        return new PromptWithRetrieveTime(promptTemplate, lastRetrieveTimeFromResults);
     }
 
     // Respondent 프롬프트 생성
