@@ -98,6 +98,87 @@ public class PromptBuilder {
         return new PromptWithRetrieveTime(template, lastRetrieveTimeFromResults);
     }
 
+    // Dater 프롬프트 생성 및 RetrieveTime 반환
+    public PromptWithRetrieveTime buildDaterPromptWithFewShots(String selectedTable, String userQuestion,
+                                                       List<Map<String, Object>> daterHistory, String qnaId) {
+        String today = PromptBuilder.getTodayDash();
+        String jsonFormat = "\"from_date\": from_date, \"to_date\": to_date";
+
+        // 테이블별 프롬프트 선택
+        PromptTemplate template;
+        if ("amt".equals(selectedTable) || "stock".equals(selectedTable)) {
+            template = PromptTemplate.fromFile("date-amt");
+        } else if ("trsc".equals(selectedTable)) {
+            template = PromptTemplate.fromFile("date-trsc");
+        } else {
+            // 기본값으로 amt 사용
+            template = PromptTemplate.fromFile("date-amt");
+        }
+
+        String systemPrompt = template.replaceAll(
+                "{today}", today,
+                "{json_format}", jsonFormat
+        );
+
+        // Few-shot 예제 검색
+        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+                userQuestion, "shots_params_creator", 5, null);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+
+        List<Map<String, Object>> reversedFewShots = new ArrayList<>();
+        if (fewShots != null) {
+            for (int i = fewShots.size() - 1; i >= 0; i--) {
+                reversedFewShots.add(fewShots.get(i));
+            }
+        }
+
+        BigDecimal lastRetrieveTimeFromResults = BigDecimal.ZERO;
+
+        // QnA ID가 있으면 few-shot 저장
+        if (qnaId != null && reversedFewShots != null) {
+            for (int i = 0; i < reversedFewShots.size(); i++) {
+                Map<String, Object> shot = reversedFewShots.get(i);
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+
+                Object retrieveTimeObj = shot.getOrDefault("retrieve_time", 0.0);
+                if (retrieveTimeObj instanceof Double) {
+                    lastRetrieveTimeFromResults = BigDecimal.valueOf((Double) retrieveTimeObj);
+                } else if (retrieveTimeObj instanceof BigDecimal) {
+                    lastRetrieveTimeFromResults = (BigDecimal) retrieveTimeObj;
+                } else if (retrieveTimeObj instanceof Number) {
+                    lastRetrieveTimeFromResults = BigDecimal.valueOf(((Number) retrieveTimeObj).doubleValue());
+                }
+
+                if (input != null && output != null) {
+
+                    String humanWithDate = input;
+                    if (shot.containsKey("date")) {
+                        String date = (String) shot.get("date");
+                        humanWithDate = input + ", 오늘: " + date + ".";
+                    }
+
+                    String formattedOutput = "{" + output + "}";
+
+                    qnaService.recordFewshot(qnaId, input, humanWithDate, formattedOutput, i + 1);
+                }
+            }
+        }
+
+        // 사용자 질문 포맷팅 (날짜 정보 포함)
+        String formattedQuestion = formatQuestionWithDate(userQuestion);
+
+        PromptTemplate result = PromptTemplate.from("")
+                .withSystemPrompt(systemPrompt)
+                .withFewShotsForDater(reversedFewShots)  // 날짜 추가하여 처리
+                .withHistory(daterHistory)
+                .withUserMessage(formattedQuestion);
+
+        return new PromptWithRetrieveTime(result, lastRetrieveTimeFromResults);
+    }
+
     // NL2SQL 프롬프트 생성
     public PromptTemplate buildNL2SQLPrompt(String targetTable, String schema) {
         String today = PromptBuilder.getTodayDash();
@@ -504,6 +585,12 @@ public class PromptBuilder {
     }
 
     // History 관련 메서드들
+
+    public List<Map<String, Object>> getDaterHistory(String chainId) {
+        List<String> requiredFields = Arrays.asList("user_question", "date_info");
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "dater", 5);
+        return convertToChatHistory(historyDict, requiredFields, "user_question", "date_info");
+    }
 
     /**
      * NL2SQL 노드용 history 조회 및 변환
