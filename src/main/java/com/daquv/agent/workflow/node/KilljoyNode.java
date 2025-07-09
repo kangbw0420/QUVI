@@ -41,6 +41,7 @@ public class KilljoyNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String chainId = state.getChainId();
+        String traceId = state.getTraceId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -48,37 +49,48 @@ public class KilljoyNode implements WorkflowNode {
             return;
         }
 
-        log.info("상품권 외 질문 처리 중: {}", userQuestion);
+        log.info("비재무 질문 처리 중: {}", userQuestion);
 
-        // QnA ID 생성
-        String qnaId = qnaService.createQnaId(state.getTraceId());
-        
-        // History 조회
-        List<Map<String, Object>> killjoyHistory = promptBuilder.getKilljoyHistory(chainId);
-        
-        // Killjoy 프롬프트 생성 (history 포함)
-        PromptTemplate promptTemplate = promptBuilder.buildKilljoyPromptWithHistory(userQuestion, killjoyHistory);
-        String prompt = promptTemplate.build();
-        
-        // LLM 호출하여 역할 안내 답변 생성
-        String llmResponse = llmService.callDevstral(prompt, qnaId);
-        String finalAnswer = LlmOutputHandler.extractAnswer(llmResponse);
+        try {
+            // WebSocket 메시지 전송
+            webSocketUtils.sendNodeStart(state.getWebSocketSession(), "killjoy");
 
-        if (finalAnswer == null || finalAnswer.trim().isEmpty()) {
-            log.error("역할 안내 답변 생성에 실패했습니다.");
-            state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("LLM_ERROR", "역할 안내 답변 생성에 실패했습니다."));
-            return;
+            // QnA ID 생성
+            String qnaId = qnaService.createQnaId(traceId);
+            
+            // History 조회
+            List<Map<String, Object>> killjoyHistory = promptBuilder.getKilljoyHistory(chainId);
+            
+            // Killjoy 프롬프트 생성
+            PromptTemplate promptTemplate = promptBuilder.buildKilljoyPromptWithHistory(userQuestion, killjoyHistory);
+            String prompt = promptTemplate.build();
+            
+            // 질문 기록
+            log.info("===== killjoy(Q) ====");
+            // LLM 호출하여 역할 안내 답변 생성
+            String llmResponse = llmService.callQwenHigh(prompt, qnaId, chainId);
+            String finalAnswer = LlmOutputHandler.extractAnswer(llmResponse);
+
+            if (finalAnswer == null || finalAnswer.trim().isEmpty()) {
+                log.error("역할 안내 답변 생성에 실패했습니다.");
+                state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("LLM_ERROR", "역할 안내 답변 생성에 실패했습니다."));
+                return;
+            }
+
+            // 답변 기록
+            log.info("===== killjoy(A) ====");
+            log.info("생성된 응답: {}...", finalAnswer.length() > 100 ? finalAnswer.substring(0, 100) : finalAnswer);
+            // 상태 업데이트
+            state.setFinalAnswer(finalAnswer);
+            state.setQueryResult(null);
+            state.setSqlQuery("");
+            state.setSelectedTable("");
+            
+            log.info("비재무 질문 처리 완료: {}", finalAnswer);
+            
+        } catch (Exception e) {
+            log.error("KilljoyNode 실행 중 예외 발생: {}", e.getMessage(), e);
+            state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("KILLJOY_ERROR", "비재무 질문 처리 중 오류가 발생했습니다."));
         }
-
-        log.info("역할 안내 답변 생성 완료: {}", finalAnswer);
-        
-        // 상태 초기화 (상품권 외 질문이므로)
-        state.setFinalAnswer(finalAnswer);
-        state.setQueryResult(null);
-        state.setSqlQuery("");
-        state.setSelectedTable("");
-        
-        // WebSocket 메시지 전송 (node.py의 killjoy 참고)
-        webSocketUtils.sendNodeStart(state.getWebSocketSession(), "killjoy");
     }
 } 
