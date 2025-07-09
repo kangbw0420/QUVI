@@ -1,11 +1,8 @@
 server:
-  port: 8005
+  port: 8000
   address: 0.0.0.0
   servlet:
     context-path: /
-
-customer:
-  name: slp
 
 spring:
   config:
@@ -20,12 +17,12 @@ spring:
 
   # prompt db
   datasource:
-    url: jdbc:postgresql://localhost:5500/devslpdb
-    username: postgres
-    password: daquv123!@#
+    url: jdbc:postgresql://172.27.111.18:54313/cboarddevdb
+    username: cboarddev
+    password: cboarddev123
     driver-class-name: org.postgresql.Driver
     hikari:
-      schema: agentadmin
+      schema: aicfoagentdev
 
   jpa:
     hibernate:
@@ -35,21 +32,23 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-        default_schema: agentadmin
+        default_schema: aicfoagentdev
         use_sql_comments: true
 
 # finance db
 db:
-  url: jdbc:postgresql://172.16.4.61:5444/devslpdb
-  username: devslp_sel
-  password: devslp_sel123
+  url: jdbc:postgresql://172.27.111.18:54313/cboarddevdb
+  username: cboarddev
+  password: cboarddev123
   driver-class-name: org.postgresql.Driver
+  hikari:
+    schema: cboarddev
 
 system:
   expire:
-    date: 20251211
+    date: 21251211
   company:
-    id: seoul_pay
+    id: aicfo_dev
 
 master:
   user-id: daquv_master
@@ -74,8 +73,8 @@ admin:
 
 # API 설정
 api:
-  url: http://121.78.145.49:8001/v1/chat/completions
-  vector-store-domain: http://121.78.145.49:8005
+  url: http://121.78.125.134:8000/v1/chat/completions
+  vector-store-domain: http://211.233.64.101:8000
 
 # 로깅 설정
 logging:

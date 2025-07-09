@@ -1,11 +1,8 @@
 server:
-  port: 8005
+  port: 8000
   address: 0.0.0.0
   servlet:
     context-path: /
-
-customer:
-  name: slp
 
 spring:
   config:
@@ -20,12 +17,12 @@ spring:
 
   # prompt db
   datasource:
-    url: jdbc:postgresql://172.16.93.61:5500/slpprddb
-    username: postgres
-    password: daquv123!@#
+    url: jdbc:postgresql://10.130.23.24:54313/cboardrealdb
+    username: aicfoagent_real
+    password: uQa(KSiBzj$5
     driver-class-name: org.postgresql.Driver
     hikari:
-      schema: agentadmin
+      schema: aicfoagent_real
 
   jpa:
     hibernate:
@@ -35,21 +32,23 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-        default_schema: agentadmin
+        default_schema: aicfoagent_real
         use_sql_comments: true
 
 # finance db
 db:
-  url: jdbc:postgresql://db.zeropaypoint.or.kr:5444/slpprddb
-  username: slpprd_sel
-  password: tfNlbK$3Sin@
+  url: jdbc:postgresql://10.130.23.24:54313/cboardrealdb
+  username: cborad_real
+  password: qTKw7sG*tW!Y
   driver-class-name: org.postgresql.Driver
+  hikari:
+    schema: cborad_real
 
 system:
   expire:
-    date: 20251211
+    date: 21251211
   company:
-    id: seoul_pay
+    id: aicfo
 
 master:
   user-id: daquv_master
@@ -74,8 +73,8 @@ admin:
 
 # API 설정
 api:
-  url: http://121.78.145.49:8001/v1/chat/completions
-  vector-store-domain: http://121.78.145.49:8005
+  url: http://121.78.125.134:8001/v1/chat/completions
+  vector-store-domain: http://211.233.64.103:8000
 
 # 로깅 설정
 logging:

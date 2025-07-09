@@ -1,11 +1,8 @@
 server:
-  port: 8005
+  port: 8006
   address: 0.0.0.0
   servlet:
     context-path: /
-
-customer:
-  name: slp
 
 spring:
   config:
@@ -20,7 +17,7 @@ spring:
 
   # prompt db
   datasource:
-    url: jdbc:postgresql://dev.daquv.com:5432/slp_admin
+    url: jdbc:postgresql://dev.daquv.com:5432/aicfo
     username: daquv
     password: daquv123!@()
     driver-class-name: org.postgresql.Driver
@@ -40,7 +37,7 @@ spring:
 
 # finance db
 db:
-  url: jdbc:postgresql://dev.daquv.com:5432/slp_real
+  url: jdbc:postgresql://dev.daquv.com:5432/aicfo
   username: daquv
   password: daquv123!@()
   driver-class-name: org.postgresql.Driver
@@ -49,9 +46,9 @@ db:
 
 system:
   expire:
-    date: 20251211
+    date: 21251211
   company:
-    id: seoul_pay
+    id: aicfo_dev
 
 master:
   user-id: daquv_master
@@ -84,8 +81,8 @@ admin:
 
 # API 설정
 api:
-  url: http://121.78.145.49:8001/v1/chat/completions
-  vector-store-domain: http://121.78.145.49:8005
+  url: http://121.78.125.134:8000/v1/chat/completions
+  vector-store-domain: http://211.233.64.101:8000
 
 # 로깅 설정
 logging:
