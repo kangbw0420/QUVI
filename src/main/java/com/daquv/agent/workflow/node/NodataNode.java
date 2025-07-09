@@ -5,6 +5,7 @@ import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
+import com.daquv.agent.workflow.dto.VectorNotes;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
 import com.daquv.agent.workflow.util.LLMRequest;
@@ -42,11 +43,21 @@ public class NodataNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String chainId = state.getChainId();
+        Boolean noteChanged = state.getNoteChanged();
+        // WebSocket 메시지 전송 (node.py의 nodata 참고)
+        webSocketUtils.sendNodeStart(state.getWebSocketSession(), "nodata");
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
             state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("INVALID_INPUT", "사용자 질문이 없습니다."));
             return;
+        }
+
+        if (noteChanged) {
+            log.info("노트 변화 감지");
+            VectorNotes vectorNotes = state.getVectorNotes();
+            String vectorNotesStr = String.join(", ", vectorNotes.getVectorNotes());
+            userQuestion += String.format(" 유사한 노트 ('%s')를 활용해서도 검색해줘", vectorNotesStr);
         }
 
         log.info("데이터 없음 답변 생성 시작: {}", userQuestion);
@@ -62,7 +73,7 @@ public class NodataNode implements WorkflowNode {
         String prompt = promptTemplate.build();
         
         // LLM 호출하여 데이터 없음 답변 생성
-        String llmResponse = llmService.callDevstral(prompt, qnaId);
+        String llmResponse = llmService.callQwenLlm(prompt, qnaId);
         String finalAnswer = LlmOutputHandler.extractAnswer(llmResponse);
 
         if (finalAnswer == null || finalAnswer.trim().isEmpty()) {
@@ -78,8 +89,5 @@ public class NodataNode implements WorkflowNode {
 
         log.info("데이터 없음 답변 생성 완료: {}", finalAnswer);
         state.setFinalAnswer(finalAnswer);
-        
-        // WebSocket 메시지 전송 (node.py의 nodata 참고)
-        webSocketUtils.sendNodeStart(state.getWebSocketSession(), "nodata");
     }
 }
