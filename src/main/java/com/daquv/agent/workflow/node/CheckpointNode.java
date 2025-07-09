@@ -1,19 +1,15 @@
 package com.daquv.agent.workflow.node;
 
-import com.daquv.agent.workflow.WorkflowNode;
-import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
+import com.daquv.agent.workflow.WorkflowNode;
+import com.daquv.agent.workflow.WorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -72,16 +68,6 @@ public class CheckpointNode implements WorkflowNode {
     private String classifyJoy(String queryText) {
         try {
             String url = vectorStoreDomain + "/checkpoint/" + sanitizeQuery(queryText);
-            
-            // 요청 헤더 설정
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.setContentType(MediaType.APPLICATION_JSON);
-            
-            // 요청 본문 설정
-//            Map<String, String> payload = new HashMap<>();
-//            payload.put("query_text", sanitizeQuery(queryText));
-            
-//            HttpEntity<Map<String, String>> request = new HttpEntity<>(payload, headers);
             
             // API 호출
             Map<String, Object> response = restTemplate.getForObject(url, Map.class);
