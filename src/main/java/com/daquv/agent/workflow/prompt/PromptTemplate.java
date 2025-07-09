@@ -2,9 +2,6 @@ package com.daquv.agent.workflow.prompt;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -125,6 +122,23 @@ public class PromptTemplate {
                 
                 fewShotMessages.add(new ChatMessage("human", input));
                 fewShotMessages.add(new ChatMessage("ai", output));
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Few-shot 예제 리스트 추가 (날짜 정보 제외)
+     */
+    public PromptTemplate withFewShotsWithoutDateModification(List<Map<String, Object>> fewShots) {
+        if (fewShots != null) {
+            for (Map<String, Object> shot : fewShots) {
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+                if (input != null && output != null) {
+                    fewShotMessages.add(new ChatMessage("human", input));
+                    fewShotMessages.add(new ChatMessage("ai", output));
+                }
             }
         }
         return this;

@@ -3,15 +3,14 @@ package com.daquv.agent.workflow.prompt;
 import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.requests.VectorRequest;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Component
 public class PromptBuilder {
@@ -25,6 +24,17 @@ public class PromptBuilder {
     @Autowired
     private HistoryService historyService;
 
+    @Getter
+    public static class PromptWithRetrieveTime {
+        private final PromptTemplate promptTemplate;
+        private final BigDecimal retrieveTime;
+
+        PromptWithRetrieveTime(PromptTemplate promptTemplate, BigDecimal retrieveTime) {
+            this.promptTemplate = promptTemplate;
+            this.retrieveTime = retrieveTime;
+        }
+    }
+
     // Commander 프롬프트 생성 (테이블 선택)
     public PromptTemplate buildCommanderPrompt(String userQuestion) {
         PromptTemplate template = PromptTemplate.fromFile("commander");
@@ -33,29 +43,46 @@ public class PromptBuilder {
     }
 
     // Commander 프롬프트 생성 (few-shot 포함)
-    public PromptTemplate buildCommanderPromptWithFewShots(String userQuestion) {
+    public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion) {
         return buildCommanderPromptWithFewShots(userQuestion, null);
     }
     
-    // Commander 프롬프트 생성 (few-shot 포함 + QnA 저장)
-    public PromptTemplate buildCommanderPromptWithFewShots(String userQuestion, String qnaId) {
+    // Commander 프롬프트 생성 및 RetrieveTime 반환 (few-shot 포함 + QnA 저장)
+    public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion, String qnaId) {
         // 기본 시스템 프롬프트 로드
         PromptTemplate template = PromptTemplate.fromFile("commander");
         String systemPrompt = template.replace("{user_question}", userQuestion);
         
         // Few-shot 예제 검색
         Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-            userQuestion, "shots_commander_slp", 5, null);
+            userQuestion, "shots_selector", 5, null);
         
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
-        
+
+        List<Map<String, Object>> reversedFewShots = new ArrayList<>();
+        if (fewShots != null) {
+            for (int i = fewShots.size() - 1; i >= 0; i--) {
+                reversedFewShots.add(fewShots.get(i));
+            }
+        }
+
+        BigDecimal lastRetrieveTimeFromResults = BigDecimal.ZERO;
+
         // QnA ID가 있으면 few-shot 저장
-        if (qnaId != null && fewShots != null) {
-            for (int i = 0; i < fewShots.size(); i++) {
-                Map<String, Object> shot = fewShots.get(i);
+        if (qnaId != null && reversedFewShots != null) {
+            for (int i = 0; i < reversedFewShots.size(); i++) {
+                Map<String, Object> shot = reversedFewShots.get(i);
                 String input = (String) shot.get("input");
                 String output = (String) shot.get("output");
+                Object retrieveTimeObj = shot.getOrDefault("retrieve_time", 0.0);
+                if (retrieveTimeObj instanceof Double) {
+                    lastRetrieveTimeFromResults = BigDecimal.valueOf((Double) retrieveTimeObj);
+                } else if (retrieveTimeObj instanceof BigDecimal) {
+                    lastRetrieveTimeFromResults = (BigDecimal) retrieveTimeObj;
+                } else if (retrieveTimeObj instanceof Number) {
+                    lastRetrieveTimeFromResults = BigDecimal.valueOf(((Number) retrieveTimeObj).doubleValue());
+                }
                 if (input != null && output != null) {
                     qnaService.recordFewshot(qnaId, input, input, output, i + 1);
                 }
@@ -63,10 +90,12 @@ public class PromptBuilder {
         }
         
         // 프롬프트 구성
-        return PromptTemplate.from("")
-            .withSystemPrompt(systemPrompt)
-            .withFewShots(fewShots)
-            .withUserMessage(userQuestion);
+        PromptTemplate.from("")
+                .withSystemPrompt(systemPrompt)
+                .withFewShotsWithoutDateModification(reversedFewShots)
+                .withUserMessage(userQuestion);
+
+        return new PromptWithRetrieveTime(template, lastRetrieveTimeFromResults);
     }
 
     // NL2SQL 프롬프트 생성
