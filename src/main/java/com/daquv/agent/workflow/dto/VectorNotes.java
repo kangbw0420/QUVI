@@ -10,6 +10,6 @@ import java.util.List;
 @Builder
 @ToString
 public class VectorNotes {
-    private String originNote;
+    private List<String> originNote;
     private List<String> vectorNotes;
 } 

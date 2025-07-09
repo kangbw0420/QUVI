@@ -12,11 +12,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.daquv.agent.workflow.dto.UserInfo;
 
 @Component
 public class QueryRequest {
@@ -25,68 +25,10 @@ public class QueryRequest {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final JdbcTemplate mainJdbcTemplate;
-    private static final String QUERY_API_BASE_URL = "http://localhost:8105/query";
+    private static final String QUERY_API_BASE_URL = "http://localhost:8106/query";
 
     public QueryRequest(@Qualifier("mainJdbcTemplate") JdbcTemplate mainJdbcTemplate) {
         this.mainJdbcTemplate = mainJdbcTemplate;
-    }
-
-    /**
-     * SQL 쿼리의 테이블 참조를 뷰 함수 호출로 변환합니다.
-     *
-     * @param query SQL 쿼리
-     * @param userInfo 사용자 정보 리스트
-     * @return 변환된 쿼리 문자열
-     */
-    public String viewTable(String query, List<String> userInfo) {
-        try {
-            log.info("[query] view_table API 호출 - 쿼리: {}, 사용자 정보: {}", query, userInfo);
-
-            // 요청 데이터 구성
-            Map<String, Object> requestData = new HashMap<>();
-            requestData.put("query", query);
-            requestData.put("user_info", userInfo);
-
-            // HTTP 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            // HTTP 요청 생성
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestData, headers);
-
-            // API 호출
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                QUERY_API_BASE_URL + "/view_table", request, String.class);
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                String result = response.getBody();
-                log.info("[query] view_table API 호출 성공 - 결과: {}", result);
-                
-                // JSON 응답에서 result 필드 추출
-                if (result != null && !result.trim().isEmpty()) {
-                    try {
-                        ObjectMapper objectMapper = new ObjectMapper();
-                        JsonNode jsonNode = objectMapper.readTree(result);
-                        String sqlQuery = jsonNode.get("result").asText();
-                        
-                        log.info("[query] 추출된 SQL 쿼리: {}", sqlQuery);
-                        return sqlQuery;
-                    } catch (Exception e) {
-                        log.error("[query] JSON 파싱 중 오류: {}", e.getMessage(), e);
-                        return query; // 오류 발생 시 원본 쿼리 반환
-                    }
-                } else {
-                    return query;
-                }
-            } else {
-                log.error("[query] view_table API 호출 실패 - 상태 코드: {}", response.getStatusCode());
-                return "테이블 뷰 변환 중 오류가 발생했습니다.";
-            }
-
-        } catch (Exception e) {
-            log.error("[query] view_table API 호출 중 예외 발생: {}", e.getMessage(), e);
-            return "테이블 뷰 변환 중 오류가 발생했습니다: " + e.getMessage();
-        }
     }
 
     /**
@@ -166,6 +108,66 @@ public class QueryRequest {
         } catch (Exception e) {
             log.error("[query] count_rows API 호출 중 예외 발생: {}", e.getMessage(), e);
             return "행 수 계산 중 오류가 발생했습니다: " + e.getMessage();
+        }
+    }
+
+    /**
+     * view_table 함수
+     */
+    public String viewTable(String query, String companyId, UserInfo userInfo, String selectTable, Boolean futureDate) {
+        try {
+            log.info("[query] view_table API 호출 - 쿼리: {}, 회사ID: {}, 사용자정보: {}, 선택테이블: {}, 미래날짜: {}", 
+                     query, companyId, userInfo, selectTable, futureDate);
+
+            // 요청 데이터 구성
+            Map<String, Object> requestData = new HashMap<>();
+            requestData.put("query", query);
+            requestData.put("company_id", companyId);
+            requestData.put("user_info", userInfo.toArray());
+            requestData.put("select_table", selectTable);
+            Map<String, Object> flags = new HashMap<>();
+            flags.put("future_date", futureDate);
+            requestData.put("flags", flags);
+
+            // HTTP 헤더 설정
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // HTTP 요청 생성
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestData, headers);
+
+            // API 호출
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                QUERY_API_BASE_URL + "/view_table/" + "aicfo_dev", request, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                String result = response.getBody();
+                log.info("[query] view_table API 호출 성공 - 결과: {}", result);
+                
+                // JSON 응답에서 result 필드 추출
+                if (result != null && !result.trim().isEmpty()) {
+                    try {
+                        ObjectMapper objectMapper = new ObjectMapper();
+                        JsonNode jsonNode = objectMapper.readTree(result);
+                        String sqlQuery = jsonNode.get("result").asText();
+                        
+                        log.info("[query] 추출된 SQL 쿼리: {}", sqlQuery);
+                        return sqlQuery;
+                    } catch (Exception e) {
+                        log.error("[query] JSON 파싱 중 오류: {}", e.getMessage(), e);
+                        return query; // 오류 발생 시 원본 쿼리 반환
+                    }
+                } else {
+                    return query;
+                }
+            } else {
+                log.error("[query] view_table API 호출 실패 - 상태 코드: {}", response.getStatusCode());
+                return query;
+            }
+
+        } catch (Exception e) {
+            log.error("[query] view_table API 호출 중 예외 발생: {}", e.getMessage(), e);
+            return query;
         }
     }
 
