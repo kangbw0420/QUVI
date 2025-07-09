@@ -1,16 +1,46 @@
 #!/bin/bash
 
-BASE_DIR="/webRoot/aicfoagent/src"
-SERVER_DIR="$BASE_DIR/server_python"
-VENV_ACTIVATE="$SERVER_DIR/venv/bin/activate"
+# Script to stop the application by PORT
 
-# 로그 디렉토리 설정
-LOG_DIR="$SERVER_DIR/logs"
-SERVER_LOG="$SERVER_DIR/agent.log"
+PORT=8005
 
-# 기존 프로세스 종료
-echo "SERVER 를 종료합니다." | tee -a $SERVER_LOG
-pkill -9 -f "python3 main.py --port=8000"
-pkill -9 -f "from multiprocessing"
+# Colorful log functions
+print_info() {
+  echo -e "\e[34m[INFO] $1\e[0m"
+}
 
-echo "모든 프로세스가 성공적으로 종료되었습니다."
+print_success() {
+  echo -e "\e[32m[SUCCESS] $1\e[0m"
+}
+
+print_error() {
+  echo -e "\e[31m[ERROR] $1\e[0m"
+}
+
+# Find PID by port
+PID=$(lsof -ti tcp:$PORT)
+
+if [ -z "$PID" ]; then
+  print_info "No application is running on port $PORT"
+else
+  print_info "Stopping application on port $PORT (PID: $PID)..."
+
+  # Kill the process
+  kill $PID
+
+  # Wait and force kill if necessary
+  sleep 2
+  if lsof -i :$PORT > /dev/null; then
+    print_info "Application did not stop gracefully. Forcing termination..."
+    kill -9 $PID
+    sleep 1
+  fi
+
+  # Final check
+  if lsof -i :$PORT > /dev/null; then
+    print_error "Failed to stop the application on port $PORT"
+    exit 1
+  else
+    print_success "Application on port $PORT stopped successfully"
+  fi
+fi

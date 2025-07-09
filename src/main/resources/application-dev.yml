@@ -1,0 +1,88 @@
+server:
+  port: 8000
+  address: 0.0.0.0
+  servlet:
+    context-path: /
+
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jackson:
+    time-zone: Asia/Seoul
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+      write-date-timestamps-as-nanoseconds: false
+
+  # prompt db
+  datasource:
+    url: jdbc:postgresql://172.27.111.18:54313/cboarddevdb
+    username: cboarddev
+    password: cboarddev123
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: aicfoagentdev
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: aicfoagentdev
+        use_sql_comments: true
+
+# finance db
+db:
+  url: jdbc:postgresql://172.27.111.18:54313/cboarddevdb
+  username: cboarddev
+  password: cboarddev123
+  driver-class-name: org.postgresql.Driver
+  hikari:
+    schema: cboarddev
+
+system:
+  expire:
+    date: 21251211
+  company:
+    id: aicfo_dev
+
+master:
+  user-id: daquv_master
+  password: Daquv!@#123
+  user-name: 마스터계정
+  company-id: daquv
+
+jwt:
+  secret: uI9xvH1zMf+jrD9PbCkA2JGz0r3YVx/EoMdiZtJd2+E
+  expiration: 86400000 # 24시간
+
+
+# FLOW API 설정
+flow:
+  project:
+    id: 2588169
+  api:
+    key: 20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144
+
+admin:
+  email: anriver@daquv.com
+
+# API 설정
+api:
+  url: http://121.78.125.134:8000/v1/chat/completions
+  vector-store-domain: http://211.233.64.101:8000
+
+# 로깅 설정
+logging:
+  level:
+    com.daquv: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    
+profiling:
+  enabled: false
