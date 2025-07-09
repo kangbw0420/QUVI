@@ -4,6 +4,7 @@ import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.requests.VectorRequest;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+@Slf4j
 @Component
 public class PromptBuilder {
 
@@ -640,5 +642,75 @@ public class PromptBuilder {
             .withSystemPrompt(systemPrompt)
             .withHistory(respondentHistory)
             .withUserMessage(userQuestion);
+    }
+
+    /**
+     * Funk 노드용 history 조회 및 변환
+     */
+    public List<Map<String, Object>> getFunkHistory(String chainId) {
+        List<String> requiredFields = Arrays.asList("user_question", "selected_api");
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "funk", 5);
+        return convertToChatHistory(historyDict, requiredFields, "user_question", "selected_api");
+    }
+
+    /**
+     * Funk 프롬프트 생성 (few-shot 포함)
+     */
+    public PromptWithRetrieveTime buildFunkPromptWithFewShots(String userQuestion, List<Map<String, Object>> funkHistory) {
+        return buildFunkPromptWithFewShots(userQuestion, funkHistory, null);
+    }
+    
+    /**
+     * Funk 프롬프트 생성 (few-shot 포함, QnA 저장)
+     */
+    public PromptWithRetrieveTime buildFunkPromptWithFewShots(String userQuestion, List<Map<String, Object>> funkHistory, String qnaId) {
+        try {
+            // Few-shot 예제 검색
+            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_api_selector", 5, null);
+            
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
+            BigDecimal retrieveTime = BigDecimal.valueOf((Double) fewShotResult.getOrDefault("retrieve_time", 0.0));
+            
+            // 기본 시스템 프롬프트 로드
+            PromptTemplate template = PromptTemplate.fromFile("funk");
+            String systemPrompt = template.replace("{today}", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            
+            // Few-shot 예제 QnA 저장
+            if (qnaId != null && fewShots != null) {
+                for (int i = 0; i < fewShots.size(); i++) {
+                    Map<String, Object> shot = fewShots.get(i);
+                    String input = (String) shot.get("input");
+                    String output = (String) shot.get("output");
+                    
+                    if (input != null && output != null) {
+                        qnaService.recordFewshot(qnaId, input, input, output, i + 1);
+                    }
+                }
+            }
+            
+            // 프롬프트 구성
+            PromptTemplate finalTemplate = PromptTemplate.from("")
+                .withSystemPrompt(systemPrompt)
+                .withFewShots(fewShots)
+                .withHistory(funkHistory)
+                .withUserMessage(userQuestion);
+            
+            return new PromptWithRetrieveTime(finalTemplate, retrieveTime);
+            
+        } catch (Exception e) {
+            log.error("Funk 프롬프트 생성 중 오류 발생: {}", e.getMessage(), e);
+            
+            // 오류 발생 시 기본 프롬프트 반환
+            PromptTemplate template = PromptTemplate.fromFile("funk");
+            String systemPrompt = template.replace("{today}", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            
+            PromptTemplate finalTemplate = PromptTemplate.from("")
+                .withSystemPrompt(systemPrompt)
+                .withHistory(funkHistory)
+                .withUserMessage(userQuestion);
+            
+            return new PromptWithRetrieveTime(finalTemplate, BigDecimal.ZERO);
+        }
     }
 }

@@ -23,6 +23,7 @@ public class WorkflowState {
     
     private String userQuestion;
     private String selectedTable;
+    private String selectedApi;
     private String sqlQuery;
     private String sqlError;
     private List<Map<String, Object>> queryResult;
