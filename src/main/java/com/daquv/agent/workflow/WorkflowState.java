@@ -40,6 +40,8 @@ public class WorkflowState {
     @Builder.Default
     private Boolean isJoy = false;
     @Builder.Default
+    private Boolean isApi = false;
+    @Builder.Default
     private Boolean noData = false;
     @Builder.Default
     private Boolean futureDate = false;

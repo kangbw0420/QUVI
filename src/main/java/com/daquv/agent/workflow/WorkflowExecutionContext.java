@@ -47,17 +47,21 @@ public class WorkflowExecutionContext {
                 executeNode("killjoyNode", state);
                 return;
             }
-            
-            // 2. Commander
-            executeNode("commanderNode", state);
-            if (state.getSelectedTable() == null || state.getSelectedTable().trim().isEmpty()) {
-                state.setQueryResultStatus("failed");
-                state.setSqlError("테이블 선택에 실패했습니다.");
-                return;
+
+            // 2. Commander or Funk 로직
+            if (state.getIsApi() != null && state.getIsApi()) {
+                executeNode("funkNode",  state);
+                // params, yqmd 등 추가 필요
+            } else {
+                executeNode("commanderNode", state);
+                if (state.getSelectedTable() == null || state.getSelectedTable().trim().isEmpty()) {
+                    state.setQueryResultStatus("failed");
+                    state.setSqlError("테이블 선택에 실패했습니다.");
+                    return;
+                }
+                // 3. NL2SQL
+                executeNode("nl2sqlNode", state);
             }
-            
-            // 3. NL2SQL
-            executeNode("nl2sqlNode", state);
             
             // 4. QueryExecutor
             if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
