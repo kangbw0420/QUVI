@@ -23,8 +23,8 @@ import java.util.Map;
 public class LLMRequest {
     
     private static final Logger log = LoggerFactory.getLogger(LLMRequest.class);
-    
-    @Value("${llm.base-url:http://121.78.145.49:8001}")
+
+    @Value("${llm.base-url")
     private String baseUrl;
     
     @Autowired
@@ -40,11 +40,12 @@ public class LLMRequest {
 
     public LLMRequest() {
         modelConfigs = new HashMap<>();
+        modelConfigs.put("qwen_llm", new ModelConfig("Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", 0.01, 1000));
+        modelConfigs.put("qwen_high", new ModelConfig("Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", 0.7, 1000));
+        modelConfigs.put("qwen_boolean", new ModelConfig("Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", 0.01, 1));
         modelConfigs.put("selector", new ModelConfig("selector", 0.01, 300));
         modelConfigs.put("nl2sql", new ModelConfig("nl2sql", 0.01, 3000));
         modelConfigs.put("solver", new ModelConfig("solver", 0.1, 1000));
-        modelConfigs.put("devstral", new ModelConfig("unsloth/Devstral-Small-2505-bnb-4bit", 0.01, 1000));
-        modelConfigs.put("devstral-high", new ModelConfig("unsloth/Devstral-Small-2505-bnb-4bit", 0.7, 1000));
     }
     
     public String callModel(String modelType, String prompt) {
@@ -119,52 +120,76 @@ public class LLMRequest {
     }
     
     // 편의 메서드들
+    public String callQwenLlm(String prompt) {
+        return callModel("qwen_llm", prompt);
+    }
+
+    public String callQwenLlm(String prompt, String qnaId) {
+        return callModel("qwen_llm", prompt, qnaId);
+    }
+
+    public String callQwenLlm(String prompt, String qnaId, String chainId) {
+        return callModel("qwen_llm", prompt, qnaId, chainId);
+    }
+
+    public String callQwenHigh(String prompt) {
+        return callModel("qwen_high", prompt);
+    }
+
+    public String callQwenHigh(String prompt, String qnaId) {
+        return callModel("qwen_high", prompt, qnaId);
+    }
+
+    public String callQwenHigh(String prompt, String qnaId, String chainId) {
+        return callModel("qwen_high", prompt, qnaId, chainId);
+    }
+
+    public String callQwenBoolean(String prompt) {
+        return callModel("qwen_boolean", prompt);
+    }
+
+    public String callQwenBoolean(String prompt, String qnaId) {
+        return callModel("qwen_boolean", prompt, qnaId);
+    }
+
+    public String callQwenBoolean(String prompt, String qnaId, String chainId) {
+        return callModel("qwen_boolean", prompt, qnaId, chainId);
+    }
+
     public String callSelector(String prompt) {
         return callModel("selector", prompt);
     }
-    
+
     public String callSelector(String prompt, String qnaId) {
         return callModel("selector", prompt, qnaId);
     }
-    
+
+    public String callSelector(String prompt, String qnaId, String chainId) {
+        return callModel("selector", prompt, qnaId, chainId);
+    }
+
     public String callNl2sql(String prompt) {
         return callModel("nl2sql", prompt);
     }
-    
+
     public String callNl2sql(String prompt, String qnaId) {
         return callModel("nl2sql", prompt, qnaId);
     }
-    
+
     public String callNl2sql(String prompt, String qnaId, String chainId) {
         return callModel("nl2sql", prompt, qnaId, chainId);
     }
-    
+
     public String callSolver(String prompt) {
         return callModel("solver", prompt);
     }
-    
+
     public String callSolver(String prompt, String qnaId) {
         return callModel("solver", prompt, qnaId);
     }
-    
-    public String callDevstral(String prompt) {
-        return callModel("devstral", prompt);
-    }
-    
-    public String callDevstral(String prompt, String qnaId) {
-        return callModel("devstral", prompt, qnaId);
-    }
-    
-    public String callDevstral(String prompt, String qnaId, String chainId) {
-        return callModel("devstral", prompt, qnaId, chainId);
-    }
-    
-    public String callDevstralHigh(String prompt) {
-        return callModel("devstral-high", prompt);
-    }
-    
-    public String callDevstralHigh(String prompt, String qnaId) {
-        return callModel("devstral-high", prompt, qnaId);
+
+    public String callSolver(String prompt, String qnaId, String chainId) {
+        return callModel("solver", prompt, qnaId, chainId);
     }
     
     /**
@@ -192,7 +217,7 @@ public class LLMRequest {
             );
             
             // LLM 호출
-            String response = callDevstral(prompt, qnaId);
+            String response = callNl2sql(prompt, qnaId);
             
             // SQL 쿼리 추출
             String modifiedQuery = extractSqlQuery(response);
