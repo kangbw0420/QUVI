@@ -104,7 +104,7 @@ public class PromptBuilder {
     // Dater 프롬프트 생성 및 RetrieveTime 반환
     public PromptWithRetrieveTime buildDaterPromptWithFewShots(String selectedTable, String userQuestion,
                                                        List<Map<String, Object>> daterHistory, String qnaId) {
-        String today = PromptBuilder.getTodayDash();
+        String today = DateUtils.getTodayDash();
         String jsonFormat = "\"from_date\": from_date, \"to_date\": to_date";
 
         // 테이블별 프롬프트 선택
@@ -171,7 +171,7 @@ public class PromptBuilder {
         }
 
         // 사용자 질문 포맷팅 (날짜 정보 포함)
-        String formattedQuestion = formatQuestionWithDate(userQuestion);
+        String formattedQuestion = DateUtils.formatQuestionWithDate(userQuestion);
 
         PromptTemplate result = PromptTemplate.from("")
                 .withSystemPrompt(systemPrompt)
@@ -253,7 +253,7 @@ public class PromptBuilder {
         }
         
         // 사용자 질문 포맷팅 (날짜 정보 포함)
-        String formattedQuestion = formatQuestionWithDate(userQuestion);
+        String formattedQuestion = DateUtils.formatQuestionWithDate(userQuestion);
         
         // 프롬프트 구성
         PromptTemplate promptTemplate = PromptTemplate.from("")
@@ -474,7 +474,7 @@ public class PromptBuilder {
 
     // Safeguard용 NL2SQL 프롬프트 생성 (테이블별 에러 수정)
     public PromptTemplate buildSafeguardNL2SQLPrompt(String selectedTable, String userQuestion, String sqlError) {
-        String today = PromptBuilder.getTodayDash();
+        String today = DateUtils.getTodayDash();
         
         // 에러 정보를 포함한 질문 생성
         String questionWithError = userQuestion + ", SQL오류: " + (sqlError != null ? sqlError : "");
@@ -485,26 +485,6 @@ public class PromptBuilder {
             "{today}", today
         );
         return PromptTemplate.from(prompt);
-    }
-
-    // 유틸리티: 오늘 날짜 반환
-    public static String getTodayDash() {
-        return LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-    }
-
-    // 유틸리티: 질문에 날짜 정보 추가
-    private String formatQuestionWithDate(String userQuestion) {
-        LocalDate today = LocalDate.now();
-        String formattedToday = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String weekday = getWeekday(today.getDayOfWeek().getValue());
-        
-        return userQuestion + ", 오늘: " + formattedToday + " " + weekday + "요일.";
-    }
-
-    // 유틸리티: 요일 변환
-    private String getWeekday(int dayOfWeek) {
-        String[] weekdays = {"", "월", "화", "수", "목", "금", "토", "일"};
-        return weekdays[dayOfWeek];
     }
 
     // 유틸리티: Chat history 변환 (Python의 chat_history.py와 동일한 로직)
