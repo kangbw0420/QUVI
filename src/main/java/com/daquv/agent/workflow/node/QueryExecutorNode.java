@@ -107,15 +107,25 @@ public class QueryExecutorNode implements WorkflowNode {
                 
                 // 4. view table 적용
                 String viewQuery = queryRequest.viewTable(
-                    queryOrdered, 
-                    companyId, 
-                    state.getUserInfo(), 
+                    queryOrdered,
+                    state.getUserInfo().getUserId(),
+                    companyId,
                     selectedTable,
                     state.getFutureDate()
                 );
                 
                 // 5. 행 수 계산 및 페이지네이션
-                int totalRows = queryUtils.countRows(viewQuery, LIMIT);
+                String countResult = queryRequest.countRows(viewQuery, LIMIT);
+                log.info("countRows API 응답: {}", countResult);
+
+                int totalRows = 0;
+                try {
+                    totalRows = Integer.parseInt(countResult);
+                    log.info("파싱된 총 행 수: {}", totalRows);
+                } catch (NumberFormatException e) {
+                    log.warn("행 수 파싱 실패: {}", countResult);
+                    totalRows = 0;
+                }
                 state.setTotalRows(totalRows);
                 
                 if (totalRows > LIMIT) {
