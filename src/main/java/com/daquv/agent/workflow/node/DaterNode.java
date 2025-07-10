@@ -111,7 +111,7 @@ public class DaterNode implements WorkflowNode {
 
         // 상태에 날짜 정보 저장
         state.setStartDate(fromDate);
-        state.setStartDate(toDate);
+        state.setEndDate(toDate);
 
         // WebSocket 메시지 전송 (기존 websocket 은 executor, nl2sql, safeguard, nodata, killjoy 에만... 끝난 WebSocket 로직 있어서 추가)
         Map<String, Object> data = new HashMap<>();
