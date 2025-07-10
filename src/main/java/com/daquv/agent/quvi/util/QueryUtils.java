@@ -202,20 +202,6 @@ public class QueryUtils {
     }
 
     /**
-     * SQL 쿼리가 반환할 총 행 수 계산
-     */
-    public int countRows(String query, int limit) {
-        try {
-            String countQuery = String.format("SELECT COUNT(*) FROM (%s) AS subquery", query);
-            Integer count = mainJdbcTemplate.queryForObject(countQuery, Integer.class);
-            return count != null ? count : 0;
-        } catch (Exception e) {
-            log.error("countRows 처리 중 오류 발생: {}", e.getMessage());
-            return 0;
-        }
-    }
-
-    /**
      * 결과 데이터가 있지만 모든 값이 None/null인지 확인
      * Python: is_null_only 함수와 동일
      */
