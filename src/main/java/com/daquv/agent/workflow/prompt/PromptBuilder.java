@@ -239,15 +239,12 @@ public class PromptBuilder {
                         String date = (String) shot.get("date");
                         humanWithDate = input + ", 오늘: " + date + ".";
                     }
-                    if (qnaId != null) {
-                        qnaService.recordFewshot(qnaId, input, humanWithDate, output, i + 1);
-                    }
+                    qnaService.recordFewshot(qnaId, input, humanWithDate, output, i + 1);
 
                     // 변환된 few-shot을 새 리스트에 추가
                     Map<String, Object> processedShot = new HashMap<>(shot);
                     processedShot.put("input", humanWithDate);
                     processedFewShots.add(processedShot);
-                    qnaService.recordFewshot(qnaId, input, humanWithDate, output, i + 1);
                 }
             }
         }
@@ -360,15 +357,12 @@ public class PromptBuilder {
                                 humanWithStats = String.format("결과 데이터:\n%s\n\n사용자의 질문:\n%s", stats, input);
                             }
                         }
-                        if (qnaId != null) {
-                            qnaService.recordFewshot(qnaId, input, humanWithStats, output, i + 1);
-                        }
+                        qnaService.recordFewshot(qnaId, input, humanWithStats, output, i + 1);
 
                         // 변환된 few-shot을 새 리스트에 추가
                         Map<String, Object> processedShot = new HashMap<>(example);
                         processedShot.put("input", humanWithStats);
                         processedFewShots.add(processedShot);
-                        qnaService.recordFewshot(qnaId, input, humanWithStats, output, i + 1);
                     }
                 }
             }
