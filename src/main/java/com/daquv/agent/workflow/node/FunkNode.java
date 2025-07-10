@@ -41,7 +41,6 @@ public class FunkNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String chainId = state.getChainId();
-        String traceId = state.getTraceId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -56,7 +55,7 @@ public class FunkNode implements WorkflowNode {
             webSocketUtils.sendNodeStart(state.getWebSocketSession(), "funk");
 
             // QnA ID 생성
-            String qnaId = qnaService.createQnaId(traceId);
+            String qnaId = qnaService.createQnaId(state.getTraceId());
             
             // History 조회
             List<Map<String, Object>> funkHistory = promptBuilder.getFunkHistory(chainId);

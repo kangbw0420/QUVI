@@ -64,7 +64,6 @@ public class ParamsNode implements WorkflowNode {
         String userId = state.getUserInfo().getUserId();
         String useInttId = state.getUserInfo().getUseInttId();
         String chainId = state.getChainId();
-        String traceId = state.getTraceId();
 
         if (selectedApi == null || selectedApi.trim().isEmpty()) {
             log.error("선택된 API가 없습니다.");
@@ -85,7 +84,7 @@ public class ParamsNode implements WorkflowNode {
             webSocketUtils.sendNodeStart(state.getWebSocketSession(), "params");
 
             // QnA ID 생성
-            String qnaId = qnaService.createQnaId(traceId);
+            String qnaId = qnaService.createQnaId(state.getTraceId());
             
             // History 조회
             List<Map<String, Object>> paramsHistory = promptBuilder.getParamsHistory(chainId);
@@ -140,9 +139,16 @@ public class ParamsNode implements WorkflowNode {
                 toDate = todayStr;
                 state.setFutureDate(true);
             }
+
+            // SQL 쿼리 생성 전에 null 체크 추가
+            if (useInttId == null || userId == null || companyId == null || fromDate == null || toDate == null) {
+                log.error("필수 파라미터가 null입니다: useInttId={}, userId={}, companyId={}, fromDate={}, toDate={}",
+                        useInttId, userId, companyId, fromDate, toDate);
+            }
             
             log.info("최종 파라미터: from_date={}, to_date={}", fromDate, toDate);
-            
+            log.info("1---------------");
+
             // SQL 쿼리 생성
             String sqlQuery = SQL_TEMPLATE
                 .replace("sql_func", selectedApi)
@@ -151,15 +157,17 @@ public class ParamsNode implements WorkflowNode {
                 .replace("third_param", companyId)
                 .replace("from_date", fromDate)
                 .replace("to_date", toDate);
-            
+            log.info("2---------------");
             // 답변 기록
             log.info("===== params(A) =====");
             log.info("생성된 SQL 쿼리: {}", sqlQuery);
+            log.info("3---------------");
             
             // 상태 업데이트
             state.setSqlQuery(sqlQuery.trim());
             state.setStartDate(fromDate);
             state.setEndDate(toDate);
+            log.info("4---------------");
             
             log.info("파라미터 생성 완료");
             
