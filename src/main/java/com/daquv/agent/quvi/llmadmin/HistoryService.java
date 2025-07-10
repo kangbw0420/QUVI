@@ -65,8 +65,9 @@ public class HistoryService {
             convQuery.setParameter("chainId", chainId);
             String conversationId = (String) convQuery.getSingleResult();
             
-            // 동적 쿼리 생성
+            // 동적 쿼리 생성 (JSONB 컬럼 제외)
             String selectedColumns = stateHistory.stream()
+                    .filter(col -> !col.equals("date_info"))
                     .map(col -> "s." + col)
                     .collect(Collectors.joining(", "));
             
