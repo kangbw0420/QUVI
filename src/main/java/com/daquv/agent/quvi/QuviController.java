@@ -1,5 +1,6 @@
 package com.daquv.agent.quvi;
 
+import com.daquv.agent.quvi.dto.DateInfo;
 import com.daquv.agent.quvi.dto.LogLevel;
 import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.llmadmin.ChainService;
@@ -264,6 +265,7 @@ public class QuviController {
         body.put("chain_id", chainId);
         body.put("recommend", recommendList);
         body.put("is_api", false);
+        body.put("date_info", new DateInfo(finalState.getStartDate(), finalState.getEndDate()));
         body.put("sql_query", finalState.getSqlQuery());
         body.put("selected_table", finalState.getSelectedTable());
         body.put("has_next", finalState.getHasNext() != null ? finalState.getHasNext() : false);

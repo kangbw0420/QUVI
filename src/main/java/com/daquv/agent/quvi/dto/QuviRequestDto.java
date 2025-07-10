@@ -13,13 +13,13 @@ import lombok.Setter;
 public class QuviRequestDto {
     @JsonProperty("user_question")
     private String userQuestion;
-    
+
     @JsonProperty("company_id")
-    private String companyId = "seoul_pay";
-    
+    private String companyId = "aicfo_dev";
+
     @JsonProperty("user_id")
     private String userId = "dev01";
-    
+
     @JsonProperty("session_id")
     private String sessionId = "";
 }

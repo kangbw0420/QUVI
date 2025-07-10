@@ -24,7 +24,7 @@ public class LLMRequest {
     
     private static final Logger log = LoggerFactory.getLogger(LLMRequest.class);
 
-    @Value("${llm.base-url")
+    @Value("${llm.base-url}")
     private String baseUrl;
     
     @Autowired

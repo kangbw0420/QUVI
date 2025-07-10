@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -24,7 +25,8 @@ public class VectorRequest {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String VECTOR_STORE_BASE_URL = "http://121.78.145.49:8005";
+    @Value("${api.vector-store-domain}")
+    private String VECTOR_STORE_BASE_URL;
     
     @Autowired
     private RequestProfiler profiler;
