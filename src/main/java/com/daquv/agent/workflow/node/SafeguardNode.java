@@ -1,11 +1,13 @@
 package com.daquv.agent.workflow.node;
 
+import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
+import com.daquv.agent.workflow.prompt.PromptTemplate;
 import com.daquv.agent.workflow.util.LLMRequest;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +27,7 @@ import java.util.regex.Pattern;
 @Component
 public class SafeguardNode implements WorkflowNode {
 
-    private static final int LIMIT = 100; // 테스트용 LIMIT 값
+    private static final int LIMIT = 10000;
 
     @Autowired
     private LLMRequest llmService;
@@ -56,38 +58,39 @@ public class SafeguardNode implements WorkflowNode {
 
     @Override
     public void execute(WorkflowState state) {
-        String sqlQuery = state.getSqlQuery();
-        
-        if (sqlQuery == null || sqlQuery.trim().isEmpty()) {
+        state.incrementSafeCount();
+        String unsafeQuery = state.getSqlQuery();
+        String userQuestion = state.getUserQuestion();
+        String sqlError = state.getSqlError();
+        Boolean queryError = state.getQueryError();
+
+        if (unsafeQuery == null || unsafeQuery.trim().isEmpty()) {
             log.error("수정할 SQL 쿼리가 비어있습니다.");
             return;
         }
 
         try {
-            log.info("=== SafeguardNode 실행 시작 ===");
-            log.info("수정 전 SQL 쿼리: {}", sqlQuery);
-            log.info("LIMIT 값: {}", LIMIT);
-            
-            // 1. 행 수 계산
-            log.info("1단계: 수정 전 쿼리의 행 수 계산 시작");
-            String countResult = queryRequest.countRows(sqlQuery, LIMIT);
-            log.info("countRows API 응답: {}", countResult);
-            
-            int totalRows = 0;
-            try {
-                totalRows = Integer.parseInt(countResult);
-                log.info("파싱된 총 행 수: {}", totalRows);
-            } catch (NumberFormatException e) {
-                log.warn("행 수 파싱 실패: {}", countResult);
-                totalRows = 0;
+            log.info("1단계: 에러에 따른 프롬프트 분기");
+            PromptTemplate promptTemplate = null;
+            // 1. 쿼리 에러 확인
+            if (queryError) {
+                promptTemplate = promptBuilder.buildSafeguardPrompt(userQuestion, unsafeQuery, sqlError);
+            } else {
+                String questionWithError = String.format("%s, SQL오류: %s", userQuestion, sqlError);
+                promptTemplate = promptBuilder.buildNL2SQLPrompt(questionWithError);
             }
-            
-            // 2. LLM을 통한 쿼리 수정
-            log.info("2단계: LLM을 통한 쿼리 수정 시작");
-            String modifiedQuery = llmService.modifyQuery(sqlQuery, state.getSqlError(), state.getTraceId());
+            String prompt = promptTemplate.build();
+
+            log.info("2단계: QnA ID 생성");
+            String qnaId = qnaService.createQnaId(state.getTraceId());
+            log.info("생성된 QnA ID: {}", qnaId);
+
+            log.info("3단계: LLM을 통한 쿼리 수정 시작");
+            String modifiedQuery = llmService.callNl2sql(prompt, qnaId);
+            modifiedQuery = LlmOutputHandler.handleSqlCodeBlock(modifiedQuery);
             log.info("수정된 쿼리: {}", modifiedQuery);
             
-            if (modifiedQuery != null && !modifiedQuery.trim().isEmpty() && !modifiedQuery.equals(sqlQuery)) {
+            if (modifiedQuery != null && !modifiedQuery.trim().isEmpty() && !modifiedQuery.equals(unsafeQuery)) {
                 // 3. 수정된 쿼리의 행 수 계산
                 log.info("3단계: 수정된 쿼리의 행 수 계산 시작");
                 String modifiedCountResult = queryRequest.countRows(modifiedQuery, LIMIT);
@@ -134,7 +137,6 @@ public class SafeguardNode implements WorkflowNode {
                 state.setColumnList(columnList);
                 state.setQueryResultStatus("success");
                 state.setQueryChanged(true);
-                state.incrementSafeCount();
                 
                             log.info("쿼리 수정 및 실행 완료 - 수정된 쿼리: {}", modifiedQuery);
             log.info("최종 상태 - hasNext: {}, totalRows: {}, queryResultSize: {}, safeCount: {}", 

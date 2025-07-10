@@ -193,46 +193,6 @@ public class LLMRequest {
     }
     
     /**
-     * SQL 쿼리를 수정합니다 (Safeguard용).
-     * 
-     * @param sqlQuery 원본 SQL 쿼리
-     * @param sqlError SQL 에러 메시지
-     * @param traceId 현재 trace ID
-     * @return 수정된 SQL 쿼리
-     */
-    public String modifyQuery(String sqlQuery, String sqlError, String traceId) {
-        try {
-            log.info("SQL 쿼리 수정 시작 - 원본 쿼리: {}, 에러: {}, traceId: {}", sqlQuery, sqlError, traceId);
-            
-            // QnA ID 생성 (올바른 trace ID 사용)
-            String qnaId = qnaService.createQnaId(traceId);
-            
-            // Safeguard 프롬프트 생성
-            String prompt = String.format(
-                "다음 SQL 쿼리에 오류가 있습니다. 오류를 수정하여 올바른 SQL 쿼리를 생성해주세요.\n\n" +
-                "원본 쿼리: %s\n" +
-                "오류 메시지: %s\n\n" +
-                "수정된 SQL 쿼리만 반환해주세요. 다른 설명은 포함하지 마세요.",
-                sqlQuery, sqlError
-            );
-            
-            // LLM 호출
-            String response = callNl2sql(prompt, qnaId);
-            
-            // SQL 쿼리 추출
-            String modifiedQuery = extractSqlQuery(response);
-            
-            log.info("SQL 쿼리 수정 완료 - 수정된 쿼리: {}", modifiedQuery);
-            
-            return modifiedQuery;
-            
-        } catch (Exception e) {
-            log.error("SQL 쿼리 수정 중 오류 발생: {}", e.getMessage(), e);
-            return sqlQuery; // 오류 발생 시 원본 쿼리 반환
-        }
-    }
-    
-    /**
      * LLM 응답에서 SQL 쿼리를 추출합니다.
      */
     private String extractSqlQuery(String response) {

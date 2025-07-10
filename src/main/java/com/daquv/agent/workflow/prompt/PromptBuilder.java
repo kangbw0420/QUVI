@@ -3,6 +3,7 @@ package com.daquv.agent.workflow.prompt;
 import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.requests.VectorRequest;
+import com.daquv.agent.workflow.util.DateUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -181,81 +182,16 @@ public class PromptBuilder {
         return new PromptWithRetrieveTime(result, lastRetrieveTimeFromResults);
     }
 
-    // NL2SQL 프롬프트 생성
-    public PromptTemplate buildNL2SQLPrompt(String targetTable, String schema) {
-        String today = PromptBuilder.getTodayDash();
-        
-        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
-        
-        String prompt = template.replaceAll(
-            "{today}", today,
-            "{schema}", schema
-        );
-            
-        return PromptTemplate.from(prompt);
-    }
+    public PromptTemplate buildNL2SQLPrompt(String questionWithError) {
+        String today = DateUtils.getTodayFormatted();
 
-    // NL2SQL 프롬프트 생성 (few-shot 포함)
-    public PromptWithRetrieveTime buildNL2SQLPromptWithFewShots(String targetTable, String schema, String userQuestion) {
-        return buildNL2SQLPromptWithFewShots(targetTable, schema, userQuestion, null);
-    }
-    
-    // NL2SQL 프롬프트 생성 (few-shot 포함 + QnA 저장)
-    public PromptWithRetrieveTime buildNL2SQLPromptWithFewShots(String targetTable, String schema, String userQuestion, String qnaId) {
-        String today = PromptBuilder.getTodayDash();
-        
-        // 기본 시스템 프롬프트 로드
-        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
+        PromptTemplate template = PromptTemplate.fromFile("nl2sql");
         String systemPrompt = template.replaceAll(
-            "{today}", today,
-            "{schema}", schema
+                "{user_question}", questionWithError,
+                "{today}", today
         );
 
-        // Few-shot 예제 검색
-        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-            userQuestion, "shots_" + targetTable.toLowerCase(), 3, null);
-        
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
-
-        BigDecimal lastRetrieveTimeFromResults = BigDecimal.ZERO;
-
-        // QnA ID가 있으면 few-shot 저장
-        if (qnaId != null && fewShots != null) {
-            for (int i = 0; i < fewShots.size(); i++) {
-                Map<String, Object> shot = fewShots.get(i);
-                String input = (String) shot.get("input");
-                String output = (String) shot.get("output");
-                Object retrieveTimeObj = shot.getOrDefault("retrieve_time", 0.0);
-                if (retrieveTimeObj instanceof Double) {
-                    lastRetrieveTimeFromResults = BigDecimal.valueOf((Double) retrieveTimeObj);
-                } else if (retrieveTimeObj instanceof BigDecimal) {
-                    lastRetrieveTimeFromResults = (BigDecimal) retrieveTimeObj;
-                } else if (retrieveTimeObj instanceof Number) {
-                    lastRetrieveTimeFromResults = BigDecimal.valueOf(((Number) retrieveTimeObj).doubleValue());
-                }
-                if (input != null && output != null) {
-                    // 날짜 정보가 있으면 질문에 추가
-                    String humanWithDate = input;
-                    if (shot.containsKey("date")) {
-                        String date = (String) shot.get("date");
-                        humanWithDate = input + ", 오늘: " + date + ".";
-                    }
-                    qnaService.recordFewshot(qnaId, input, humanWithDate, output, i + 1);
-                }
-            }
-        }
-        
-        // 사용자 질문 포맷팅 (날짜 정보 포함)
-        String formattedQuestion = formatQuestionWithDate(userQuestion);
-        
-        // 프롬프트 구성
-        PromptTemplate.from("")
-            .withSystemPrompt(systemPrompt)
-            .withFewShots(fewShots)
-            .withUserMessage(formattedQuestion);
-
-        return new  PromptWithRetrieveTime(template, lastRetrieveTimeFromResults);
+        return PromptTemplate.from("").withSystemPrompt(systemPrompt);
     }
 
     // NL2SQL 프롬프트 생성 (few-shot + history + QnA 저장 포함)
@@ -469,7 +405,7 @@ public class PromptBuilder {
 
     // Safeguard 프롬프트 생성 (SQL 에러 수정)
     public PromptTemplate buildSafeguardPrompt(String userQuestion, String unsafeQuery, String sqlError) {
-        String today = PromptBuilder.getTodayDash();
+        String today = DateUtils.getTodayFormatted();
         
         PromptTemplate template = PromptTemplate.fromFile("safeguard");
         String prompt = template.replaceAll(
