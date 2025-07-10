@@ -77,6 +77,9 @@ admin:
 api:
     url: http://121.78.125.134:8001/v1/chat/completions
     vector-store-domain: http://211.233.64.103:8000
+    quvi-base-url: http://localhost:8106
+    quvi-column: ${api.quvi-base-url}/column
+    quvi-query: ${api.quvi-base-url}/query
 
 llm:
     base-url: http://121.78.125.134:8001

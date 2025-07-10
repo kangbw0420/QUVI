@@ -2,6 +2,7 @@ package com.daquv.agent.quvi.requests;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,7 +26,8 @@ public class ColumnRequest {
     private static final Logger log = LoggerFactory.getLogger(ColumnRequest.class);
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private static final String COLUMN_API_BASE_URL = "http://localhost:8106/column";
+    @Value("${api.quvi-column}")
+    private String COLUMN_API_BASE_URL;
 
     /**
      * SQL 쿼리에서 특정 컬럼의 조건을 찾아 반환

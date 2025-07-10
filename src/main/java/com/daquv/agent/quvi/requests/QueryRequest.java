@@ -3,6 +3,7 @@ package com.daquv.agent.quvi.requests;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -11,12 +12,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.daquv.agent.workflow.dto.UserInfo;
 
 @Component
 public class QueryRequest {
@@ -25,7 +26,8 @@ public class QueryRequest {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final JdbcTemplate mainJdbcTemplate;
-    private static final String QUERY_API_BASE_URL = "http://localhost:8106/query";
+    @Value("${api.quvi-query}")
+    private String QUERY_API_BASE_URL;
 
     public QueryRequest(@Qualifier("mainJdbcTemplate") JdbcTemplate mainJdbcTemplate) {
         this.mainJdbcTemplate = mainJdbcTemplate;
@@ -114,17 +116,16 @@ public class QueryRequest {
     /**
      * view_table 함수
      */
-    public String viewTable(String query, String companyId, UserInfo userInfo, String selectTable, Boolean futureDate) {
+    public String viewTable(String query, String userId, String companyId, String selectTable, Boolean futureDate) {
         try {
-            log.info("[query] view_table API 호출 - 쿼리: {}, 회사ID: {}, 사용자정보: {}, 선택테이블: {}, 미래날짜: {}", 
-                     query, companyId, userInfo, selectTable, futureDate);
-
+            log.info("[query] view_table API 호출 - 쿼리: {}, 회사ID: {}, 사용자ID: {}, 선택테이블: {}, 미래날짜: {}",
+                     query, companyId, userId, selectTable, futureDate);
             // 요청 데이터 구성
             Map<String, Object> requestData = new HashMap<>();
             requestData.put("query", query);
             requestData.put("company_id", companyId);
-            requestData.put("user_info", userInfo.toArray());
-            requestData.put("select_table", selectTable);
+            requestData.put("user_info", Arrays.asList(userId, companyId));
+            requestData.put("selected_table", selectTable);
             Map<String, Object> flags = new HashMap<>();
             flags.put("future_date", futureDate);
             requestData.put("flags", flags);
