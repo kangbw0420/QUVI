@@ -269,7 +269,9 @@ public class PromptBuilder {
             "{user_question}", userQuestion,
             "{table_pipe}", tablePipe
         );
-        return PromptTemplate.from(prompt);
+
+        return PromptTemplate.from("")
+                .withSystemPrompt(prompt);
     }
 
     // Respondent 프롬프트 생성 (few-shot + history + QnA 저장 포함)
@@ -455,15 +457,18 @@ public class PromptBuilder {
     // Safeguard 프롬프트 생성 (SQL 에러 수정)
     public PromptTemplate buildSafeguardPrompt(String userQuestion, String unsafeQuery, String sqlError) {
         String today = DateUtils.getTodayFormatted();
-        
+
         PromptTemplate template = PromptTemplate.fromFile("safeguard");
+
         String prompt = template.replaceAll(
             "{user_question}", userQuestion,
             "{today}", today,
             "{unsafe_query}", unsafeQuery,
             "{sql_error}", sqlError != null ? sqlError : ""
         );
-        return PromptTemplate.from(prompt);
+
+        return PromptTemplate.from("")
+                .withSystemPrompt(prompt);
     }
 
     // Safeguard용 NL2SQL 프롬프트 생성 (테이블별 에러 수정)
