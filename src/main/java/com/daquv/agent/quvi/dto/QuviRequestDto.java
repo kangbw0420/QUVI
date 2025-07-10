@@ -22,4 +22,7 @@ public class QuviRequestDto {
 
     @JsonProperty("session_id")
     private String sessionId = "";
+
+    @JsonProperty("use_intt_id")
+    private String useInttId;
 }

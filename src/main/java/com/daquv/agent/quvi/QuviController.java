@@ -209,6 +209,7 @@ public class QuviController {
         state.setUserInfo(UserInfo.builder()
                 .userId(request.getUserId())
                 .companyId(request.getCompanyId())
+                .useInttId(request.getUseInttId())
                 .build());
         state.setChainId(chainId);
         state.setTraceId("trace_" + System.currentTimeMillis());
@@ -221,7 +222,7 @@ public class QuviController {
         state.setSqlQuery(null);
         state.setQueryResult(null);
         state.setFinalAnswer(null);
-        state.setSelectedTable("DGC_BALANCE_GA"); // 기본값
+        state.setSelectedTable(null);
         state.setFString("");
 
         // 플래그 초기화
