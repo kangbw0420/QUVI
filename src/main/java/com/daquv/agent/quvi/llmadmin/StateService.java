@@ -94,8 +94,8 @@ public class StateService {
                     .finalAnswer((String) newState.get("finalAnswer"))
                     .companyId((String) newState.get("companyId"))
                     .sqlError((String) newState.get("sqlError"))
-                    .startDate((String) newState.get("startDate"))
-                    .endDate((String) newState.get("endDate"))
+                    .startDate(convertToYYMMDD((String) newState.get("startDate")))
+                    .endDate(convertToYYMMDD((String) newState.get("endDate")))
                     .selectedApi((String) newState.get("selectedApi"))
                     .fstringAnswer((String) newState.get("fstringAnswer"))
                     .tablePipe((String) newState.get("tablePipe"))
@@ -262,5 +262,26 @@ public class StateService {
     public List<State> getStatesByTablePipe(String tablePipe) {
         log.info("getStatesByTablePipe - tablePipe: {}", tablePipe);
         return stateRepository.findByTablePipe(tablePipe);
+    }
+
+    /**
+     * YYYYMMDD 형식의 날짜를 YYMMDD 형식으로 변환
+     *
+     * @param dateStr YYYYMMDD 형식의 날짜 문자열
+     * @return YYMMDD 형식의 날짜 문자열 또는 null
+     */
+    private String convertToYYMMDD(String dateStr) {
+        if (dateStr == null) {
+            log.warn("Date string is null, returning null");
+            return null;
+        }
+
+        if (dateStr.length() < 8) {
+            log.warn("Date string '{}' is too short for YYYYMMDD format, returning as is", dateStr);
+            return dateStr;
+        }
+
+        // YYYYMMDD (8자리)에서 YYMMDD (6자리)로 변환
+        return dateStr.substring(2);
     }
 }
