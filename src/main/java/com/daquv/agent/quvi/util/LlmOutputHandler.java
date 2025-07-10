@@ -134,7 +134,6 @@ public class LlmOutputHandler {
     }
 
     /**
-     * TODO AICFO 에 맞게 수정해야함
      * 테이블명 추출 (Commander 노드용)
      */
     public static String extractTableName(String llmResponse) {
@@ -147,8 +146,7 @@ public class LlmOutputHandler {
         
         // 유효한 테이블명인지 확인
         String[] validTables = {
-            "DGC_INFO", "DGC_PURREF", "DGC_GIFT", "DGC_PAYMENT", 
-            "DGC_BALANCE_GA", "DGC_BALANCE_TX", "USER_JOIN"
+            "AMT", "TRSC", "STOCK"
         };
         
         for (String validTable : validTables) {
