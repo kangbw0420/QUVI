@@ -46,9 +46,9 @@ if ! command -v mvn &> /dev/null; then
     exit 1
 fi
 
-# 애플리케이션 빌드
-echo -e "${BLUE}애플리케이션을 빌드합니다...${NC}"
-mvn clean package
+# 애플리케이션 빌드 (프로필 적용)
+echo -e "${BLUE}애플리케이션을 빌드합니다 (프로필: $PROFILE)...${NC}"
+mvn clean package -Dspring.profiles.active=$PROFILE
 
 # 빌드 성공 확인
 if [ $? -ne 0 ]; then
