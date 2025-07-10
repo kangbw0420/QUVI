@@ -93,12 +93,12 @@ public class PromptBuilder {
         }
         
         // 프롬프트 구성
-        PromptTemplate.from("")
+        PromptTemplate result = PromptTemplate.from("")
                 .withSystemPrompt(systemPrompt)
                 .withFewShotsWithoutDateModification(reversedFewShots)
                 .withUserMessage(userQuestion);
 
-        return new PromptWithRetrieveTime(template, lastRetrieveTimeFromResults);
+        return new PromptWithRetrieveTime(result, lastRetrieveTimeFromResults);
     }
 
     // Dater 프롬프트 생성 및 RetrieveTime 반환
