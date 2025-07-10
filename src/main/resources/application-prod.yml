@@ -76,6 +76,9 @@ api:
   url: http://121.78.125.134:8001/v1/chat/completions
   vector-store-domain: http://211.233.64.103:8000
 
+llm:
+  base-url: http://121.78.125.134:8001
+
 # 로깅 설정
 logging:
   level:

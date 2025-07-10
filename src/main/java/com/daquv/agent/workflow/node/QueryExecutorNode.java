@@ -1,10 +1,13 @@
 package com.daquv.agent.workflow.node;
 
+import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
-import com.daquv.agent.quvi.requests.QueryRequest;
+import com.daquv.agent.workflow.dto.VectorNotes;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
+import com.daquv.agent.quvi.util.QueryUtils;
+import com.daquv.agent.workflow.util.NameModifierUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,20 +25,23 @@ import java.util.regex.Pattern;
 @Component
 public class QueryExecutorNode implements WorkflowNode {
     
-    private static final int LIMIT = 100; // 테스트용 LIMIT 값
+    private static final int LIMIT = 10000;
     
     @Autowired
     @Qualifier("mainJdbcTemplate")
     private JdbcTemplate mainJdbcTemplate;
     
-    private final QueryRequest queryRequest;
-    
     @Autowired
     private WebSocketUtils webSocketUtils;
     
-    public QueryExecutorNode(QueryRequest queryRequest) {
-        this.queryRequest = queryRequest;
-    }
+    @Autowired
+    private QueryUtils queryUtils;
+
+    @Autowired
+    private NameModifierUtils nameModifierUtils;
+
+    @Autowired
+    private QueryRequest queryRequest;
 
     @Override
     public String getId() {
@@ -44,9 +50,16 @@ public class QueryExecutorNode implements WorkflowNode {
 
     @Override
     public void execute(WorkflowState state) {
-        String sqlQuery = state.getSqlQuery();
+        String rawQuery = state.getSqlQuery();
+        String companyId = state.getUserInfo().getCompanyId();
+        List<Map<String, Object>> queryResult = new ArrayList<>();
+        List<String> columnList = new ArrayList<>();
 
-        if (sqlQuery == null || sqlQuery.trim().isEmpty()) {
+        if (state.getSafeCount() == null) {
+            state.setSafeCount(0);
+        }
+
+        if (rawQuery == null || rawQuery.trim().isEmpty()) {
             log.error("SQL 쿼리가 비어있습니다.");
             state.setQueryResultStatus("failed");
             state.setSqlError("SQL 쿼리가 비어있습니다.");
@@ -56,61 +69,145 @@ public class QueryExecutorNode implements WorkflowNode {
 
         try {
             log.info("=== QueryExecutorNode 실행 시작 ===");
-            log.info("원본 SQL 쿼리: {}", sqlQuery);
+            log.info("원본 SQL 쿼리: {}", rawQuery);
             log.info("LIMIT 값: {}", LIMIT);
             
-            // 1. 행 수 계산 및 hasNext 설정
-            log.info("1단계: 행 수 계산 시작");
-            String countResult = queryRequest.countRows(sqlQuery, LIMIT);
-            log.info("countRows API 응답: {}", countResult);
-            
-            int totalRows = 0;
-            try {
-                totalRows = Integer.parseInt(countResult);
-                log.info("파싱된 총 행 수: {}", totalRows);
-            } catch (NumberFormatException e) {
-                log.warn("행 수 파싱 실패: {}", countResult);
-                totalRows = 0;
-            }
-            
-            state.setTotalRows(totalRows);
-            log.info("WorkflowState에 설정된 총 행 수: {}", state.getTotalRows());
-            
-            // hasNext 플래그 설정
-            if (totalRows > LIMIT) {
-                state.setHasNext(true);
-                log.info("✅ 다음 페이지가 존재합니다. 총 행 수: {}, LIMIT: {}", totalRows, LIMIT);
+            if (state.getIsApi()) {
+                // API 쿼리 처리
+                log.info("API 쿼리 실행: {}", rawQuery);
+                queryResult = mainJdbcTemplate.queryForList(rawQuery);
                 
-                // LIMIT 추가된 쿼리로 실행
-                log.info("2단계: LIMIT 추가된 쿼리 생성 시작");
-                String limitedQuery = queryRequest.addLimits(sqlQuery, LIMIT, 0);
-                log.info("LIMIT 추가된 쿼리: {}", limitedQuery);
-                sqlQuery = limitedQuery;
+                if (!queryResult.isEmpty()) {
+                    Map<String, Object> data = new HashMap<>();
+                    data.put("result_row", queryResult.size());
+                    data.put("result_column", queryResult.get(0).keySet().size());
+                    webSocketUtils.sendNodeEnd(state.getWebSocketSession(), "executor", data);
+                }
+                
+                state.setSqlQuery(rawQuery);
+                state.setQueryResult(queryResult);
+                
+                if (queryResult.isEmpty()) {
+                    state.setNoData(true);
+                }
+                
             } else {
-                state.setHasNext(false);
-                log.info("❌ 다음 페이지가 없습니다. 총 행 수: {}, LIMIT: {}", totalRows, LIMIT);
+                // 일반 쿼리 처리
+                String selectedTable = state.getSelectedTable();
+                
+                // 1. 권한 있는 회사/계좌 검사
+                String queryRightCom = queryUtils.addComCondition(rawQuery, companyId);
+                
+                // 2. 주식종목/은행명 매핑 변환
+                String queryRightStock = nameModifierUtils.modifyStock(queryRightCom);
+                String queryRightBank = nameModifierUtils.modifyBank(queryRightStock);
+                
+                // 3. order by 추가
+                String queryOrdered = queryUtils.addOrderBy(queryRightBank);
+                
+                // 4. view table 적용
+                String viewQuery = queryRequest.viewTable(
+                    queryOrdered, 
+                    companyId, 
+                    state.getUserInfo(), 
+                    selectedTable,
+                    state.getFutureDate()
+                );
+                
+                // 5. 행 수 계산 및 페이지네이션
+                int totalRows = queryUtils.countRows(viewQuery, LIMIT);
+                state.setTotalRows(totalRows);
+                
+                if (totalRows > LIMIT) {
+                    log.info("✅ 다음 페이지가 존재합니다. 총 행 수: {}, LIMIT: {}", totalRows, LIMIT);
+                    log.info("2단계: LIMIT 추가된 쿼리 생성 시작");
+                    state.setHasNext(true);
+                    viewQuery = queryRequest.addLimits(viewQuery, LIMIT, 0);
+                    log.info("LIMIT 추가된 쿼리: {}", viewQuery);
+                } else {
+                    state.setHasNext(false);
+                    log.info("❌ 다음 페이지가 없습니다. 총 행 수: {}, LIMIT: {}", totalRows, LIMIT);
+                }
+
+                log.info("최종 hasNext 상태: {}", state.getHasNext());
+
+                log.info("3단계: 실제 DB 쿼리 실행 시작");
+                log.info("실행할 쿼리: {}", viewQuery);
+                
+                // 6. 쿼리 실행
+                queryResult = mainJdbcTemplate.queryForList(viewQuery);
+                
+                if (!queryResult.isEmpty()) {
+                    Map<String, Object> data = new HashMap<>();
+                    List<String> resultColumn = extractColumns(viewQuery, queryResult);
+                    data.put("result_row", queryResult.size());
+                    data.put("result_column", resultColumn);
+                    webSocketUtils.sendNodeEnd(state.getWebSocketSession(), "executor", data);
+                }
+
+                state.setSqlQuery(viewQuery);
+                
+                // 7. note1 조건 확인 및 vector search
+                try {
+                    List<String> noteConditions = queryUtils.findColumnConditions(viewQuery, "note1");
+                    
+                    if ((queryResult.isEmpty() || queryUtils.isNullOnly(queryResult)) && !noteConditions.isEmpty()) {
+                        Map<String, Object> evernoteResult = queryUtils.everNote(viewQuery);
+                        
+                        List<String> originNote = (List<String>) evernoteResult.get("origin_note");
+                        List<String> vectorNotes = (List<String>) evernoteResult.get("vector_notes");
+                        String modifiedQuery = (String) evernoteResult.get("query");
+                        
+                        if (vectorNotes != null && !vectorNotes.isEmpty()) {
+                            log.info("Found {} similar notes", vectorNotes.size());
+                            
+                            // vector notes 데이터 저장
+                            VectorNotes vectorNotesObj = VectorNotes.builder()
+                                .originNote(originNote)
+                                .vectorNotes(vectorNotes)
+                                .build();
+                            state.setVectorNotes(vectorNotesObj);
+                            
+                            // final_answer 업데이트
+                            String originNoteStr = String.join("', '", originNote);
+                            String vectorNoteStr = String.join("', '", vectorNotes);
+                            String finalAnswer = String.format(
+                                "요청을 처리하기 위해 '%s' 노트의 거래내역을 찾아 보았으나 검색된 결과가 없었습니다. 해당 기간 거래내역의 노트 중 유사한 노트('%s')로 검색한 결과는 다음과 같습니다.",
+                                originNoteStr, vectorNoteStr
+                            );
+                            state.setFinalAnswer(finalAnswer);
+                            state.setNoteChanged(true);
+                        }
+                        
+                        // 수정된 쿼리로 재실행
+                        if (modifiedQuery != null && !modifiedQuery.equals(viewQuery)) {
+                            queryResult = mainJdbcTemplate.queryForList(modifiedQuery);
+                            state.setSqlQuery(modifiedQuery);
+                        }
+                        columnList = extractColumns(modifiedQuery, queryResult);
+                    }
+                } catch (Exception e) {
+                    log.error("note 조건 확인 중 오류 발생: {}", e.getMessage());
+                }
             }
             
-            log.info("최종 hasNext 상태: {}", state.getHasNext());
-            
-            // 2. 실제 DB 쿼리 실행
-            log.info("3단계: 실제 DB 쿼리 실행 시작");
-            log.info("실행할 쿼리: {}", sqlQuery);
-            
-            List<Map<String, Object>> queryResult = mainJdbcTemplate.queryForList(sqlQuery);
-            List<String> columnList = extractColumns(sqlQuery, queryResult);
+            // 결과가 없는 경우 처리
+            if (queryResult.isEmpty() || queryUtils.isNullOnly(queryResult)) {
+                log.warn("쿼리 결과에 데이터가 없습니다");
+                state.setNoData(true);
+                queryResult = new ArrayList<>();
+                state.setQueryResult(queryResult);
+                return;
+            }
 
-            log.info("쿼리 실행 완료: {} 행 반환", queryResult.size());
-            log.info("반환된 컬럼: {}", columnList);
-
+            log.info("쿼리 실행 성공, 결과 저장");
             state.setQueryResult(queryResult);
             state.setColumnList(columnList);
             state.setQueryResultStatus("success");
-            
+
             // WebSocket 메시지 전송 (node.py의 executor 참고)
             Map<String, Object> data = new HashMap<>();
             data.put("result_row", queryResult.size());
-            data.put("result_column", columnList.size());
             webSocketUtils.sendNodeEnd(state.getWebSocketSession(), "executor", data);
             
             log.info("=== QueryExecutorNode 실행 완료 ===");

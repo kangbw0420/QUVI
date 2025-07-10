@@ -2,9 +2,6 @@ package com.daquv.agent.workflow.prompt;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -125,6 +122,50 @@ public class PromptTemplate {
                 
                 fewShotMessages.add(new ChatMessage("human", input));
                 fewShotMessages.add(new ChatMessage("ai", output));
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Few-shot 예제 리스트 추가 (날짜 정보 제외)
+     */
+    public PromptTemplate withFewShotsWithoutDateModification(List<Map<String, Object>> fewShots) {
+        if (fewShots != null) {
+            for (Map<String, Object> shot : fewShots) {
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+                if (input != null && output != null) {
+                    fewShotMessages.add(new ChatMessage("human", input));
+                    fewShotMessages.add(new ChatMessage("ai", output));
+                }
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Dater 전용 Few-shot 처리 메서드
+     * 기존 withFewShots()와 유사하지만, output을 JSON 형태로 감쌉니다.
+     */
+    public PromptTemplate withFewShotsForDater(List<Map<String, Object>> fewShots) {
+        if (fewShots != null) {
+            for (Map<String, Object> shot : fewShots) {
+                String input = (String) shot.get("input");
+                String output = (String) shot.get("output");
+                if (input != null && output != null) {
+                    // 기존 withFewShots()와 동일하게 날짜 정보가 있으면 질문에 추가
+                    if (shot.containsKey("date")) {
+                        String date = (String) shot.get("date");
+                        input = input + ", 오늘: " + date + ".";
+                    }
+
+                    // Dater 전용: output을 JSON 형태로 감쌈
+                    String formattedOutput = "{" + output + "}";
+
+                    fewShotMessages.add(new ChatMessage("human", input));
+                    fewShotMessages.add(new ChatMessage("ai", formattedOutput));
+                }
             }
         }
         return this;

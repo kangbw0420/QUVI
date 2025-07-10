@@ -6,6 +6,7 @@ import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
+import com.daquv.agent.workflow.prompt.PromptBuilder.PromptWithRetrieveTime;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
 import com.daquv.agent.workflow.util.LLMRequest;
 import com.daquv.agent.quvi.util.WebSocketUtils;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -59,11 +61,14 @@ public class CommanderNode implements WorkflowNode {
             Arrays.asList("user_question", "selected_table"), "commander", 5);
         
         // Commander 프롬프트 생성 (few-shot 포함 + QnA 저장)
-        PromptTemplate promptTemplate = promptBuilder.buildCommanderPromptWithFewShots(userQuestion, qnaId);
+        PromptWithRetrieveTime promptResult = promptBuilder.buildCommanderPromptWithFewShots(userQuestion, qnaId);
+        PromptTemplate promptTemplate = promptResult.getPromptTemplate();
+        BigDecimal retrieveTime = promptResult.getRetrieveTime();
+
         String prompt = promptTemplate.build();
         
         // LLM 호출하여 테이블 선택
-        String llmResponse = llmService.callDevstral(prompt, qnaId, chainId);
+        String llmResponse = llmService.callSelector(prompt, qnaId, chainId);
         String selectedTable = LlmOutputHandler.extractTableName(llmResponse);
 
         if (selectedTable == null || selectedTable.trim().isEmpty()) {
@@ -75,6 +80,8 @@ public class CommanderNode implements WorkflowNode {
 
         log.info("선택된 테이블: {}", selectedTable);
         state.setSelectedTable(selectedTable);
+
+        qnaService.recordAnswer(qnaId, selectedTable, retrieveTime);
         
         // WebSocket 메시지 전송
         Map<String, Object> data = new HashMap<>();

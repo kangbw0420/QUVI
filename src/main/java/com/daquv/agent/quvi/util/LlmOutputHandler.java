@@ -1,8 +1,12 @@
 package com.daquv.agent.quvi.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -130,6 +134,7 @@ public class LlmOutputHandler {
     }
 
     /**
+     * TODO AICFO 에 맞게 수정해야함
      * 테이블명 추출 (Commander 노드용)
      */
     public static String extractTableName(String llmResponse) {
@@ -200,5 +205,79 @@ public class LlmOutputHandler {
         }
         
         return answer;
+    }
+
+    /**
+     * DateInfo 답변 추출 (Dater 노드의 DateInfo용)
+     */
+    public static Map<String, String> extractDateInfo(String llmResponse) {
+        if (llmResponse == null || llmResponse.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            String output = handleAiColon(llmResponse);
+
+            Map<String, Object> parsedOutput = null;
+
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode jsonNode = mapper.readTree(output);
+                parsedOutput = mapper.convertValue(jsonNode, Map.class);
+
+            } catch (Exception jsonError) {
+                Pattern jsonPattern = Pattern.compile("\\{.*?\\}", Pattern.DOTALL);
+                Matcher matcher = jsonPattern.matcher(output);
+
+                if (matcher.find()) {
+                    try {
+                        String jsonStr = matcher.group(0);
+                        ObjectMapper mapper = new ObjectMapper();
+                        JsonNode jsonNode = mapper.readTree(jsonStr);
+                        parsedOutput = mapper.convertValue(jsonNode, Map.class);
+                    } catch (Exception parseError) {
+                        log.error("JSON이 있는 거 같은데 파싱이 어려워요..: {}", llmResponse);
+                        return null;
+                    }
+                } else {
+                    log.error("JSON이 없어요..: {}", llmResponse);
+                    return null;
+                }
+            }
+
+            if (parsedOutput == null || !parsedOutput.containsKey("from_date") || !parsedOutput.containsKey("to_date")) {
+                log.error("응답에 (from_date, to_date)가 없어요..: {}", parsedOutput);
+                return null;
+            }
+
+            log.info("Extracted parameters: from_date={}, to_date={}",
+                    parsedOutput.get("from_date"), parsedOutput.get("to_date"));
+
+            String fromDate = convertDateFormat(String.valueOf(parsedOutput.get("from_date")));
+            String toDate = convertDateFormat(String.valueOf(parsedOutput.get("to_date")));
+
+            Map<String, String> result = new HashMap<>();
+            result.put("from_date", fromDate);
+            result.put("to_date", toDate);
+            return result;
+
+        } catch (Exception e) {
+            log.error("날짜 정보 추출 중 오류: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private static String convertDateFormat(String dateStr) {
+        if (dateStr == null) return dateStr;
+
+        dateStr = dateStr.trim();
+
+        if (dateStr.length() == 8 && dateStr.matches("\\d{8}")) {
+            return dateStr;
+        } else if (dateStr.length() == 10 && dateStr.charAt(4) == '-' && dateStr.charAt(7) == '-') {
+            return dateStr.replace("-", "");
+        }
+
+        return dateStr;
     }
 } 

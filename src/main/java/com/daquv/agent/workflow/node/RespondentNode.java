@@ -6,6 +6,7 @@ import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
+import com.daquv.agent.workflow.prompt.PromptBuilder.PromptWithRetrieveTime;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
 import com.daquv.agent.quvi.requests.FstringRequest;
 import com.daquv.agent.workflow.util.LLMRequest;
@@ -55,6 +56,11 @@ public class RespondentNode implements WorkflowNode {
         String userQuestion = state.getUserQuestion();
         List<Map<String, Object>> queryResult = state.getQueryResult();
         String chainId = state.getChainId();
+        Boolean isApi = state.getIsApi();
+        String startDate = state.getStartDate();
+        String endDate = state.getEndDate();
+        Boolean hasNext = state.getHasNext();
+        Integer totalRows = state.getTotalRows();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -72,73 +78,128 @@ public class RespondentNode implements WorkflowNode {
         log.info("사용자 질문: {}", userQuestion);
         log.info("쿼리 결과 행 수: {}", queryResult.size());
         log.info("체인 ID: {}", chainId);
-        log.info("hasNext 상태: {}", state.getHasNext());
-        log.info("totalRows: {}", state.getTotalRows());
+        log.info("hasNext 상태: {}", hasNext);
+        log.info("totalRows: {}", totalRows);
+        log.info("isApi: {}", isApi);
+
+        // History 조회
+        log.info("1단계: 응답 히스토리 조회");
+        List<Map<String, Object>> respondentHistory = promptBuilder.getRespondentHistory(chainId);
+        log.info("조회된 히스토리 개수: {}", respondentHistory != null ? respondentHistory.size() : 0);
+
+        // 쿼리 결과 정리 (파이썬의 delete_useless_col 역할)
+        // 필요시 구현, 현재는 그대로 사용
 
         // 테이블 파이프 생성
-        log.info("1단계: 테이블 파이프 생성 시작");
+        log.info("2단계: 테이블 파이프 생성 시작");
         String tablePipe = pipeTable.pipeTable(queryResult);
         state.setTablePipe(tablePipe);
         log.info("테이블 파이프 생성 완료");
 
         // QnA ID 생성
-        log.info("2단계: QnA ID 생성");
+        log.info("3단계: QnA ID 생성");
         String qnaId = qnaService.createQnaId(state.getTraceId());
         log.info("생성된 QnA ID: {}", qnaId);
-        
-        // History 조회
-        log.info("3단계: 응답 히스토리 조회");
-        List<Map<String, Object>> respondentHistory = promptBuilder.getRespondentHistory(chainId);
-        log.info("조회된 히스토리 개수: {}", respondentHistory != null ? respondentHistory.size() : 0);
-        
+
         // hasNext에 따른 프롬프트 분기
         log.info("4단계: hasNext 상태에 따른 프롬프트 분기");
-        PromptTemplate promptTemplate;
-        if (state.getHasNext() != null && state.getHasNext()) {
+
+        if (hasNext != null && hasNext) {
             // 페이지네이션 응답 생성
             log.info("✅ 페이지네이션 응답 생성 시작");
-            Integer totalRows = state.getTotalRows();
             if (totalRows == null) totalRows = 0;
-            
+
             log.info("페이지네이션용 프롬프트 생성 - 총 행 수: {}", totalRows);
-            promptTemplate = promptBuilder.buildPageRespondentPrompt(userQuestion, totalRows, respondentHistory, qnaId);
+            PromptTemplate promptTemplate = promptBuilder.buildPageRespondentPrompt(userQuestion, totalRows, respondentHistory, qnaId);
+
+            log.info("5단계: 프롬프트 생성 및 LLM 호출");
+            String prompt = promptTemplate.build();
+            log.info("생성된 프롬프트 길이: {} 문자", prompt.length());
+
+            // QnA 질문 기록
+            qnaService.updateQuestion(qnaId, prompt, "qwen_14b");
+
+            String finalAnswer = llmService.callQwenLlm(prompt, qnaId);
+            log.info("LLM 응답 길이: {} 문자", finalAnswer != null ? finalAnswer.length() : 0);
+
+            // QnA 답변 기록
+            qnaService.recordAnswer(qnaId, finalAnswer, null);
+
+            // 페이지네이션 응답 완료
+            state.setFinalAnswer(finalAnswer);
+            state.setQueryResult(queryResult);
+            state.setTablePipe(tablePipe);
+
+            log.info("Final answer (paginated): {}", finalAnswer);
+
         } else {
             // 일반 응답 생성
             log.info("❌ 일반 응답 생성 시작 (hasNext: false)");
-            promptTemplate = promptBuilder.buildRespondentPromptWithFewShotsAndHistory(
-                userQuestion, tablePipe, respondentHistory, qnaId);
-        }
-        
-        log.info("5단계: 프롬프트 생성 및 LLM 호출");
-        String prompt = promptTemplate.build();
-        log.info("생성된 프롬프트 길이: {} 문자", prompt.length());
-        
-        // LLM 호출하여 응답 생성
-        String llmResponse = llmService.callDevstral(prompt, qnaId);
-        log.info("LLM 응답 길이: {} 문자", llmResponse != null ? llmResponse.length() : 0);
-        
-        String fstringAnswer = LlmOutputHandler.extractFStringAnswer(llmResponse);
 
-        if (fstringAnswer == null || fstringAnswer.trim().isEmpty()) {
-            log.error("fstring 응답 생성에 실패했습니다.");
-            state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("LLM_ERROR", "fstring 응답 생성에 실패했습니다."));
-            return;
+            // isApi에 따른 날짜 정보 처리 (파이썬 로직: if is_api: date_info = state["date_info"] else: date_info = ())
+            String dateStartForResponse = null;
+            String dateEndForResponse = null;
+
+            if (isApi != null && isApi) {
+                // API인 경우 state의 날짜 정보 사용
+                dateStartForResponse = startDate;
+                dateEndForResponse = endDate;
+                log.info("API 모드: 날짜 정보 사용 - startDate: {}, endDate: {}", startDate, endDate);
+            } else {
+                // API가 아닌 경우 빈 날짜 정보 사용 (파이썬의 date_info = ())
+                dateStartForResponse = null;
+                dateEndForResponse = null;
+                log.info("비API 모드: 날짜 정보 미사용");
+            }
+
+            PromptWithRetrieveTime promptWithRetrieveTime = promptBuilder.buildRespondentPromptWithFewShotsAndHistory(
+                    userQuestion, tablePipe, respondentHistory, qnaId, isApi, dateStartForResponse, dateEndForResponse);
+
+            PromptTemplate promptTemplate = promptWithRetrieveTime.getPromptTemplate();
+
+            log.info("5단계: 프롬프트 생성 및 LLM 호출");
+            String prompt = promptTemplate.build();
+            log.info("생성된 프롬프트 길이: {} 문자", prompt.length());
+
+            // QnA 질문 기록
+            qnaService.updateQuestion(qnaId, prompt, "qwen_14b");
+
+            String llmResponse = llmService.callSolver(prompt, qnaId);
+            log.info("LLM 응답 길이: {} 문자", llmResponse != null ? llmResponse.length() : 0);
+
+            // QnA 답변 기록
+            qnaService.recordAnswer(qnaId, llmResponse, promptWithRetrieveTime.getRetrieveTime());
+
+            // fstring 응답 추출 (파이썬의 handle_python_code_block)
+            String fstringAnswer = LlmOutputHandler.extractFStringAnswer(llmResponse);
+            if (fstringAnswer == null || fstringAnswer.trim().isEmpty()) {
+                log.error("fstring 응답 생성에 실패했습니다.");
+                state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("LLM_ERROR", "fstring 응답 생성에 실패했습니다."));
+                return;
+            }
+
+            log.info("6단계: fstring 응답 처리");
+            log.info("추출된 fstring 응답: {}", fstringAnswer);
+            state.setFString(fstringAnswer);
+
+            // 최종 답변 계산
+            String finalAnswer = fstringRequest.computeFString(fstringAnswer, queryResult);
+
+            // 상태 업데이트
+            state.setFinalAnswer(finalAnswer);
+            state.setTablePipe(tablePipe);
+            state.setQueryResult(queryResult);
+
+            log.info("Final answer: {}", finalAnswer);
         }
 
-        log.info("6단계: fstring 응답 처리");
-        log.info("추출된 fstring 응답: {}", fstringAnswer);
-        state.setFString(fstringAnswer);
-        
-        String finalAnswer = fstringRequest.computeFString(fstringAnswer, queryResult);
-        state.setFinalAnswer(finalAnswer);
-        
         log.info("=== RespondentNode 실행 완료 ===");
-        log.info("최종 응답 길이: {} 문자", finalAnswer != null ? finalAnswer.length() : 0);
-        log.info("최종 상태 - hasNext: {}, totalRows: {}, finalAnswer: {}", 
-                state.getHasNext(), state.getTotalRows(), 
-                finalAnswer != null ? finalAnswer.substring(0, Math.min(100, finalAnswer.length())) + "..." : "null");
-        
-        // WebSocket 메시지 전송 (node.py의 respondent 참고)
+        log.info("최종 응답 길이: {} 문자", state.getFinalAnswer() != null ? state.getFinalAnswer().length() : 0);
+        log.info("최종 상태 - hasNext: {}, totalRows: {}, finalAnswer: {}",
+                hasNext, totalRows,
+                state.getFinalAnswer() != null ? state.getFinalAnswer().substring(0, Math.min(100, state.getFinalAnswer().length())) + "..." : "null");
+
+        // WebSocket 메시지 전송
         Map<String, Object> data = new HashMap<>();
         data.put("result_row", queryResult.size());
         data.put("result_column", queryResult.isEmpty() ? 0 : queryResult.get(0).size());

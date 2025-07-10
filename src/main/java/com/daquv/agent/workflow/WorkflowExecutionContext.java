@@ -31,72 +31,144 @@ public class WorkflowExecutionContext {
         if (state == null) {
             throw new IllegalStateException("Chain ID에 해당하는 State를 찾을 수 없습니다: " + chainId);
         }
-        
+
         log.info("=== 워크플로우 실행 시작 - chainId: {} ===", chainId);
-        
+
         try {
             // 0. NextPage 처리
             executeNode("nextPageNode", state);
+
             if ("next_page".equals(state.getUserQuestion())) {
+                log.info("next_page 처리 완료 - 워크플로우 종료");
                 return;
             }
-            
+
             // 1. Checkpoint
             executeNode("checkpointNode", state);
+
             if (state.getIsJoy() != null && state.getIsJoy()) {
                 executeNode("killjoyNode", state);
+                log.info("killjoy 처리 완료 - 워크플로우 종료");
                 return;
             }
-            
-            // 2. Commander
-            executeNode("commanderNode", state);
-            if (state.getSelectedTable() == null || state.getSelectedTable().trim().isEmpty()) {
-                state.setQueryResultStatus("failed");
-                state.setSqlError("테이블 선택에 실패했습니다.");
-                return;
+
+            // 2. IsAPI
+            executeNode("isApiNode", state);
+
+            // isapi 조건부 엣지
+            if (state.getIsApi() != null && state.getIsApi()) {
+                // API 경로: funk -> params -> (yqmd or executor)
+
+                // 2-1. Funk
+                executeNode("funkNode", state);
+
+                // 2-2. Params
+                executeNode("paramsNode", state);
+
+                // params 조건부 엣지
+                if (state.getInvalidDate() != null && state.getInvalidDate()) {
+                    log.info("invalid_date 감지 - 워크플로우 종료");
+                    return;
+                }
+
+                if ("aicfo_get_financial_flow".equals(state.getSelectedApi())) {
+                    // 2-3. YQMD
+                    executeNode("yqmdNode", state);
+                }
+                // 2-4. Executor
+
+            } else {
+                // SQL 경로: commander -> opendue -> (nl2sql or dater) -> nl2sql -> executor
+
+                // 2-1.
+                executeNode("commanderNode", state);
+
+                if (state.getSelectedTable() == null || state.getSelectedTable().trim().isEmpty()) {
+                    state.setQueryResultStatus("failed");
+                    state.setSqlError("테이블 선택에 실패했습니다.");
+                    log.error("Commander에서 테이블 선택 실패");
+                    return;
+                }
+
+                // 2-2. OpenDue
+                executeNode("opendueNode", state);
+
+                // opendue 조건부 엣지
+                if (state.getIsOpendue() != null && state.getIsOpendue()) {
+                    // 2-3a. NL2SQL 직접 (파이썬: "opendue" -> "nl2sql")
+                    executeNode("nl2sqlNode", state);
+                } else {
+                    // 2-3b. Dater -> NL2SQL
+                    executeNode("daterNode", state);
+                    executeNode("nl2sqlNode", state);
+                }
             }
-            
-            // 3. NL2SQL
-            executeNode("nl2sqlNode", state);
-            
-            // 4. QueryExecutor
+
+            // 3. QueryExecutor
             if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
                 executeNode("queryExecutorNode", state);
-                
-                // 4-1. Safeguard
-                if (state.getQueryError() != null && state.getQueryError() && 
-                    state.getSafeCount() != null && state.getSafeCount() < 2) {
+
+                // executor 조건부 엣지: 복잡한 조건 분기
+                if (state.getInvalidDate() != null && state.getInvalidDate()) {
+                    log.info("executor에서 invalid_date 감지 - 워크플로우 종료");
+                    return;
+                }
+
+                if (state.getNoData() != null && state.getNoData()) {
+                    // 3-1. NoData
+                    executeNode("nodataNode", state);
+                    log.info("nodata 처리 완료 - 워크플로우 종료");
+                    return;
+                }
+
+                if (state.getQueryError() != null && state.getQueryError() &&
+                        (state.getSafeCount() == null || state.getSafeCount() < 2)) {
+                    // 3-2. Safeguard
                     executeNode("safeguardNode", state);
-                    
+
+                    // safeguard에서 쿼리가 변경되었다면 executor 재실행
                     if (state.getQueryChanged() != null && state.getQueryChanged()) {
                         executeNode("queryExecutorNode", state);
+
+                        // 재실행 후 다시 조건 체크
+                        if (state.getInvalidDate() != null && state.getInvalidDate()) {
+                            log.info("safeguard 후 executor에서 invalid_date 감지 - 워크플로우 종료");
+                            return;
+                        }
+
+                        if (state.getNoData() != null && state.getNoData()) {
+                            executeNode("nodataNode", state);
+                            log.info("safeguard 후 nodata 처리 완료 - 워크플로우 종료");
+                            return;
+                        }
                     }
                 }
+
+                // 3-3. Respondent
+                if ("success".equals(state.getQueryResultStatus())) {
+                    executeNode("respondentNode", state);
+                    log.info("respondent 처리 완료 - 워크플로우 종료");
+                }
+
             } else {
                 state.setQueryResultStatus("failed");
                 state.setSqlError("SQL 쿼리가 생성되지 않았습니다.");
+                log.error("SQL 쿼리 생성 실패");
             }
-            
-            // 5. Response 생성
-            if ("success".equals(state.getQueryResultStatus())) {
-                if (state.getNoData() != null && state.getNoData()) {
-                    executeNode("nodataNode", state);
-                } else {
-                    executeNode("respondentNode", state);
-                }
-            }
-            
+
             // 변경된 State 저장
             stateManager.updateState(chainId, state);
-            
+
+            log.info("=== 워크플로우 실행 완료 - chainId: {} ===", chainId);
+
         } catch (Exception e) {
             log.error("워크플로우 실행 실패 - chainId: {}", chainId, e);
-            
+
             state.setQueryResultStatus("failed");
             state.setSqlError("Workflow 실행 실패: " + e.getMessage());
             state.setQueryError(true);
             state.setFinalAnswer("처리 중 오류가 발생했습니다.");
-            
+
             stateManager.updateState(chainId, state);
             throw e;
         }
@@ -107,6 +179,8 @@ public class WorkflowExecutionContext {
      */
     private void executeNode(String nodeBeanName, WorkflowState state) {
         String traceId = null;
+
+        log.info("state: {}", state);
         
         try {
             Object nodeBean = applicationContext.getBean(nodeBeanName);

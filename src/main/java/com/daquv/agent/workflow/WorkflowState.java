@@ -23,6 +23,7 @@ public class WorkflowState {
     
     private String userQuestion;
     private String selectedTable;
+    private String selectedApi;
     private String sqlQuery;
     private String sqlError;
     private List<Map<String, Object>> queryResult;
@@ -40,6 +41,10 @@ public class WorkflowState {
     @Builder.Default
     private Boolean isJoy = false;
     @Builder.Default
+    private Boolean isApi = false;
+    @Builder.Default
+    private Boolean isOpendue = false;
+    @Builder.Default
     private Boolean noData = false;
     @Builder.Default
     private Boolean futureDate = false;
@@ -53,6 +58,8 @@ public class WorkflowState {
     private Boolean hasNext = false;
     @Builder.Default
     private Integer safeCount = 0;
+    @Builder.Default
+    private Boolean noteChanged = false;
 
     public void incrementSafeCount() {
         this.safeCount = (this.safeCount != null ? this.safeCount : 0) + 1;

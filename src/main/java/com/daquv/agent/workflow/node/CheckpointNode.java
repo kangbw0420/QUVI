@@ -1,26 +1,22 @@
 package com.daquv.agent.workflow.node;
 
-import com.daquv.agent.workflow.WorkflowNode;
-import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
+import com.daquv.agent.workflow.WorkflowNode;
+import com.daquv.agent.workflow.WorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
 @Component
 public class CheckpointNode implements WorkflowNode {
 
-    @Value("${vector.store.domain:http://121.78.145.49:8005}")
+    @Value("${api.vector-store-domain}")
     private String vectorStoreDomain;
 
     @Autowired
@@ -71,20 +67,10 @@ public class CheckpointNode implements WorkflowNode {
 
     private String classifyJoy(String queryText) {
         try {
-            String url = vectorStoreDomain + "/checkpoint";
-            
-            // 요청 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            
-            // 요청 본문 설정
-            Map<String, String> payload = new HashMap<>();
-            payload.put("query_text", sanitizeQuery(queryText));
-            
-            HttpEntity<Map<String, String>> request = new HttpEntity<>(payload, headers);
+            String url = vectorStoreDomain + "/checkpoint/" + sanitizeQuery(queryText);
             
             // API 호출
-            Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
             
             if (response != null && response.containsKey("checkpoint")) {
                 String classification = (String) response.get("checkpoint");
