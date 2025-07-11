@@ -53,12 +53,6 @@ system:
     company:
         id: aicfo_dev
 
-master:
-    user-id: daquv_master
-    password: Daquv!@#123
-    user-name: 마스터계정
-    company-id: daquv
-
 jwt:
     secret: uI9xvH1zMf+jrD9PbCkA2JGz0r3YVx/EoMdiZtJd2+E
     expiration: 86400000 # 24시간
