@@ -267,6 +267,9 @@ public class WorkflowExecutionContext {
             if (state.getEndDate() != null) {
                 stateMap.put("endDate", state.getEndDate());
             }
+            if (state.getUserInfo().getCompanyId() != null) {
+                stateMap.put("companyId", state.getUserInfo().getCompanyId());
+            }
             
             // Boolean 플래그들
             stateMap.put("isJoy", state.getIsJoy());
@@ -277,6 +280,7 @@ public class WorkflowExecutionContext {
             stateMap.put("queryChanged", state.getQueryChanged());
             stateMap.put("hasNext", state.getHasNext());
             stateMap.put("safeCount", state.getSafeCount());
+            stateMap.put("selectedApi", state.getSelectedApi());
             
             // StateService를 통해 DB에 저장
             stateService.updateState(traceId, stateMap);
