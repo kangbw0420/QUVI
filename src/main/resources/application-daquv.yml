@@ -106,4 +106,4 @@ profiling:
 
 view-table:
   dialect: postgres
-  view-func: AI_CFO_GET_
+  view-func: ai_cfo_get_
