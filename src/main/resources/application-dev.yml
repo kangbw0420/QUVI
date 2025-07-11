@@ -4,6 +4,14 @@ server:
     servlet:
         context-path: /
 
+    tomcat:
+        threads:
+          max: 200
+          min-spare: 25
+        max-connections: 8192
+        accept-count: 100
+        connection-timeout: 20000
+
 spring:
     config:
         activate:
@@ -23,6 +31,13 @@ spring:
         driver-class-name: org.postgresql.Driver
         hikari:
             schema: aicfoagentdev
+
+            maximum-pool-size: 30      # 최대 커넥션 수
+            minimum-idle: 10           # 최소 유휴 커넥션
+            connection-timeout: 30000  # 30초
+            idle-timeout: 600000       # 10분
+            max-lifetime: 1800000      # 30분
+            leak-detection-threshold: 60000  # 1분
 
     jpa:
         hibernate:
@@ -46,6 +61,11 @@ db:
     driver-class-name: org.postgresql.Driver
     hikari:
         schema: cboarddev
+
+        maximum-pool-size: 20
+        minimum-idle: 5
+        connection-timeout: 30000
+        idle-timeout: 600000
 
 system:
     expire:
