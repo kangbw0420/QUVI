@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,7 +22,9 @@ public class FstringRequest {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String FSTRING_API_URL = "http://localhost:8105/fstring/compute_fstring";
+
+    @Value("${api.quvi-fstring}")
+    private String FSTRING_API_URL;
 
     /**
      * f-string 템플릿을 외부 API를 통해 계산하고 결과를 반환합니다.
