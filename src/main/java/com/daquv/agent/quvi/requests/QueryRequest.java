@@ -120,21 +120,18 @@ public class QueryRequest {
     /**
      * view_table 함수
      */
-    public String viewTable(String query, UserInfo userInfo, String selectTable, Boolean futureDate) {
+    public String viewTable(String query, UserInfo userInfo, String selectTable, String startDate, String endDate) {
         try {
-            log.info("[query] view_table API 호출 - 쿼리: {}, 사용자ID: {}, 선택테이블: {}, 미래날짜: {}",
-                     query, userInfo, selectTable, futureDate);
+            log.info("[query] view_table API 호출 - 쿼리: {}, 사용자ID: {}, 선택테이블: {}, 시작날짜: {}, 끝나는 날짜: {}",
+                     query, userInfo, selectTable, startDate, endDate);
             List<String> listOfUserInfo = userInfo.toArray();
-
-            Map<String, Object> flags = new HashMap<>();
-            flags.put("future_date", futureDate);
-            log.info("====Flags====={}", flags.toString());
 
             log.info("RawUserInfo: {}", userInfo.toString());
             log.info("UserInfo: {}", listOfUserInfo);
 
-            List<String> parameters = new ArrayList<>();
-            parameters.addAll(listOfUserInfo);
+            List<String> parameters = new ArrayList<>(listOfUserInfo);
+            parameters.add(startDate);
+            parameters.add(endDate);
 
             log.info("List[str]: {}", parameters);
 

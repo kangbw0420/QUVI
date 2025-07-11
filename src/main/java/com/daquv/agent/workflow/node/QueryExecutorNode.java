@@ -110,7 +110,8 @@ public class QueryExecutorNode implements WorkflowNode {
                     queryOrdered,
                     state.getUserInfo(),
                     selectedTable,
-                    state.getFutureDate()
+                    state.getStartDate(),
+                    state.getEndDate()
                 );
                 
                 // 5. 행 수 계산 및 페이지네이션
