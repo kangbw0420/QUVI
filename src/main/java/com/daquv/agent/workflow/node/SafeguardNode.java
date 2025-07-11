@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 @Component
 public class SafeguardNode implements WorkflowNode {
 
-    private static final int LIMIT = 10000;
+    private static final int LIMIT = 100;
 
     @Autowired
     private LLMRequest llmService;

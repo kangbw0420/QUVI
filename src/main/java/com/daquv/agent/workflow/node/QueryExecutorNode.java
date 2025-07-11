@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 @Component
 public class QueryExecutorNode implements WorkflowNode {
     
-    private static final int LIMIT = 10000;
+    private static final int LIMIT = 100;
     
     @Autowired
     @Qualifier("mainJdbcTemplate")

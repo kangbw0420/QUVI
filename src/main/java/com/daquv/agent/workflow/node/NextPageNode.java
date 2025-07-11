@@ -20,7 +20,7 @@ import java.util.Map;
 @Component
 public class NextPageNode implements WorkflowNode {
 
-    private static final int LIMIT = 10000;
+    private static final int LIMIT = 100;
 
     @Autowired
     private HistoryService historyService;
