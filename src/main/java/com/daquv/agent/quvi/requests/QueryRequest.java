@@ -126,6 +126,7 @@ public class QueryRequest {
                      query, companyId, userInfo, selectTable, futureDate);
             List<String> listOfUserInfo = userInfo.toArray();
 
+            log.info("RawUserInfo: {}", userInfo.toString());
             log.info("UserInfo: {}", listOfUserInfo);
 
             List<String> parameters = new ArrayList<>();
