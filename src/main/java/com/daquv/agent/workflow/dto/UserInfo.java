@@ -32,7 +32,11 @@ public class UserInfo {
                 actualUserId = userId;
             }
         }
-        return Arrays.asList(actualUserId, useInttId != null ? useInttId : "");
+        return Arrays.asList(
+                useInttId != null ? useInttId : "",
+                actualUserId,
+                companyId != null ? companyId : ""
+        );
     }
     
     /**

@@ -109,7 +109,6 @@ public class QueryExecutorNode implements WorkflowNode {
                 String viewQuery = queryRequest.viewTable(
                     queryOrdered,
                     state.getUserInfo(),
-                    companyId,
                     selectedTable,
                     state.getFutureDate()
                 );

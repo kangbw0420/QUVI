@@ -120,19 +120,22 @@ public class QueryRequest {
     /**
      * view_table 함수
      */
-    public String viewTable(String query, UserInfo userInfo, String companyId, String selectTable, Boolean futureDate) {
+    public String viewTable(String query, UserInfo userInfo, String selectTable, Boolean futureDate) {
         try {
-            log.info("[query] view_table API 호출 - 쿼리: {}, 회사ID: {}, 사용자ID: {}, 선택테이블: {}, 미래날짜: {}",
-                     query, companyId, userInfo, selectTable, futureDate);
+            log.info("[query] view_table API 호출 - 쿼리: {}, 사용자ID: {}, 선택테이블: {}, 미래날짜: {}",
+                     query, userInfo, selectTable, futureDate);
             List<String> listOfUserInfo = userInfo.toArray();
+
+            Map<String, Object> flags = new HashMap<>();
+            flags.put("future_date", futureDate);
+            log.info("====Flags====={}", flags.toString());
 
             log.info("RawUserInfo: {}", userInfo.toString());
             log.info("UserInfo: {}", listOfUserInfo);
 
             List<String> parameters = new ArrayList<>();
-            parameters.add(selectTable);
-            parameters.add(companyId);
             parameters.addAll(listOfUserInfo);
+            parameters.add(futureDate ? "future_date" : "future_date");
 
             log.info("List[str]: {}", parameters);
 
@@ -140,9 +143,7 @@ public class QueryRequest {
             Map<String, Object> requestData = new HashMap<>();
             requestData.put("query", query);
             requestData.put("parameters", parameters);
-//            Map<String, Object> flags = new HashMap<>();
-//            flags.put("future_date", futureDate);
-//            requestData.put("flags", flags);
+
 
             requestData.put("dialect", DIALECT);
             requestData.put("view_func", VIEW_FUNCTION);
