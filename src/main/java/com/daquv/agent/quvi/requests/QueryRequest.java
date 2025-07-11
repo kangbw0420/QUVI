@@ -135,7 +135,6 @@ public class QueryRequest {
 
             List<String> parameters = new ArrayList<>();
             parameters.addAll(listOfUserInfo);
-            parameters.add(futureDate ? "future_date" : "future_date");
 
             log.info("List[str]: {}", parameters);
 
