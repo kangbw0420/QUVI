@@ -1,5 +1,6 @@
 package com.daquv.agent.quvi.requests;
 
+import com.daquv.agent.workflow.dto.UserInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -12,9 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -121,20 +120,24 @@ public class QueryRequest {
     /**
      * view_table 함수
      */
-    public String viewTable(String query, String userId, String companyId, String selectTable, Boolean futureDate) {
+    public String viewTable(String query, UserInfo userInfo, String companyId, String selectTable, Boolean futureDate) {
         try {
             log.info("[query] view_table API 호출 - 쿼리: {}, 회사ID: {}, 사용자ID: {}, 선택테이블: {}, 미래날짜: {}",
-                     query, companyId, userId, selectTable, futureDate);
+                     query, companyId, userInfo, selectTable, futureDate);
+            List<String> listOfUserInfo = userInfo.toArray();
+
+            List<String> parameters = new ArrayList<>();
+            parameters.add(selectTable);
+            parameters.add(companyId);
+            parameters.addAll(listOfUserInfo);
+
             // 요청 데이터 구성
             Map<String, Object> requestData = new HashMap<>();
             requestData.put("query", query);
-            requestData.put("parameters", "");
-            requestData.put("company_id", companyId);
-            requestData.put("user_info", Arrays.asList(userId, companyId));
-            requestData.put("selected_table", selectTable);
-            Map<String, Object> flags = new HashMap<>();
-            flags.put("future_date", futureDate);
-            requestData.put("flags", flags);
+            requestData.put("parameters", parameters);
+//            Map<String, Object> flags = new HashMap<>();
+//            flags.put("future_date", futureDate);
+//            requestData.put("flags", flags);
 
             requestData.put("dialect", DIALECT);
             requestData.put("view_func", VIEW_FUNCTION);
