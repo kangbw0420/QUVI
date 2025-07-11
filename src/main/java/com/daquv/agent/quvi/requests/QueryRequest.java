@@ -126,10 +126,14 @@ public class QueryRequest {
                      query, companyId, userInfo, selectTable, futureDate);
             List<String> listOfUserInfo = userInfo.toArray();
 
+            log.info("UserInfo: {}", listOfUserInfo);
+
             List<String> parameters = new ArrayList<>();
             parameters.add(selectTable);
             parameters.add(companyId);
             parameters.addAll(listOfUserInfo);
+
+            log.info("List[str]: {}", parameters);
 
             // 요청 데이터 구성
             Map<String, Object> requestData = new HashMap<>();
