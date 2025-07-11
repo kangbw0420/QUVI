@@ -404,13 +404,6 @@ public class PromptBuilder {
             .withUserMessage(userQuestion);
     }
 
-    // Killjoy 프롬프트 생성 (상품권 외 질문 차단)
-    public PromptTemplate buildKilljoyPrompt(String userQuestion) {
-        PromptTemplate template = PromptTemplate.fromFile("killjoy");
-        String prompt = template.replace("{user_question}", userQuestion);
-        return PromptTemplate.from(prompt);
-    }
-
     // Killjoy 프롬프트 생성 (history 포함)
     public PromptTemplate buildKilljoyPromptWithHistory(String userQuestion, List<Map<String, Object>> killjoyHistory) {
         PromptTemplate template = PromptTemplate.fromFile("killjoy");
