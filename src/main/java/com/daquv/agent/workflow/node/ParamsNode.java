@@ -99,7 +99,7 @@ public class ParamsNode implements WorkflowNode {
             
             // Params 프롬프트 생성 (Few-shot 및 QnA 포함)
             PromptBuilder.PromptWithRetrieveTime promptWithTime = promptBuilder.buildParamsPromptWithFewShots(
-                formattedQuestion, paramsHistory, qnaId, todayFormatted, JSON_FORMAT);
+                formattedQuestion, paramsHistory, qnaId, todayFormatted, JSON_FORMAT, chainId);
             PromptTemplate promptTemplate = promptWithTime.getPromptTemplate();
             String prompt = promptTemplate.build();
             

@@ -61,7 +61,7 @@ public class FunkNode implements WorkflowNode {
             List<Map<String, Object>> funkHistory = promptBuilder.getFunkHistory(chainId);
             
             // Funk 프롬프트 생성 (QnA ID 포함)
-            PromptBuilder.PromptWithRetrieveTime promptWithTime = promptBuilder.buildFunkPromptWithFewShots(userQuestion, funkHistory, qnaId);
+            PromptBuilder.PromptWithRetrieveTime promptWithTime = promptBuilder.buildFunkPromptWithFewShots(userQuestion, funkHistory, qnaId, chainId);
             PromptTemplate promptTemplate = promptWithTime.getPromptTemplate();
             String prompt = promptTemplate.build();
             

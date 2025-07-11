@@ -153,7 +153,8 @@ public class RespondentNode implements WorkflowNode {
             }
 
             PromptWithRetrieveTime promptWithRetrieveTime = promptBuilder.buildRespondentPromptWithFewShotsAndHistory(
-                    userQuestion, tablePipe, respondentHistory, qnaId, isApi, dateStartForResponse, dateEndForResponse);
+                    userQuestion, tablePipe, respondentHistory, qnaId, isApi, dateStartForResponse, dateEndForResponse,
+                    chainId);
 
             PromptTemplate promptTemplate = promptWithRetrieveTime.getPromptTemplate();
 

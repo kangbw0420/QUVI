@@ -61,7 +61,7 @@ public class CommanderNode implements WorkflowNode {
             Arrays.asList("user_question", "selected_table"), "commander", 5);
         
         // Commander 프롬프트 생성 (few-shot 포함 + QnA 저장)
-        PromptWithRetrieveTime promptResult = promptBuilder.buildCommanderPromptWithFewShots(userQuestion, qnaId);
+        PromptWithRetrieveTime promptResult = promptBuilder.buildCommanderPromptWithFewShots(userQuestion, qnaId, chainId);
         PromptTemplate promptTemplate = promptResult.getPromptTemplate();
         BigDecimal retrieveTime = promptResult.getRetrieveTime();
 

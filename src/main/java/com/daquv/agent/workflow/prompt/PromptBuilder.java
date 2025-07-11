@@ -39,14 +39,14 @@ public class PromptBuilder {
     }
     
     // Commander 프롬프트 생성 및 RetrieveTime 반환 (few-shot 포함 + QnA 저장)
-    public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion, String qnaId) {
+    public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion, String qnaId, String chainId) {
         // 기본 시스템 프롬프트 로드
         PromptTemplate template = PromptTemplate.fromFile("commander");
         String systemPrompt = template.replace("{user_question}", userQuestion);
         
         // Few-shot 예제 검색
         Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-            userQuestion, "shots_selector", 5, null);
+            userQuestion, "shots_selector", 5, chainId);
         
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
@@ -91,7 +91,7 @@ public class PromptBuilder {
 
     // Dater 프롬프트 생성 및 RetrieveTime 반환
     public PromptWithRetrieveTime buildDaterPromptWithFewShots(String selectedTable, String userQuestion,
-                                                       List<Map<String, Object>> daterHistory, String qnaId) {
+                                                       List<Map<String, Object>> daterHistory, String qnaId, String chainId) {
         String today = DateUtils.getTodayDash();
         String jsonFormat = "\"from_date\": from_date, \"to_date\": to_date";
 
@@ -113,7 +113,7 @@ public class PromptBuilder {
 
         // Few-shot 예제 검색
         Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-                userQuestion, "shots_params_creator", 5, null);
+                userQuestion, "shots_params_creator", 5, chainId);
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
@@ -185,7 +185,7 @@ public class PromptBuilder {
     // NL2SQL 프롬프트 생성 (few-shot + history + QnA 저장 포함)
     public PromptWithRetrieveTime buildNL2SQLPromptWithFewShotsAndHistory(
             String targetTable, String userQuestion, List<Map<String, Object>> nl2sqlHistory,
-            String qnaId, String companyId, String startDate, String endDate
+            String qnaId, String companyId, String startDate, String endDate, String chainId
     ) {
         String dateInfoStr = String.format("(%s, %s)", startDate, endDate);
         
@@ -198,7 +198,7 @@ public class PromptBuilder {
         
         // Few-shot 예제 검색
         Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-            userQuestion, "shots_" + targetTable.toLowerCase(), 3, null);
+            userQuestion, "shots_" + targetTable.toLowerCase(), 3, chainId);
         
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
@@ -253,7 +253,7 @@ public class PromptBuilder {
     // Respondent 프롬프트 생성 (few-shot + history + QnA 저장 포함)
     public PromptWithRetrieveTime buildRespondentPromptWithFewShotsAndHistory(
             String userQuestion, String tablePipe, List<Map<String, Object>> respondentHistory, String qnaId,
-            Boolean isApi, String startDate, String endDate
+            Boolean isApi, String startDate, String endDate, String chainId
     ) {
         try {
             // 기본 시스템 프롬프트 로드
@@ -265,7 +265,7 @@ public class PromptBuilder {
 
             // Few-shot 예제 검색
             Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-                    userQuestion, collectionName, 5, null);
+                    userQuestion, collectionName, 5, chainId);
 
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
@@ -545,10 +545,10 @@ public class PromptBuilder {
     /**
      * Funk 프롬프트 생성 (few-shot 포함, QnA 저장)
      */
-    public PromptWithRetrieveTime buildFunkPromptWithFewShots(String userQuestion, List<Map<String, Object>> funkHistory, String qnaId) {
+    public PromptWithRetrieveTime buildFunkPromptWithFewShots(String userQuestion, List<Map<String, Object>> funkHistory, String qnaId, String chainId) {
         try {
             // Few-shot 예제 검색
-            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_api_selector", 5, null);
+            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_api_selector", 5, chainId);
             
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
@@ -608,10 +608,10 @@ public class PromptBuilder {
     /**
      * Params 프롬프트 생성 (few-shot 포함)
      */
-    public PromptWithRetrieveTime buildParamsPromptWithFewShots(String userQuestion, List<Map<String, Object>> paramsHistory, String qnaId, String todayFormatted, String jsonFormat) {
+    public PromptWithRetrieveTime buildParamsPromptWithFewShots(String userQuestion, List<Map<String, Object>> paramsHistory, String qnaId, String todayFormatted, String jsonFormat, String chainId) {
         try {
             // Few-shot 예제 검색
-            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_params_creator", 5, null);
+            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_params_creator", 5, chainId);
             
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");

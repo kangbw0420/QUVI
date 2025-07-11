@@ -71,7 +71,7 @@ public class Nl2sqlNode implements WorkflowNode {
         
         // NL2SQL 프롬프트 생성 (few-shot + history 포함 + QnA 저장)
         PromptWithRetrieveTime promptResult = promptBuilder.buildNL2SQLPromptWithFewShotsAndHistory(
-            selectedTable, userQuestion, nl2sqlHistory, qnaId, companyId, startDate, endDate);
+            selectedTable, userQuestion, nl2sqlHistory, qnaId, companyId, startDate, endDate, chainId);
         PromptTemplate promptTemplate = promptResult.getPromptTemplate();
         BigDecimal retrieveTime = promptResult.getRetrieveTime();
         String prompt = promptTemplate.build();

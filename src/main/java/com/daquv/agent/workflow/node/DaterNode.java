@@ -69,7 +69,7 @@ public class DaterNode implements WorkflowNode {
 
         // Dater 프롬프트 생성 (few-shot + history 포함 + QnA 저장)
         PromptWithRetrieveTime promptResult = promptBuilder.buildDaterPromptWithFewShots(
-                selectedTable, userQuestion, daterHistory, qnaId);
+                selectedTable, userQuestion, daterHistory, qnaId, chainId);
         PromptTemplate promptTemplate = promptResult.getPromptTemplate();
         BigDecimal retrieveTime = promptResult.getRetrieveTime();
 
