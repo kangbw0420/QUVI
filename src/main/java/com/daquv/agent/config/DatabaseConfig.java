@@ -53,7 +53,7 @@ public class DatabaseConfig {
         config.setDriverClassName(mainDbDriver);
 
         // 커넥션 풀 설정
-        config.setMaximumPoolSize(20); // 최대 커넥션 수
+        config.setMaximumPoolSize(30); // 최대 커넥션 수
         config.setMinimumIdle(5); // 최소 유지 커넥션 수
         config.setConnectionTimeout(30000); // 커넥션 획득 타임아웃 (30초)
         config.setIdleTimeout(600000); // 유휴 커넥션 타임아웃 (10분)
@@ -80,7 +80,7 @@ public class DatabaseConfig {
         config.setDriverClassName(promptDbDriver);
 
         // 커넥션 풀 설정 (JPA용이므로 좀 더 여유있게)
-        config.setMaximumPoolSize(15);
+        config.setMaximumPoolSize(30);
         config.setMinimumIdle(3);
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(600000);
