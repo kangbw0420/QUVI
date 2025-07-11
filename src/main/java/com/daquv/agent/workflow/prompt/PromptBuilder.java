@@ -37,18 +37,6 @@ public class PromptBuilder {
             this.retrieveTime = retrieveTime;
         }
     }
-
-    // Commander 프롬프트 생성 (테이블 선택)
-    public PromptTemplate buildCommanderPrompt(String userQuestion) {
-        PromptTemplate template = PromptTemplate.fromFile("commander");
-        String prompt = template.replace("{user_question}", userQuestion);
-        return PromptTemplate.from(prompt);
-    }
-
-    // Commander 프롬프트 생성 (few-shot 포함)
-    public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion) {
-        return buildCommanderPromptWithFewShots(userQuestion, null);
-    }
     
     // Commander 프롬프트 생성 및 RetrieveTime 반환 (few-shot 포함 + QnA 저장)
     public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion, String qnaId) {
@@ -262,18 +250,6 @@ public class PromptBuilder {
         return new PromptWithRetrieveTime(promptTemplate, lastRetrieveTimeFromResults);
     }
 
-    // Respondent 프롬프트 생성
-    public PromptTemplate buildRespondentPrompt(String userQuestion, String tablePipe) {
-        PromptTemplate template = PromptTemplate.fromFile("respondent");
-        String prompt = template.replaceAll(
-            "{user_question}", userQuestion,
-            "{table_pipe}", tablePipe
-        );
-
-        return PromptTemplate.from("")
-                .withSystemPrompt(prompt);
-    }
-
     // Respondent 프롬프트 생성 (few-shot + history + QnA 저장 포함)
     public PromptWithRetrieveTime buildRespondentPromptWithFewShotsAndHistory(
             String userQuestion, String tablePipe, List<Map<String, Object>> respondentHistory, String qnaId,
@@ -416,13 +392,6 @@ public class PromptBuilder {
         }
     }
 
-    // Nodata 프롬프트 생성 (데이터 없음 응답)
-    public PromptTemplate buildNodataPrompt(String userQuestion) {
-        PromptTemplate template = PromptTemplate.fromFile("nodata");
-        String prompt = template.replace("{user_question}", userQuestion);
-        return PromptTemplate.from(prompt);
-    }
-
     // Nodata 프롬프트 생성 (history 포함)
     public PromptTemplate buildNodataPromptWithHistory(String userQuestion, List<Map<String, Object>> nodataHistory) {
         PromptTemplate template = PromptTemplate.fromFile("nodata");
@@ -469,49 +438,6 @@ public class PromptBuilder {
 
         return PromptTemplate.from("")
                 .withSystemPrompt(prompt);
-    }
-
-    // Safeguard용 NL2SQL 프롬프트 생성 (테이블별 에러 수정)
-    public PromptTemplate buildSafeguardNL2SQLPrompt(String selectedTable, String userQuestion, String sqlError) {
-        String today = DateUtils.getTodayDash();
-        
-        // 에러 정보를 포함한 질문 생성
-        String questionWithError = userQuestion + ", SQL오류: " + (sqlError != null ? sqlError : "");
-        
-        PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + selectedTable.toLowerCase());
-        String prompt = template.replaceAll(
-            "{user_question}", questionWithError,
-            "{today}", today
-        );
-        return PromptTemplate.from(prompt);
-    }
-
-    // 유틸리티: Chat history 변환 (Python의 chat_history.py와 동일한 로직)
-    private List<Map<String, Object>> convertToChatHistory(Map<String, List<Map<String, Object>>> historyDict) {
-        List<Map<String, Object>> chatHistory = new java.util.ArrayList<>();
-        
-        if (historyDict == null) {
-            return chatHistory;
-        }
-        
-        for (List<Map<String, Object>> historyList : historyDict.values()) {
-            for (Map<String, Object> historyItem : historyList) {
-                // 필수 필드가 존재하고 None이 아닌 경우에만 추가
-                if (historyItem.containsKey("user_question") && 
-                    historyItem.containsKey("sql_query") &&
-                    historyItem.get("user_question") != null &&
-                    historyItem.get("sql_query") != null) {
-
-                    Map<String, Object> historyEntry = new HashMap<>();
-                    historyEntry.put("user_question", historyItem.get("user_question"));
-                    historyEntry.put("final_answer", historyItem.get("sql_query"));
-
-                    chatHistory.add(historyEntry);
-                }
-            }
-        }
-        
-        return chatHistory;
     }
 
     // 유틸리티: Chat history 변환 (노드별 필드 매핑 지원)
@@ -621,13 +547,6 @@ public class PromptBuilder {
         List<String> requiredFields = Arrays.asList("user_question", "selected_api");
         Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "funk", 5);
         return convertToChatHistory(historyDict, requiredFields, "user_question", "selected_api");
-    }
-
-    /**
-     * Funk 프롬프트 생성 (few-shot 포함)
-     */
-    public PromptWithRetrieveTime buildFunkPromptWithFewShots(String userQuestion, List<Map<String, Object>> funkHistory) {
-        return buildFunkPromptWithFewShots(userQuestion, funkHistory, null);
     }
     
     /**
