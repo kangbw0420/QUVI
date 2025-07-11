@@ -5,3 +5,12 @@ spring:
 customer:
   name: default
 
+master:
+  user-id: daquv_master
+  password: Daquv!@#123
+  user-name: 마스터계정
+  company-id: daquv
+
+view-table:
+  dialect: postgres
+  view-func: aicfo_get_all_
