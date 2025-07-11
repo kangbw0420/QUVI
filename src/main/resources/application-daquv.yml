@@ -103,3 +103,7 @@ logging:
 
 profiling:
   enabled: false
+
+view-table:
+  dialect:tsql
+  view-func:AI_CFO_GET_

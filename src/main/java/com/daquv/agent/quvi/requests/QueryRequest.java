@@ -29,6 +29,11 @@ public class QueryRequest {
     @Value("${api.quvi-query}")
     private String QUERY_API_BASE_URL;
 
+    @Value("${view-table.dialect}")
+    private String DIALECT;
+
+    @Value("${view-table.view-func}")
+    private String VIEW_FUNCTION;
     public QueryRequest(@Qualifier("mainJdbcTemplate") JdbcTemplate mainJdbcTemplate) {
         this.mainJdbcTemplate = mainJdbcTemplate;
     }
@@ -123,6 +128,7 @@ public class QueryRequest {
             // 요청 데이터 구성
             Map<String, Object> requestData = new HashMap<>();
             requestData.put("query", query);
+            requestData.put("parameters", "");
             requestData.put("company_id", companyId);
             requestData.put("user_info", Arrays.asList(userId, companyId));
             requestData.put("selected_table", selectTable);
@@ -130,6 +136,8 @@ public class QueryRequest {
             flags.put("future_date", futureDate);
             requestData.put("flags", flags);
 
+            requestData.put("dialect", DIALECT);
+            requestData.put("view_func", VIEW_FUNCTION);
             // HTTP 헤더 설정
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -139,7 +147,7 @@ public class QueryRequest {
 
             // API 호출
             ResponseEntity<String> response = restTemplate.postForEntity(
-                QUERY_API_BASE_URL + "/view_table/" + "aicfo_dev", request, String.class);
+                QUERY_API_BASE_URL + "/view_table", request, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 String result = response.getBody();
