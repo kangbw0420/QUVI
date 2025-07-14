@@ -11,6 +11,7 @@ import com.daquv.agent.workflow.util.NameModifierUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -42,6 +43,9 @@ public class QueryExecutorNode implements WorkflowNode {
 
     @Autowired
     private QueryRequest queryRequest;
+
+    @Value("${view-table.dialect}")
+    private String DIALECT;
 
     @Override
     public String getId() {
@@ -119,7 +123,8 @@ public class QueryExecutorNode implements WorkflowNode {
                 // 4. view table 적용
                 String viewQuery = queryRequest.viewTable(
                     queryOrdered,
-                    parameters
+                    parameters,
+                    DIALECT
                 );
                 
                 // 5. 행 수 계산 및 페이지네이션

@@ -28,9 +28,6 @@ public class QueryRequest {
     @Value("${api.quvi-query}")
     private String QUERY_API_BASE_URL;
 
-    @Value("${view-table.dialect}")
-    private String DIALECT;
-
     @Value("${view-table.view-func}")
     private String VIEW_FUNCTION;
     public QueryRequest(@Qualifier("mainJdbcTemplate") JdbcTemplate mainJdbcTemplate) {
@@ -120,7 +117,7 @@ public class QueryRequest {
     /**
      * view_table 함수
      */
-    public String viewTable(String query, List<String> parameters) {
+    public String viewTable(String query, List<String> parameters, String dialect) {
         try {
             log.info("[query] view_table API 호출 - 쿼리: {}, 매개변수들: {}",
                      query, parameters);
@@ -131,7 +128,7 @@ public class QueryRequest {
             requestData.put("parameters", parameters);
 
 
-            requestData.put("dialect", DIALECT);
+            requestData.put("dialect", dialect);
             requestData.put("view_func", VIEW_FUNCTION);
             // HTTP 헤더 설정
             HttpHeaders headers = new HttpHeaders();
