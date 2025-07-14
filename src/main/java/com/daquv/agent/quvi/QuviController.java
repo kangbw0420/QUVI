@@ -1,6 +1,5 @@
 package com.daquv.agent.quvi;
 
-import com.daquv.agent.quvi.dto.DateInfo;
 import com.daquv.agent.quvi.dto.LogLevel;
 import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.llmadmin.ChainService;
@@ -23,10 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 public class QuviController {
@@ -266,7 +262,7 @@ public class QuviController {
         body.put("chain_id", chainId);
         body.put("recommend", recommendList);
         body.put("is_api", false);
-        body.put("date_info", new DateInfo(finalState.getStartDate(), finalState.getEndDate()));
+        body.put("date_info", Arrays.asList(finalState.getStartDate(), finalState.getEndDate()));
         body.put("sql_query", finalState.getSqlQuery());
         body.put("selected_table", finalState.getSelectedTable());
         body.put("has_next", finalState.getHasNext() != null ? finalState.getHasNext() : false);
