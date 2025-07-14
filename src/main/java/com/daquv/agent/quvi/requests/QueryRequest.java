@@ -120,20 +120,10 @@ public class QueryRequest {
     /**
      * view_table 함수
      */
-    public String viewTable(String query, UserInfo userInfo, String selectTable, String startDate, String endDate) {
+    public String viewTable(String query, List<String> parameters) {
         try {
-            log.info("[query] view_table API 호출 - 쿼리: {}, 사용자ID: {}, 선택테이블: {}, 시작날짜: {}, 끝나는 날짜: {}",
-                     query, userInfo, selectTable, startDate, endDate);
-            List<String> listOfUserInfo = userInfo.toArray();
-
-            log.info("RawUserInfo: {}", userInfo.toString());
-            log.info("UserInfo: {}", listOfUserInfo);
-
-            List<String> parameters = new ArrayList<>(listOfUserInfo);
-            parameters.add(startDate);
-            parameters.add(endDate);
-
-            log.info("List[str]: {}", parameters);
+            log.info("[query] view_table API 호출 - 쿼리: {}, 매개변수들: {}",
+                     query, parameters);
 
             // 요청 데이터 구성
             Map<String, Object> requestData = new HashMap<>();
