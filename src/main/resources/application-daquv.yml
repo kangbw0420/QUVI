@@ -97,4 +97,4 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: DEBUG
 
 profiling:
-  enabled: false
+  enabled: true

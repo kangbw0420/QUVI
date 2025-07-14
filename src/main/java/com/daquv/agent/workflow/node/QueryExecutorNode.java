@@ -2,6 +2,7 @@ package com.daquv.agent.workflow.node;
 
 import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.workflow.WorkflowNode;
+import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.VectorNotes;
 import com.daquv.agent.quvi.util.ErrorHandler;
@@ -56,6 +57,7 @@ public class QueryExecutorNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String rawQuery = state.getSqlQuery();
         String companyId = state.getUserInfo().getCompanyId();
+        String chainId = state.getChainId();
         List<Map<String, Object>> queryResult = new ArrayList<>();
         List<String> columnList = new ArrayList<>();
 
@@ -78,8 +80,15 @@ public class QueryExecutorNode implements WorkflowNode {
             
             if (state.getIsApi()) {
                 // API 쿼리 처리
-                log.info("API 쿼리 실행: {}", rawQuery);
-                queryResult = mainJdbcTemplate.queryForList(rawQuery);
+                try {
+                    log.info("API 쿼리용 chainId 설정: {}", chainId);
+                    DatabaseProfilerAspect.setChainId(chainId);
+                    queryResult = mainJdbcTemplate.queryForList(rawQuery);
+                    log.info("API 쿼리 완료, 반환 행 수: {}", queryResult.size());
+                } finally {
+                    DatabaseProfilerAspect.clearChainId();
+                    log.debug("API 쿼리 후 ThreadLocal 정리 완료");
+                }
                 
                 if (!queryResult.isEmpty()) {
                     Map<String, Object> data = new HashMap<>();
@@ -128,7 +137,16 @@ public class QueryExecutorNode implements WorkflowNode {
                 );
                 
                 // 5. 행 수 계산 및 페이지네이션
-                String countResult = queryRequest.countRows(viewQuery, LIMIT);
+                String countResult;
+                try {
+                    log.info("COUNT 쿼리용 chainId 설정: {}", chainId);
+                    DatabaseProfilerAspect.setChainId(chainId);
+                    countResult = queryRequest.countRows(viewQuery, LIMIT);
+                    log.info("COUNT 쿼리 완료");
+                } finally {
+                    DatabaseProfilerAspect.clearChainId();
+                    log.debug("COUNT 쿼리 후 ThreadLocal 정리 완료");
+                }
                 log.info("countRows API 응답: {}", countResult);
 
                 int totalRows = 0;
@@ -158,7 +176,15 @@ public class QueryExecutorNode implements WorkflowNode {
                 log.info("실행할 쿼리: {}", viewQuery);
                 
                 // 6. 쿼리 실행
-                queryResult = mainJdbcTemplate.queryForList(viewQuery);
+                try {
+                    log.info("메인 쿼리용 chainId 설정: {}", chainId);
+                    DatabaseProfilerAspect.setChainId(chainId);
+                    queryResult = mainJdbcTemplate.queryForList(viewQuery);
+                    log.info("메인 쿼리 완료, 반환 행 수: {}", queryResult.size());
+                } finally {
+                    DatabaseProfilerAspect.clearChainId();
+                    log.debug("메인 쿼리 후 ThreadLocal 정리 완료");
+                }
                 
                 if (!queryResult.isEmpty()) {
                     Map<String, Object> data = new HashMap<>();
@@ -204,7 +230,15 @@ public class QueryExecutorNode implements WorkflowNode {
                         
                         // 수정된 쿼리로 재실행
                         if (modifiedQuery != null && !modifiedQuery.equals(viewQuery)) {
-                            queryResult = mainJdbcTemplate.queryForList(modifiedQuery);
+                            try {
+                                log.info("수정된 쿼리용 chainId 설정: {}", chainId);
+                                DatabaseProfilerAspect.setChainId(chainId);
+                                queryResult = mainJdbcTemplate.queryForList(modifiedQuery);
+                                log.info("수정된 쿼리 완료, 반환 행 수: {}", queryResult.size());
+                            } finally {
+                                DatabaseProfilerAspect.clearChainId();
+                                log.debug("수정된 쿼리 후 ThreadLocal 정리 완료");
+                            }
                             state.setSqlQuery(modifiedQuery);
                         }
                         columnList = extractColumns(modifiedQuery, queryResult);

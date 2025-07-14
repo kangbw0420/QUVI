@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.*;
@@ -51,7 +52,8 @@ public class QuviController {
     }
 
     @PostMapping("/process")
-    public ResponseEntity<Map<String, Object>> processInput(@RequestBody QuviRequestDto request) {
+    public ResponseEntity<Map<String, Object>> processInput(@RequestBody QuviRequestDto request,
+                                                            HttpServletRequest httpRequest) {
         log.info("😊 HTTP Quvi 요청 수신: {}", request);
 
         String chainId = null;
@@ -65,6 +67,10 @@ public class QuviController {
             // 2. Chain 생성
             chainId = chainService.createChain(conversationId, request.getUserQuestion());
             log.info("🔗 체인 생성 완료: {}", chainId);
+
+            httpRequest.setAttribute("chainId", chainId);
+            httpRequest.setAttribute("X-Chain-Id", chainId);
+            log.info("Request Attribute에 chainId 설정: {}", chainId);
 
             // 3. 프로파일링 시작
             requestProfiler.startRequest(chainId);
