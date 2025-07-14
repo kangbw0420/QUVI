@@ -104,14 +104,22 @@ public class QueryExecutorNode implements WorkflowNode {
                 
                 // 3. order by 추가
                 String queryOrdered = queryUtils.addOrderBy(queryRightBank);
-                
+
+
+                // User Info 추출
+                List<String> listOfUserInfo = state.getUserInfo().toArray();
+
+                // parameters에 userInfo 삽입
+                List<String> parameters = new ArrayList<>(listOfUserInfo);
+
+                // State에서 필요한 부분 삽입
+                parameters.add(state.getStartDate());
+                parameters.add(state.getEndDate());
+
                 // 4. view table 적용
                 String viewQuery = queryRequest.viewTable(
                     queryOrdered,
-                    state.getUserInfo(),
-                    selectedTable,
-                    state.getStartDate(),
-                    state.getEndDate()
+                    parameters
                 );
                 
                 // 5. 행 수 계산 및 페이지네이션
