@@ -82,7 +82,7 @@ public class LogAlertService {
             body.put("registerId", registerEmail);
             body.put("title", title);
             body.put("contents", contents);
-            body.put("status", "request");
+            // body.put("status", "request");
 
             // HTTP 헤더 설정
             HttpHeaders headers = new HttpHeaders();

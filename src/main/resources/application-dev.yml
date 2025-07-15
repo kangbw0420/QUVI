@@ -80,9 +80,14 @@ jwt:
 # FLOW API 설정
 flow:
     project:
-        id: 2588169
+        id: 2605967
     api:
         key: 20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144
+        # url: https://api.flow.team/v1/posts/projects/2605967/tasks
+        url: https://api.flow.team/v1/bots/daquv@daquv.com/notifications
+    register:
+        # email: silicao3o@daquv.com
+        email: hajkim@daquv.com
 
 admin:
     email: anriver@daquv.com
