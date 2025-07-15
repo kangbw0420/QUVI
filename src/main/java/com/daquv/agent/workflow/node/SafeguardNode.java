@@ -1,6 +1,7 @@
 package com.daquv.agent.workflow.node;
 
 import com.daquv.agent.quvi.util.LlmOutputHandler;
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.QnaService;
@@ -46,6 +47,9 @@ public class SafeguardNode implements WorkflowNode {
     
     @Autowired
     private WebSocketUtils webSocketUtils;
+
+    @Autowired
+    private RequestProfiler requestProfiler;
     
     public SafeguardNode(QueryRequest queryRequest) {
         this.queryRequest = queryRequest;
@@ -63,6 +67,7 @@ public class SafeguardNode implements WorkflowNode {
         String userQuestion = state.getUserQuestion();
         String sqlError = state.getSqlError();
         Boolean queryError = state.getQueryError();
+        String chainId = state.getChainId();
 
         if (unsafeQuery == null || unsafeQuery.trim().isEmpty()) {
             log.error("수정할 SQL 쿼리가 비어있습니다.");
@@ -93,7 +98,12 @@ public class SafeguardNode implements WorkflowNode {
             if (modifiedQuery != null && !modifiedQuery.trim().isEmpty() && !modifiedQuery.equals(unsafeQuery)) {
                 // 3. 수정된 쿼리의 행 수 계산
                 log.info("3단계: 수정된 쿼리의 행 수 계산 시작");
+                long startTime = System.currentTimeMillis();
                 String modifiedCountResult = queryRequest.countRows(modifiedQuery, LIMIT);
+                long endTime = System.currentTimeMillis();
+                double elapsedTime = (endTime - startTime) / 1000.0;
+                requestProfiler.recordDbCall(chainId, elapsedTime, false, "safeguard");
+
                 log.info("수정된 쿼리 countRows API 응답: {}", modifiedCountResult);
                 
                 int modifiedTotalRows = 0;

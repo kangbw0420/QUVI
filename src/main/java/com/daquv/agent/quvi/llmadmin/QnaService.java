@@ -6,11 +6,18 @@ import com.daquv.agent.quvi.entity.Fewshot;
 import com.daquv.agent.quvi.repository.QnaRepository;
 import com.daquv.agent.quvi.repository.TraceRepository;
 import com.daquv.agent.quvi.repository.FewshotRepository;
+import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
+import com.daquv.agent.quvi.util.RequestProfiler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -25,8 +32,11 @@ public class QnaService {
     private final TraceRepository traceRepository;
     private final FewshotRepository fewshotRepository;
 
-    public QnaService(QnaRepository qnaRepository, TraceRepository traceRepository, 
-                     FewshotRepository fewshotRepository) {
+    @Autowired
+    private RequestProfiler requestProfiler;
+
+    public QnaService(QnaRepository qnaRepository, TraceRepository traceRepository,
+                      FewshotRepository fewshotRepository) {
         this.qnaRepository = qnaRepository;
         this.traceRepository = traceRepository;
         this.fewshotRepository = fewshotRepository;
@@ -34,9 +44,6 @@ public class QnaService {
 
     /**
      * 메시지 문자열 포맷팅 (연속된 개행문자를 하나로 통일하고 앞뒤 공백 제거)
-     * 
-     * @param msgStr 메시지 문자열
-     * @return 포맷팅된 문자열
      */
     public String formatMessageStr(String msgStr) {
         return msgStr.replace("\\n", "\n").trim();
@@ -44,60 +51,69 @@ public class QnaService {
 
     /**
      * QnA ID를 생성하고 기본 레코드를 생성합니다.
-     * 
-     * @param traceId 추적 ID
-     * @return 생성된 qna ID
      */
     @Transactional
     public String createQnaId(String traceId) {
         log.info("createQnaId start - traceId: {}", traceId);
-        
+
+        String chainId = getCurrentChainId();
+        if (chainId != null) {
+            DatabaseProfilerAspect.setChainId(chainId);
+            log.debug("QnaService에서 chainId 설정: {}", chainId);
+        }
+
+        long startTime = System.currentTimeMillis();
         try {
             String qnaId = UUID.randomUUID().toString();
-            
+
             // Trace 조회
             Trace trace = traceRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
-            
+
             // Qna 생성
             Qna qna = new Qna();
             qna.setId(qnaId);
             qna.setTrace(trace);
             qna.setQuestionTimestamp(java.time.LocalDateTime.now());
-            
+
             qnaRepository.save(qna);
-            
+
             log.info("createQnaId end - qnaId: {}", qnaId);
             return qnaId;
-            
+
         } catch (Exception e) {
             log.error("Error in createQnaId - traceId: {}", traceId, e);
             throw new RuntimeException("Failed to create QnA ID", e);
+        } finally {
+            // DB 프로파일링 기록
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordDbCall(chainId, elapsedTime, false, "qna_service");
         }
     }
 
     /**
      * 단일 Few-shot 예제를 저장합니다.
-     * 
-     * @param qnaId QnA ID
-     * @param retrieved 벡터 스토어에서 검색된 원본 질문
-     * @param human 실제 사용된 human prompt
-     * @param ai AI 응답
-     * @param order 순서
-     * @return 성공 여부
      */
     @Transactional
     public boolean recordFewshot(String qnaId, String retrieved, String human, String ai, int order) {
-        log.info("recordFewshot start - qnaId: {}, retrieved: {}, human: {}, ai: {}, order: {}", 
+        log.info("recordFewshot start - qnaId: {}, retrieved: {}, human: {}, ai: {}, order: {}",
                 qnaId, retrieved, human, ai, order);
-        
+
+        String chainId = getCurrentChainId();
+        if (chainId != null) {
+            DatabaseProfilerAspect.setChainId(chainId);
+            log.debug("QnaService.recordFewshot에서 chainId 설정: {}", chainId);
+        }
+
+        long startTime = System.currentTimeMillis();
         try {
             String fewshotId = UUID.randomUUID().toString();
-            
+
             // Qna 조회
             Qna qna = qnaRepository.findById(qnaId)
                     .orElseThrow(() -> new IllegalArgumentException("QnA not found: " + qnaId));
-            
+
             // Fewshot 생성
             Fewshot fewshot = new Fewshot();
             fewshot.setId(fewshotId);
@@ -106,22 +122,27 @@ public class QnaService {
             fewshot.setFewshotHuman(human);
             fewshot.setFewshotAi(ai);
             fewshot.setOrderSeq(order);
-            
+
             fewshotRepository.save(fewshot);
-            
+
             log.info("recordFewshot end - fewshotId: {}", fewshotId);
             return true;
-            
+
         } catch (Exception e) {
-            log.error("Error in recordFewshot - qnaId: {}, retrieved: {}, human: {}, ai: {}, order: {}", 
-                     qnaId, retrieved, human, ai, order, e);
+            log.error("Error in recordFewshot - qnaId: {}, retrieved: {}, human: {}, ai: {}, order: {}",
+                    qnaId, retrieved, human, ai, order, e);
             throw new RuntimeException("Failed to record fewshot", e);
+        } finally {
+            // DB 프로파일링 기록
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordDbCall(chainId, elapsedTime, false, "qna_service");
         }
     }
 
     /**
      * QnA 레코드에 질문과 모델 정보를 업데이트합니다.
-     * 
+     *
      * @param qnaId QnA ID
      * @param question 질문 (ChatPromptTemplate 또는 String)
      * @param model 모델명
@@ -130,7 +151,10 @@ public class QnaService {
     @Transactional
     public boolean updateQuestion(String qnaId, Object question, String model) {
         log.info("updateQuestion start - qnaId: {}, question: {}, model: {}", qnaId, question, model);
-        
+
+        String chainId = getCurrentChainId();
+        long startTime = System.currentTimeMillis();
+
         try {
             // ChatPromptTemplate인 경우 문자열로 변환
             String questionStr;
@@ -139,27 +163,32 @@ public class QnaService {
             } else {
                 questionStr = null;
             }
-            
+
             Qna qna = qnaRepository.findById(qnaId)
                     .orElseThrow(() -> new IllegalArgumentException("QnA not found: " + qnaId));
-            
+
             qna.setQuestion(questionStr);
             qna.setModel(model);
-            
+
             qnaRepository.save(qna);
-            
+
             log.info("updateQuestion end - qnaId: {}", qnaId);
             return true;
-            
+
         } catch (Exception e) {
             log.error("Error in updateQuestion - qnaId: {}, question: {}, model: {}", qnaId, question, model, e);
             throw new RuntimeException("Failed to update question", e);
+        } finally {
+            // DB 프로파일링 기록
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordDbCall(chainId, elapsedTime, false, "qna_service");
         }
     }
 
     /**
      * LLM 응답을 받은 시점에 답변 기록
-     * 
+     *
      * @param qnaId QnA ID
      * @param answer 답변
      * @param retrieveTime 검색 시간 (초)
@@ -168,29 +197,37 @@ public class QnaService {
     @Transactional
     public boolean recordAnswer(String qnaId, String answer, BigDecimal retrieveTime) {
         log.info("recordAnswer start - qnaId: {}, answer: {}, retrieveTime: {}", qnaId, answer, retrieveTime);
-        
+
+        String chainId = getCurrentChainId();
+        long startTime = System.currentTimeMillis();
+
         try {
             Qna qna = qnaRepository.findById(qnaId)
                     .orElseThrow(() -> new IllegalArgumentException("QnA not found: " + qnaId));
-            
+
             qna.setAnswer(answer);
             qna.setRetrieveTime(retrieveTime);
-            
+
             qnaRepository.save(qna);
-            
+
             log.info("recordAnswer end - qnaId: {}", qnaId);
             return true;
-            
+
         } catch (Exception e) {
-            log.error("Error in recordAnswer - qnaId: {}, answer: {}, retrieveTime: {}", 
-                     qnaId, answer, retrieveTime, e);
+            log.error("Error in recordAnswer - qnaId: {}, answer: {}, retrieveTime: {}",
+                    qnaId, answer, retrieveTime, e);
             throw new RuntimeException("Failed to record answer", e);
+        } finally {
+            // DB 프로파일링 기록
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordDbCall(chainId, elapsedTime, false, "qna_service");
         }
     }
 
     /**
      * QnA 조회
-     * 
+     *
      * @param qnaId QnA ID
      * @return QnA 정보 (Optional)
      */
@@ -201,7 +238,7 @@ public class QnaService {
 
     /**
      * 트레이스 ID로 QnA 목록 조회
-     * 
+     *
      * @param traceId 트레이스 ID
      * @return QnA 목록
      */
@@ -212,7 +249,7 @@ public class QnaService {
 
     /**
      * 모델로 QnA 목록 조회
-     * 
+     *
      * @param model 모델명
      * @return QnA 목록
      */
@@ -223,7 +260,7 @@ public class QnaService {
 
     /**
      * 답변이 있는 QnA 목록 조회
-     * 
+     *
      * @return 답변이 있는 QnA 목록
      */
     public List<Qna> getQnasWithAnswer() {
@@ -233,7 +270,7 @@ public class QnaService {
 
     /**
      * QnA ID로 Fewshot 목록 조회
-     * 
+     *
      * @param qnaId QnA ID
      * @return Fewshot 목록
      */
@@ -244,7 +281,7 @@ public class QnaService {
 
     /**
      * 모델별 QnA 수 조회
-     * 
+     *
      * @param model 모델명
      * @return QnA 수
      */
@@ -255,7 +292,7 @@ public class QnaService {
 
     /**
      * 답변이 있는 QnA 수 조회
-     * 
+     *
      * @return 답변이 있는 QnA 수
      */
     public long countWithAnswer() {
@@ -265,11 +302,33 @@ public class QnaService {
 
     /**
      * 평균 검색 시간 조회
-     * 
+     *
      * @return 평균 검색 시간
      */
     public BigDecimal getAverageRetrieveTime() {
         log.info("getAverageRetrieveTime");
         return qnaRepository.getAverageRetrieveTime();
+    }
+
+    private String getCurrentChainId() {
+        try {
+            RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+            if (requestAttributes instanceof ServletRequestAttributes) {
+                HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
+
+                Object chainIdAttr = request.getAttribute("chainId");
+                if (chainIdAttr != null) {
+                    return chainIdAttr.toString();
+                }
+
+                Object xChainIdAttr = request.getAttribute("X-Chain-Id");
+                if (xChainIdAttr != null) {
+                    return xChainIdAttr.toString();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("getCurrentChainId 실패: {}", e.getMessage());
+        }
+        return null;
     }
 }

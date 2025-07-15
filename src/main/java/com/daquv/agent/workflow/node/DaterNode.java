@@ -3,6 +3,7 @@ package com.daquv.agent.workflow.node;
 import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
@@ -35,6 +36,9 @@ public class DaterNode implements WorkflowNode {
 
     @Autowired
     private WebSocketUtils webSocketUtils;
+
+    @Autowired
+    private RequestProfiler requestProfiler;
 
     @Override
     public String getId() {
@@ -74,7 +78,13 @@ public class DaterNode implements WorkflowNode {
         BigDecimal retrieveTime = promptResult.getRetrieveTime();
 
         String prompt = promptTemplate.build();
+        long startTime = System.currentTimeMillis();
         String llmResponse = llmService.callQwenLlm(prompt, qnaId, chainId);
+        long endTime = System.currentTimeMillis();
+
+        // LLM 프로파일링 기록
+        double elapsedTime = (endTime - startTime) / 1000.0;
+        requestProfiler.recordLlmCall(chainId, elapsedTime, "dater");
 
         // JSON 응답에서 날짜 정보 추출
         Map<String, String> dateInfo = LlmOutputHandler.extractDateInfo(llmResponse);

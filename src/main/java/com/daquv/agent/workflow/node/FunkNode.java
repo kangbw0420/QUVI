@@ -5,6 +5,7 @@ import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
 import com.daquv.agent.workflow.util.LLMRequest;
@@ -25,12 +26,15 @@ public class FunkNode implements WorkflowNode {
 
     @Autowired
     private PromptBuilder promptBuilder;
-    
+
     @Autowired
     private QnaService qnaService;
-    
+
     @Autowired
     private WebSocketUtils webSocketUtils;
+
+    @Autowired
+    private RequestProfiler requestProfiler;
 
     @Override
     public String getId() {
@@ -56,22 +60,29 @@ public class FunkNode implements WorkflowNode {
 
             // QnA ID 생성
             String qnaId = qnaService.createQnaId(state.getTraceId());
-            
+
             // History 조회
             List<Map<String, Object>> funkHistory = promptBuilder.getFunkHistory(chainId);
-            
+
             // Funk 프롬프트 생성 (QnA ID 포함)
             PromptBuilder.PromptWithRetrieveTime promptWithTime = promptBuilder.buildFunkPromptWithFewShots(userQuestion, funkHistory, qnaId, chainId);
             PromptTemplate promptTemplate = promptWithTime.getPromptTemplate();
             String prompt = promptTemplate.build();
-            
+
             // 질문 기록
             log.info("===== funk(Q) =====");
-            
-            // LLM 호출하여 API 선택
+
+            // LLM 호출하여 API 선택 with 프로파일링
+            long startTime = System.currentTimeMillis();
             String llmResponse = llmService.callQwenLlm(prompt, qnaId, chainId);
+            long endTime = System.currentTimeMillis();
+
+            // LLM 프로파일링 기록
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordLlmCall(chainId, elapsedTime, "funk");
+
             String selectedApi = LlmOutputHandler.extractAnswer(llmResponse);
-            
+
             // "ai:" 접두사 제거
             selectedApi = LlmOutputHandler.handleAiColon(selectedApi);
 
@@ -86,9 +97,9 @@ public class FunkNode implements WorkflowNode {
             log.info("선택된 API: {}", selectedApi);
             // 상태 업데이트
             state.setSelectedApi(selectedApi);
-            
+
             log.info("API 함수 선택 완료: {}", selectedApi);
-            
+
         } catch (Exception e) {
             log.error("FunkNode 실행 중 예외 발생: {}", e.getMessage(), e);
             state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("FUNK_ERROR", "API 선택 중 오류가 발생했습니다."));

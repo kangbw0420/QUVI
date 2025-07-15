@@ -3,6 +3,7 @@ package com.daquv.agent.workflow.node;
 import com.daquv.agent.quvi.llmadmin.QnaService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
@@ -34,6 +35,9 @@ public class Nl2sqlNode implements WorkflowNode {
     
     @Autowired
     private WebSocketUtils webSocketUtils;
+
+    @Autowired
+    private RequestProfiler requestProfiler;
 
     @Override
     public String getId() {
@@ -77,7 +81,13 @@ public class Nl2sqlNode implements WorkflowNode {
         String prompt = promptTemplate.build();
         
         // LLM 호출
+        long startTime = System.currentTimeMillis();
         String llmResponse = llmService.callNl2sql(prompt, qnaId, chainId);
+        long endTime = System.currentTimeMillis();
+
+        // LLM 프로파일링 기록
+        double elapsedTime = (endTime - startTime) / 1000.0;
+        requestProfiler.recordLlmCall(chainId, elapsedTime, "nl2sql");
         llmResponse = LlmOutputHandler.handleAiColon(llmResponse);
         String sqlQuery = LlmOutputHandler.extractSqlQuery(llmResponse);
 

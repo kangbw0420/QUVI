@@ -1,14 +1,12 @@
 package com.daquv.agent.workflow.node;
 
 import com.daquv.agent.quvi.requests.QueryRequest;
+import com.daquv.agent.quvi.util.*;
 import com.daquv.agent.workflow.WorkflowNode;
-import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.VectorNotes;
-import com.daquv.agent.quvi.util.ErrorHandler;
-import com.daquv.agent.quvi.util.WebSocketUtils;
-import com.daquv.agent.quvi.util.QueryUtils;
 import com.daquv.agent.workflow.util.NameModifierUtils;
+import com.daquv.agent.workflow.util.QueryUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -45,6 +43,9 @@ public class QueryExecutorNode implements WorkflowNode {
     @Autowired
     private QueryRequest queryRequest;
 
+    @Autowired
+    private RequestProfiler requestProfiler;
+
     @Value("${view-table.dialect}")
     private String DIALECT;
 
@@ -80,6 +81,7 @@ public class QueryExecutorNode implements WorkflowNode {
             
             if (state.getIsApi()) {
                 // API 쿼리 처리
+                long startTime = System.currentTimeMillis();
                 try {
                     log.info("API 쿼리용 chainId 설정: {}", chainId);
                     DatabaseProfilerAspect.setChainId(chainId);
@@ -88,6 +90,10 @@ public class QueryExecutorNode implements WorkflowNode {
                 } finally {
                     DatabaseProfilerAspect.clearChainId();
                     log.debug("API 쿼리 후 ThreadLocal 정리 완료");
+
+                    long endTime = System.currentTimeMillis();
+                    double elapsedTime = (endTime - startTime) / 1000.0;
+                    requestProfiler.recordDbCall(chainId, elapsedTime, false, "executor");
                 }
                 
                 if (!queryResult.isEmpty()) {
@@ -138,6 +144,7 @@ public class QueryExecutorNode implements WorkflowNode {
                 
                 // 5. 행 수 계산 및 페이지네이션
                 String countResult;
+                long startTime = System.currentTimeMillis();
                 try {
                     log.info("COUNT 쿼리용 chainId 설정: {}", chainId);
                     DatabaseProfilerAspect.setChainId(chainId);
@@ -146,6 +153,10 @@ public class QueryExecutorNode implements WorkflowNode {
                 } finally {
                     DatabaseProfilerAspect.clearChainId();
                     log.debug("COUNT 쿼리 후 ThreadLocal 정리 완료");
+
+                    long endTime = System.currentTimeMillis();
+                    double elapsedTime = (endTime - startTime) / 1000.0;
+                    requestProfiler.recordDbCall(chainId, elapsedTime, false, "executor");
                 }
                 log.info("countRows API 응답: {}", countResult);
 
@@ -176,6 +187,7 @@ public class QueryExecutorNode implements WorkflowNode {
                 log.info("실행할 쿼리: {}", viewQuery);
                 
                 // 6. 쿼리 실행
+                startTime = System.currentTimeMillis();
                 try {
                     log.info("메인 쿼리용 chainId 설정: {}", chainId);
                     DatabaseProfilerAspect.setChainId(chainId);
@@ -184,6 +196,10 @@ public class QueryExecutorNode implements WorkflowNode {
                 } finally {
                     DatabaseProfilerAspect.clearChainId();
                     log.debug("메인 쿼리 후 ThreadLocal 정리 완료");
+
+                    long endTime = System.currentTimeMillis();
+                    double elapsedTime = (endTime - startTime) / 1000.0;
+                    requestProfiler.recordDbCall(chainId, elapsedTime, false, "executor");
                 }
                 
                 if (!queryResult.isEmpty()) {
@@ -201,7 +217,7 @@ public class QueryExecutorNode implements WorkflowNode {
                     List<String> noteConditions = queryUtils.findColumnConditions(viewQuery, "note1");
                     
                     if ((queryResult.isEmpty() || queryUtils.isNullOnly(queryResult)) && !noteConditions.isEmpty()) {
-                        Map<String, Object> evernoteResult = queryUtils.everNote(viewQuery);
+                        Map<String, Object> evernoteResult = queryUtils.everNote(viewQuery, chainId);
                         
                         List<String> originNote = (List<String>) evernoteResult.get("origin_note");
                         List<String> vectorNotes = (List<String>) evernoteResult.get("vector_notes");
@@ -230,6 +246,7 @@ public class QueryExecutorNode implements WorkflowNode {
                         
                         // 수정된 쿼리로 재실행
                         if (modifiedQuery != null && !modifiedQuery.equals(viewQuery)) {
+                            startTime = System.currentTimeMillis();
                             try {
                                 log.info("수정된 쿼리용 chainId 설정: {}", chainId);
                                 DatabaseProfilerAspect.setChainId(chainId);
@@ -238,6 +255,10 @@ public class QueryExecutorNode implements WorkflowNode {
                             } finally {
                                 DatabaseProfilerAspect.clearChainId();
                                 log.debug("수정된 쿼리 후 ThreadLocal 정리 완료");
+
+                                long endTime = System.currentTimeMillis();
+                                double elapsedTime = (endTime - startTime) / 1000.0;
+                                requestProfiler.recordDbCall(chainId, elapsedTime, false, "executor");
                             }
                             state.setSqlQuery(modifiedQuery);
                         }

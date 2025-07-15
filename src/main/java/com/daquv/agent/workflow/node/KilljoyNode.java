@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.node;
 
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.QnaService;
@@ -31,6 +32,9 @@ public class KilljoyNode implements WorkflowNode {
     
     @Autowired
     private WebSocketUtils webSocketUtils;
+
+    @Autowired
+    private RequestProfiler requestProfiler;
 
     @Override
     public String getId() {
@@ -67,7 +71,11 @@ public class KilljoyNode implements WorkflowNode {
             // 질문 기록
             log.info("===== killjoy(Q) ====");
             // LLM 호출하여 역할 안내 답변 생성
+            long startTime = System.currentTimeMillis();
             String llmResponse = llmService.callQwenHigh(prompt, qnaId, chainId);
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordLlmCall(chainId, elapsedTime, "killjoy");
             String finalAnswer = LlmOutputHandler.extractAnswer(llmResponse);
 
             if (finalAnswer == null || finalAnswer.trim().isEmpty()) {

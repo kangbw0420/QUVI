@@ -50,24 +50,41 @@ public class RequestProfiler {
         
         log.info("프로파일링 시작 - chainId: {}", chainId);
     }
-    
+
     /**
-     * 벡터 DB 호출 프로파일링
+     * 벡터 DB 호출 프로파일링 (노드 정보 포함)
      */
-    public void recordVectorDbCall(String chainId, double elapsedTime) {
+    public void recordVectorDbCall(String chainId, double elapsedTime, String nodeId) {
         if (!enabled || chainId == null) {
             log.debug("벡터 DB 프로파일링 기록 스킵 - enabled: {}, chainId: {}", enabled, chainId);
             return;
         }
-        
-        log.info("벡터 DB 프로파일링 기록 시작 - chainId: {}, elapsedTime: {}s", chainId, elapsedTime);
-        
+
+        if ("unknown".equals(nodeId)) {
+            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+            log.warn("🔍 UNKNOWN Vector DB 호출 감지 - chainId: {}", chainId);
+            log.warn("  호출 스택:");
+            for (int i = 1; i <= Math.min(5, stackTrace.length - 1); i++) {
+                StackTraceElement element = stackTrace[i];
+                log.warn("    {}. {}.{}() ({}:{})",
+                        i, element.getClassName(), element.getMethodName(),
+                        element.getFileName(), element.getLineNumber());
+            }
+        }
+
+        log.info("벡터 DB 프로파일링 기록 시작 - chainId: {}, nodeId: {}, elapsedTime: {}s", chainId, nodeId, elapsedTime);
+
         try {
             ProfileData data = profileDataMap.get(chainId);
             if (data != null) {
                 int calls = data.vectorDbCalls.incrementAndGet();
                 long totalTime = data.vectorDbTotalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
-                log.info("벡터 DB 프로파일링 기록 완료 - chainId: {}, calls: {}, totalTime: {}ms", chainId, calls, totalTime);
+
+                // 노드별 통계 업데이트
+                data.updateNodeStats(nodeId, "vector_db", elapsedTime);
+
+                log.info("벡터 DB 프로파일링 기록 완료 - chainId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
+                        chainId, nodeId, calls, totalTime);
             } else {
                 log.warn("벡터 DB 프로파일링 데이터가 null임 - chainId: {}", chainId);
             }
@@ -75,24 +92,48 @@ public class RequestProfiler {
             log.warn("벡터 DB 프로파일링 기록 중 오류: {}", e.getMessage());
         }
     }
-    
+
     /**
-     * LLM 호출 프로파일링
+     * 벡터 DB 호출 프로파일링 (기존 호환성 유지)
      */
-    public void recordLlmCall(String chainId, double elapsedTime) {
+    public void recordVectorDbCall(String chainId, double elapsedTime) {
+        recordVectorDbCall(chainId, elapsedTime, "unknown");
+    }
+
+    /**
+     * LLM 호출 프로파일링 (노드 정보 포함)
+     */
+    public void recordLlmCall(String chainId, double elapsedTime, String nodeId) {
         if (!enabled || chainId == null) {
             log.debug("LLM 프로파일링 기록 스킵 - enabled: {}, chainId: {}", enabled, chainId);
             return;
         }
-        
-        log.info("LLM 프로파일링 기록 시작 - chainId: {}, elapsedTime: {}s", chainId, elapsedTime);
-        
+
+        if ("unknown".equals(nodeId)) {
+            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+            log.warn("🔍 UNKNOWN LLM 호출 감지 - chainId: {}", chainId);
+            log.warn("  호출 스택:");
+            for (int i = 1; i <= Math.min(5, stackTrace.length - 1); i++) {
+                StackTraceElement element = stackTrace[i];
+                log.warn("    {}. {}.{}() ({}:{})",
+                        i, element.getClassName(), element.getMethodName(),
+                        element.getFileName(), element.getLineNumber());
+            }
+        }
+
+        log.info("LLM 프로파일링 기록 시작 - chainId: {}, nodeId: {}, elapsedTime: {}s", chainId, nodeId, elapsedTime);
+
         try {
             ProfileData data = profileDataMap.get(chainId);
             if (data != null) {
                 int calls = data.llmCalls.incrementAndGet();
                 long totalTime = data.llmTotalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
-                log.info("LLM 프로파일링 기록 완료 - chainId: {}, calls: {}, totalTime: {}ms", chainId, calls, totalTime);
+
+                // 노드별 통계 업데이트
+                data.updateNodeStats(nodeId, "llm", elapsedTime);
+
+                log.info("LLM 프로파일링 기록 완료 - chainId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
+                        chainId, nodeId, calls, totalTime);
             } else {
                 log.warn("LLM 프로파일링 데이터가 null임 - chainId: {}", chainId);
             }
@@ -100,30 +141,59 @@ public class RequestProfiler {
             log.warn("LLM 프로파일링 기록 중 오류: {}", e.getMessage());
         }
     }
-    
+
     /**
-     * DB 호출 프로파일링
+     * DB 호출 프로파일링 (노드 정보 포함)
      */
-    public void recordDbCall(String chainId, double elapsedTime, boolean isPromptDb) {
+    public void recordDbCall(String chainId, double elapsedTime, boolean isPromptDb, String nodeId) {
         if (!enabled || chainId == null) {
             log.debug("DB 프로파일링 기록 스킵 - enabled: {}, chainId: {}", enabled, chainId);
             return;
         }
-        
-        log.info("DB 프로파일링 기록 시작 - chainId: {}, elapsedTime: {}s, isPromptDb: {}", chainId, elapsedTime, isPromptDb);
-        
+
+        if ("unknown".equals(nodeId)) {
+            ProfileData data = profileDataMap.get(chainId);
+            if (data != null) {
+                // unknown DB 호출이 10회마다 한 번씩만 로깅
+                int unknownCount = data.getUnknownDbCallCount();
+                if (unknownCount % 10 == 1) {
+                    StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+                    log.warn("🔍 UNKNOWN DB 호출 감지 #{} - chainId: {}, isPromptDb: {}",
+                            unknownCount, chainId, isPromptDb);
+                    log.warn("  호출 스택:");
+                    for (int i = 1; i <= Math.min(5, stackTrace.length - 1); i++) {
+                        StackTraceElement element = stackTrace[i];
+                        log.warn("    {}. {}.{}() ({}:{})",
+                                i, element.getClassName(), element.getMethodName(),
+                                element.getFileName(), element.getLineNumber());
+                    }
+                }
+            }
+        }
+
+        log.info("DB 프로파일링 기록 시작 - chainId: {}, nodeId: {}, elapsedTime: {}s, isPromptDb: {}",
+                chainId, nodeId, elapsedTime, isPromptDb);
+
         try {
             ProfileData data = profileDataMap.get(chainId);
             if (data != null) {
+                String dbType = isPromptDb ? "db_prompt" : "db_main";
+
                 if (isPromptDb) {
                     int calls = data.dbPromptCalls.incrementAndGet();
                     long totalTime = data.dbPromptTotalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
-                    log.info("DB Prompt 프로파일링 기록 완료 - chainId: {}, calls: {}, totalTime: {}ms", chainId, calls, totalTime);
+                    log.info("DB Prompt 프로파일링 기록 완료 - chainId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
+                            chainId, nodeId, calls, totalTime);
                 } else {
                     int calls = data.dbMainCalls.incrementAndGet();
                     long totalTime = data.dbMainTotalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
-                    log.info("DB Main 프로파일링 기록 완료 - chainId: {}, calls: {}, totalTime: {}ms", chainId, calls, totalTime);
+                    log.info("DB Main 프로파일링 기록 완료 - chainId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
+                            chainId, nodeId, calls, totalTime);
                 }
+
+                // 노드별 통계 업데이트
+                data.updateNodeStats(nodeId, dbType, elapsedTime);
+
             } else {
                 log.warn("DB 프로파일링 데이터가 null임 - chainId: {}", chainId);
             }
@@ -214,17 +284,97 @@ public class RequestProfiler {
         // 벡터 DB
         private final AtomicInteger vectorDbCalls = new AtomicInteger(0);
         private final AtomicLong vectorDbTotalTime = new AtomicLong(0);
-        
+
         // LLM
         private final AtomicInteger llmCalls = new AtomicInteger(0);
         private final AtomicLong llmTotalTime = new AtomicLong(0);
-        
+
         // DB (일반)
         private final AtomicInteger dbMainCalls = new AtomicInteger(0);
         private final AtomicLong dbMainTotalTime = new AtomicLong(0);
-        
+
         // DB (프롬프트)
         private final AtomicInteger dbPromptCalls = new AtomicInteger(0);
         private final AtomicLong dbPromptTotalTime = new AtomicLong(0);
+        private final AtomicInteger unknownDbCallCount = new AtomicInteger(0);
+        // 워크플로우 노드별 상세 통계 (nodeId -> {type -> stats})
+        private final Map<String, Map<String, NodeStats>> workflowNodeStats = new ConcurrentHashMap<>();
+
+        public int getUnknownDbCallCount() {
+            return unknownDbCallCount.incrementAndGet();
+        }
+
+        /**
+         * 워크플로우 노드별 통계 업데이트
+         */
+        private void updateNodeStats(String nodeId, String type, double elapsedTime) {
+            workflowNodeStats.computeIfAbsent(nodeId, k -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(type, k -> new NodeStats())
+                    .addCall(elapsedTime);
+        }
+
+        /**
+         * 워크플로우 노드별 통계 반환
+         */
+        private Map<String, Object> getWorkflowNodeStats() {
+            Map<String, Object> result = new HashMap<>();
+
+            for (Map.Entry<String, Map<String, NodeStats>> nodeEntry : workflowNodeStats.entrySet()) {
+                String nodeId = nodeEntry.getKey();
+                Map<String, NodeStats> typeStats = nodeEntry.getValue();
+
+                Map<String, Object> nodeData = new HashMap<>();
+
+                // 각 노드의 타입별 통계
+                for (Map.Entry<String, NodeStats> typeEntry : typeStats.entrySet()) {
+                    String type = typeEntry.getKey();
+                    NodeStats stats = typeEntry.getValue();
+
+                    Map<String, Object> typeData = new HashMap<>();
+                    typeData.put("calls", stats.calls.get());
+                    typeData.put("total_time_ms", stats.totalTime.get());
+                    typeData.put("avg_time_ms", stats.getAverageTime());
+
+                    nodeData.put(type, typeData);
+                }
+
+                // 노드 전체 통계 (모든 타입 합계)
+                int totalCalls = 0;
+                long totalTime = 0;
+                for (NodeStats stats : typeStats.values()) {
+                    totalCalls += stats.calls.get();
+                    totalTime += stats.totalTime.get();
+                }
+
+                Map<String, Object> nodeSummary = new HashMap<>();
+                nodeSummary.put("total_calls", totalCalls);
+                nodeSummary.put("total_time_ms", totalTime);
+                nodeSummary.put("avg_time_ms", totalCalls > 0 ? (double) totalTime / totalCalls : 0.0);
+                nodeSummary.put("details", nodeData);
+
+                result.put(nodeId, nodeSummary);
+            }
+
+            return result;
+        }
+
+        /**
+         * 노드별 통계를 담는 내부 클래스
+         */
+        private static class NodeStats {
+            private final AtomicInteger calls = new AtomicInteger(0);
+            private final AtomicLong totalTime = new AtomicLong(0);
+
+            private void addCall(double elapsedTime) {
+                calls.incrementAndGet();
+                totalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
+            }
+
+            private double getAverageTime() {
+                int callCount = calls.get();
+                return callCount > 0 ? (double) totalTime.get() / callCount : 0.0;
+            }
+        }
+
     }
 } 

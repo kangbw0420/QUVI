@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.node;
 
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.HistoryService;
@@ -33,6 +34,9 @@ public class NextPageNode implements WorkflowNode {
     
     @Autowired
     private WebSocketUtils webSocketUtils;
+
+    @Autowired
+    private RequestProfiler requestProfiler;
     
     public NextPageNode(QueryRequest queryRequest) {
         this.queryRequest = queryRequest;
@@ -88,7 +92,13 @@ public class NextPageNode implements WorkflowNode {
             
             // 행 수 계산
             log.info("3단계: 페이지네이션 쿼리의 행 수 계산 시작");
+            long startTime = System.currentTimeMillis();
             String countResult = queryRequest.countRows(nextPageQuery, LIMIT);
+            long endTime = System.currentTimeMillis();
+
+            // DB 프로파일링 기록 (main DB)
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordDbCall(chainId, elapsedTime, false, "next_page");
             log.info("countRows API 응답: {}", countResult);
             
             int totalRows = 0;
@@ -123,8 +133,14 @@ public class NextPageNode implements WorkflowNode {
             // 실제 DB 쿼리 실행
             log.info("5단계: 페이지네이션 쿼리 실행 시작");
             log.info("실행할 쿼리: {}", nextPageQuery);
-            
+
+            startTime = System.currentTimeMillis();
             List<Map<String, Object>> queryResult = mainJdbcTemplate.queryForList(nextPageQuery);
+            endTime = System.currentTimeMillis();
+
+            // DB 프로파일링 기록 (main DB)
+            elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordDbCall(chainId, elapsedTime, false, "next_page");
 
             log.info("페이지네이션 쿼리 실행 완료: {} 행 반환", queryResult.size());
 

@@ -1,6 +1,7 @@
 package com.daquv.agent.workflow.node;
 
 import com.daquv.agent.quvi.util.ErrorHandler;
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
@@ -25,6 +26,9 @@ public class CheckpointNode implements WorkflowNode {
     @Autowired
     private WebSocketUtils webSocketUtils;
 
+    @Autowired
+    private RequestProfiler requestProfiler;
+
     @Override
     public String getId() {
         return "checkpoint";
@@ -42,7 +46,7 @@ public class CheckpointNode implements WorkflowNode {
 
         try {
             // 벡터 스토어 API 호출하여 joy/fin 분류
-            String classification = classifyJoy(userQuestion);
+            String classification = classifyJoy(userQuestion, state.getChainId());
             
             if ("joy".equals(classification)) {
                 log.info("일상 대화로 분류됨: {}", userQuestion);
@@ -65,7 +69,9 @@ public class CheckpointNode implements WorkflowNode {
     
 
 
-    private String classifyJoy(String queryText) {
+    private String classifyJoy(String queryText, String chainId) {
+        long startTime = System.currentTimeMillis();
+
         try {
             String url = vectorStoreDomain + "/checkpoint/" + sanitizeQuery(queryText);
             
@@ -84,6 +90,11 @@ public class CheckpointNode implements WorkflowNode {
         } catch (Exception e) {
             log.error("벡터 스토어 API 호출 중 오류: {}", e.getMessage(), e);
             return "fin"; // 기본값은 금융 관련 질문
+        } finally {
+            // 프로파일링 기록
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordVectorDbCall(chainId, elapsedTime, "checkpoint");
         }
     }
 

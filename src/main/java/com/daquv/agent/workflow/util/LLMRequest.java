@@ -98,7 +98,8 @@ public class LLMRequest {
             // 프로파일링 기록
             double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
             if (chainId != null) {
-                profiler.recordLlmCall(chainId, elapsedTime);
+                String nodeId = determineNodeIdFromStackTrace();
+                profiler.recordLlmCall(chainId, elapsedTime, nodeId);
                 log.info("LLM 프로파일링 기록 완료 - chainId: {}, elapsedTime: {}s", chainId, elapsedTime);
             } else {
                 log.debug("LLM 프로파일링 기록 스킵 - chainId가 null임");
@@ -262,5 +263,22 @@ public class LLMRequest {
         public int getMaxTokens() {
             return maxTokens;
         }
+    }
+    private String determineNodeIdFromStackTrace() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+
+        for (StackTraceElement element : stackTrace) {
+            String className = element.getClassName();
+
+            if (className.contains("CheckpointNode")) return "checkpoint";
+            if (className.contains("CommanderNode")) return "commander";
+            if (className.contains("Nl2sqlNode")) return "nl2sql";
+            if (className.contains("SafeguardNode")) return "safeguard";
+            if (className.contains("RespondentNode")) return "respondent";
+            if (className.contains("NodataNode")) return "nodata";
+            if (className.contains("KilljoyNode")) return "killjoy";
+        }
+
+        return "llm_service";
     }
 } 

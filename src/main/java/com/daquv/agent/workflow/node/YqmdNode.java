@@ -1,6 +1,7 @@
 package com.daquv.agent.workflow.node;
 
 import com.daquv.agent.quvi.util.ErrorHandler;
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
@@ -25,6 +26,9 @@ public class YqmdNode implements WorkflowNode {
     @Autowired
     private WebSocketUtils webSocketUtils;
 
+    @Autowired
+    private RequestProfiler requestProfiler;
+
     @Override
     public String getId() {
         return "yqmd";
@@ -34,6 +38,7 @@ public class YqmdNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String sqlQuery = state.getSqlQuery();
+        String chainId = state.getChainId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -50,16 +55,17 @@ public class YqmdNode implements WorkflowNode {
         }
 
         // 벡터 스토어 API 호출하여 YQMD 분류
-        String classification = classifyYqmd(userQuestion, sqlQuery);
+        String classification = classifyYqmd(userQuestion, sqlQuery, chainId);
         state.setSqlQuery(classification);
 
         // WebSocket 메시지 전송 (yqmd는 단순 분류이므로 시작 메시지만)
         webSocketUtils.sendNodeStart(state.getWebSocketSession(), "yqmd");
     }
 
-
-    private String classifyYqmd(String userQuestion, String sqlQuery) {
+    private String classifyYqmd(String userQuestion, String sqlQuery, String chainId) {
         String classification;
+        long startTime = System.currentTimeMillis();
+
         try {
             String sanitizedQuery = sanitizeQuery(userQuestion);
             String url = vectorStoreDomain + "/yqmd/" + sanitizedQuery;
@@ -81,6 +87,11 @@ public class YqmdNode implements WorkflowNode {
             log.error("YQMD 분류 중 알수 없는 에러: {}. 기본 값 'M' 사용.", e.getMessage(), e);
             classification = "M";
             return appendParameterToQuery(sqlQuery, classification.toUpperCase());
+        } finally {
+            // 벡터 DB 프로파일링 기록
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordVectorDbCall(chainId, elapsedTime, "yqmd");
         }
 
         // 분류된 값을 대문자로 변환하여 쿼리에 추가

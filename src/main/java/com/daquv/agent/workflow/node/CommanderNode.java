@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.node;
 
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.QnaService;
@@ -36,6 +37,9 @@ public class CommanderNode implements WorkflowNode {
     @Autowired
     private WebSocketUtils webSocketUtils;
 
+    @Autowired
+    private RequestProfiler requestProfiler;
+
     @Override
     public String getId() {
         return "commander";
@@ -68,7 +72,12 @@ public class CommanderNode implements WorkflowNode {
         String prompt = promptTemplate.build();
         
         // LLM 호출하여 테이블 선택
+        long startTime = System.currentTimeMillis();
         String llmResponse = llmService.callSelector(prompt, qnaId, chainId);
+        long endTime = System.currentTimeMillis();
+
+        double elapsedTime = (endTime - startTime) / 1000.0;
+        requestProfiler.recordLlmCall(chainId, elapsedTime, "commander");
         String selectedTable = LlmOutputHandler.extractTableName(llmResponse);
 
         if (selectedTable == null || selectedTable.trim().isEmpty()) {

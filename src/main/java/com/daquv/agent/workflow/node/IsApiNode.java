@@ -1,6 +1,7 @@
 package com.daquv.agent.workflow.node;
 
 import com.daquv.agent.quvi.util.ErrorHandler;
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
@@ -24,6 +25,9 @@ public class IsApiNode implements WorkflowNode {
     @Autowired
     private WebSocketUtils webSocketUtils;
 
+    @Autowired
+    private RequestProfiler requestProfiler;
+
     @Override
     public String getId() {
         return "isapi";
@@ -32,6 +36,7 @@ public class IsApiNode implements WorkflowNode {
     @Override
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
+        String chainId = state.getChainId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -41,7 +46,7 @@ public class IsApiNode implements WorkflowNode {
 
         try {
             // 벡터 스토어 API 호출하여 isApi/isNotApi 분류
-            String classification = classifyApi(userQuestion);
+            String classification = classifyApi(userQuestion, chainId);
 
             if ("1".equals(classification)) {
                 log.info("isApi로 분류 됨: {}", userQuestion);
@@ -62,9 +67,9 @@ public class IsApiNode implements WorkflowNode {
         webSocketUtils.sendNodeStart(state.getWebSocketSession(), "isapi");
     }
 
+    private String classifyApi(String userQuestion, String chainId) {
+        long startTime = System.currentTimeMillis();
 
-
-    private String classifyApi(String userQuestion) {
         try {
             String url = vectorStoreDomain + "/isapi/" + sanitizeQuery(userQuestion);
 
@@ -83,6 +88,11 @@ public class IsApiNode implements WorkflowNode {
         } catch (Exception e) {
             log.error("벡터 스토어 API 호출 중 오류: {}", e.getMessage(), e);
             return "0"; // 기본값은 isNotApi
+        } finally {
+            // 벡터 DB 프로파일링 기록
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordVectorDbCall(chainId, elapsedTime, "isapi");
         }
     }
 

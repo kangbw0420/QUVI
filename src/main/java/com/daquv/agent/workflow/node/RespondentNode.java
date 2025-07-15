@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.node;
 
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.QnaService;
@@ -41,6 +42,9 @@ public class RespondentNode implements WorkflowNode {
     
     @Autowired
     private WebSocketUtils webSocketUtils;
+
+    @Autowired
+    private RequestProfiler requestProfiler;
 
     public RespondentNode(FstringRequest fstringRequest) {
         this.fstringRequest = fstringRequest;
@@ -165,7 +169,13 @@ public class RespondentNode implements WorkflowNode {
             // QnA 질문 기록
             qnaService.updateQuestion(qnaId, prompt, "qwen_14b");
 
+            long startTime = System.currentTimeMillis();
             String llmResponse = llmService.callSolver(prompt, qnaId);
+            long endTime = System.currentTimeMillis();
+
+            // LLM 프로파일링 기록
+            double elapsedTime = (endTime - startTime) / 1000.0;
+            requestProfiler.recordLlmCall(chainId, elapsedTime, "respondent");
             log.info("LLM 응답 길이: {} 문자", llmResponse != null ? llmResponse.length() : 0);
 
             // QnA 답변 기록

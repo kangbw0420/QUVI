@@ -1,5 +1,7 @@
 package com.daquv.agent.quvi.requests;
 
+import com.daquv.agent.quvi.dto.LogLevel;
+import com.daquv.agent.quvi.logging.ChainLogManager;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,17 +22,20 @@ import java.util.*;
 
 @Component
 public class VectorRequest {
-    
+
     private static final Logger log = LoggerFactory.getLogger(VectorRequest.class);
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    protected final RestTemplate restTemplate = new RestTemplate();
+    protected final ObjectMapper objectMapper = new ObjectMapper();
     @Value("${api.vector-store-domain}")
-    private String VECTOR_STORE_BASE_URL;
-    
+    protected String VECTOR_STORE_BASE_URL;
+
     @Autowired
-    private RequestProfiler profiler;
-    
+    protected ChainLogManager chainLogManager;
+
+    @Autowired
+    protected RequestProfiler profiler;
+
     @PostConstruct
     public void init() {
         log.info("[vector] VectorRequest 초기화 - profiler: {}", profiler != null ? "주입됨" : "null");
@@ -47,9 +52,9 @@ public class VectorRequest {
      */
     public List<Map<String, Object>> queryVectorStore(String queryText, String collectionName, int topK, String chainId) {
         long startTime = System.currentTimeMillis();
-        
+
         try {
-            log.info("[vector] 벡터 스토어 쿼리 시작 - 쿼리: {}, 컬렉션: {}, topK: {}", 
+            log.info("[vector] 벡터 스토어 쿼리 시작 - 쿼리: {}, 컬렉션: {}, topK: {}",
                     queryText, collectionName, topK);
 
             // 요청 데이터 구성
@@ -67,39 +72,48 @@ public class VectorRequest {
 
             // API 호출
             ResponseEntity<String> response = restTemplate.postForEntity(
-                VECTOR_STORE_BASE_URL + "/query", request, String.class);
+                    VECTOR_STORE_BASE_URL + "/query", request, String.class);
 
             double retrieveTime = (System.currentTimeMillis() - startTime) / 1000.0;
-            
+
             // 프로파일링 기록
             if (chainId != null) {
-                profiler.recordVectorDbCall(chainId, retrieveTime);
-                log.info("[vector] 프로파일링 기록 완료 - chainId: {}", chainId);
+                String nodeId = determineNodeIdFromStackTrace();
+                profiler.recordVectorDbCall(chainId, retrieveTime, nodeId);
+                log.info("[vector] 프로파일링 기록 완료 - chainId: {}, nodeId: {}", chainId, nodeId);
             } else {
                 log.warn("[vector] 프로파일링 기록 실패 - chainId가 null임");
             }
-            
+
             if (response.getStatusCode().is2xxSuccessful()) {
                 String responseBody = response.getBody();
                 log.info("[vector] 벡터 스토어 쿼리 완료 - 소요시간: {}s, 응답: {}", retrieveTime, responseBody);
-                
+
                 return parseVectorStoreResponse(responseBody, retrieveTime);
             } else {
                 log.error("[vector] 벡터 스토어 쿼리 실패 - 상태 코드: {}", response.getStatusCode());
+
+                if (chainId != null) {
+                    chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.ERROR,
+                            String.format("벡터 스토어 쿼리 실패 - 상태 코드: %s", response.getStatusCode()));
+                }
                 return new ArrayList<>();
             }
 
         } catch (Exception e) {
             double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
-            
+
             // 예외 발생 시에도 프로파일링 기록
             if (chainId != null) {
                 profiler.recordVectorDbCall(chainId, elapsedTime);
+
+                chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.ERROR,
+                        String.format("벡터 스토어 연결 실패: %s", e.getMessage()), e);
+
                 log.info("[vector] 예외 발생 시 프로파일링 기록 완료 - chainId: {}", chainId);
             } else {
                 log.warn("[vector] 예외 발생 시 프로파일링 기록 실패 - chainId가 null임");
             }
-            
             log.error("[vector] 벡터 스토어 쿼리 중 예외 발생 - 소요시간: {}s, 오류: {}", elapsedTime, e.getMessage(), e);
             return new ArrayList<>();
         }
@@ -110,17 +124,17 @@ public class VectorRequest {
      */
     private List<Map<String, Object>> parseVectorStoreResponse(String responseBody, double retrieveTime) {
         List<Map<String, Object>> formattedResults = new ArrayList<>();
-        
+
         try {
             JsonNode data = objectMapper.readTree(responseBody);
-            
+
             if (data.has("results")) {
                 JsonNode results = data.get("results");
-                
+
                 if (results.has("documents") && results.has("metadatas")) {
                     JsonNode documents = results.get("documents");
                     JsonNode metadatas = results.get("metadatas");
-                    
+
                     // documents와 metadatas를 쌍으로 묶어서 결과 생성
                     for (int i = 0; i < documents.size() && i < metadatas.size(); i++) {
                         Map<String, Object> result = new HashMap<>();
@@ -131,9 +145,9 @@ public class VectorRequest {
                     }
                 }
             }
-            
+
             return formattedResults;
-            
+
         } catch (JsonProcessingException e) {
             log.error("[vector] 벡터 스토어 응답 파싱 중 오류: {}", e.getMessage(), e);
             return new ArrayList<>();
@@ -149,7 +163,7 @@ public class VectorRequest {
     public Map<String, Object> formatFewShots(List<Map<String, Object>> results) {
         List<Map<String, Object>> fewShots = new ArrayList<>();
         double retrieveTime = 0.0;
-        
+
         try {
             for (Map<String, Object> result : results) {
                 if (result.containsKey("document")) {
@@ -180,17 +194,17 @@ public class VectorRequest {
                             String stats = (String) metadata.get("stats");
                             fewShot.put("stats", stats);
                         }
-                        
+
                         fewShots.add(fewShot);
                     }
                 }
             }
-            
+
             Map<String, Object> result = new HashMap<>();
             result.put("few_shots", fewShots);
             result.put("retrieve_time", retrieveTime);
             return result;
-            
+
         } catch (Exception e) {
             log.error("[vector] few-shot 포맷팅 중 오류: {}", e.getMessage(), e);
             Map<String, Object> result = new HashMap<>();
@@ -210,8 +224,22 @@ public class VectorRequest {
      * @return few-shot 예제 리스트와 검색 처리 시간
      */
     public Map<String, Object> getFewShots(String queryText, String collectionName, int topK, String chainId) {
-        List<Map<String, Object>> results = queryVectorStore(queryText, collectionName, topK, chainId);
-        return formatFewShots(results);
+        try {
+            List<Map<String, Object>> results = queryVectorStore(queryText, collectionName, topK, chainId);
+            return formatFewShots(results);
+        } catch (Exception e) {
+            // 체인 로그에 ERROR 레벨로 기록
+            if (chainId != null) {
+                chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.ERROR,
+                        String.format("Few-shot 검색 실패: %s", e.getMessage()), e);
+            }
+
+            log.error("[vector] Few-shot 검색 중 오류: {}", e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("few_shots", new ArrayList<>());
+            result.put("retrieve_time", 0.0);
+            return result;
+        }
     }
 
     /**
@@ -223,99 +251,6 @@ public class VectorRequest {
      */
     public Map<String, Object> getFewShots(String queryText, int topK) {
         return getFewShots(queryText, null, topK, null);
-    }
-
-    /**
-     * 주어진 원본 노트에 대해 유사한 노트들을 벡터 API를 사용하여 검색합니다.
-     *
-     * @param originalNote 원본 노트
-     * @param availableNotes 검색 대상 노트 리스트
-     * @param topK 검색할 상위 결과 수
-     * @param threshold 유사도 임계값
-     * @return 유사한 노트 리스트
-     */
-    public List<String> getSimilarNotes(String originalNote, List<String> availableNotes, int topK, double threshold) {
-        try {
-            log.info("[vector] getSimilarNotes 시작 - 원본노트: {}, 대상노트수: {}", originalNote, availableNotes.size());
-
-            if (availableNotes == null || availableNotes.isEmpty()) {
-                log.warn("[vector] 검색 대상 노트가 없습니다");
-                return new ArrayList<>();
-            }
-
-            List<String> similarNotes = new ArrayList<>();
-
-            // 요청 데이터 구성
-            Map<String, Object> requestData = new HashMap<>();
-            List<Map<String, Object>> pickItems = new ArrayList<>();
-
-            Map<String, Object> pickItem = new HashMap<>();
-            pickItem.put("target", originalNote);
-            pickItem.put("candidates", availableNotes);
-
-            pickItems.add(pickItem);
-            requestData.put("pickItems", pickItems);
-            requestData.put("top_k", topK);
-
-            // HTTP 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            // HTTP 요청 생성
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestData, headers);
-
-            log.info("[vector] 노트 유사도 요청 페이로드: {}",
-                    objectMapper.writeValueAsString(requestData));
-
-            // API 호출
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    VECTOR_STORE_BASE_URL + "/pick", request, String.class);
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                String responseBody = response.getBody();
-                log.info("[vector] 노트 유사도 검색 완료 - 응답: {}", responseBody);
-
-                // 응답 파싱
-                JsonNode data = objectMapper.readTree(responseBody);
-
-                if (data.has("results")) {
-                    JsonNode results = data.get("results");
-
-                    for (JsonNode resultItem : results) {
-                        if (resultItem.has("target") &&
-                                originalNote.equals(resultItem.get("target").asText()) &&
-                                resultItem.has("candidates")) {
-
-                            JsonNode candidates = resultItem.get("candidates");
-
-                            for (JsonNode candidateObj : candidates) {
-                                if (candidateObj.has("candidate") && candidateObj.has("score")) {
-                                    String candidate = candidateObj.get("candidate").asText();
-                                    double score = candidateObj.get("score").asDouble();
-
-                                    if (score >= threshold && !similarNotes.contains(candidate)) {
-                                        similarNotes.add(candidate);
-                                        log.info("[vector] 유사한 노트 발견: '{}' 점수: {}", candidate, score);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                log.info("[vector] getSimilarNotes 완료 - 임계값 {} 이상의 유사노트수: {}",
-                        threshold, similarNotes.size());
-                return similarNotes;
-
-            } else {
-                log.error("[vector] 노트 유사도 검색 실패 - 상태 코드: {}", response.getStatusCode());
-                return new ArrayList<>();
-            }
-
-        } catch (Exception e) {
-            log.error("[vector] getSimilarNotes 처리 중 오류: {}", e.getMessage(), e);
-            return new ArrayList<>();
-        }
     }
 
     /**
@@ -334,7 +269,7 @@ public class VectorRequest {
             // document 추출 및 정규화
             String queryTextNormalized = queryText.replace(" ", "").trim();
             List<String> documents = new ArrayList<>();
-            
+
             for (Map<String, Object> result : results) {
                 if (result.containsKey("document")) {
                     String document = ((String) result.get("document")).trim();
@@ -343,6 +278,11 @@ public class VectorRequest {
             }
 
             if (documents.isEmpty()) {
+                // 빈 결과도 로그로 기록 (ERROR는 아니지만 정보성)
+                if (chainId != null) {
+                    chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.WARN,
+                            "추천 질문 검색 결과 없음");
+                }
                 return new ArrayList<>();
             }
 
@@ -354,7 +294,7 @@ public class VectorRequest {
 
             // query_text가 검색 결과에 있는지 확인
             int queryIndex = documentsNormalized.indexOf(queryTextNormalized);
-            
+
             if (queryIndex != -1) {
                 // query_text가 있으면 해당 항목을 제외한 나머지 중 앞의 3개 반환
                 List<String> filteredDocs = new ArrayList<>();
@@ -365,10 +305,56 @@ public class VectorRequest {
                 // query_text가 없으면 마지막 항목을 제외한 3개 반환
                 return documents.subList(0, Math.min(3, documents.size()));
             }
-            
+
         } catch (Exception e) {
+            if (chainId != null) {
+                chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.ERROR,
+                        String.format("추천 질문 검색 실패: %s", e.getMessage()), e);
+            }
+
             log.error("[vector] 추천 검색 중 오류: {}", e.getMessage(), e);
             return new ArrayList<>();
         }
+    }
+
+    /**
+     * 스택 트레이스에서 워크플로우 노드 ID 결정
+     */
+    protected String determineNodeIdFromStackTrace() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+
+        for (StackTraceElement element : stackTrace) {
+            String className = element.getClassName();
+            String methodName = element.getMethodName();
+
+            // 워크플로우 노드들 우선 체크
+            if (className.contains("CheckpointNode")) return "checkpoint";
+            if (className.contains("CommanderNode")) return "commander";
+            if (className.contains("Nl2sqlNode")) return "nl2sql";
+            if (className.contains("QueryExecutorNode")) return "executor";
+            if (className.contains("SafeguardNode")) return "safeguard";
+            if (className.contains("RespondentNode")) return "respondent";
+            if (className.contains("NodataNode")) return "nodata";
+            if (className.contains("KilljoyNode")) return "killjoy";
+            if (className.contains("NextPageNode")) return "next_page";
+
+            // PromptBuilder 메서드별 분류
+            if (className.contains("PromptBuilder")) {
+                if (methodName.contains("Commander")) return "commander";
+                if (methodName.contains("NL2SQL")) return "nl2sql";
+                if (methodName.contains("Respondent")) return "respondent";
+                if (methodName.contains("Nodata")) return "nodata";
+                if (methodName.contains("Killjoy")) return "killjoy";
+                return "prompt_builder";
+            }
+
+            // Controller
+            if (className.contains("QuviController")) {
+                if (methodName.contains("getRecommend")) return "controller";
+                return "controller";
+            }
+        }
+
+        return "vector_request";
     }
 }

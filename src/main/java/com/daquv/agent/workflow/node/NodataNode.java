@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.node;
 
+import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.QnaService;
@@ -33,6 +34,9 @@ public class NodataNode implements WorkflowNode {
     
     @Autowired
     private WebSocketUtils webSocketUtils;
+
+    @Autowired
+    private RequestProfiler requestProfiler;
 
     @Override
     public String getId() {
@@ -73,7 +77,13 @@ public class NodataNode implements WorkflowNode {
         String prompt = promptTemplate.build();
         
         // LLM 호출하여 데이터 없음 답변 생성
+        long startTime = System.currentTimeMillis();
         String llmResponse = llmService.callQwenLlm(prompt, qnaId);
+        long endTime = System.currentTimeMillis();
+
+        // LLM 프로파일링 기록
+        double elapsedTime = (endTime - startTime) / 1000.0;
+        requestProfiler.recordLlmCall(chainId, elapsedTime, "nodata");
         String finalAnswer = LlmOutputHandler.extractAnswer(llmResponse);
 
         if (finalAnswer == null || finalAnswer.trim().isEmpty()) {

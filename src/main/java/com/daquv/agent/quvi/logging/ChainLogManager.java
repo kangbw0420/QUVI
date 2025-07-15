@@ -150,6 +150,19 @@ public class ChainLogManager {
     }
 
     /**
+     * 특정 체인에 ERROR 레벨 로그가 있는지 확인
+     */
+    public boolean hasErrorLogs(String chainId) {
+        ChainLogContext context = chainLogs.get(chainId);
+        if (context == null) {
+            return false;
+        }
+
+        return context.getLogEntries().stream()
+                .anyMatch(entry -> entry.getLevel() == LogLevel.ERROR);
+    }
+
+    /**
      * 체인 로그를 텍스트로 변환
      */
     private String buildChainLogText(ChainLogContext context) {
