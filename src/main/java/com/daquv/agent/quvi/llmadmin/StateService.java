@@ -136,11 +136,6 @@ public class StateService {
         } catch (Exception e) {
             log.error("Error in updateState - traceId: {}, updates: {}", traceId, updates, e);
             throw new RuntimeException("Failed to update state", e);
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "state_service");
         }
     }
 
@@ -186,11 +181,6 @@ public class StateService {
         } catch (Exception e) {
             log.error("Error in getLatestState - traceId: {}", traceId, e);
             return null;
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "state_service");
         }
     }
 
@@ -254,17 +244,7 @@ public class StateService {
      */
     public Optional<State> getLatestByTraceId(String traceId) {
         log.info("getLatestByTraceId - traceId: {}", traceId);
-
-        String chainId = getCurrentChainId();
-        long startTime = System.currentTimeMillis();
-        try {
-            return stateRepository.findLatestByTraceId(traceId);
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "state_service");
-        }
+        return stateRepository.findLatestByTraceId(traceId);
     }
 
     /**
@@ -272,16 +252,7 @@ public class StateService {
      */
     public List<State> getStatesByChainId(String chainId) {
         log.info("getStatesByChainId - chainId: {}", chainId);
-
-        long startTime = System.currentTimeMillis();
-        try {
-            return stateRepository.findByChainId(chainId);
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "state_service");
-        }
+        return stateRepository.findByChainId(chainId);
     }
 
     /**

@@ -84,11 +84,6 @@ public class QnaService {
         } catch (Exception e) {
             log.error("Error in createQnaId - traceId: {}", traceId, e);
             throw new RuntimeException("Failed to create QnA ID", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "qna_service");
         }
     }
 
@@ -132,11 +127,6 @@ public class QnaService {
             log.error("Error in recordFewshot - qnaId: {}, retrieved: {}, human: {}, ai: {}, order: {}",
                     qnaId, retrieved, human, ai, order, e);
             throw new RuntimeException("Failed to record fewshot", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "qna_service");
         }
     }
 
@@ -178,11 +168,6 @@ public class QnaService {
         } catch (Exception e) {
             log.error("Error in updateQuestion - qnaId: {}, question: {}, model: {}", qnaId, question, model, e);
             throw new RuntimeException("Failed to update question", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "qna_service");
         }
     }
 
@@ -217,11 +202,6 @@ public class QnaService {
             log.error("Error in recordAnswer - qnaId: {}, answer: {}, retrieveTime: {}",
                     qnaId, answer, retrieveTime, e);
             throw new RuntimeException("Failed to record answer", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "qna_service");
         }
     }
 

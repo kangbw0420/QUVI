@@ -43,9 +43,6 @@ public class QueryExecutorNode implements WorkflowNode {
     @Autowired
     private QueryRequest queryRequest;
 
-    @Autowired
-    private RequestProfiler requestProfiler;
-
     @Value("${view-table.dialect}")
     private String DIALECT;
 
@@ -81,20 +78,11 @@ public class QueryExecutorNode implements WorkflowNode {
             
             if (state.getIsApi()) {
                 // API 쿼리 처리
-                long startTime = System.currentTimeMillis();
-                try {
-                    log.info("API 쿼리용 chainId 설정: {}", chainId);
-                    DatabaseProfilerAspect.setChainId(chainId);
-                    queryResult = mainJdbcTemplate.queryForList(rawQuery);
-                    log.info("API 쿼리 완료, 반환 행 수: {}", queryResult.size());
-                } finally {
-                    DatabaseProfilerAspect.clearChainId();
-                    log.debug("API 쿼리 후 ThreadLocal 정리 완료");
 
-                    long endTime = System.currentTimeMillis();
-                    double elapsedTime = (endTime - startTime) / 1000.0;
-                    requestProfiler.recordDbCall(chainId, elapsedTime, false, "executor");
-                }
+                log.info("API 쿼리용 chainId 설정: {}", chainId);
+                DatabaseProfilerAspect.setChainId(chainId);
+                queryResult = mainJdbcTemplate.queryForList(rawQuery);
+                log.info("API 쿼리 완료, 반환 행 수: {}", queryResult.size());
                 
                 if (!queryResult.isEmpty()) {
                     Map<String, Object> data = new HashMap<>();
@@ -144,20 +132,11 @@ public class QueryExecutorNode implements WorkflowNode {
                 
                 // 5. 행 수 계산 및 페이지네이션
                 String countResult;
-                long startTime = System.currentTimeMillis();
-                try {
-                    log.info("COUNT 쿼리용 chainId 설정: {}", chainId);
-                    DatabaseProfilerAspect.setChainId(chainId);
-                    countResult = queryRequest.countRows(viewQuery, LIMIT);
-                    log.info("COUNT 쿼리 완료");
-                } finally {
-                    DatabaseProfilerAspect.clearChainId();
-                    log.debug("COUNT 쿼리 후 ThreadLocal 정리 완료");
+                log.info("COUNT 쿼리용 chainId 설정: {}", chainId);
+                DatabaseProfilerAspect.setChainId(chainId);
+                countResult = queryRequest.countRows(viewQuery, LIMIT);
+                log.info("COUNT 쿼리 완료");
 
-                    long endTime = System.currentTimeMillis();
-                    double elapsedTime = (endTime - startTime) / 1000.0;
-                    requestProfiler.recordDbCall(chainId, elapsedTime, false, "executor");
-                }
                 log.info("countRows API 응답: {}", countResult);
 
                 int totalRows = 0;
@@ -187,20 +166,12 @@ public class QueryExecutorNode implements WorkflowNode {
                 log.info("실행할 쿼리: {}", viewQuery);
                 
                 // 6. 쿼리 실행
-                startTime = System.currentTimeMillis();
-                try {
-                    log.info("메인 쿼리용 chainId 설정: {}", chainId);
-                    DatabaseProfilerAspect.setChainId(chainId);
-                    queryResult = mainJdbcTemplate.queryForList(viewQuery);
-                    log.info("메인 쿼리 완료, 반환 행 수: {}", queryResult.size());
-                } finally {
-                    DatabaseProfilerAspect.clearChainId();
-                    log.debug("메인 쿼리 후 ThreadLocal 정리 완료");
 
-                    long endTime = System.currentTimeMillis();
-                    double elapsedTime = (endTime - startTime) / 1000.0;
-                    requestProfiler.recordDbCall(chainId, elapsedTime, false, "executor");
-                }
+                log.info("메인 쿼리용 chainId 설정: {}", chainId);
+                DatabaseProfilerAspect.setChainId(chainId);
+                queryResult = mainJdbcTemplate.queryForList(viewQuery);
+                log.info("메인 쿼리 완료, 반환 행 수: {}", queryResult.size());
+
                 
                 if (!queryResult.isEmpty()) {
                     Map<String, Object> data = new HashMap<>();
@@ -246,20 +217,12 @@ public class QueryExecutorNode implements WorkflowNode {
                         
                         // 수정된 쿼리로 재실행
                         if (modifiedQuery != null && !modifiedQuery.equals(viewQuery)) {
-                            startTime = System.currentTimeMillis();
-                            try {
-                                log.info("수정된 쿼리용 chainId 설정: {}", chainId);
-                                DatabaseProfilerAspect.setChainId(chainId);
-                                queryResult = mainJdbcTemplate.queryForList(modifiedQuery);
-                                log.info("수정된 쿼리 완료, 반환 행 수: {}", queryResult.size());
-                            } finally {
-                                DatabaseProfilerAspect.clearChainId();
-                                log.debug("수정된 쿼리 후 ThreadLocal 정리 완료");
 
-                                long endTime = System.currentTimeMillis();
-                                double elapsedTime = (endTime - startTime) / 1000.0;
-                                requestProfiler.recordDbCall(chainId, elapsedTime, false, "executor");
-                            }
+                            log.info("수정된 쿼리용 chainId 설정: {}", chainId);
+                            DatabaseProfilerAspect.setChainId(chainId);
+                            queryResult = mainJdbcTemplate.queryForList(modifiedQuery);
+                            log.info("수정된 쿼리 완료, 반환 행 수: {}", queryResult.size());
+
                             state.setSqlQuery(modifiedQuery);
                         }
                         columnList = extractColumns(modifiedQuery, queryResult);

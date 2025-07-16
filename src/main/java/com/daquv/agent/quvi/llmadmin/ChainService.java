@@ -63,11 +63,6 @@ public class ChainService {
         } catch (Exception e) {
             log.error("Error in createChain - conversationId: {}, userQuestion: {}", conversationId, userQuestion, e);
             throw new RuntimeException("Failed to create chain", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "chain_service");
         }
     }
 
@@ -96,11 +91,6 @@ public class ChainService {
         } catch (Exception e) {
             log.error("Error in completeChain - chainId: {}, finalAnswer: {}", chainId, finalAnswer, e);
             throw new RuntimeException("Failed to complete chain", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "chain_service");
         }
     }
 
@@ -125,11 +115,6 @@ public class ChainService {
         } catch (Exception e) {
             log.error("❌ 체인 에러 상태 저장 실패 - chainId: {}, error: {}", chainId, e.getMessage(), e);
             throw new RuntimeException("Failed to save chain error", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "chain_service");
         }
     }
 
@@ -150,11 +135,6 @@ public class ChainService {
         } catch (Exception e) {
             log.error("❌ 체인 로그 업데이트 실패 - chainId: {}, error: {}", chainId, e.getMessage(), e);
             throw new RuntimeException("Failed to update chain log", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "chain_service");
         }
     }
 }

@@ -102,49 +102,6 @@ public class DatabaseProfilerAspect {
         return executeWithProfiling(joinPoint, chainId, isPromptDb, "JdbcTemplate(" + dbType + ")", methodKey);
     }
 
-    /**
-     * Service는 워크플로우 노드에서 호출되지 않은 경우만 기록
-     */
-    @Around("execution(* com.daquv.agent.quvi.llmadmin..*Service.*(..))")
-    public Object profilePromptServiceCall(ProceedingJoinPoint joinPoint) throws Throwable {
-        String chainId = getChainId();
-        if (chainId == null) {
-            return joinPoint.proceed();
-        }
-
-        // 워크플로우 노드에서 호출된 경우 기록하지 않음 (노드 레벨에서 이미 기록됨)
-        if (isCalledFromRepository() || willCallRepository(joinPoint)) {
-            return joinPoint.proceed();
-        }
-
-        String methodKey = generateMethodKey(joinPoint);
-        if (isAlreadyProcessed(methodKey)) {
-            return joinPoint.proceed();
-        }
-
-        String nodeId = determineNodeIdFromStackTrace();
-        return executeWithProfiling(joinPoint, chainId, true, nodeId, methodKey);
-    }
-
-    /**
-     *  워크플로우 노드는 최상위 레벨에서만 기록
-     */
-    @Around("execution(* com.daquv.agent.workflow.node..*Node.*(..))")
-    public Object profileWorkflowNodeCall(ProceedingJoinPoint joinPoint) throws Throwable {
-        String chainId = getChainId();
-        if (chainId == null) {
-            return joinPoint.proceed();
-        }
-
-        String methodKey = generateMethodKey(joinPoint);
-        if (isAlreadyProcessed(methodKey)) {
-            return joinPoint.proceed();
-        }
-
-        String nodeId = determineNodeIdFromStackTrace();
-        return executeWithProfiling(joinPoint, chainId, false, nodeId, methodKey);
-    }
-
     private Object executeWithProfiling(ProceedingJoinPoint joinPoint, String chainId,
                                         boolean isPromptDb, String nodeId, String methodKey) throws Throwable {
         long startTime = System.currentTimeMillis();

@@ -37,8 +37,6 @@ public class ConversationService {
     public boolean checkConversationId(String conversationId) {
         log.info("checkConversationId start - conversationId: {}", conversationId);
 
-        String chainId = getCurrentChainId();
-        long startTime = System.currentTimeMillis();
         try {
             return conversationRepository.findByConversationId(conversationId)
                     .map(conversation -> Conversation.ConversationStatus.active.equals(conversation.getConversationStatus()))
@@ -46,11 +44,6 @@ public class ConversationService {
         } catch (Exception e) {
             log.error("Error checking conversation ID: {}", conversationId, e);
             return false;
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "conversation_service");
         }
     }
 
@@ -67,7 +60,6 @@ public class ConversationService {
             log.debug("ConversationService에서 chainId 설정: {}", chainId);
         }
 
-        long startTime = System.currentTimeMillis();
         try {
             String conversationId = UUID.randomUUID().toString();
             Conversation conversation = Conversation.create(userId, conversationId);
@@ -77,11 +69,6 @@ public class ConversationService {
         } catch (Exception e) {
             log.error("Error creating conversation for userId: {}", userId, e);
             throw new RuntimeException("Failed to create conversation", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "conversation_service");
         }
     }
 
@@ -92,8 +79,6 @@ public class ConversationService {
     public void endConversation(String conversationId) {
         log.info("endConversation start - conversationId: {}", conversationId);
 
-        String chainId = getCurrentChainId();
-        long startTime = System.currentTimeMillis();
         try {
             Conversation conversation = conversationRepository.findByConversationId(conversationId)
                     .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
@@ -103,11 +88,6 @@ public class ConversationService {
         } catch (Exception e) {
             log.error("Error ending conversation: {}", conversationId, e);
             throw new RuntimeException("Failed to end conversation", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "conversation_service");
         }
     }
 
@@ -118,8 +98,6 @@ public class ConversationService {
     public void updateConversationStatus(String conversationId, Conversation.ConversationStatus status) {
         log.info("updateConversationStatus start - conversationId: {}, status: {}", conversationId, status);
 
-        String chainId = getCurrentChainId();
-        long startTime = System.currentTimeMillis();
         try {
             Conversation conversation = conversationRepository.findByConversationId(conversationId)
                     .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
@@ -129,11 +107,6 @@ public class ConversationService {
         } catch (Exception e) {
             log.error("Error updating conversation status: {}", conversationId, e);
             throw new RuntimeException("Failed to update conversation status", e);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "conversation_service");
         }
     }
 
@@ -142,17 +115,7 @@ public class ConversationService {
      */
     public Optional<Conversation> getConversation(String conversationId) {
         log.info("getConversation - conversationId: {}", conversationId);
-
-        String chainId = getCurrentChainId();
-        long startTime = System.currentTimeMillis();
-        try {
-            return conversationRepository.findByConversationId(conversationId);
-        } finally {
-            // DB 프로파일링 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "conversation_service");
-        }
+        return conversationRepository.findByConversationId(conversationId);
     }
 
     private String getCurrentChainId() {

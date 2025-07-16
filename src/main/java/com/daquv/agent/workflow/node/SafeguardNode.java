@@ -98,11 +98,7 @@ public class SafeguardNode implements WorkflowNode {
             if (modifiedQuery != null && !modifiedQuery.trim().isEmpty() && !modifiedQuery.equals(unsafeQuery)) {
                 // 3. 수정된 쿼리의 행 수 계산
                 log.info("3단계: 수정된 쿼리의 행 수 계산 시작");
-                long startTime = System.currentTimeMillis();
                 String modifiedCountResult = queryRequest.countRows(modifiedQuery, LIMIT);
-                long endTime = System.currentTimeMillis();
-                double elapsedTime = (endTime - startTime) / 1000.0;
-                requestProfiler.recordDbCall(chainId, elapsedTime, false, "safeguard");
 
                 log.info("수정된 쿼리 countRows API 응답: {}", modifiedCountResult);
                 

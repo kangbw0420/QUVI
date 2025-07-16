@@ -70,11 +70,6 @@ public class TraceService {
         } catch (Exception e) {
             log.error("Error in createTrace - chainId: {}, nodeType: {}", chainId, nodeType, e);
             throw new RuntimeException("Failed to create trace", e);
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "trace_service");
         }
     }
 
@@ -105,11 +100,6 @@ public class TraceService {
         } catch (Exception e) {
             log.error("Error in completeTrace - traceId: {}", traceId, e);
             throw new RuntimeException("Failed to complete trace", e);
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "trace_service");
         }
     }
 
@@ -124,7 +114,6 @@ public class TraceService {
         log.info("markTraceError start - traceId: {}", traceId);
 
         String chainId = null;
-        long startTime = System.currentTimeMillis();
         try {
             Trace trace = traceRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
@@ -141,11 +130,6 @@ public class TraceService {
         } catch (Exception e) {
             log.error("Error in markTraceError - traceId: {}", traceId, e);
             throw new RuntimeException("Failed to mark trace error", e);
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "trace_service");
         }
     }
 
@@ -160,7 +144,7 @@ public class TraceService {
 
         String chainId = null;
         long startTime = System.currentTimeMillis();
-        try {
+
             Optional<Trace> traceOpt = traceRepository.findById(traceId);
 
             // chainId 추출 (trace가 존재할 때만)
@@ -169,12 +153,7 @@ public class TraceService {
             }
 
             return traceOpt;
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "trace_service");
-        }
+
     }
 
     /**
@@ -187,14 +166,9 @@ public class TraceService {
         log.info("getTracesByChainId - chainId: {}", chainId);
 
         long startTime = System.currentTimeMillis();
-        try {
+
             return traceRepository.findByChainIdOrderByTraceStartAsc(chainId);
-        } finally {
-            // DB 프로파일링 기록 (main DB)
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "trace_service");
-        }
+
     }
 
     /**
@@ -206,17 +180,7 @@ public class TraceService {
     public List<Trace> getTracesByStatus(Trace.TraceStatus status) {
         log.info("getTracesByStatus - status: {}", status);
 
-        // 이 메서드는 특정 chainId와 연관되지 않으므로 null로 처리
-        String chainId = null;
-        long startTime = System.currentTimeMillis();
-        try {
             return traceRepository.findByTraceStatus(status);
-        } finally {
-            // DB 프로파일링 기록 (main DB) - chainId가 null이어도 프로파일링은 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "trace_service");
-        }
     }
 
     /**
@@ -229,15 +193,8 @@ public class TraceService {
         log.info("getTracesByNodeType - nodeType: {}", nodeType);
 
         // 이 메서드는 특정 chainId와 연관되지 않으므로 null로 처리
-        String chainId = null;
-        long startTime = System.currentTimeMillis();
-        try {
+
             return traceRepository.findByNodeType(nodeType);
-        } finally {
-            // DB 프로파일링 기록 (main DB) - chainId가 null이어도 프로파일링은 기록
-            long endTime = System.currentTimeMillis();
-            double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordDbCall(chainId, elapsedTime, false, "trace_service");
-        }
+
     }
 }

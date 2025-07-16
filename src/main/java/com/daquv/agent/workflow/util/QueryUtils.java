@@ -326,16 +326,7 @@ public class QueryUtils {
                     useInttId, userId, company, fromDate, toDate);
 
             // DB 호출 프로파일링
-            long startTime = System.currentTimeMillis();
             List<Map<String, Object>> noteResults = mainJdbcTemplate.queryForList(noteQuery);
-            long endTime = System.currentTimeMillis();
-
-            // 프로파일링 기록 (chainId 추출 시도)
-            String chainId = getCurrentChainId();
-            if (chainId != null) {
-                double elapsedTime = (endTime - startTime) / 1000.0;
-                requestProfiler.recordDbCall(chainId, elapsedTime, false, "query_utils");
-            }
 
             List<String> availableNotes = new ArrayList<>();
             for (Map<String, Object> noteResult : noteResults) {
