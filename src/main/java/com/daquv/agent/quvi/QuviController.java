@@ -385,13 +385,12 @@ public class QuviController {
 
         // 기본 상태 초기화
         state.setSafeCount(0);
-        state.setQueryError(false);
-        state.setQueryResultStatus(null);
-        state.setSqlError(null);
-        state.setSqlQuery(null);
-        state.setQueryResult(null);
-        state.setFinalAnswer(null);
-        state.setSelectedTable(null);
+        state.setQueryResultStatus("");
+        state.setSqlError("");
+        state.setSqlQuery("");
+        state.setQueryResult(new ArrayList<>());
+        state.setFinalAnswer("");
+        state.setSelectedTable("");
         state.setFString("");
 
         // 플래그 초기화

@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -89,7 +90,7 @@ public class KilljoyNode implements WorkflowNode {
             log.info("생성된 응답: {}...", finalAnswer.length() > 100 ? finalAnswer.substring(0, 100) : finalAnswer);
             // 상태 업데이트
             state.setFinalAnswer(finalAnswer);
-            state.setQueryResult(null);
+            state.setQueryResult(new ArrayList<>());
             state.setSqlQuery("");
             state.setSelectedTable("");
             
