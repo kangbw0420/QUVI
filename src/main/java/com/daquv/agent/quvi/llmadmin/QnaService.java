@@ -1,7 +1,7 @@
 package com.daquv.agent.quvi.llmadmin;
 
-import com.daquv.agent.quvi.entity.Qna;
-import com.daquv.agent.quvi.entity.Trace;
+import com.daquv.agent.quvi.entity.Node;
+import com.daquv.agent.quvi.entity.Generation;
 import com.daquv.agent.quvi.entity.Fewshot;
 import com.daquv.agent.quvi.repository.QnaRepository;
 import com.daquv.agent.quvi.repository.TraceRepository;
@@ -67,16 +67,16 @@ public class QnaService {
             String qnaId = UUID.randomUUID().toString();
 
             // Trace 조회
-            Trace trace = traceRepository.findById(traceId)
+            Node node = traceRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
 
             // Qna 생성
-            Qna qna = new Qna();
-            qna.setId(qnaId);
-            qna.setTrace(trace);
-            qna.setQuestionTimestamp(java.time.LocalDateTime.now());
+            Generation generation = new Generation();
+            generation.setId(qnaId);
+            generation.setNode(node);
+            generation.setQuestionTimestamp(java.time.LocalDateTime.now());
 
-            qnaRepository.save(qna);
+            qnaRepository.save(generation);
 
             log.info("createQnaId end - qnaId: {}", qnaId);
             return qnaId;
@@ -106,13 +106,13 @@ public class QnaService {
             String fewshotId = UUID.randomUUID().toString();
 
             // Qna 조회
-            Qna qna = qnaRepository.findById(qnaId)
+            Generation generation = qnaRepository.findById(qnaId)
                     .orElseThrow(() -> new IllegalArgumentException("QnA not found: " + qnaId));
 
             // Fewshot 생성
             Fewshot fewshot = new Fewshot();
             fewshot.setId(fewshotId);
-            fewshot.setQna(qna);
+            fewshot.setGeneration(generation);
             fewshot.setFewshotRetrieved(retrieved);
             fewshot.setFewshotHuman(human);
             fewshot.setFewshotAi(ai);
@@ -154,13 +154,13 @@ public class QnaService {
                 questionStr = null;
             }
 
-            Qna qna = qnaRepository.findById(qnaId)
+            Generation generation = qnaRepository.findById(qnaId)
                     .orElseThrow(() -> new IllegalArgumentException("QnA not found: " + qnaId));
 
-            qna.setQuestion(questionStr);
-            qna.setModel(model);
+            generation.setPrompt(questionStr);
+            generation.setModel(model);
 
-            qnaRepository.save(qna);
+            qnaRepository.save(generation);
 
             log.info("updateQuestion end - qnaId: {}", qnaId);
             return true;
@@ -187,13 +187,13 @@ public class QnaService {
         long startTime = System.currentTimeMillis();
 
         try {
-            Qna qna = qnaRepository.findById(qnaId)
+            Generation generation = qnaRepository.findById(qnaId)
                     .orElseThrow(() -> new IllegalArgumentException("QnA not found: " + qnaId));
 
-            qna.setAnswer(answer);
-            qna.setRetrieveTime(retrieveTime);
+            generation.setAnswer(answer);
+//            generation.setRetrieveTime(retrieveTime);
 
-            qnaRepository.save(qna);
+            qnaRepository.save(generation);
 
             log.info("recordAnswer end - qnaId: {}", qnaId);
             return true;
@@ -211,7 +211,7 @@ public class QnaService {
      * @param qnaId QnA ID
      * @return QnA 정보 (Optional)
      */
-    public Optional<Qna> getQna(String qnaId) {
+    public Optional<Generation> getQna(String qnaId) {
         log.info("getQna - qnaId: {}", qnaId);
         return qnaRepository.findById(qnaId);
     }
@@ -222,7 +222,7 @@ public class QnaService {
      * @param traceId 트레이스 ID
      * @return QnA 목록
      */
-    public List<Qna> getQnasByTraceId(String traceId) {
+    public List<Generation> getQnasByTraceId(String traceId) {
         log.info("getQnasByTraceId - traceId: {}", traceId);
         return qnaRepository.findByTraceIdOrderByQuestionTimestampAsc(traceId);
     }
@@ -233,7 +233,7 @@ public class QnaService {
      * @param model 모델명
      * @return QnA 목록
      */
-    public List<Qna> getQnasByModel(String model) {
+    public List<Generation> getQnasByModel(String model) {
         log.info("getQnasByModel - model: {}", model);
         return qnaRepository.findByModel(model);
     }
@@ -243,7 +243,7 @@ public class QnaService {
      *
      * @return 답변이 있는 QnA 목록
      */
-    public List<Qna> getQnasWithAnswer() {
+    public List<Generation> getQnasWithAnswer() {
         log.info("getQnasWithAnswer");
         return qnaRepository.findByAnswerIsNotNull();
     }
@@ -280,15 +280,15 @@ public class QnaService {
         return qnaRepository.countByAnswerIsNotNull();
     }
 
-    /**
-     * 평균 검색 시간 조회
-     *
-     * @return 평균 검색 시간
-     */
-    public BigDecimal getAverageRetrieveTime() {
-        log.info("getAverageRetrieveTime");
-        return qnaRepository.getAverageRetrieveTime();
-    }
+//    /**
+//     * 평균 검색 시간 조회
+//     *
+//     * @return 평균 검색 시간
+//     */
+//    public BigDecimal getAverageRetrieveTime() {
+//        log.info("getAverageRetrieveTime");
+//        return qnaRepository.getAverageRetrieveTime();
+//    }
 
     private String getCurrentChainId() {
         try {

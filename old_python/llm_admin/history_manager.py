@@ -37,11 +37,11 @@ def get_history(
         WITH latest_chains AS (
             SELECT {selected_columns}, c.id as chain_id, c.chain_start
             FROM state s
-            JOIN trace t ON s.trace_id = t.id
-            JOIN "chain" c ON t.chain_id = c.id
+            JOIN node t ON s.trace_id = t.id
+            JOIN "workflow" c ON t.chain_id = c.id
             WHERE c.conversation_id = (
                 SELECT conversation_id 
-                FROM "chain" 
+                FROM "workflow" 
                 WHERE id = %s
             )
             AND {node_type_condition}
@@ -85,7 +85,7 @@ def get_history(
 def get_nth_history(chain_id: str, column: str, n: int = 1) -> Any:
     """Get the nth most recent history for a given chain_id and column.
     Args:
-        chain_id: The chain ID to get history for
+        chain_id: The workflow ID to get history for
         column: The column to retrieve from state table
         n: The position from most recent (1 = most recent, 2 = second most recent, etc.)
     Returns:
@@ -95,11 +95,11 @@ def get_nth_history(chain_id: str, column: str, n: int = 1) -> Any:
     query = f"""
     SELECT s.{column}
     FROM state s
-    JOIN trace t ON s.trace_id = t.id
-    JOIN "chain" c ON t.chain_id = c.id
+    JOIN node t ON s.trace_id = t.id
+    JOIN "workflow" c ON t.chain_id = c.id
     WHERE c.conversation_id = (
         SELECT conversation_id 
-        FROM "chain" 
+        FROM "workflow" 
         WHERE id = %s
     )
     AND s.{column} IS NOT NULL

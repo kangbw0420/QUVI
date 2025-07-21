@@ -195,9 +195,9 @@ async def process_natural_language(request: Input, websocket: WebSocket = None) 
         if chain_id:
             try:
                 ChainManager.mark_chain_error(chain_id, str(e))
-                logger.info(f"Marked chain {chain_id} as error")
+                logger.info(f"Marked workflow {chain_id} as error")
             except Exception as chain_error:
-                logger.error(f"Error marking chain error: {str(chain_error)}")
+                logger.error(f"Error marking workflow error: {str(chain_error)}")
 
         error_response = ErrorHandler.format_error_response(e)
         return error_response

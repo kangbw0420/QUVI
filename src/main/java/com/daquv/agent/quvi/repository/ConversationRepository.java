@@ -1,6 +1,6 @@
 package com.daquv.agent.quvi.repository;
 
-import com.daquv.agent.quvi.entity.Conversation;
+import com.daquv.agent.quvi.entity.Session;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,17 +10,24 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ConversationRepository extends JpaRepository<Conversation, Long> {
+public interface ConversationRepository extends JpaRepository<Session, String> {
 
     /**
      * 사용자 ID로 대화 목록 조회 (최신순)
      */
-    List<Conversation> findByUserIdOrderByConversationStartDesc(String userId);
+    List<Session> findByUserIdOrderByConversationStartDesc(String userId);
 
     /**
-     * 대화 ID로 대화 조회
+     * 세션 ID로 대화 조회 (conversationId -> sessionId로 변경)
      */
-    Optional<Conversation> findByConversationId(String conversationId);
+    Optional<Session> findBySessionId(String sessionId);
+
+    /**
+     * 대화 ID로 대화 조회 (별칭 메서드 - 기존 코드 호환성을 위해)
+     */
+    default Optional<Session> findByConversationId(String conversationId) {
+        return findBySessionId(conversationId);
+    }
 
     /**
      * 사용자 ID로 대화 존재 여부 확인
@@ -30,7 +37,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     /**
      * 대화 상태로 대화 목록 조회
      */
-    List<Conversation> findByConversationStatus(Conversation.ConversationStatus status);
+    List<Session> findByConversationStatus(Session.SessionStatus status);
 
     /**
      * 사용자별 대화 수 조회
@@ -40,7 +47,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     /**
      * 특정 기간 동안의 대화 목록 조회
      */
-    @Query("SELECT c FROM Conversation c WHERE c.conversationStart BETWEEN :startDate AND :endDate")
-    List<Conversation> findByConversationStartBetween(@Param("startDate") java.time.LocalDateTime startDate,
-                                                     @Param("endDate") java.time.LocalDateTime endDate);
-} 
+    @Query("SELECT s FROM Session s WHERE s.conversationStart BETWEEN :startDate AND :endDate")
+    List<Session> findByConversationStartBetween(@Param("startDate") java.time.LocalDateTime startDate,
+                                                 @Param("endDate") java.time.LocalDateTime endDate);
+}

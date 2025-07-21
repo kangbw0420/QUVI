@@ -1,7 +1,7 @@
 package com.daquv.agent.quvi.llmadmin;
 
 import com.daquv.agent.entity.State;
-import com.daquv.agent.quvi.entity.Chain;
+import com.daquv.agent.quvi.entity.Workflow;
 import com.daquv.agent.repository.StateRepository;
 import com.daquv.agent.quvi.repository.ChainRepository;
 import com.daquv.agent.quvi.repository.ConversationRepository;
@@ -146,7 +146,7 @@ public class HistoryService {
         
         try {
             // 현재 체인의 conversation_id 조회
-            Chain currentChain = chainRepository.findById(chainId)
+            Workflow currentWorkflow = chainRepository.findById(chainId)
                     .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + chainId));
             
             // conversation_id를 직접 조회하는 쿼리 사용

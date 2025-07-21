@@ -15,7 +15,7 @@ public interface BaseStateRepository<T extends BaseState> extends JpaRepository<
     /**
      * 트레이스 ID로 상태 목록 조회
      */
-    @Query("SELECT s FROM State s WHERE s.trace.id = :traceId ORDER BY s.id ASC")
+    @Query("SELECT s FROM State s WHERE s.node.nodeId = :traceId ORDER BY s.id ASC")
     List<T> findByTraceIdOrderByIdAsc(@Param("traceId") String traceId);
 
     /**
@@ -39,7 +39,7 @@ public interface BaseStateRepository<T extends BaseState> extends JpaRepository<
     /**
      * 상태 ID로 상태 조회 (트레이스 정보 포함)
      */
-    @Query("SELECT s FROM State s JOIN FETCH s.trace WHERE s.id = :stateId")
+    @Query("SELECT s FROM State s JOIN FETCH s.node WHERE s.id = :stateId")
     Optional<T> findByIdWithTrace(@Param("stateId") Long stateId);
 
     /**

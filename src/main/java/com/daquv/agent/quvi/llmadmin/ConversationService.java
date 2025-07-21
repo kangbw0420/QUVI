@@ -1,7 +1,8 @@
 package com.daquv.agent.quvi.llmadmin;
 
-import com.daquv.agent.quvi.entity.Conversation;
+import com.daquv.agent.quvi.entity.Session;
 import com.daquv.agent.quvi.repository.ConversationRepository;
+import com.daquv.agent.quvi.repository.UsersRepository;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import org.slf4j.Logger;
@@ -23,12 +24,15 @@ public class ConversationService {
 
     private static final Logger log = LoggerFactory.getLogger(ConversationService.class);
     private final ConversationRepository conversationRepository;
+    private final UsersRepository usersRepository;
 
     @Autowired
     private RequestProfiler requestProfiler;
 
-    public ConversationService(ConversationRepository conversationRepository) {
+    public ConversationService(ConversationRepository conversationRepository,
+                               UsersRepository usersRepository) {
         this.conversationRepository = conversationRepository;
+        this.usersRepository = usersRepository;
     }
 
     /**
@@ -39,7 +43,7 @@ public class ConversationService {
 
         try {
             return conversationRepository.findByConversationId(conversationId)
-                    .map(conversation -> Conversation.ConversationStatus.active.equals(conversation.getConversationStatus()))
+                    .map(conversation -> Session.SessionStatus.active.equals(conversation.getConversationStatus()))
                     .orElse(false);
         } catch (Exception e) {
             log.error("Error checking conversation ID: {}", conversationId, e);
@@ -54,6 +58,9 @@ public class ConversationService {
     public String makeConversationId(String userId) {
         log.info("makeConversationId start - userId: {}", userId);
 
+        String companyId = getCompanyIdByUserId(userId);
+        log.debug("Retrieved companyId: {} for userId: {}", companyId, userId);
+
         String chainId = getCurrentChainId();
         if (chainId != null) {
             DatabaseProfilerAspect.setChainId(chainId);
@@ -62,8 +69,8 @@ public class ConversationService {
 
         try {
             String conversationId = UUID.randomUUID().toString();
-            Conversation conversation = Conversation.create(userId, conversationId);
-            conversationRepository.save(conversation);
+            Session session = Session.create(userId, conversationId, companyId);
+            conversationRepository.save(session);
             log.info("makeConversationId end - conversationId: {}", conversationId);
             return conversationId;
         } catch (Exception e) {
@@ -80,10 +87,10 @@ public class ConversationService {
         log.info("endConversation start - conversationId: {}", conversationId);
 
         try {
-            Conversation conversation = conversationRepository.findByConversationId(conversationId)
+            Session session = conversationRepository.findByConversationId(conversationId)
                     .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
-            conversation.endConversation();
-            conversationRepository.save(conversation);
+            session.endConversation();
+            conversationRepository.save(session);
             log.info("endConversation end - conversationId: {}", conversationId);
         } catch (Exception e) {
             log.error("Error ending conversation: {}", conversationId, e);
@@ -95,14 +102,14 @@ public class ConversationService {
      * 대화 상태 업데이트
      */
     @Transactional
-    public void updateConversationStatus(String conversationId, Conversation.ConversationStatus status) {
+    public void updateConversationStatus(String conversationId, Session.SessionStatus status) {
         log.info("updateConversationStatus start - conversationId: {}, status: {}", conversationId, status);
 
         try {
-            Conversation conversation = conversationRepository.findByConversationId(conversationId)
+            Session session = conversationRepository.findByConversationId(conversationId)
                     .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
-            conversation.updateStatus(status);
-            conversationRepository.save(conversation);
+            session.updateStatus(status);
+            conversationRepository.save(session);
             log.info("updateConversationStatus end - conversationId: {}", conversationId);
         } catch (Exception e) {
             log.error("Error updating conversation status: {}", conversationId, e);
@@ -113,7 +120,7 @@ public class ConversationService {
     /**
      * 대화 조회
      */
-    public Optional<Conversation> getConversation(String conversationId) {
+    public Optional<Session> getConversation(String conversationId) {
         log.info("getConversation - conversationId: {}", conversationId);
         return conversationRepository.findByConversationId(conversationId);
     }
@@ -138,5 +145,18 @@ public class ConversationService {
             log.debug("getCurrentChainId 실패: {}", e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * userId로 companyId 조회 (성능 최적화된 버전)
+     */
+    private String getCompanyIdByUserId(String userId) {
+        log.debug("getCompanyIdByUserId start - userId: {}", userId);
+
+        return usersRepository.findCompanyIdByUserId(userId)
+                .orElseThrow(() -> {
+                    log.error("User not found or company not assigned for userId: {}", userId);
+                    return new IllegalArgumentException("User not found or company not assigned: " + userId);
+                });
     }
 }

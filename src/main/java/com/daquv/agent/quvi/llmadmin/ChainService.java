@@ -1,7 +1,7 @@
 package com.daquv.agent.quvi.llmadmin;
 
-import com.daquv.agent.quvi.entity.Chain;
-import com.daquv.agent.quvi.entity.Conversation;
+import com.daquv.agent.quvi.entity.Workflow;
+import com.daquv.agent.quvi.entity.Session;
 import com.daquv.agent.quvi.repository.ChainRepository;
 import com.daquv.agent.quvi.repository.ConversationRepository;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
@@ -12,8 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -50,12 +48,12 @@ public class ChainService {
         long startTime = System.currentTimeMillis();
         try {
             // Conversation 조회
-            Conversation conversation = conversationRepository.findByConversationId(conversationId)
+            Session session = conversationRepository.findByConversationId(conversationId)
                     .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
 
             // Chain 생성
-            Chain chain = Chain.create(chainId, conversation, userQuestion, Chain.ChainStatus.active);
-            chainRepository.save(chain);
+            Workflow workflow = Workflow.create(chainId, session, userQuestion, Workflow.WorkflowStatus.active);
+            chainRepository.save(workflow);
 
             log.info("createChain end - chainId: {}", chainId);
             return chainId;
@@ -79,11 +77,11 @@ public class ChainService {
 
         long startTime = System.currentTimeMillis();
         try {
-            Chain chain = chainRepository.findById(chainId)
+            Workflow workflow = chainRepository.findById(chainId)
                     .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + chainId));
 
-            chain.completeChain(finalAnswer);
-            chainRepository.save(chain);
+            workflow.completeChain(finalAnswer);
+            chainRepository.save(workflow);
 
             log.info("completeChain end - chainId: {}", chainId);
             return true;
@@ -105,11 +103,11 @@ public class ChainService {
     public void markChainError(String chainId, String errorMessage, String errorLog) {
         long startTime = System.currentTimeMillis();
         try {
-            Chain chain = chainRepository.findById(chainId)
+            Workflow workflow = chainRepository.findById(chainId)
                     .orElseThrow(() -> new RuntimeException("Chain not found: " + chainId));
 
-            chain.markError(errorMessage, errorLog);
-            chainRepository.saveAndFlush(chain); // 즉시 DB에 반영
+            workflow.markError(errorMessage, errorLog);
+            chainRepository.saveAndFlush(workflow); // 즉시 DB에 반영
 
             log.info("✅ 체인 에러 상태 저장 완료 - chainId: {}", chainId);
         } catch (Exception e) {
@@ -125,11 +123,10 @@ public class ChainService {
     public void updateChainLog(String chainId, String chainLogText) {
         long startTime = System.currentTimeMillis();
         try {
-            Chain chain = chainRepository.findById(chainId)
+            Workflow workflow = chainRepository.findById(chainId)
                     .orElseThrow(() -> new RuntimeException("Chain not found: " + chainId));
 
-            chain.addChainLog(chainLogText);
-            chainRepository.saveAndFlush(chain); // 즉시 DB에 반영
+            chainRepository.saveAndFlush(workflow); // 즉시 DB에 반영
 
             log.info("✅ 체인 로그 업데이트 완료 - chainId: {}", chainId);
         } catch (Exception e) {

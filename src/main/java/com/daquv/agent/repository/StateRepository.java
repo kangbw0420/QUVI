@@ -13,29 +13,29 @@ import java.util.Optional;
 public interface StateRepository extends BaseStateRepository<State> {
 
     /**
-     * 현재 trace와 같은 chain_id를 가진 직전 trace의 state를 조회
+     * 현재 trace와 같은 workflow_id를 가진 직전 trace의 state를 조회
      */
     @Query("SELECT s FROM State s " +
-           "JOIN s.trace t " +
-           "WHERE t.chain.id = (" +
-           "    SELECT tr.chain.id " +
-           "    FROM Trace tr " +
-           "    WHERE tr.id = :traceId" +
-           ") " +
-           "AND t.id != :traceId " +
-           "ORDER BY t.traceStart DESC, s.id DESC")
+            "JOIN s.node t " +
+            "WHERE t.workflow.workflowId = (" +
+            "    SELECT tr.workflow.workflowId " +
+            "    FROM Node tr " +
+            "    WHERE tr.nodeId = :traceId" +
+            ") " +
+            "AND t.nodeId != :traceId " +
+            "ORDER BY t.nodeStart DESC, s.id DESC")
     List<State> findLatestStatesByTraceId(@Param("traceId") String traceId);
 
     /**
      * 트레이스 ID로 최신 상태 조회
      */
-    @Query("SELECT s FROM State s WHERE s.trace.id = :traceId ORDER BY s.id DESC")
+    @Query("SELECT s FROM State s WHERE s.node.nodeId = :traceId ORDER BY s.id DESC")
     Optional<State> findLatestByTraceId(@Param("traceId") String traceId);
 
     /**
      * 체인 ID로 상태 목록 조회
      */
-    @Query("SELECT s FROM State s JOIN s.trace t WHERE t.chain.id = :chainId ORDER BY t.traceStart ASC")
+    @Query("SELECT s FROM State s JOIN s.node t WHERE t.workflow.workflowId = :chainId ORDER BY t.nodeStart ASC")
     List<State> findByChainId(@Param("chainId") String chainId);
 
     /**

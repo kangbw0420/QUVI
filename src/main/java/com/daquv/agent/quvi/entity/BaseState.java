@@ -22,7 +22,7 @@ public abstract class BaseState {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trace_id", nullable = false)
-    protected Trace trace;
+    protected Node node;
 
     @Column(name = "user_question", columnDefinition = "TEXT")
     protected String userQuestion;

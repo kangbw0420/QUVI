@@ -1,7 +1,7 @@
 package com.daquv.agent.quvi.llmadmin;
 
 import com.daquv.agent.entity.State;
-import com.daquv.agent.quvi.entity.Trace;
+import com.daquv.agent.quvi.entity.Node;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.repository.StateRepository;
@@ -97,13 +97,13 @@ public class StateService {
             newState.putAll(updates);
 
             // Trace 조회
-            Trace trace = traceRepository.findById(traceId)
+            Node node = traceRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
 
-            log.info("Trace 조회 완료 - trace: {}", trace.getId());
+            log.info("Trace 조회 완료 - trace: {}", node.getNodeId());
 
             State state = State.builder()
-                    .trace(trace)
+                    .node(node)
                     .userQuestion((String) newState.get("userQuestion"))
                     .selectedTable((String) newState.get("selectedTable"))
                     .sqlQuery((String) newState.get("sqlQuery"))

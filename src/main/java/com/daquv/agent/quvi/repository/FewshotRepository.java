@@ -13,31 +13,61 @@ import java.util.Optional;
 public interface FewshotRepository extends JpaRepository<Fewshot, String> {
 
     /**
-     * QnA ID로 Fewshot 목록 조회 (순서대로)
+     * QnA ID로 Fewshot 목록 조회 (순서대로) - qna -> generation으로 수정
      */
-    List<Fewshot> findByQnaIdOrderByOrderSeqAsc(String qnaId);
+    @Query("SELECT f FROM Fewshot f WHERE f.generation.id = :qnaId ORDER BY f.orderSeq ASC")
+    List<Fewshot> findByQnaIdOrderByOrderSeqAsc(@Param("qnaId") String qnaId);
 
     /**
-     * Fewshot ID로 Fewshot 조회 (QnA 정보 포함)
+     * 기존 코드 호환성을 위한 별칭 메서드
      */
-    @Query("SELECT f FROM Fewshot f JOIN FETCH f.qna WHERE f.id = :fewshotId")
+    default List<Fewshot> findByGenerationIdOrderByOrderSeqAsc(String generationId) {
+        return findByQnaIdOrderByOrderSeqAsc(generationId);
+    }
+
+    /**
+     * Fewshot ID로 Fewshot 조회 (QnA 정보 포함) - qna -> generation으로 수정
+     */
+    @Query("SELECT f FROM Fewshot f JOIN FETCH f.generation WHERE f.id = :fewshotId")
     Optional<Fewshot> findByIdWithQna(@Param("fewshotId") String fewshotId);
+
+    /**
+     * 기존 코드 호환성을 위한 별칭 메서드
+     */
+    default Optional<Fewshot> findByIdWithGeneration(String fewshotId) {
+        return findByIdWithQna(fewshotId);
+    }
 
     /**
      * 특정 기간 동안의 Fewshot 목록 조회
      */
     @Query("SELECT f FROM Fewshot f WHERE f.createdAt BETWEEN :startDate AND :endDate")
     List<Fewshot> findByCreatedAtBetween(@Param("startDate") java.time.LocalDateTime startDate,
-                                        @Param("endDate") java.time.LocalDateTime endDate);
+                                         @Param("endDate") java.time.LocalDateTime endDate);
 
     /**
-     * QnA별 Fewshot 개수 조회
+     * QnA별 Fewshot 개수 조회 - qna -> generation으로 수정
      */
-    long countByQnaId(String qnaId);
+    @Query("SELECT COUNT(f) FROM Fewshot f WHERE f.generation.id = :qnaId")
+    long countByQnaId(@Param("qnaId") String qnaId);
 
     /**
-     * 특정 QnA의 Fewshot 순서별 개수 조회
+     * 기존 코드 호환성을 위한 별칭 메서드
      */
-    @Query("SELECT f.orderSeq, COUNT(f) FROM Fewshot f WHERE f.qna.id = :qnaId GROUP BY f.orderSeq")
+    default long countByGenerationId(String generationId) {
+        return countByQnaId(generationId);
+    }
+
+    /**
+     * 특정 QnA의 Fewshot 순서별 개수 조회 - qna -> generation으로 수정
+     */
+    @Query("SELECT f.orderSeq, COUNT(f) FROM Fewshot f WHERE f.generation.id = :qnaId GROUP BY f.orderSeq")
     List<Object[]> countByQnaIdGroupByOrderSeq(@Param("qnaId") String qnaId);
-} 
+
+    /**
+     * 기존 코드 호환성을 위한 별칭 메서드
+     */
+    default List<Object[]> countByGenerationIdGroupByOrderSeq(String generationId) {
+        return countByQnaIdGroupByOrderSeq(generationId);
+    }
+}

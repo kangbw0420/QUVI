@@ -1,7 +1,7 @@
 package com.daquv.agent.quvi.llmadmin;
 
-import com.daquv.agent.quvi.entity.Chain;
-import com.daquv.agent.quvi.entity.Trace;
+import com.daquv.agent.quvi.entity.Node;
+import com.daquv.agent.quvi.entity.Workflow;
 import com.daquv.agent.quvi.repository.ChainRepository;
 import com.daquv.agent.quvi.repository.TraceRepository;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
@@ -52,17 +52,16 @@ public class TraceService {
             String traceId = UUID.randomUUID().toString();
 
             // Chain 조회
-            Chain chain = chainRepository.findById(chainId)
+            Workflow workflow = chainRepository.findById(chainId)
                     .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + chainId));
 
             // Trace 생성
-            Trace trace = new Trace();
-            trace.setId(traceId);
-            trace.setChain(chain);
-            trace.setNodeType(nodeType);
-            trace.setTraceStatus(Trace.TraceStatus.active);
+            Node node = new Node();
+            node.setNodeId(traceId);
+            node.setWorkflow(workflow);
+            node.setNodeStatus(Node.NodeStatus.active);
 
-            traceRepository.save(trace);
+            traceRepository.save(node);
 
             log.info("createTrace end - traceId: {}", traceId);
             return traceId;
@@ -86,13 +85,13 @@ public class TraceService {
         String chainId = null;
         long startTime = System.currentTimeMillis();
         try {
-            Trace trace = traceRepository.findById(traceId)
+            Node node = traceRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
 
-            chainId = trace.getChain().getId();
+            chainId = node.getWorkflow().getWorkflowId();
 
-            trace.completeTrace();
-            traceRepository.save(trace);
+            node.completeTrace();
+            traceRepository.save(node);
 
             log.info("completeTrace end - traceId: {}", traceId);
             return true;
@@ -115,14 +114,14 @@ public class TraceService {
 
         String chainId = null;
         try {
-            Trace trace = traceRepository.findById(traceId)
+            Node node = traceRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
 
-            chainId = trace.getChain().getId();
+            chainId = node.getWorkflow().getWorkflowId();
 
-            trace.completeTrace(); // 종료 시간 기록
-            trace.updateStatus(Trace.TraceStatus.error); // 상태를 error로 변경
-            traceRepository.save(trace);
+            node.completeTrace(); // 종료 시간 기록
+            node.updateStatus(Node.NodeStatus.error); // 상태를 error로 변경
+            traceRepository.save(node);
 
             log.info("markTraceError end - traceId: {}", traceId);
             return true;
@@ -139,17 +138,17 @@ public class TraceService {
      * @param traceId 트레이스 ID
      * @return 트레이스 정보 (Optional)
      */
-    public Optional<Trace> getTrace(String traceId) {
+    public Optional<Node> getTrace(String traceId) {
         log.info("getTrace - traceId: {}", traceId);
 
         String chainId = null;
         long startTime = System.currentTimeMillis();
 
-            Optional<Trace> traceOpt = traceRepository.findById(traceId);
+            Optional<Node> traceOpt = traceRepository.findById(traceId);
 
             // chainId 추출 (trace가 존재할 때만)
             if (traceOpt.isPresent()) {
-                chainId = traceOpt.get().getChain().getId();
+                chainId = traceOpt.get().getWorkflow().getWorkflowId();
             }
 
             return traceOpt;
@@ -162,12 +161,12 @@ public class TraceService {
      * @param chainId 체인 ID
      * @return 트레이스 목록
      */
-    public List<Trace> getTracesByChainId(String chainId) {
+    public List<Node> getTracesByChainId(String chainId) {
         log.info("getTracesByChainId - chainId: {}", chainId);
 
         long startTime = System.currentTimeMillis();
 
-            return traceRepository.findByChainIdOrderByTraceStartAsc(chainId);
+            return traceRepository.findByWorkflowIdOrderByNodeStartAsc(chainId);
 
     }
 
@@ -177,10 +176,10 @@ public class TraceService {
      * @param status 트레이스 상태
      * @return 트레이스 목록
      */
-    public List<Trace> getTracesByStatus(Trace.TraceStatus status) {
+    public List<Node> getTracesByStatus(Node.NodeStatus status) {
         log.info("getTracesByStatus - status: {}", status);
 
-            return traceRepository.findByTraceStatus(status);
+            return traceRepository.findByNodeStatus(status);
     }
 
     /**
@@ -189,12 +188,12 @@ public class TraceService {
      * @param nodeType 노드 타입
      * @return 트레이스 목록
      */
-    public List<Trace> getTracesByNodeType(String nodeType) {
+    public List<Node> getTracesByNodeType(String nodeType) {
         log.info("getTracesByNodeType - nodeType: {}", nodeType);
 
         // 이 메서드는 특정 chainId와 연관되지 않으므로 null로 처리
 
-            return traceRepository.findByNodeType(nodeType);
+            return traceRepository.findByNodeName(nodeType);
 
     }
 }

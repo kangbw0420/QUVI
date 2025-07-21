@@ -26,7 +26,7 @@ public class Fewshot {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "qna_id", nullable = false)
-    private Qna qna;
+    private Generation generation;
 
     @Column(name = "fewshot_human", columnDefinition = "TEXT")
     private String fewshotHuman;
