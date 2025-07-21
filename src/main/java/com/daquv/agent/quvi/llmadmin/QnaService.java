@@ -2,10 +2,10 @@ package com.daquv.agent.quvi.llmadmin;
 
 import com.daquv.agent.quvi.entity.Node;
 import com.daquv.agent.quvi.entity.Generation;
-import com.daquv.agent.quvi.entity.Fewshot;
+//import com.daquv.agent.quvi.entity.Fewshot;
 import com.daquv.agent.quvi.repository.QnaRepository;
 import com.daquv.agent.quvi.repository.TraceRepository;
-import com.daquv.agent.quvi.repository.FewshotRepository;
+//import com.daquv.agent.quvi.repository.FewshotRepository;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import org.slf4j.Logger;
@@ -30,16 +30,15 @@ public class QnaService {
     private static final Logger log = LoggerFactory.getLogger(QnaService.class);
     private final QnaRepository qnaRepository;
     private final TraceRepository traceRepository;
-    private final FewshotRepository fewshotRepository;
+//    private final FewshotRepository fewshotRepository;
 
     @Autowired
     private RequestProfiler requestProfiler;
 
-    public QnaService(QnaRepository qnaRepository, TraceRepository traceRepository,
-                      FewshotRepository fewshotRepository) {
+    public QnaService(QnaRepository qnaRepository, TraceRepository traceRepository
+                    ) {
         this.qnaRepository = qnaRepository;
         this.traceRepository = traceRepository;
-        this.fewshotRepository = fewshotRepository;
     }
 
     /**
@@ -103,22 +102,25 @@ public class QnaService {
 
         long startTime = System.currentTimeMillis();
         try {
-            String fewshotId = UUID.randomUUID().toString();
-
-            // Qna 조회
+            // Qna(Generation) 존재 여부 확인
             Generation generation = qnaRepository.findById(qnaId)
                     .orElseThrow(() -> new IllegalArgumentException("QnA not found: " + qnaId));
 
-            // Fewshot 생성
-            Fewshot fewshot = new Fewshot();
-            fewshot.setId(fewshotId);
-            fewshot.setGeneration(generation);
-            fewshot.setFewshotRetrieved(retrieved);
-            fewshot.setFewshotHuman(human);
-            fewshot.setFewshotAi(ai);
-            fewshot.setOrderSeq(order);
+            log.debug("Generation found: {}", generation.getId());
 
-            fewshotRepository.save(fewshot);
+            String fewshotId = UUID.randomUUID().toString();
+
+//            // Fewshot 생성
+//            Fewshot fewshot = Fewshot.builder()
+//                    .id(fewshotId)
+//                    .generation(generation)
+//                    .fewshotRetrieved(retrieved)
+//                    .fewshotHuman(human)
+//                    .fewshotAi(ai)
+//                    .orderSeq(order)
+//                    .build();
+//
+//            fewshotRepository.save(fewshot);
 
             log.info("recordFewshot end - fewshotId: {}", fewshotId);
             return true;
@@ -247,17 +249,17 @@ public class QnaService {
         log.info("getQnasWithAnswer");
         return qnaRepository.findByAnswerIsNotNull();
     }
-
-    /**
-     * QnA ID로 Fewshot 목록 조회
-     *
-     * @param qnaId QnA ID
-     * @return Fewshot 목록
-     */
-    public List<Fewshot> getFewshotsByQnaId(String qnaId) {
-        log.info("getFewshotsByQnaId - qnaId: {}", qnaId);
-        return fewshotRepository.findByQnaIdOrderByOrderSeqAsc(qnaId);
-    }
+//
+//    /**
+//     * QnA ID로 Fewshot 목록 조회
+//     *
+//     * @param qnaId QnA ID
+//     * @return Fewshot 목록
+//     */
+//    public List<Fewshot> getFewshotsByQnaId(String qnaId) {
+//        log.info("getFewshotsByQnaId - qnaId: {}", qnaId);
+//        return fewshotRepository.findByQnaIdOrderByOrderSeqAsc(qnaId);
+//    }
 
     /**
      * 모델별 QnA 수 조회

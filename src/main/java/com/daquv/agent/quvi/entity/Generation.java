@@ -52,8 +52,8 @@ public class Generation {
     @Column(name = "token_usage", columnDefinition = "TEXT")
     private String retrieveTime;
 
-    @OneToMany(mappedBy = "generation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Fewshot> fewshots = new ArrayList<>();
+//    @OneToMany(mappedBy = "generation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+//    private List<Fewshot> fewshots = new ArrayList<>();
 
     /**
      * 답변 설정

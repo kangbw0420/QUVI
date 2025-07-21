@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -33,6 +34,7 @@ public class Node {
     @JoinColumn(name = "workflow_id")
     private Workflow workflow;
 
+    @Type(type = "com.vladmihalcea.hibernate.type.json.JsonBinaryType")
     @Column(name = "node_state_json", columnDefinition = "jsonb")
     private String nodeStateJson;
 
