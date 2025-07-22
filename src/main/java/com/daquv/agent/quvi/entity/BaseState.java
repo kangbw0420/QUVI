@@ -21,7 +21,7 @@ public abstract class BaseState {
     protected Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trace_id", nullable = false)
+    @JoinColumn(name = "node_id", nullable = false)
     protected Node node;
 
     @Column(name = "user_question", columnDefinition = "TEXT")
