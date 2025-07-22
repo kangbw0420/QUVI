@@ -26,13 +26,13 @@ public class WorkflowExecutionContext {
     /**
      * 워크플로우 실행 (State를 노드들에게 직접 전달)
      */
-    public void executeWorkflow(String chainId) {
-        WorkflowState state = stateManager.getState(chainId);
+    public void executeWorkflow(String workflowId) {
+        WorkflowState state = stateManager.getState(workflowId);
         if (state == null) {
-            throw new IllegalStateException("Chain ID에 해당하는 State를 찾을 수 없습니다: " + chainId);
+            throw new IllegalStateException("Workflow ID에 해당하는 State를 찾을 수 없습니다: " + workflowId);
         }
 
-        log.info("=== 워크플로우 실행 시작 - chainId: {} ===", chainId);
+        log.info("=== 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
 
         try {
             // 0. NextPage 처리
@@ -157,19 +157,19 @@ public class WorkflowExecutionContext {
             }
 
             // 변경된 State 저장
-            stateManager.updateState(chainId, state);
+            stateManager.updateState(workflowId, state);
 
-            log.info("=== 워크플로우 실행 완료 - chainId: {} ===", chainId);
+            log.info("=== 워크플로우 실행 완료 - workflowId: {} ===", workflowId);
 
         } catch (Exception e) {
-            log.error("워크플로우 실행 실패 - chainId: {}", chainId, e);
+            log.error("워크플로우 실행 실패 - workflowId: {}", workflowId, e);
 
             state.setQueryResultStatus("failed");
             state.setSqlError("Workflow 실행 실패: " + e.getMessage());
             state.setQueryError(true);
             state.setFinalAnswer("처리 중 오류가 발생했습니다.");
 
-            stateManager.updateState(chainId, state);
+            stateManager.updateState(workflowId, state);
             throw e;
         }
     }

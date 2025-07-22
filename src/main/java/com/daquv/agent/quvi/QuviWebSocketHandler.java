@@ -87,7 +87,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
     private Map<String, Object> processWebSocketRequest(QuviRequestDto request, WebSocketSession session) {
         log.info("😊 WebSocket Quvi 요청 처리 시작: {}", request);
         
-        String chainId = null;
+        String workflowId = null;
         long startTime = System.currentTimeMillis();
         
         try {
@@ -96,68 +96,68 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             log.info("💬 세션 ID: {}", conversationId);
 
             // 2. Chain 생성 (각 요청마다 독립적)
-            chainId = workflowService.createWorkflow(conversationId, request.getUserQuestion());
-            log.info("🔗 체인 생성: {}", chainId);
+            workflowId = workflowService.createWorkflow(conversationId, request.getUserQuestion());
+            log.info("🔗 체인 생성: {}", workflowId);
             
             // 3. 프로파일링 시작
-            requestProfiler.startRequest(chainId);
+            requestProfiler.startRequest(workflowId);
             
             // 4. 로그 컨텍스트 생성
-            ChainLogContext logContext = chainLogManager.createChainLog(chainId, request.getUserId(), request.getUserQuestion());
+            ChainLogContext logContext = chainLogManager.createChainLog(workflowId, request.getUserId(), request.getUserQuestion());
             logContext.setConversationId(conversationId);
             logContext.setCompanyId(request.getCompanyId());
 
-            chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.INFO,
+            chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.INFO,
                     String.format("😊 WebSocket Quvi 요청 수신 - userId: %s, question: %s",
                             request.getUserId(), request.getUserQuestion()));
 
-            chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.INFO,
-                    String.format("🔗 체인 생성 완료: %s, 세션 ID: %s", chainId, conversationId));
+            chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.INFO,
+                    String.format("🔗 체인 생성 완료: %s, 세션 ID: %s", workflowId, conversationId));
 
             // 5. 추천 질문 검색
-            List<String> recommendList = getRecommendations(request.getUserQuestion(), chainId);
+            List<String> recommendList = getRecommendations(request.getUserQuestion(), workflowId);
             
             // 6. State 생성 및 초기화
-            WorkflowState state = stateManager.createState(chainId);
-            initializeState(state, request, conversationId, chainId, session);
+            WorkflowState state = stateManager.createState(workflowId);
+            initializeState(state, request, conversationId, workflowId, session);
 
-            chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.DEBUG,
+            chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.DEBUG,
                     "🔄 워크플로우 상태 초기화 완료");
 
             // 7. 워크플로우 실행 (깔끔하게!)
-            chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.INFO,
+            chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.INFO,
                     "🚀 워크플로우 실행 시작");
 
             try {
-                workflowContext.executeWorkflow(chainId);
-                chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.INFO, "✅ 워크플로우 실행 완료");
+                workflowContext.executeWorkflow(workflowId);
+                chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.INFO, "✅ 워크플로우 실행 완료");
             } catch (Exception workflowError) {
-                chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.ERROR,
+                chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.ERROR,
                         String.format("❌ 워크플로우 실행 실패: %s", workflowError.getMessage()), workflowError);
 
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 workflowError.printStackTrace(pw);
-                chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.ERROR,
+                chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.ERROR,
                         String.format("Stack Trace:\n%s", sw.toString()));
 
                 throw workflowError;
             }
 
             // 8. 최종 결과 조회
-            WorkflowState finalState = stateManager.getState(chainId);
+            WorkflowState finalState = stateManager.getState(workflowId);
             
             // 9. Chain 완료
-            workflowService.completeWorkflow(chainId, finalState.getFinalAnswer());
+            workflowService.completeWorkflow(workflowId, finalState.getFinalAnswer());
             
             // 10. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
-            Map<String, Object> response = buildResponse(conversationId, chainId, recommendList, totalTime, finalState);
+            Map<String, Object> response = buildResponse(conversationId, workflowId, recommendList, totalTime, finalState);
             
             // 11. 정리
-            chainLogManager.completeWorkflow(chainId, true);
-            requestProfiler.clearProfile(chainId);
-            stateManager.removeState(chainId); // 요청 완료 후 즉시 정리
+            chainLogManager.completeWorkflow(workflowId, true);
+            requestProfiler.clearProfile(workflowId);
+            stateManager.removeState(workflowId); // 요청 완료 후 즉시 정리
             
             log.info("WebSocket 요청 처리 완료 - {}ms", totalTime);
             return response;
@@ -166,10 +166,10 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             log.error("❌ WebSocket 요청 처리 실패", e);
             
             // 정리
-            if (chainId != null) {
-                chainLogManager.completeWorkflow(chainId, false);
-                requestProfiler.clearProfile(chainId);
-                stateManager.removeState(chainId);
+            if (workflowId != null) {
+                chainLogManager.completeWorkflow(workflowId, false);
+                requestProfiler.clearProfile(workflowId);
+                stateManager.removeState(workflowId);
             }
             
             return buildErrorResponse(e.getMessage());
@@ -206,7 +206,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         }
     }
     
-    private void initializeState(WorkflowState state, QuviRequestDto request, String conversationId, String workflowId, WebSocketSession session) {
+    private void initializeState(WorkflowState state, QuviRequestDto request, String sessionId, String workflowId, WebSocketSession session) {
         state.setUserQuestion(request.getUserQuestion());
         state.setUserInfo(UserInfo.builder()
                 .userId(request.getUserId())
@@ -231,7 +231,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         
         // WebSocket 세션 설정
         state.setWebSocketSession(session);
-        log.info("🔄 워크플로우 상태 초기화 완료 - chainId: {}, conversationId: {}", workflowId, conversationId);
+        log.info("🔄 워크플로우 상태 초기화 완료 - workflowId: {}, sessionId: {}", workflowId, sessionId);
     }
     
     private Map<String, Object> buildResponse(String conversationId, String chainId, 

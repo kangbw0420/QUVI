@@ -41,46 +41,46 @@ public class ChainStateManager {
         chainStates.put(workflowId, state);
         stateTimestamps.put(workflowId, System.currentTimeMillis());
         
-        log.info("State 생성 - chainId: {}", workflowId);
+        log.info("State 생성 - workflowId: {}", workflowId);
         return state;
     }
     
     /**
      * State 조회
      */
-    public WorkflowState getState(String chainId) {
-        if (chainId == null) {
+    public WorkflowState getState(String workflowId) {
+        if (workflowId == null) {
             return null;
         }
         
         // 만료 체크
-        Long timestamp = stateTimestamps.get(chainId);
+        Long timestamp = stateTimestamps.get(workflowId);
         if (timestamp != null && (System.currentTimeMillis() - timestamp) > STATE_EXPIRY_MS) {
-            removeState(chainId);
+            removeState(workflowId);
             return null;
         }
         
-        return chainStates.get(chainId);
+        return chainStates.get(workflowId);
     }
     
     /**
      * State 업데이트
      */
-    public void updateState(String chainId, WorkflowState state) {
-        if (chainId != null && state != null) {
-            chainStates.put(chainId, state);
-            stateTimestamps.put(chainId, System.currentTimeMillis());
+    public void updateState(String workflowId, WorkflowState state) {
+        if (workflowId != null && state != null) {
+            chainStates.put(workflowId, state);
+            stateTimestamps.put(workflowId, System.currentTimeMillis());
         }
     }
     
     /**
      * State 제거
      */
-    public void removeState(String chainId) {
-        if (chainId != null) {
-            chainStates.remove(chainId);
-            stateTimestamps.remove(chainId);
-            log.debug("State 제거 - chainId: {}", chainId);
+    public void removeState(String workflowId) {
+        if (workflowId != null) {
+            chainStates.remove(workflowId);
+            stateTimestamps.remove(workflowId);
+            log.debug("State 제거 - workflowId: {}", workflowId);
         }
     }
     

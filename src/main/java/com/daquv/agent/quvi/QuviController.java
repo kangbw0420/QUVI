@@ -68,9 +68,9 @@ public class QuviController {
             workflowId = workflowService.createWorkflow(sessionId, request.getUserQuestion());
             log.info("🔗 체인 생성 완료: {}", workflowId);
 
-            httpRequest.setAttribute("chainId", workflowId);
-            httpRequest.setAttribute("X-Chain-Id", workflowId);
-            log.info("Request Attribute에 chainId 설정: {}", workflowId);
+            httpRequest.setAttribute("workflowId", workflowId);
+            httpRequest.setAttribute("X-Workflow-Id", workflowId);
+            log.info("Request Attribute에 workflowId 설정: {}", workflowId);
 
             // 3. 프로파일링 시작
             requestProfiler.startRequest(workflowId);
@@ -176,11 +176,11 @@ public class QuviController {
     /**
      * 각 노드별 실행 통계 로깅 (워크플로우 노드별)
      */
-    private void logNodeExecutionStatistics(String chainId, long totalTime) {
+    private void logNodeExecutionStatistics(String workflowId, long totalTime) {
         try {
-            Map<String, Object> profileData = requestProfiler.getProfile(chainId);
+            Map<String, Object> profileData = requestProfiler.getProfile(workflowId);
 
-            log.info("📊 ===== 워크플로우 노드별 실행 통계 (Chain ID: {}) =====", chainId);
+            log.info("📊 ===== 워크플로우 노드별 실행 통계 (Chain ID: {}) =====", workflowId);
             log.info("📊 전체 처리 시간: {}ms", totalTime);
 
             // 전체 타입별 요약 통계
@@ -241,7 +241,7 @@ public class QuviController {
                     log.info("📊 🔧 {} 노드 - 총 호출: {}회, 총 시간: {}ms, 평균: {:.2f}ms",
                             nodeId, totalCalls, totalTimeMs, avgTime);
 
-                    chainLogManager.addLog(chainId, "STATISTICS", LogLevel.INFO,
+                    chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
                             String.format("🔧 %s 노드 - 총 호출: %d회, 총 시간: %dms, 평균: %.2fms",
                                     nodeId, totalCalls, totalTimeMs, avgTime));
 
@@ -260,7 +260,7 @@ public class QuviController {
                             log.info("📊   └─ {} {}: {}회, {}ms, 평균 {:.2f}ms",
                                     typeIcon, type, typeCalls, typeTime, typeAvg);
 
-                            chainLogManager.addLog(chainId, "STATISTICS", LogLevel.INFO,
+                            chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
                                     String.format("    └─ %s %s: %d회, %dms, 평균 %.2fms",
                                             typeIcon, type, typeCalls, typeTime, typeAvg));
                         }
@@ -294,7 +294,7 @@ public class QuviController {
             log.info("📊 ⭐ 전체 요약 - 총 노드 호출: {}회, 프로파일된 시간: {}ms ({:.1f}%), 기타 처리 시간: {}ms",
                     totalCalls, totalProfiledTime, profiledPercentage, totalTime - totalProfiledTime);
 
-            chainLogManager.addLog(chainId, "STATISTICS", LogLevel.INFO,
+            chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
                     String.format("⭐ 전체 요약 - 총 노드 호출: %d회, 프로파일된 시간: %dms (%.1f%%), 기타 처리 시간: %dms",
                             totalCalls, totalProfiledTime, profiledPercentage, totalTime - totalProfiledTime));
 
@@ -354,16 +354,16 @@ public class QuviController {
     /**
      * 추천 질문 검색
      */
-    private List<String> getRecommendations(String userQuestion, String chainId) {
+    private List<String> getRecommendations(String userQuestion, String workflowId) {
         try {
-            List<String> recommendList = vectorRequest.getRecommend(userQuestion, 4, chainId);
+            List<String> recommendList = vectorRequest.getRecommend(userQuestion, 4, workflowId);
             log.info("📚 추천 질문 검색 완료: {}", recommendList);
-            chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.INFO,
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
                     String.format("📚 추천 질문 검색 완료: %d개", recommendList.size()));
             return recommendList;
         } catch (Exception e) {
             log.error("📚 추천 질문 검색 실패: {}", e.getMessage(), e);
-            chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.ERROR,
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.ERROR,
                     "📚 벡터 스토어 연결 실패로 추천 질문을 가져올 수 없습니다");
             return new ArrayList<>();
         }
@@ -402,7 +402,7 @@ public class QuviController {
         state.setQueryChanged(false);
         state.setHasNext(false);
 
-        log.info("🔄 워크플로우 상태 초기화 완료 - chainId: {}, conversationId: {}", workflowId, sessionId);
+        log.info("🔄 워크플로우 상태 초기화 완료 - workflowId: {}, sessionId: {}", workflowId, sessionId);
     }
 
     /**

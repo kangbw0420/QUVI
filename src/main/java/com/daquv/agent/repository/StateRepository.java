@@ -20,23 +20,23 @@ public interface StateRepository extends BaseStateRepository<State> {
             "WHERE t.workflow.workflowId = (" +
             "    SELECT tr.workflow.workflowId " +
             "    FROM Node tr " +
-            "    WHERE tr.nodeId = :traceId" +
+            "    WHERE tr.nodeId = :nodeId" +
             ") " +
-            "AND t.nodeId != :traceId " +
+            "AND t.nodeId != :nodeId " +
             "ORDER BY t.nodeStart DESC, s.id DESC")
-    List<State> findLatestStatesByTraceId(@Param("traceId") String traceId);
+    List<State> findLatestStatesByTraceId(@Param("nodeId") String nodeId);
 
     /**
      * 트레이스 ID로 최신 상태 조회
      */
-    @Query("SELECT s FROM State s WHERE s.node.nodeId = :traceId ORDER BY s.id DESC")
-    Optional<State> findLatestByTraceId(@Param("traceId") String traceId);
+    @Query("SELECT s FROM State s WHERE s.node.nodeId = :nodeId ORDER BY s.id DESC")
+    Optional<State> findLatestByTraceId(@Param("nodeId") String nodeId);
 
     /**
      * 체인 ID로 상태 목록 조회
      */
-    @Query("SELECT s FROM State s JOIN s.node t WHERE t.workflow.workflowId = :chainId ORDER BY t.nodeStart ASC")
-    List<State> findByChainId(@Param("chainId") String chainId);
+    @Query("SELECT s FROM State s JOIN s.node t WHERE t.workflow.workflowId = :workflowId ORDER BY t.nodeStart ASC")
+    List<State> findByChainId(@Param("workflowId") String workflowId);
 
     /**
      * 선택된 API로 상태 목록 조회
