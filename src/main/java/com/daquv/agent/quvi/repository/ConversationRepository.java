@@ -23,13 +23,6 @@ public interface ConversationRepository extends JpaRepository<Session, String> {
     Optional<Session> findBySessionId(String sessionId);
 
     /**
-     * 대화 ID로 대화 조회 (별칭 메서드 - 기존 코드 호환성을 위해)
-     */
-    default Optional<Session> findByConversationId(String conversationId) {
-        return findBySessionId(conversationId);
-    }
-
-    /**
      * 사용자 ID로 대화 존재 여부 확인
      */
     boolean existsByUserId(String userId);

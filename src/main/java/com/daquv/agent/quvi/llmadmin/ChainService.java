@@ -33,34 +33,33 @@ public class ChainService {
     /**
      * 새로운 체인을 생성하고 초기 상태를 기록
      *
-     * @param conversationId 대화 ID
+     * @param sessionId 대화 ID
      * @param userQuestion 사용자 질문
      * @return 생성된 chain ID
      */
     @Transactional
-    public String createChain(String conversationId, String userQuestion) {
-        log.info("createChain start - conversationId: {}, userQuestion: {}", conversationId, userQuestion);
-        String chainId = UUID.randomUUID().toString();
+    public String createWorkflow(String sessionId, String userQuestion) {
+        log.info("createWorkflow start - sessionId: {}, userQuestion: {}", sessionId, userQuestion);
+        String workflowId = UUID.randomUUID().toString();
 
-        DatabaseProfilerAspect.setChainId(chainId);
-        log.debug("ChainService에서 chainId 설정: {}", chainId);
+        DatabaseProfilerAspect.setChainId(workflowId);
+        log.debug("ChainService에서 chainId 설정: {}", workflowId);
 
-        long startTime = System.currentTimeMillis();
         try {
-            // Conversation 조회
-            Session session = conversationRepository.findByConversationId(conversationId)
-                    .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+            // Session 조회
+            Session session = conversationRepository.findBySessionId(sessionId)
+                    .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
 
-            // Chain 생성
-            Workflow workflow = Workflow.create(chainId, session, userQuestion, Workflow.WorkflowStatus.active);
+            // Workflow 생성
+            Workflow workflow = Workflow.create(workflowId, session, userQuestion, Workflow.WorkflowStatus.active);
             chainRepository.save(workflow);
 
-            log.info("createChain end - chainId: {}", chainId);
-            return chainId;
+            log.info("createWorkflow end - chainId: {}", workflowId);
+            return workflowId;
 
         } catch (Exception e) {
-            log.error("Error in createChain - conversationId: {}, userQuestion: {}", conversationId, userQuestion, e);
-            throw new RuntimeException("Failed to create chain", e);
+            log.error("Error in createWorkflow - sessionId: {}, userQuestion: {}", sessionId, userQuestion, e);
+            throw new RuntimeException("Failed to create workflow", e);
         }
     }
 
@@ -72,8 +71,8 @@ public class ChainService {
      * @return 성공 여부
      */
     @Transactional
-    public boolean completeChain(String chainId, String finalAnswer) {
-        log.info("completeChain start - chainId: {}, finalAnswer: {}", chainId, finalAnswer);
+    public boolean completeWorkflow(String chainId, String finalAnswer) {
+        log.info("completeWorkflow start - chainId: {}, finalAnswer: {}", chainId, finalAnswer);
 
         long startTime = System.currentTimeMillis();
         try {
@@ -83,12 +82,12 @@ public class ChainService {
             workflow.completeChain(finalAnswer);
             chainRepository.save(workflow);
 
-            log.info("completeChain end - chainId: {}", chainId);
+            log.info("completeWorkflow end - chainId: {}", chainId);
             return true;
 
         } catch (Exception e) {
-            log.error("Error in completeChain - chainId: {}, finalAnswer: {}", chainId, finalAnswer, e);
-            throw new RuntimeException("Failed to complete chain", e);
+            log.error("Error in completeWorkflow - chainId: {}, finalAnswer: {}", chainId, finalAnswer, e);
+            throw new RuntimeException("Failed to complete workflow", e);
         }
     }
 

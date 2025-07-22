@@ -95,7 +95,7 @@ public class ChainLogManager {
      */
 
     @Transactional
-    public void completeChain(String chainId, boolean success) {
+    public void completeWorkflow(String chainId, boolean success) {
         ChainLogContext context = chainLogs.get(chainId);
         if (context == null) {
             log.warn("체인 로그 컨텍스트를 찾을 수 없습니다: {}", chainId);

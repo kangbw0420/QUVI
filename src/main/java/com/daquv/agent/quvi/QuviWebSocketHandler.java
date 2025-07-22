@@ -96,7 +96,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             log.info("💬 세션 ID: {}", conversationId);
 
             // 2. Chain 생성 (각 요청마다 독립적)
-            chainId = chainService.createChain(conversationId, request.getUserQuestion());
+            chainId = chainService.createWorkflow(conversationId, request.getUserQuestion());
             log.info("🔗 체인 생성: {}", chainId);
             
             // 3. 프로파일링 시작
@@ -148,14 +148,14 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             WorkflowState finalState = stateManager.getState(chainId);
             
             // 9. Chain 완료
-            chainService.completeChain(chainId, finalState.getFinalAnswer());
+            chainService.completeWorkflow(chainId, finalState.getFinalAnswer());
             
             // 10. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
             Map<String, Object> response = buildResponse(conversationId, chainId, recommendList, totalTime, finalState);
             
             // 11. 정리
-            chainLogManager.completeChain(chainId, true);
+            chainLogManager.completeWorkflow(chainId, true);
             requestProfiler.clearProfile(chainId);
             stateManager.removeState(chainId); // 요청 완료 후 즉시 정리
             
@@ -167,7 +167,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             
             // 정리
             if (chainId != null) {
-                chainLogManager.completeChain(chainId, false);
+                chainLogManager.completeWorkflow(chainId, false);
                 requestProfiler.clearProfile(chainId);
                 stateManager.removeState(chainId);
             }
@@ -185,9 +185,9 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             log.debug("기존 세션 ID 사용: {}", sessionId);
             return sessionId;
         } else {
-            String newSessionId = conversationService.makeConversationId(request.getUserId());
+            String newSessionId = conversationService.makeSessionId(request.getUserId());
             log.debug("새 세션 ID 생성: {}", newSessionId);
-            return conversationService.makeConversationId(request.getUserId());
+            return conversationService.makeSessionId(request.getUserId());
         }
     }
     

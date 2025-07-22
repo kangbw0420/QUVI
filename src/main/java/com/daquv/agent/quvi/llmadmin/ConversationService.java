@@ -42,7 +42,7 @@ public class ConversationService {
         log.info("checkConversationId start - conversationId: {}", conversationId);
 
         try {
-            return conversationRepository.findByConversationId(conversationId)
+            return conversationRepository.findBySessionId(conversationId)
                     .map(conversation -> Session.SessionStatus.active.equals(conversation.getConversationStatus()))
                     .orElse(false);
         } catch (Exception e) {
@@ -55,7 +55,7 @@ public class ConversationService {
      * 새로운 conversation 생성. UUID로 ID 생성하고 status는 active로 설정
      */
     @Transactional
-    public String makeConversationId(String userId) {
+    public String makeSessionId(String userId) {
         log.info("makeConversationId start - userId: {}", userId);
 
         String companyId = getCompanyIdByUserId(userId);
@@ -87,7 +87,7 @@ public class ConversationService {
         log.info("endConversation start - conversationId: {}", conversationId);
 
         try {
-            Session session = conversationRepository.findByConversationId(conversationId)
+            Session session = conversationRepository.findBySessionId(conversationId)
                     .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
             session.endConversation();
             conversationRepository.save(session);
@@ -106,7 +106,7 @@ public class ConversationService {
         log.info("updateConversationStatus start - conversationId: {}, status: {}", conversationId, status);
 
         try {
-            Session session = conversationRepository.findByConversationId(conversationId)
+            Session session = conversationRepository.findBySessionId(conversationId)
                     .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
             session.updateStatus(status);
             conversationRepository.save(session);
@@ -122,7 +122,7 @@ public class ConversationService {
      */
     public Optional<Session> getConversation(String conversationId) {
         log.info("getConversation - conversationId: {}", conversationId);
-        return conversationRepository.findByConversationId(conversationId);
+        return conversationRepository.findBySessionId(conversationId);
     }
 
     private String getCurrentChainId() {

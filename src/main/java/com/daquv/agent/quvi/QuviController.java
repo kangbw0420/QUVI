@@ -56,76 +56,76 @@ public class QuviController {
                                                             HttpServletRequest httpRequest) {
         log.info("😊 HTTP Quvi 요청 수신: {}", request);
 
-        String chainId = null;
+        String workflowId = null;
         long startTime = System.currentTimeMillis();
 
         try {
-            // 1. Conversation 처리
-            String conversationId = getOrCreateConversationId(request);
-            log.info("💬 세션 ID: {}", conversationId);
+            // 1. Session 처리
+            String sessionId = getOrCreateSessionId(request);
+            log.info("💬 세션 ID: {}", sessionId);
 
-            // 2. Chain 생성
-            chainId = chainService.createChain(conversationId, request.getUserQuestion());
-            log.info("🔗 체인 생성 완료: {}", chainId);
+            // 2. Workflow 생성
+            workflowId = chainService.createWorkflow(sessionId, request.getUserQuestion());
+            log.info("🔗 체인 생성 완료: {}", workflowId);
 
-            httpRequest.setAttribute("chainId", chainId);
-            httpRequest.setAttribute("X-Chain-Id", chainId);
-            log.info("Request Attribute에 chainId 설정: {}", chainId);
+            httpRequest.setAttribute("chainId", workflowId);
+            httpRequest.setAttribute("X-Chain-Id", workflowId);
+            log.info("Request Attribute에 chainId 설정: {}", workflowId);
 
             // 3. 프로파일링 시작
-            requestProfiler.startRequest(chainId);
+            requestProfiler.startRequest(workflowId);
 
             // 4. 로그 컨텍스트 생성
             ChainLogContext logContext = chainLogManager.createChainLog(
-                    chainId,
+                    workflowId,
                     request.getUserId(),
                     request.getUserQuestion()
             );
-            logContext.setConversationId(conversationId);
+            logContext.setConversationId(sessionId);
             logContext.setCompanyId(request.getCompanyId());
 
-            chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.INFO,
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
                     String.format("😊 HTTP Quvi 요청 수신 - userId: %s, question: %s",
                             request.getUserId(), request.getUserQuestion()));
 
-            chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.INFO,
-                    String.format("🔗 체인 생성 완료: %s, 세션 ID: %s", chainId, conversationId));
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
+                    String.format("🔗 체인 생성 완료: %s, 세션 ID: %s", workflowId, sessionId));
 
             // 5. 추천 질문 검색
-            List<String> recommendList = getRecommendations(request.getUserQuestion(), chainId);
+            List<String> recommendList = getRecommendations(request.getUserQuestion(), workflowId);
 
             // 6. State 생성 및 초기화 (WebSocket 세션 없이)
-            WorkflowState state = stateManager.createState(chainId);
-            initializeState(state, request, conversationId, chainId);
+            WorkflowState state = stateManager.createState(workflowId);
+            initializeState(state, request, sessionId, workflowId);
 
-            chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.DEBUG,
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.DEBUG,
                     "🔄 워크플로우 상태 초기화 완료");
 
             // 7. 워크플로우 실행
-            chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.INFO,
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
                     "🚀 워크플로우 실행 시작");
 
             try {
-                workflowContext.executeWorkflow(chainId);
-                chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.INFO, "✅ 워크플로우 실행 완료");
+                workflowContext.executeWorkflow(workflowId);
+                chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO, "✅ 워크플로우 실행 완료");
             } catch (Exception workflowError) {
-                chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.ERROR,
+                chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.ERROR,
                         String.format("❌ 워크플로우 실행 실패: %s", removeHttpProtocol(workflowError.getMessage())), workflowError);
 
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 workflowError.printStackTrace(pw);
-                chainLogManager.addLog(chainId, "CONTROLLER", LogLevel.ERROR,
+                chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.ERROR,
                         String.format("Stack Trace:\n%s", sw.toString()));
 
                 throw workflowError;
             }
 
             // 8. 최종 결과 조회
-            WorkflowState finalState = stateManager.getState(chainId);
+            WorkflowState finalState = stateManager.getState(workflowId);
 
             // 9. Chain 완료
-            chainService.completeChain(chainId, finalState.getFinalAnswer());
+            chainService.completeWorkflow(workflowId, finalState.getFinalAnswer());
 
             // 로그 컨텍스트에 최종 결과 저장
             logContext.setSelectedTable(finalState.getSelectedTable());
@@ -135,14 +135,14 @@ public class QuviController {
 
             // 10. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
-            Map<String, Object> response = buildResponse(conversationId, chainId, recommendList, totalTime, finalState);
+            Map<String, Object> response = buildResponse(sessionId, workflowId, recommendList, totalTime, finalState);
 
-            logNodeExecutionStatistics(chainId, totalTime);
+            logNodeExecutionStatistics(workflowId, totalTime);
 
             // 11. 정리
-            chainLogManager.completeChain(chainId, true);
-            requestProfiler.clearProfile(chainId);
-            stateManager.removeState(chainId); // 요청 완료 후 즉시 정리
+            chainLogManager.completeWorkflow(workflowId, true);
+            requestProfiler.clearProfile(workflowId);
+            stateManager.removeState(workflowId); // 요청 완료 후 즉시 정리
 
             log.info("HTTP Quvi 요청 처리 완료 - 소요시간: {}ms", totalTime);
             return ResponseEntity.ok(response);
@@ -151,16 +151,16 @@ public class QuviController {
             log.error("❌ HTTP Quvi 요청 처리 중 예외 발생: {}", e.getMessage(), e);
 
             // 에러 발생시에도 통계 로깅
-            if (chainId != null) {
+            if (workflowId != null) {
                 long totalTime = System.currentTimeMillis() - startTime;
-                logNodeExecutionStatistics(chainId, totalTime);
+                logNodeExecutionStatistics(workflowId, totalTime);
             }
 
             // 정리
-            if (chainId != null) {
-                chainLogManager.completeChain(chainId, false);
-                requestProfiler.clearProfile(chainId);
-                stateManager.removeState(chainId);
+            if (workflowId != null) {
+                chainLogManager.completeWorkflow(workflowId, false);
+                requestProfiler.clearProfile(workflowId);
+                stateManager.removeState(workflowId);
             }
 
             Map<String, Object> errorResponse = buildErrorResponse(e.getMessage());
@@ -326,7 +326,7 @@ public class QuviController {
     /**
      * 세션 ID 확인 또는 새로 생성
      */
-    private String getOrCreateConversationId(QuviRequestDto request) {
+    private String getOrCreateSessionId(QuviRequestDto request) {
         String sessionId = request.getSessionId();
 
         if (sessionId != null && !sessionId.isEmpty() &&
@@ -335,7 +335,7 @@ public class QuviController {
             log.debug("기존 세션 ID 사용: {}", sessionId);
             return sessionId;
         } else {
-            String newSessionId = conversationService.makeConversationId(request.getUserId());
+            String newSessionId = conversationService.makeSessionId(request.getUserId());
 
             log.debug("새 세션 ID 생성: {}", newSessionId);
             return newSessionId;
