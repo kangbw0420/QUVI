@@ -671,29 +671,29 @@ public class PromptBuilder {
     }
 
     public PromptTemplate buildSupervisorPrompt(String userQuestion, List<Map<String, Object>> history) {
-        // 워크플로우 선택을 위한 프롬프트 생성
-        StringBuilder promptBuilder = new StringBuilder();
+        // 시스템 프롬프트 생성
+        StringBuilder systemPromptBuilder = new StringBuilder();
 
-        promptBuilder.append("당신은 사용자의 질문을 분석하여 적절한 워크플로우를 선택하는 SupervisorAgent입니다.\n\n");
+        systemPromptBuilder.append("당신은 사용자의 질문을 분석하여 적절한 워크플로우를 선택하는 SupervisorAgent입니다.\n\n");
 
-        promptBuilder.append("사용가능한 워크플로우:\n");
-        promptBuilder.append("- JOY: 일상 대화나 인사말, 단순 질문\n");
-        promptBuilder.append("- API: 특정 API 함수 호출이 필요한 금융 데이터 요청\n");
-        promptBuilder.append("- SQL: 일반적인 데이터베이스 쿼리가 필요한 질문\n");
-        promptBuilder.append("- DEFAULT: 분류가 애매한 경우\n\n");
+        systemPromptBuilder.append("사용가능한 워크플로우:\n");
+        systemPromptBuilder.append("- JOY: 일상 대화나 인사말, 단순 질문\n");
+        systemPromptBuilder.append("- API: 특정 API 함수 호출이 필요한 금융 데이터 요청\n");
+        systemPromptBuilder.append("- SQL: 일반적인 데이터베이스 쿼리가 필요한 질문\n");
+        systemPromptBuilder.append("- DEFAULT: 분류가 애매한 경우\n\n");
 
-        if (history != null && !history.isEmpty()) {
-            promptBuilder.append("이전 대화 히스토리:\n");
-            for (Map<String, Object> item : history) {
-                promptBuilder.append("Q: ").append(item.get("user_question")).append("\n");
-                promptBuilder.append("선택된 워크플로우: ").append(item.get("selected_workflow")).append("\n\n");
-            }
-        }
+        systemPromptBuilder.append("위 질문을 분석하여 가장 적합한 워크플로우를 하나만 선택하세요.\n");
+        systemPromptBuilder.append("응답은 JOY, API, SQL, DEFAULT 중 하나만 출력하세요.");
 
-        promptBuilder.append("사용자 질문: ").append(userQuestion).append("\n\n");
-        promptBuilder.append("위 질문을 분석하여 가장 적합한 워크플로우를 하나만 선택하세요.\n");
-        promptBuilder.append("응답은 JOY, API, SQL, DEFAULT 중 하나만 출력하세요.");
+        String systemPrompt = systemPromptBuilder.toString();
 
-        return new PromptTemplate(promptBuilder.toString());
+        // 사용자 질문 포맷팅
+        String formattedUserQuestion = "사용자 질문: " + userQuestion;
+
+        // 다른 메서드들과 동일한 패턴으로 프롬프트 구성
+        return PromptTemplate.from("")
+                .withSystemPrompt(systemPrompt)
+                .withHistory(history)  // 히스토리가 있으면 추가
+                .withUserMessage(formattedUserQuestion);
     }
 }

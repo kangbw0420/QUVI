@@ -15,10 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.stylesheets.LinkStyle;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -64,6 +61,15 @@ public class SupervisorNode implements WorkflowNode {
             PromptTemplate promptTemplate = promptBuilder.buildSupervisorPrompt(userQuestion, new ArrayList<>());
             String prompt = promptTemplate.build();
 
+            if (prompt == null || prompt.trim().isEmpty()) {
+                log.error("생성된 프롬프트가 비어있습니다. 기본 워크플로우로 진행합니다.");
+                state.setSelectedWorkflow("DEFAULT");
+                return;
+            }
+
+            log.info("생성된 Supervisor 프롬프트 길이: {}", prompt.length());
+            log.debug("Supervisor 프롬프트 내용: {}", prompt);
+
             long startTime = System.currentTimeMillis();
             String llmResponse = llmRequest.callQwenLlm(prompt, null, workflowId);
             long endTime = System.currentTimeMillis();
@@ -82,10 +88,16 @@ public class SupervisorNode implements WorkflowNode {
                 return;
             }
 
-            // 선택된 워크플로우 정규화 (대소문자 통일)
+            // 선택된 워크플로우 정규화
             selectedWorkflow = selectedWorkflow.toUpperCase().trim();
 
-            log.info("선택된 워크플로우: {}", selectedWorkflow);
+            // 유효한 워크플로우인지 검증
+            if (!isValidWorkflow(selectedWorkflow)) {
+                log.warn("유효하지 않은 워크플로우 선택됨: '{}'. DEFAULT로 변경합니다.", selectedWorkflow);
+                selectedWorkflow = "DEFAULT";
+            }
+
+            log.info("최종 선택된 워크플로우: {}", selectedWorkflow);
             state.setSelectedWorkflow(selectedWorkflow);
 
             // QnA 답변 기록
@@ -100,8 +112,15 @@ public class SupervisorNode implements WorkflowNode {
 
         } catch (Exception e) {
             log.error("SupervisorNode 실행 중 예외 발생: {}", e.getMessage(), e);
-            state.setSelectedWorkflow("ERROR");
+            state.setSelectedWorkflow("DEFAULT");
             state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("SUPERVISOR_ERROR", "워크플로우 선택 중 오류가 발생했습니다."));
         }
+    }
+
+    /**
+     * 유효한 워크플로우인지 검증
+     */
+    private boolean isValidWorkflow(String workflow) {
+        return Arrays.asList("JOY", "API", "SQL", "DEFAULT").contains(workflow);
     }
 }
