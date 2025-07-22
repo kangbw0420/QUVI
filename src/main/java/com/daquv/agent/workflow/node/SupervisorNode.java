@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.stylesheets.LinkStyle;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,10 +61,7 @@ public class SupervisorNode implements WorkflowNode {
         try {
             webSocketUtils.sendNodeStart(state.getWebSocketSession(), "supervisor");
 
-
-            List<Map<String, Object>> supervisorHistory = promptBuilder.getSupervisorHistory(workflowId);
-
-            PromptTemplate promptTemplate = promptBuilder.buildSupervisorPrompt(userQuestion, supervisorHistory);
+            PromptTemplate promptTemplate = promptBuilder.buildSupervisorPrompt(userQuestion, new ArrayList<>());
             String prompt = promptTemplate.build();
 
             long startTime = System.currentTimeMillis();
