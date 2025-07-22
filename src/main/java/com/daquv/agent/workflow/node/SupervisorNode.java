@@ -48,23 +48,34 @@ public class SupervisorNode implements WorkflowNode {
         String userQuestion = state.getUserQuestion();
         String workflowId = state.getWorkflowId();
 
+        String selectedWorkflow = selectWorkflow(userQuestion, workflowId);
+        state.setSelectedWorkflow(selectedWorkflow);
+
+        // WebSocket 메시지 전송 (WebSocket 세션이 있는 경우만)
+        if (state.getWebSocketSession() != null) {
+            try {
+                Map<String, Object> data = new HashMap<>();
+                data.put("selected_workflow", selectedWorkflow);
+                webSocketUtils.sendNodeEnd(state.getWebSocketSession(), "supervisor", data);
+            } catch (Exception e) {
+                log.warn("WebSocket 메시지 전송 실패: {}", e.getMessage());
+            }
+        }
+    }
+
+    public String selectWorkflow(String userQuestion, String workflowId) {
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
-            state.setSqlError("사용자 질문이 없습니다.");
-            state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("INVALID_INPUT", "사용자 질문이 없습니다."));
-            return;
+            return "DEFAULT";
         }
 
         try {
-            webSocketUtils.sendNodeStart(state.getWebSocketSession(), "supervisor");
-
             PromptTemplate promptTemplate = promptBuilder.buildSupervisorPrompt(userQuestion, new ArrayList<>());
             String prompt = promptTemplate.build();
 
             if (prompt == null || prompt.trim().isEmpty()) {
                 log.error("생성된 프롬프트가 비어있습니다. 기본 워크플로우로 진행합니다.");
-                state.setSelectedWorkflow("DEFAULT");
-                return;
+                return "DEFAULT";
             }
 
             log.info("생성된 Supervisor 프롬프트 길이: {}", prompt.length());
@@ -83,9 +94,7 @@ public class SupervisorNode implements WorkflowNode {
 
             if (selectedWorkflow == null || selectedWorkflow.trim().isEmpty()) {
                 log.error("워크플로우 선택에 실패했습니다.");
-                state.setSelectedWorkflow("DEFAULT"); // 기본 워크플로우로 폴백
-                state.setFinalAnswer("워크플로우를 선택하지 못했지만 기본 처리를 진행합니다.");
-                return;
+                return "DEFAULT";
             }
 
             // 선택된 워크플로우 정규화
@@ -98,22 +107,11 @@ public class SupervisorNode implements WorkflowNode {
             }
 
             log.info("최종 선택된 워크플로우: {}", selectedWorkflow);
-            state.setSelectedWorkflow(selectedWorkflow);
-
-            // QnA 답변 기록
-//            generationService.recordAnswer(null, selectedWorkflow, null);
-
-            // WebSocket 메시지 전송
-            Map<String, Object> data = new HashMap<>();
-            data.put("selected_workflow", selectedWorkflow);
-            webSocketUtils.sendNodeEnd(state.getWebSocketSession(), "supervisor", data);
-
-            log.info("Supervisor 워크플로우 선택 완료: {}", selectedWorkflow);
+            return selectedWorkflow;
 
         } catch (Exception e) {
-            log.error("SupervisorNode 실행 중 예외 발생: {}", e.getMessage(), e);
-            state.setSelectedWorkflow("DEFAULT");
-            state.setFinalAnswer(ErrorHandler.getWorkflowErrorMessage("SUPERVISOR_ERROR", "워크플로우 선택 중 오류가 발생했습니다."));
+            log.error("SupervisorNode 워크플로우 선택 중 예외 발생: {}", e.getMessage(), e);
+            return "DEFAULT";
         }
     }
 

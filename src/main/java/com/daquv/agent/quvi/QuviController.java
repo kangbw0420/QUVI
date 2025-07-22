@@ -12,6 +12,7 @@ import com.daquv.agent.workflow.ChainStateManager;
 import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.UserInfo;
+import com.daquv.agent.workflow.node.SupervisorNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,14 +100,12 @@ public class QuviController {
             // 5. 추천 질문 검색
             List<String> recommendList = getRecommendations(request.getUserQuestion(), workflowId);
 
-            WorkflowState tempState = createTempStateForSupervisor(request, workflowId);
 
             // 6. SupervisorNode 실행하여 워크플로우 결정
             chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
                     "🎯 Supervisor를 통한 워크플로우 선택 시작");
 
-            executeSupervisorNode(tempState);
-            String selectedWorkflow = tempState.getSelectedWorkflow();
+            String selectedWorkflow = selectWorkflowUsingSupervisor(request.getUserQuestion(), workflowId);
 
             if (selectedWorkflow == null || "ERROR".equals(selectedWorkflow)) {
                 throw new RuntimeException("Supervisor에서 워크플로우 선택 실패");
@@ -189,35 +188,20 @@ public class QuviController {
         }
     }
 
-    /**
-     * SupervisorNode 실행용 임시 State 생성
-     */
-    private WorkflowState createTempStateForSupervisor(QuviRequestDto request, String workflowId) {
-        WorkflowState tempState = new WorkflowState();
-
-        // SupervisorNode가 필요로 하는 최소한의 정보만 설정
-        tempState.setUserQuestion(request.getUserQuestion());
-        tempState.setWorkflowId(workflowId);
-        tempState.setNodeId("supervisor_" + System.currentTimeMillis());
-
-        log.info("🎯 SupervisorNode용 임시 State 생성 완료");
-        return tempState;
-    }
-
-    /**
-     * SupervisorNode 실행
-     */
-    private void executeSupervisorNode(WorkflowState tempState) {
+    private String selectWorkflowUsingSupervisor(String userQuestion, String workflowId) {
         try {
             Object supervisorNodeBean = applicationContext.getBean("supervisorNode");
 
-            if (supervisorNodeBean instanceof com.daquv.agent.workflow.WorkflowNode) {
-                com.daquv.agent.workflow.WorkflowNode supervisorNode =
-                        (com.daquv.agent.workflow.WorkflowNode) supervisorNodeBean;
+            if (supervisorNodeBean instanceof SupervisorNode) {
+                SupervisorNode supervisorNode = (SupervisorNode) supervisorNodeBean;
 
-                log.info("🎯 SupervisorNode 실행 시작");
-                supervisorNode.execute(tempState);
-                log.info("🎯 SupervisorNode 실행 완료 - 선택된 워크플로우: {}", tempState.getSelectedWorkflow());
+                log.info("🎯 SupervisorNode 실행 시작 - 질문: {}", userQuestion);
+
+                // userQuestion만으로 워크플로우 선택 실행
+                String selectedWorkflow = supervisorNode.selectWorkflow(userQuestion, workflowId);
+
+                log.info("🎯 SupervisorNode 실행 완료 - 선택된 워크플로우: {}", selectedWorkflow);
+                return selectedWorkflow;
 
             } else {
                 throw new IllegalArgumentException("SupervisorNode를 찾을 수 없습니다.");
@@ -225,7 +209,7 @@ public class QuviController {
 
         } catch (Exception e) {
             log.error("SupervisorNode 실행 실패: {}", e.getMessage(), e);
-            throw new RuntimeException("SupervisorNode 실행 실패", e);
+            return "DEFAULT"; // 에러 시 기본 워크플로우로 폴백
         }
     }
 
