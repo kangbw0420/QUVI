@@ -36,24 +36,23 @@ public class TraceService {
     /**
      * 노드 실행 시작 시 trace 기록 생성
      *
-     * @param chainId 체인 ID
+     * @param workflowId 체인 ID
      * @param nodeName 노드 타입
      * @return 생성된 trace ID
      */
     @Transactional
-    public String createTrace(String chainId, String nodeName) {
-        log.info("createTrace start - chainId: {}, nodeType: {}", chainId, nodeName);
+    public String createNode(String workflowId, String nodeName) {
+        log.info("createNode start - workflowId: {}, nodeType: {}", workflowId, nodeName);
 
-        DatabaseProfilerAspect.setChainId(chainId);
-        log.debug("TraceService에서 chainId 설정: {}", chainId);
+        DatabaseProfilerAspect.setChainId(workflowId);
+        log.debug("TraceService에서 workflowId 설정: {}", workflowId);
 
-        long startTime = System.currentTimeMillis();
         try {
             String traceId = UUID.randomUUID().toString();
 
             // Chain 조회
-            Workflow workflow = chainRepository.findById(chainId)
-                    .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + chainId));
+            Workflow workflow = chainRepository.findById(workflowId)
+                    .orElseThrow(() -> new IllegalArgumentException("Node not found: " + workflowId));
 
             // Trace 생성
             Node node = new Node();
@@ -64,11 +63,11 @@ public class TraceService {
 
             traceRepository.save(node);
 
-            log.info("createTrace end - traceId: {}", traceId);
+            log.info("createNode end - nodeId: {}", traceId);
             return traceId;
 
         } catch (Exception e) {
-            log.error("Error in createTrace - chainId: {}, nodeType: {}", chainId, nodeName, e);
+            log.error("Error in createNode - workflowId: {}, nodeName: {}", workflowId, nodeName, e);
             throw new RuntimeException("Failed to create trace", e);
         }
     }
@@ -80,22 +79,22 @@ public class TraceService {
      * @return 성공 여부
      */
     @Transactional
-    public boolean completeTrace(String traceId) {
-        log.info("completeTrace start - traceId: {}", traceId);
+    public boolean completeNode(String traceId) {
+        log.info("completeNode start - traceId: {}", traceId);
 
         try {
             Node node = traceRepository.findById(traceId)
-                    .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
+                    .orElseThrow(() -> new IllegalArgumentException("Node not found: " + traceId));
 
             node.completeTrace();
             traceRepository.save(node);
 
-            log.info("completeTrace end - traceId: {}", traceId);
+            log.info("completeNode end - traceId: {}", traceId);
             return true;
 
         } catch (Exception e) {
-            log.error("Error in completeTrace - traceId: {}", traceId, e);
-            throw new RuntimeException("Failed to complete trace", e);
+            log.error("Error in completeNode - traceId: {}", traceId, e);
+            throw new RuntimeException("Failed to complete node", e);
         }
     }
 

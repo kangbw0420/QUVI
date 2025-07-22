@@ -178,9 +178,9 @@ public class WorkflowExecutionContext {
      * 개별 노드 실행 (State 직접 주입 + Trace/State 처리)
      */
     private void executeNode(String nodeBeanName, WorkflowState state) {
-        String traceId = null;
+        String nodeId = null;
 
-        log.info("state: {}", state);
+        log.info("node: {}", state);
         
         try {
             Object nodeBean = applicationContext.getBean(nodeBeanName);
@@ -188,20 +188,20 @@ public class WorkflowExecutionContext {
             if (nodeBean instanceof WorkflowNode) {
                 WorkflowNode node = (WorkflowNode) nodeBean;
                 
-                // 1. Trace 생성
-                traceId = traceService.createTrace(state.getChainId(), node.getId());
-                state.setTraceId(traceId);
+                // 1. Node 생성
+                nodeId = traceService.createNode(state.getChainId(), node.getId());
+                state.setTraceId(nodeId);
                 
                 // 2. 노드 실행
                 node.execute(state);
                 
                 // 3. Trace 완료
-                traceService.completeTrace(traceId);
+                traceService.completeNode(nodeId);
                 
                 // 4. State DB 저장 (현재 state의 모든 필드를 저장)
-                saveStateToDatabase(traceId, state);
+                saveStateToDatabase(nodeId, state);
                 
-                log.debug("노드 {} 실행 완료 - traceId: {}", nodeBeanName, traceId);
+                log.debug("노드 {} 실행 완료 - traceId: {}", nodeBeanName, nodeId);
                 
             } else {
                 throw new IllegalArgumentException("지원하지 않는 노드 타입: " + nodeBeanName);
@@ -211,9 +211,9 @@ public class WorkflowExecutionContext {
             log.error("노드 실행 실패: {} - chainId: {}", nodeBeanName, state.getChainId(), e);
             
             // Trace 오류 상태로 변경
-            if (traceId != null) {
+            if (nodeId != null) {
                 try {
-                    traceService.markTraceError(traceId);
+                    traceService.markTraceError(nodeId);
                 } catch (Exception traceError) {
                     log.error("Trace 오류 기록 실패: {}", traceError.getMessage());
                 }
