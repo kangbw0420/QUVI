@@ -5,7 +5,7 @@ import com.daquv.agent.quvi.entity.Node;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.repository.StateRepository;
-import com.daquv.agent.quvi.repository.TraceRepository;
+import com.daquv.agent.quvi.repository.NodeRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -29,15 +29,15 @@ public class StateService {
 
     private static final Logger log = LoggerFactory.getLogger(StateService.class);
     private final StateRepository stateRepository;
-    private final TraceRepository traceRepository;
+    private final NodeRepository nodeRepository;
     private final ObjectMapper objectMapper;
 
     @Autowired
     private RequestProfiler requestProfiler;
 
-    public StateService(StateRepository stateRepository, TraceRepository traceRepository, ObjectMapper objectMapper) {
+    public StateService(StateRepository stateRepository, NodeRepository nodeRepository, ObjectMapper objectMapper) {
         this.stateRepository = stateRepository;
-        this.traceRepository = traceRepository;
+        this.nodeRepository = nodeRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -97,7 +97,7 @@ public class StateService {
             newState.putAll(updates);
 
             // Trace 조회
-            Node node = traceRepository.findById(traceId)
+            Node node = nodeRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
 
             log.info("Trace 조회 완료 - trace: {}", node.getNodeId());

@@ -3,7 +3,7 @@ package com.daquv.agent.workflow.node;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
@@ -33,7 +33,7 @@ public class RespondentNode implements WorkflowNode {
     private PromptBuilder promptBuilder;
     
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
 
     @Autowired
     private PipeTable pipeTable;
@@ -102,7 +102,7 @@ public class RespondentNode implements WorkflowNode {
 
         // QnA ID 생성
         log.info("3단계: QnA ID 생성");
-        String qnaId = qnaService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getTraceId());
         log.info("생성된 QnA ID: {}", qnaId);
 
         // hasNext에 따른 프롬프트 분기
@@ -121,13 +121,13 @@ public class RespondentNode implements WorkflowNode {
             log.info("생성된 프롬프트 길이: {} 문자", prompt.length());
 
             // QnA 질문 기록
-            qnaService.updateQuestion(qnaId, prompt, "qwen_14b");
+            generationService.updateQuestion(qnaId, prompt, "qwen_14b");
 
             String finalAnswer = llmService.callQwenLlm(prompt, qnaId);
             log.info("LLM 응답 길이: {} 문자", finalAnswer != null ? finalAnswer.length() : 0);
 
             // QnA 답변 기록
-            qnaService.recordAnswer(qnaId, finalAnswer, null);
+            generationService.recordAnswer(qnaId, finalAnswer, null);
 
             // 페이지네이션 응답 완료
             state.setFinalAnswer(finalAnswer);
@@ -167,7 +167,7 @@ public class RespondentNode implements WorkflowNode {
             log.info("생성된 프롬프트 길이: {} 문자", prompt.length());
 
             // QnA 질문 기록
-            qnaService.updateQuestion(qnaId, prompt, "qwen_14b");
+            generationService.updateQuestion(qnaId, prompt, "qwen_14b");
 
             long startTime = System.currentTimeMillis();
             String llmResponse = llmService.callSolver(prompt, qnaId);
@@ -179,7 +179,7 @@ public class RespondentNode implements WorkflowNode {
             log.info("LLM 응답 길이: {} 문자", llmResponse != null ? llmResponse.length() : 0);
 
             // QnA 답변 기록
-            qnaService.recordAnswer(qnaId, llmResponse, promptWithRetrieveTime.getRetrieveTime());
+            generationService.recordAnswer(qnaId, llmResponse, promptWithRetrieveTime.getRetrieveTime());
 
             // fstring 응답 추출 (파이썬의 handle_python_code_block)
             String fstringAnswer = LlmOutputHandler.extractFStringAnswer(llmResponse);

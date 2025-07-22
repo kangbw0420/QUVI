@@ -1,7 +1,7 @@
 package com.daquv.agent.workflow;
 
 import com.daquv.agent.quvi.llmadmin.StateService;
-import com.daquv.agent.quvi.llmadmin.TraceService;
+import com.daquv.agent.quvi.llmadmin.NodeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -18,7 +18,7 @@ public class WorkflowExecutionContext {
     private ApplicationContext applicationContext;
     
     @Autowired
-    private TraceService traceService;
+    private NodeService nodeService;
     
     @Autowired
     private StateService stateService;
@@ -189,14 +189,14 @@ public class WorkflowExecutionContext {
                 WorkflowNode node = (WorkflowNode) nodeBean;
                 
                 // 1. Node 생성
-                nodeId = traceService.createNode(state.getChainId(), node.getId());
+                nodeId = nodeService.createNode(state.getChainId(), node.getId());
                 state.setTraceId(nodeId);
                 
                 // 2. 노드 실행
                 node.execute(state);
                 
                 // 3. Trace 완료
-                traceService.completeNode(nodeId);
+                nodeService.completeNode(nodeId);
                 
                 // 4. State DB 저장 (현재 state의 모든 필드를 저장)
                 saveStateToDatabase(nodeId, state);
@@ -213,7 +213,7 @@ public class WorkflowExecutionContext {
             // Trace 오류 상태로 변경
             if (nodeId != null) {
                 try {
-                    traceService.markTraceError(nodeId);
+                    nodeService.markTraceError(nodeId);
                 } catch (Exception traceError) {
                     log.error("Trace 오류 기록 실패: {}", traceError.getMessage());
                 }

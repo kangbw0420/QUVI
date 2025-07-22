@@ -4,9 +4,7 @@ import com.daquv.agent.quvi.dto.AlertType;
 import com.daquv.agent.quvi.dto.ChainLogEntry;
 import com.daquv.agent.quvi.dto.LogAlertRule;
 import com.daquv.agent.quvi.dto.LogLevel;
-import com.daquv.agent.quvi.llmadmin.ChainService;
-import com.daquv.agent.quvi.logging.ChainLogContext;
-import com.daquv.agent.quvi.logging.LogAlertService;
+import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -28,10 +26,10 @@ public class ChainLogManager {
     private final Map<String, ChainLogContext> chainLogs = new ConcurrentHashMap<>();
     private final List<LogAlertRule> alertRules = new CopyOnWriteArrayList<>();
     private final LogAlertService alertService;
-    private final ChainService chainService;
-    public ChainLogManager(LogAlertService alertService, ChainService chainService) {
+    private final WorkflowService workflowService;
+    public ChainLogManager(LogAlertService alertService, WorkflowService workflowService) {
         this.alertService = alertService;
-        this.chainService = chainService;
+        this.workflowService = workflowService;
     }
 
     /**
@@ -116,10 +114,10 @@ public class ChainLogManager {
         try {
             // Chain 테이블에 로그 저장 - 트랜잭션 내에서 실행
             if (actualSuccess) {
-                chainService.updateChainLog(chainId, chainLogText);
+                workflowService.updateChainLog(chainId, chainLogText);
                 log.info("✅ Chain 로그 저장 성공 - chainId: {}", chainId);
             } else {
-                chainService.markChainError(chainId, "Workflow execution failed", chainLogText);
+                workflowService.markChainError(chainId, "Workflow execution failed", chainLogText);
                 log.info("❌ Chain 에러 로그 저장 성공 - chainId: {}", chainId);
             }
         } catch (Exception e) {

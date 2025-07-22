@@ -1,8 +1,8 @@
 package com.daquv.agent.quvi;
 
 import com.daquv.agent.quvi.dto.QuviRequestDto;
-import com.daquv.agent.quvi.llmadmin.ChainService;
-import com.daquv.agent.quvi.llmadmin.ConversationService;
+import com.daquv.agent.quvi.llmadmin.WorkflowService;
+import com.daquv.agent.quvi.llmadmin.SessionService;
 import com.daquv.agent.quvi.logging.ChainLogContext;
 import com.daquv.agent.quvi.logging.ChainLogManager;
 import com.daquv.agent.quvi.dto.LogLevel;
@@ -33,21 +33,21 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
     private final ChainStateManager stateManager;
     private final WorkflowExecutionContext workflowContext;
     private final VectorRequest vectorRequest;
-    private final ConversationService conversationService;
-    private final ChainService chainService;
+    private final SessionService sessionService;
+    private final WorkflowService workflowService;
     private final ChainLogManager chainLogManager;
     private final RequestProfiler requestProfiler;
     private final ObjectMapper objectMapper;
 
     public QuviWebSocketHandler(ChainStateManager stateManager, WorkflowExecutionContext workflowContext,
-                               VectorRequest vectorRequest, ConversationService conversationService,
-                               ChainService chainService, ChainLogManager chainLogManager,
-                               RequestProfiler requestProfiler, ObjectMapper objectMapper) {
+                                VectorRequest vectorRequest, SessionService sessionService,
+                                WorkflowService workflowService, ChainLogManager chainLogManager,
+                                RequestProfiler requestProfiler, ObjectMapper objectMapper) {
         this.stateManager = stateManager;
         this.workflowContext = workflowContext;
         this.vectorRequest = vectorRequest;
-        this.conversationService = conversationService;
-        this.chainService = chainService;
+        this.sessionService = sessionService;
+        this.workflowService = workflowService;
         this.chainLogManager = chainLogManager;
         this.requestProfiler = requestProfiler;
         this.objectMapper = objectMapper;
@@ -96,7 +96,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             log.info("💬 세션 ID: {}", conversationId);
 
             // 2. Chain 생성 (각 요청마다 독립적)
-            chainId = chainService.createWorkflow(conversationId, request.getUserQuestion());
+            chainId = workflowService.createWorkflow(conversationId, request.getUserQuestion());
             log.info("🔗 체인 생성: {}", chainId);
             
             // 3. 프로파일링 시작
@@ -148,7 +148,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             WorkflowState finalState = stateManager.getState(chainId);
             
             // 9. Chain 완료
-            chainService.completeWorkflow(chainId, finalState.getFinalAnswer());
+            workflowService.completeWorkflow(chainId, finalState.getFinalAnswer());
             
             // 10. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
@@ -180,14 +180,14 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         String sessionId = request.getSessionId();
         
         if (sessionId != null && !sessionId.isEmpty() && 
-            conversationService.checkConversationId(sessionId)) {
+            sessionService.checkConversationId(sessionId)) {
 
             log.debug("기존 세션 ID 사용: {}", sessionId);
             return sessionId;
         } else {
-            String newSessionId = conversationService.makeSessionId(request.getUserId());
+            String newSessionId = sessionService.makeSessionId(request.getUserId());
             log.debug("새 세션 ID 생성: {}", newSessionId);
-            return conversationService.makeSessionId(request.getUserId());
+            return sessionService.makeSessionId(request.getUserId());
         }
     }
     

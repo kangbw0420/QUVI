@@ -1,6 +1,6 @@
 package com.daquv.agent.workflow.node;
 
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.quvi.util.RequestProfiler;
@@ -29,7 +29,7 @@ public class DaterNode implements WorkflowNode {
     private PromptBuilder promptBuilder;
 
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
 
     @Autowired
     private LLMRequest llmService;
@@ -66,7 +66,7 @@ public class DaterNode implements WorkflowNode {
         }
 
         // QnA ID 생성
-        String qnaId = qnaService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getTraceId());
 
         // History 조회
         List<Map<String, Object>> daterHistory = promptBuilder.getDaterHistory(chainId);
@@ -117,7 +117,7 @@ public class DaterNode implements WorkflowNode {
 
         // Python과 동일하게 QnA 응답 기록
         String outputStr = String.format("{\"from_date\": \"%s\", \"to_date\": \"%s\"}", fromDate, toDate);
-        qnaService.recordAnswer(qnaId, outputStr, retrieveTime);
+        generationService.recordAnswer(qnaId, outputStr, retrieveTime);
 
         // 상태에 날짜 정보 저장
         state.setStartDate(fromDate);

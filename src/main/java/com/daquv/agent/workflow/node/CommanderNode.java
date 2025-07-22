@@ -3,7 +3,7 @@ package com.daquv.agent.workflow.node;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
@@ -32,7 +32,7 @@ public class CommanderNode implements WorkflowNode {
     private PromptBuilder promptBuilder;
     
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
     
     @Autowired
     private WebSocketUtils webSocketUtils;
@@ -58,7 +58,7 @@ public class CommanderNode implements WorkflowNode {
         }
 
         // QnA ID 생성
-        String qnaId = qnaService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getTraceId());
         
         // History 조회 (Commander는 history를 사용하지 않지만 일관성을 위해 추가)
         List<Map<String, Object>> commanderHistory = promptBuilder.getHistory(chainId,
@@ -90,7 +90,7 @@ public class CommanderNode implements WorkflowNode {
         log.info("선택된 테이블: {}", selectedTable);
         state.setSelectedTable(selectedTable);
 
-        qnaService.recordAnswer(qnaId, selectedTable, retrieveTime);
+        generationService.recordAnswer(qnaId, selectedTable, retrieveTime);
         
         // WebSocket 메시지 전송
         Map<String, Object> data = new HashMap<>();

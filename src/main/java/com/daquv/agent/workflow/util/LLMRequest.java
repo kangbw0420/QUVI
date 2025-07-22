@@ -1,6 +1,6 @@
 package com.daquv.agent.workflow.util;
 
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import lombok.Data;
 import org.slf4j.Logger;
@@ -28,7 +28,7 @@ public class LLMRequest {
     private String baseUrl;
     
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
     
     @Autowired
     private RequestProfiler profiler;
@@ -75,7 +75,7 @@ public class LLMRequest {
             
            // QnA ID가 있으면 질문 업데이트
             if (qnaId != null) {
-                qnaService.updateQuestion(qnaId, prompt, config.getModelName());
+                generationService.updateQuestion(qnaId, prompt, config.getModelName());
             }
             Map<String, Object> request = new HashMap<>();
             request.put("model", config.modelName);
@@ -109,7 +109,7 @@ public class LLMRequest {
             
             // QnA ID가 있으면 답변 기록
             if (qnaId != null) {
-                qnaService.recordAnswer(qnaId, content, null);
+                generationService.recordAnswer(qnaId, content, null);
             }
             
             return content;

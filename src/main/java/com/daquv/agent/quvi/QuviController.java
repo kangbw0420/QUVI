@@ -2,8 +2,8 @@ package com.daquv.agent.quvi;
 
 import com.daquv.agent.quvi.dto.LogLevel;
 import com.daquv.agent.quvi.dto.QuviRequestDto;
-import com.daquv.agent.quvi.llmadmin.ChainService;
-import com.daquv.agent.quvi.llmadmin.ConversationService;
+import com.daquv.agent.quvi.llmadmin.WorkflowService;
+import com.daquv.agent.quvi.llmadmin.SessionService;
 import com.daquv.agent.quvi.logging.ChainLogContext;
 import com.daquv.agent.quvi.logging.ChainLogManager;
 import com.daquv.agent.quvi.requests.VectorRequest;
@@ -33,20 +33,20 @@ public class QuviController {
     private final ChainStateManager stateManager;
     private final WorkflowExecutionContext workflowContext;
     private final VectorRequest vectorRequest;
-    private final ConversationService conversationService;
-    private final ChainService chainService;
+    private final SessionService sessionService;
+    private final WorkflowService workflowService;
     private final ChainLogManager chainLogManager;
     private final RequestProfiler requestProfiler;
 
     public QuviController(ChainStateManager stateManager, WorkflowExecutionContext workflowContext,
-                          VectorRequest vectorRequest, ConversationService conversationService,
-                          ChainService chainService, ChainLogManager chainLogManager,
+                          VectorRequest vectorRequest, SessionService sessionService,
+                          WorkflowService workflowService, ChainLogManager chainLogManager,
                           RequestProfiler requestProfiler) {
         this.stateManager = stateManager;
         this.workflowContext = workflowContext;
         this.vectorRequest = vectorRequest;
-        this.conversationService = conversationService;
-        this.chainService = chainService;
+        this.sessionService = sessionService;
+        this.workflowService = workflowService;
         this.chainLogManager = chainLogManager;
         this.requestProfiler = requestProfiler;
     }
@@ -65,7 +65,7 @@ public class QuviController {
             log.info("💬 세션 ID: {}", sessionId);
 
             // 2. Workflow 생성
-            workflowId = chainService.createWorkflow(sessionId, request.getUserQuestion());
+            workflowId = workflowService.createWorkflow(sessionId, request.getUserQuestion());
             log.info("🔗 체인 생성 완료: {}", workflowId);
 
             httpRequest.setAttribute("chainId", workflowId);
@@ -125,7 +125,7 @@ public class QuviController {
             WorkflowState finalState = stateManager.getState(workflowId);
 
             // 9. Chain 완료
-            chainService.completeWorkflow(workflowId, finalState.getFinalAnswer());
+            workflowService.completeWorkflow(workflowId, finalState.getFinalAnswer());
 
             // 로그 컨텍스트에 최종 결과 저장
             logContext.setSelectedTable(finalState.getSelectedTable());
@@ -330,12 +330,12 @@ public class QuviController {
         String sessionId = request.getSessionId();
 
         if (sessionId != null && !sessionId.isEmpty() &&
-                conversationService.checkConversationId(sessionId)) {
+                sessionService.checkConversationId(sessionId)) {
 
             log.debug("기존 세션 ID 사용: {}", sessionId);
             return sessionId;
         } else {
-            String newSessionId = conversationService.makeSessionId(request.getUserId());
+            String newSessionId = sessionService.makeSessionId(request.getUserId());
 
             log.debug("새 세션 ID 생성: {}", newSessionId);
             return newSessionId;

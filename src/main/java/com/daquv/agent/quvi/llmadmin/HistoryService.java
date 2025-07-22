@@ -3,9 +3,9 @@ package com.daquv.agent.quvi.llmadmin;
 import com.daquv.agent.entity.State;
 import com.daquv.agent.quvi.entity.Workflow;
 import com.daquv.agent.repository.StateRepository;
-import com.daquv.agent.quvi.repository.ChainRepository;
-import com.daquv.agent.quvi.repository.ConversationRepository;
-import com.daquv.agent.quvi.repository.TraceRepository;
+import com.daquv.agent.quvi.repository.WorkflowRepository;
+import com.daquv.agent.quvi.repository.SessionRepository;
+import com.daquv.agent.quvi.repository.NodeRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -26,21 +26,21 @@ public class HistoryService {
     private static final Logger log = LoggerFactory.getLogger(HistoryService.class);
     
     private final StateRepository stateRepository;
-    private final ChainRepository chainRepository;
-    private final ConversationRepository conversationRepository;
-    private final TraceRepository traceRepository;
+    private final WorkflowRepository workflowRepository;
+    private final SessionRepository sessionRepository;
+    private final NodeRepository nodeRepository;
     private final ObjectMapper objectMapper;
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    public HistoryService(StateRepository stateRepository, ChainRepository chainRepository,
-                         ConversationRepository conversationRepository, TraceRepository traceRepository,
-                         ObjectMapper objectMapper) {
+    public HistoryService(StateRepository stateRepository, WorkflowRepository workflowRepository,
+                          SessionRepository sessionRepository, NodeRepository nodeRepository,
+                          ObjectMapper objectMapper) {
         this.stateRepository = stateRepository;
-        this.chainRepository = chainRepository;
-        this.conversationRepository = conversationRepository;
-        this.traceRepository = traceRepository;
+        this.workflowRepository = workflowRepository;
+        this.sessionRepository = sessionRepository;
+        this.nodeRepository = nodeRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -146,7 +146,7 @@ public class HistoryService {
         
         try {
             // 현재 workflow의 session_id 조회
-            Workflow currentWorkflow = chainRepository.findById(chainId)
+            Workflow currentWorkflow = workflowRepository.findById(chainId)
                     .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + chainId));
             
             // conversation_id를 직접 조회하는 쿼리 사용

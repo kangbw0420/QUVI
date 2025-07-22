@@ -1,6 +1,6 @@
 package com.daquv.agent.workflow.node;
 
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.quvi.util.RequestProfiler;
@@ -31,7 +31,7 @@ public class Nl2sqlNode implements WorkflowNode {
     private PromptBuilder promptBuilder;
     
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
     
     @Autowired
     private WebSocketUtils webSocketUtils;
@@ -68,7 +68,7 @@ public class Nl2sqlNode implements WorkflowNode {
         }
         
         // QnA ID 생성
-        String qnaId = qnaService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getTraceId());
         
         // History 조회
         List<Map<String, Object>> nl2sqlHistory = promptBuilder.getNl2sqlHistory(chainId);
@@ -101,7 +101,7 @@ public class Nl2sqlNode implements WorkflowNode {
         log.info("생성된 SQL 쿼리: {}", sqlQuery);
         state.setSqlQuery(sqlQuery);
 
-        qnaService.recordAnswer(qnaId, sqlQuery, retrieveTime);
+        generationService.recordAnswer(qnaId, sqlQuery, retrieveTime);
         
         // WebSocket 메시지 전송
         Map<String, Object> data = new HashMap<>();

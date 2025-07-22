@@ -4,7 +4,7 @@ import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
@@ -37,7 +37,7 @@ public class SafeguardNode implements WorkflowNode {
     private PromptBuilder promptBuilder;
     
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
     
     @Autowired
     @Qualifier("mainJdbcTemplate")
@@ -87,7 +87,7 @@ public class SafeguardNode implements WorkflowNode {
             String prompt = promptTemplate.build();
 
             log.info("2단계: QnA ID 생성");
-            String qnaId = qnaService.createQnaId(state.getTraceId());
+            String qnaId = generationService.createQnaId(state.getTraceId());
             log.info("생성된 QnA ID: {}", qnaId);
 
             log.info("3단계: LLM을 통한 쿼리 수정 시작");

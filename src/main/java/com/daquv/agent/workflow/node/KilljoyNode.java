@@ -3,7 +3,7 @@ package com.daquv.agent.workflow.node;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
@@ -29,7 +29,7 @@ public class KilljoyNode implements WorkflowNode {
     private PromptBuilder promptBuilder;
     
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
     
     @Autowired
     private WebSocketUtils webSocketUtils;
@@ -60,7 +60,7 @@ public class KilljoyNode implements WorkflowNode {
             webSocketUtils.sendNodeStart(state.getWebSocketSession(), "killjoy");
 
             // QnA ID 생성
-            String qnaId = qnaService.createQnaId(state.getTraceId());
+            String qnaId = generationService.createQnaId(state.getTraceId());
             
             // History 조회
             List<Map<String, Object>> killjoyHistory = promptBuilder.getKilljoyHistory(chainId);

@@ -1,6 +1,6 @@
 package com.daquv.agent.workflow.prompt;
 
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.requests.VectorRequest;
 import com.daquv.agent.workflow.util.DateUtils;
@@ -22,7 +22,7 @@ public class PromptBuilder {
     private VectorRequest vectorRequest;
     
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
     
     @Autowired
     private HistoryService historyService;
@@ -75,7 +75,7 @@ public class PromptBuilder {
                     lastRetrieveTimeFromResults = BigDecimal.valueOf(((Number) retrieveTimeObj).doubleValue());
                 }
                 if (input != null && output != null) {
-                    qnaService.recordFewshot(qnaId, input, input, output, i + 1);
+                    generationService.recordFewshot(qnaId, input, input, output, i + 1);
                 }
             }
         }
@@ -153,7 +153,7 @@ public class PromptBuilder {
 
                     String formattedOutput = "{" + output + "}";
 
-                    qnaService.recordFewshot(qnaId, input, humanWithDate, formattedOutput, i + 1);
+                    generationService.recordFewshot(qnaId, input, humanWithDate, formattedOutput, i + 1);
                 }
             }
         }
@@ -227,7 +227,7 @@ public class PromptBuilder {
                         String date = (String) shot.get("date");
                         humanWithDate = input + ", 오늘: " + date + ".";
                     }
-                    qnaService.recordFewshot(qnaId, input, humanWithDate, output, i + 1);
+                    generationService.recordFewshot(qnaId, input, humanWithDate, output, i + 1);
 
                     // 변환된 few-shot을 새 리스트에 추가
                     Map<String, Object> processedShot = new HashMap<>(shot);
@@ -335,7 +335,7 @@ public class PromptBuilder {
                                 humanWithStats = String.format("결과 데이터:\n%s\n\n사용자의 질문:\n%s", stats, input);
                             }
                         }
-                        qnaService.recordFewshot(qnaId, input, humanWithStats, output, i + 1);
+                        generationService.recordFewshot(qnaId, input, humanWithStats, output, i + 1);
 
                         // 변환된 few-shot을 새 리스트에 추가
                         Map<String, Object> processedShot = new HashMap<>(example);
@@ -566,7 +566,7 @@ public class PromptBuilder {
                     String output = (String) shot.get("output");
                     
                     if (input != null && output != null) {
-                        qnaService.recordFewshot(qnaId, input, input, output, i + 1);
+                        generationService.recordFewshot(qnaId, input, input, output, i + 1);
                     }
                 }
             }
@@ -635,7 +635,7 @@ public class PromptBuilder {
                         String humanWithDate = date != null ? input + ", 오늘: " + date + "." : input;
                         String formattedOutput = "{" + output + "}";
                         
-                        qnaService.recordFewshot(qnaId, input, humanWithDate, formattedOutput, i + 1);
+                        generationService.recordFewshot(qnaId, input, humanWithDate, formattedOutput, i + 1);
                     }
                 }
             }

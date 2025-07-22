@@ -3,7 +3,7 @@ package com.daquv.agent.workflow.node;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
-import com.daquv.agent.quvi.llmadmin.QnaService;
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.workflow.dto.VectorNotes;
@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +29,7 @@ public class NodataNode implements WorkflowNode {
     private PromptBuilder promptBuilder;
     
     @Autowired
-    private QnaService qnaService;
+    private GenerationService generationService;
     
     @Autowired
     private WebSocketUtils webSocketUtils;
@@ -67,7 +66,7 @@ public class NodataNode implements WorkflowNode {
         log.info("데이터 없음 답변 생성 시작: {}", userQuestion);
 
         // QnA ID 생성
-        String qnaId = qnaService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getTraceId());
         
         // History 조회
         List<Map<String, Object>> nodataHistory = promptBuilder.getNodataHistory(chainId);
