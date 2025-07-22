@@ -63,7 +63,7 @@ public class HistoryService {
             String sessionIdQuery  = "SELECT w.session_id FROM workflow w WHERE w.workflow_id = :chainId";
             Query convQuery = entityManager.createNativeQuery(sessionIdQuery );
             convQuery.setParameter("chainId", chainId);
-            String conversationId = (String) convQuery.getSingleResult();
+            String sessionId = (String) convQuery.getSingleResult();
             
             // 동적 쿼리 생성 (JSONB 컬럼 제외)
             String selectedColumns = stateHistory.stream()
@@ -87,7 +87,7 @@ public class HistoryService {
                     "ORDER BY workflow_start ASC";
             
             Query query = entityManager.createNativeQuery(queryString);
-            query.setParameter("conversationId", conversationId);
+            query.setParameter("sessionId", sessionId );
             query.setParameter("nodeType", nodeType);
             query.setParameter("limit", limit);
             
@@ -163,7 +163,7 @@ public class HistoryService {
                 "LIMIT :n";
             
             Query query = entityManager.createNativeQuery(queryString);
-            query.setParameter("conversationId", sessionId);
+            query.setParameter("sessionId", sessionId);
             query.setParameter("n", n);
             
             @SuppressWarnings("unchecked")
