@@ -20,6 +20,7 @@ public class WorkflowState {
     private String nodeId;
     private UserInfo userInfo;
     private WebSocketSession webSocketSession;
+    private String selectedWorkflow;
     
     private String userQuestion;
     private String selectedTable;
@@ -67,5 +68,13 @@ public class WorkflowState {
 
     public boolean hasAnyError() {
         return queryError || invalidDate || futureDate;
+    }
+
+    public void setSelectedWorkflow(String selectedWorkflow) {
+        this.selectedWorkflow = selectedWorkflow;
+    }
+
+    public String getSelectedWorkflow() {
+        return this.selectedWorkflow;
     }
 }

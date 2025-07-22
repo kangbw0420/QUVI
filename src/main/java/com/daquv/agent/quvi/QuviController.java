@@ -14,6 +14,8 @@ import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.UserInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +39,9 @@ public class QuviController {
     private final WorkflowService workflowService;
     private final ChainLogManager chainLogManager;
     private final RequestProfiler requestProfiler;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     public QuviController(ChainStateManager stateManager, WorkflowExecutionContext workflowContext,
                           VectorRequest vectorRequest, SessionService sessionService,
@@ -94,19 +99,35 @@ public class QuviController {
             // 5. 추천 질문 검색
             List<String> recommendList = getRecommendations(request.getUserQuestion(), workflowId);
 
-            // 6. State 생성 및 초기화 (WebSocket 세션 없이)
+            WorkflowState tempState = createTempStateForSupervisor(request, workflowId);
+
+            // 6. SupervisorNode 실행하여 워크플로우 결정
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
+                    "🎯 Supervisor를 통한 워크플로우 선택 시작");
+
+            executeSupervisorNode(tempState);
+            String selectedWorkflow = tempState.getSelectedWorkflow();
+
+            if (selectedWorkflow == null || "ERROR".equals(selectedWorkflow)) {
+                throw new RuntimeException("Supervisor에서 워크플로우 선택 실패");
+            }
+
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
+                    String.format("🎯 선택된 워크플로우: %s", selectedWorkflow));
+
+            // 7. 선택된 워크플로우에 따른 완전한 State 생성 및 초기화
             WorkflowState state = stateManager.createState(workflowId);
-            initializeState(state, request, sessionId, workflowId);
+            initializeState(state, request, sessionId, workflowId, selectedWorkflow);
 
             chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.DEBUG,
                     "🔄 워크플로우 상태 초기화 완료");
 
-            // 7. 워크플로우 실행
+            // 8. 워크플로우 실행
             chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
                     "🚀 워크플로우 실행 시작");
 
             try {
-                workflowContext.executeWorkflow(workflowId);
+                executeSelectedWorkflow(selectedWorkflow, state, workflowId);
                 chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO, "✅ 워크플로우 실행 완료");
             } catch (Exception workflowError) {
                 chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.ERROR,
@@ -165,6 +186,46 @@ public class QuviController {
 
             Map<String, Object> errorResponse = buildErrorResponse(e.getMessage());
             return ResponseEntity.ok(errorResponse);
+        }
+    }
+
+    /**
+     * SupervisorNode 실행용 임시 State 생성
+     */
+    private WorkflowState createTempStateForSupervisor(QuviRequestDto request, String workflowId) {
+        WorkflowState tempState = new WorkflowState();
+
+        // SupervisorNode가 필요로 하는 최소한의 정보만 설정
+        tempState.setUserQuestion(request.getUserQuestion());
+        tempState.setWorkflowId(workflowId);
+        tempState.setNodeId("supervisor_" + System.currentTimeMillis());
+
+        log.info("🎯 SupervisorNode용 임시 State 생성 완료");
+        return tempState;
+    }
+
+    /**
+     * SupervisorNode 실행
+     */
+    private void executeSupervisorNode(WorkflowState tempState) {
+        try {
+            Object supervisorNodeBean = applicationContext.getBean("supervisorNode");
+
+            if (supervisorNodeBean instanceof com.daquv.agent.workflow.WorkflowNode) {
+                com.daquv.agent.workflow.WorkflowNode supervisorNode =
+                        (com.daquv.agent.workflow.WorkflowNode) supervisorNodeBean;
+
+                log.info("🎯 SupervisorNode 실행 시작");
+                supervisorNode.execute(tempState);
+                log.info("🎯 SupervisorNode 실행 완료 - 선택된 워크플로우: {}", tempState.getSelectedWorkflow());
+
+            } else {
+                throw new IllegalArgumentException("SupervisorNode를 찾을 수 없습니다.");
+            }
+
+        } catch (Exception e) {
+            log.error("SupervisorNode 실행 실패: {}", e.getMessage(), e);
+            throw new RuntimeException("SupervisorNode 실행 실패", e);
         }
     }
 
@@ -373,7 +434,7 @@ public class QuviController {
      * 워크플로우 상태 초기화 (HTTP용 - WebSocket 세션 없음)
      */
     private void initializeState(WorkflowState state, QuviRequestDto request, String sessionId,
-                                 String workflowId) {
+                                 String workflowId, String selectedWorkflow) {
         state.setUserQuestion(request.getUserQuestion());
         state.setUserInfo(UserInfo.builder()
                 .userId(request.getUserId())
@@ -382,6 +443,7 @@ public class QuviController {
                 .build());
         state.setWorkflowId(workflowId);
         state.setNodeId("node_" + System.currentTimeMillis());
+        state.setSelectedWorkflow(selectedWorkflow);
 
         // 기본 상태 초기화
         state.setSafeCount(0);
@@ -393,6 +455,33 @@ public class QuviController {
         state.setSelectedTable("");
         state.setFString("");
 
+        switch (selectedWorkflow) {
+            case "JOY":
+                state.setIsJoy(true);
+                state.setIsApi(false);
+                log.info("🎉 JOY 워크플로우용 상태 초기화");
+                break;
+
+            case "API":
+                state.setIsJoy(false);
+                state.setIsApi(true);
+                log.info("🔌 API 워크플로우용 상태 초기화");
+                break;
+
+            case "SQL":
+                state.setIsJoy(false);
+                state.setIsApi(false);
+                log.info("💾 SQL 워크플로우용 상태 초기화");
+                break;
+
+            case "DEFAULT":
+            default:
+                state.setIsJoy(false);
+                state.setIsApi(false);
+                log.info("⚙️ DEFAULT 워크플로우용 상태 초기화");
+                break;
+        }
+
         // 플래그 초기화
         state.setIsJoy(false);
         state.setNoData(false);
@@ -402,7 +491,166 @@ public class QuviController {
         state.setQueryChanged(false);
         state.setHasNext(false);
 
-        log.info("🔄 워크플로우 상태 초기화 완료 - workflowId: {}, sessionId: {}", workflowId, sessionId);
+        log.info("🔄 {} 워크플로우용 완전한 상태 초기화 완료 - workflowId: {}, sessionId: {}",
+                selectedWorkflow, workflowId, sessionId);
+    }
+
+    /**
+     * 선택된 워크플로우를 실행합니다.
+     */
+    private void executeSelectedWorkflow(String selectedWorkflow, WorkflowState state, String workflowId) {
+        try {
+            switch (selectedWorkflow) {
+                case "JOY":
+                    executeJoyWorkflow(state);
+                    break;
+                case "API":
+                    executeApiWorkflow(state);
+                    break;
+                case "SQL":
+                    executeSqlWorkflow(state);
+                    break;
+                case "DEFAULT":
+                    executeDefaultWorkflow(state);
+                    break;
+                default:
+                    log.warn("알 수 없는 워크플로우: {}. DEFAULT로 실행합니다.", selectedWorkflow);
+                    executeDefaultWorkflow(state);
+                    break;
+            }
+
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
+                    String.format("✅ %s 워크플로우 실행 완료", selectedWorkflow));
+
+        } catch (Exception e) {
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.ERROR,
+                    String.format("❌ %s 워크플로우 실행 실패: %s", selectedWorkflow, e.getMessage()), e);
+            throw e;
+        }
+    }
+
+    /**
+     * JOY 워크플로우 실행 (일상 대화)
+     */
+    private void executeJoyWorkflow(WorkflowState state) {
+        log.info("🎉 JOY 워크플로우 실행");
+        workflowContext.executeNode("killjoyNode", state);
+    }
+
+    /**
+     * API 워크플로우 실행
+     */
+    private void executeApiWorkflow(WorkflowState state) {
+        log.info("🔌 API 워크플로우 실행");
+
+        workflowContext.executeNode("funkNode", state);
+        workflowContext.executeNode("paramsNode", state);
+
+        if (state.getInvalidDate() != null && state.getInvalidDate()) {
+            log.info("invalid_date 감지 - 워크플로우 종료");
+            return;
+        }
+
+        if ("aicfo_get_financial_flow".equals(state.getSelectedApi())) {
+            workflowContext.executeNode("yqmdNode", state);
+        }
+
+        workflowContext.executeNode("queryExecutorNode", state);
+        handleExecutorResults(state);
+    }
+
+    /**
+     * SQL 워크플로우 실행
+     */
+    private void executeSqlWorkflow(WorkflowState state) {
+        log.info("💾 SQL 워크플로우 실행");
+
+        workflowContext.executeNode("commanderNode", state);
+
+        if (state.getSelectedTable() == null || state.getSelectedTable().trim().isEmpty()) {
+            state.setQueryResultStatus("failed");
+            state.setSqlError("테이블 선택에 실패했습니다.");
+            log.error("Commander에서 테이블 선택 실패");
+            return;
+        }
+
+        workflowContext.executeNode("opendueNode", state);
+
+        if (state.getIsOpendue() != null && state.getIsOpendue()) {
+            workflowContext.executeNode("nl2sqlNode", state);
+        } else {
+            workflowContext.executeNode("daterNode", state);
+            workflowContext.executeNode("nl2sqlNode", state);
+        }
+
+        workflowContext.executeNode("queryExecutorNode", state);
+        handleExecutorResults(state);
+    }
+
+    /**
+     * DEFAULT 워크플로우 실행 (기존 로직)
+     */
+    private void executeDefaultWorkflow(WorkflowState state) {
+        log.info("⚙️ DEFAULT 워크플로우 실행");
+
+        // 기존 전체 워크플로우 실행 (checkpoint -> isapi 분기 등)
+        workflowContext.executeNode("checkpointNode", state);
+
+        if (state.getIsJoy() != null && state.getIsJoy()) {
+            workflowContext.executeNode("killjoyNode", state);
+            return;
+        }
+
+        workflowContext.executeNode("isApiNode", state);
+
+        if (state.getIsApi() != null && state.getIsApi()) {
+            executeApiWorkflow(state);
+        } else {
+            executeSqlWorkflow(state);
+        }
+    }
+
+    /**
+     * Executor 결과 처리 공통 로직
+     */
+    private void handleExecutorResults(WorkflowState state) {
+        if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
+            if (state.getInvalidDate() != null && state.getInvalidDate()) {
+                log.info("executor에서 invalid_date 감지 - 워크플로우 종료");
+                return;
+            }
+
+            if (state.getNoData() != null && state.getNoData()) {
+                workflowContext.executeNode("nodataNode", state);
+                return;
+            }
+
+            if (state.getQueryError() != null && state.getQueryError() &&
+                    (state.getSafeCount() == null || state.getSafeCount() < 2)) {
+                workflowContext.executeNode("safeguardNode", state);
+
+                if (state.getQueryChanged() != null && state.getQueryChanged()) {
+                    workflowContext.executeNode("queryExecutorNode", state);
+
+                    if (state.getInvalidDate() != null && state.getInvalidDate()) {
+                        return;
+                    }
+
+                    if (state.getNoData() != null && state.getNoData()) {
+                        workflowContext.executeNode("nodataNode", state);
+                        return;
+                    }
+                }
+            }
+
+            if ("success".equals(state.getQueryResultStatus())) {
+                workflowContext.executeNode("respondentNode", state);
+            }
+        } else {
+            state.setQueryResultStatus("failed");
+            state.setSqlError("SQL 쿼리가 생성되지 않았습니다.");
+            log.error("SQL 쿼리 생성 실패");
+        }
     }
 
     /**

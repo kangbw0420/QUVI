@@ -61,7 +61,6 @@ public class GenerationService {
             log.debug("QnaService에서 chainId 설정: {}", workflowId);
         }
 
-        long startTime = System.currentTimeMillis();
         try {
             String qnaId = UUID.randomUUID().toString();
 

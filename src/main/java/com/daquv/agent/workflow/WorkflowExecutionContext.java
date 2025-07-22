@@ -177,7 +177,7 @@ public class WorkflowExecutionContext {
     /**
      * 개별 노드 실행 (State 직접 주입 + Trace/State 처리)
      */
-    private void executeNode(String nodeBeanName, WorkflowState state) {
+    public void executeNode(String nodeBeanName, WorkflowState state) {
         String nodeId = null;
 
         log.info("node: {}", state);
