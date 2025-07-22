@@ -60,8 +60,8 @@ public class HistoryService {
         
         try {
             // conversation_id를 직접 조회하는 쿼리 사용
-            String conversationIdQuery = "SELECT conversation_id FROM chain WHERE id = :chainId";
-            Query convQuery = entityManager.createNativeQuery(conversationIdQuery);
+            String sessionIdQuery  = "SELECT w.session_id FROM workflow w WHERE w.workflow_id = :chainId";
+            Query convQuery = entityManager.createNativeQuery(sessionIdQuery );
             convQuery.setParameter("chainId", chainId);
             String conversationId = (String) convQuery.getSingleResult();
             
@@ -71,20 +71,20 @@ public class HistoryService {
                     .map(col -> "s." + col)
                     .collect(Collectors.joining(", "));
             
-            String queryString = 
-                "WITH latest_chains AS (" +
-                "    SELECT " + selectedColumns + ", c.id as chain_id, c.chain_start " +
-                "    FROM state s " +
-                "    JOIN trace t ON s.trace_id = t.id " +
-                "    JOIN chain c ON t.chain_id = c.id " +
-                "    WHERE c.conversation_id = :conversationId " +
-                "    AND t.node_type = :nodeType " +
-                "    ORDER BY c.chain_start DESC " +
-                "    LIMIT :limit " +
-                ") " +
-                "SELECT * " +
-                "FROM latest_chains " +
-                "ORDER BY chain_start ASC";
+            String queryString =
+                    "WITH latest_workflows AS (" +
+                    "    SELECT " + selectedColumns + ", w.workflow_id, w.workflow_start " +
+                    "    FROM state s " +
+                    "    JOIN node n ON s.node_id = n.node_id " +
+                    "    JOIN workflow w ON n.workflow_id = w.workflow_id " +
+                    "    WHERE w.session_id = :sessionId " +
+                    "    AND n.node_name = :nodeType " +
+                    "    ORDER BY w.workflow_start DESC " +
+                    "    LIMIT :limit " +
+                    ") " +
+                    "SELECT * " +
+                    "FROM latest_workflows " +
+                    "ORDER BY workflow_start ASC";
             
             Query query = entityManager.createNativeQuery(queryString);
             query.setParameter("conversationId", conversationId);
@@ -145,28 +145,25 @@ public class HistoryService {
         log.info("getNthHistory - chainId: {}, column: {}, n: {}", chainId, column, n);
         
         try {
-            // 현재 체인의 conversation_id 조회
+            // 현재 workflow의 session_id 조회
             Workflow currentWorkflow = chainRepository.findById(chainId)
                     .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + chainId));
             
             // conversation_id를 직접 조회하는 쿼리 사용
-            String conversationIdQuery = "SELECT conversation_id FROM chain WHERE id = :chainId";
-            Query convQuery = entityManager.createNativeQuery(conversationIdQuery);
-            convQuery.setParameter("chainId", chainId);
-            String conversationId = (String) convQuery.getSingleResult();
-            
-            String queryString = 
+            String sessionId = currentWorkflow.getSession().getSessionId();
+
+            String queryString =
                 "SELECT s." + column + " " +
                 "FROM state s " +
-                "JOIN trace t ON s.trace_id = t.id " +
-                "JOIN chain c ON t.chain_id = c.id " +
-                "WHERE c.conversation_id = :conversationId " +
+                "JOIN node n ON s.node_id = n.node_id " +
+                "JOIN workflow w ON n.workflow_id = w.workflow_id " +
+                "WHERE w.session_id = :sessionId " +
                 "AND s." + column + " IS NOT NULL " +
                 "ORDER BY s.id DESC " +
                 "LIMIT :n";
             
             Query query = entityManager.createNativeQuery(queryString);
-            query.setParameter("conversationId", conversationId);
+            query.setParameter("conversationId", sessionId);
             query.setParameter("n", n);
             
             @SuppressWarnings("unchecked")
