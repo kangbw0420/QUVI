@@ -38,11 +38,11 @@ public class Node {
     @Column(name = "node_state_json", columnDefinition = "jsonb")
     private String nodeStateJson;
 
-    @Column(name = "node_start", length = 6)
-    private String nodeStart;
+    @Column(name = "node_start")
+    private LocalDateTime nodeStart;
 
-    @Column(name = "node_end", length = 6)
-    private String nodeEnd;
+    @Column(name = "node_end")
+    private LocalDateTime nodeEnd;
 
     @Column(name = "node_name")
     private String nodeName;
@@ -57,14 +57,11 @@ public class Node {
     @OneToMany(mappedBy = "node", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Generation> generations = new ArrayList<>();
 
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HHmmss");
-    private static final DateTimeFormatter SHORT_TIME_FORMATTER = DateTimeFormatter.ofPattern("HHmm");
-
     /**
      * 트레이스 완료
      */
     public void completeTrace() {
-        this.nodeStart = LocalTime.now().format(TIME_FORMATTER);
+        this.nodeStart = LocalDateTime.now();
         this.nodeStatus = NodeStatus.completed;
     }
 
