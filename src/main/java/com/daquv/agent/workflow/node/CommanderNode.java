@@ -48,7 +48,7 @@ public class CommanderNode implements WorkflowNode {
     @Override
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
-        String chainId = state.getChainId();
+        String chainId = state.getWorkflowId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -58,7 +58,7 @@ public class CommanderNode implements WorkflowNode {
         }
 
         // QnA ID 생성
-        String qnaId = generationService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getNodeId());
         
         // History 조회 (Commander는 history를 사용하지 않지만 일관성을 위해 추가)
         List<Map<String, Object>> commanderHistory = promptBuilder.getHistory(chainId,

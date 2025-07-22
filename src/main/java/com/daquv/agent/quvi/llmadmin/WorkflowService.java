@@ -42,7 +42,7 @@ public class WorkflowService {
         log.info("createWorkflow start - sessionId: {}, userQuestion: {}", sessionId, userQuestion);
         String workflowId = UUID.randomUUID().toString();
 
-        DatabaseProfilerAspect.setChainId(workflowId);
+        DatabaseProfilerAspect.setWorkflowId(workflowId);
         log.debug("ChainService에서 chainId 설정: {}", workflowId);
 
         try {

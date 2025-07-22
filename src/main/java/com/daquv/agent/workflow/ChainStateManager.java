@@ -24,10 +24,10 @@ public class ChainStateManager {
     /**
      * 새 State 생성
      */
-    public WorkflowState createState(String chainId) {
+    public WorkflowState createState(String workflowId) {
         WorkflowState state = WorkflowState.builder()
-                .chainId(chainId)
-                .traceId("trace_" + System.currentTimeMillis())
+                .workflowId(workflowId)
+                .nodeId("node_" + System.currentTimeMillis())
                 .safeCount(0)
                 .queryError(false)
                 .isJoy(false)
@@ -38,10 +38,10 @@ public class ChainStateManager {
                 .hasNext(false)
                 .build();
         
-        chainStates.put(chainId, state);
-        stateTimestamps.put(chainId, System.currentTimeMillis());
+        chainStates.put(workflowId, state);
+        stateTimestamps.put(workflowId, System.currentTimeMillis());
         
-        log.info("State 생성 - chainId: {}", chainId);
+        log.info("State 생성 - chainId: {}", workflowId);
         return state;
     }
     

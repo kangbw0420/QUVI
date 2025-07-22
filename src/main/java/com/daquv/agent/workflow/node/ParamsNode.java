@@ -67,7 +67,7 @@ public class ParamsNode implements WorkflowNode {
         String companyId = state.getUserInfo().getCompanyId();
         String userId = state.getUserInfo().getUserId();
         String useInttId = state.getUserInfo().getUseInttId();
-        String chainId = state.getChainId();
+        String chainId = state.getWorkflowId();
 
         if (selectedApi == null || selectedApi.trim().isEmpty()) {
             log.error("선택된 API가 없습니다.");
@@ -88,7 +88,7 @@ public class ParamsNode implements WorkflowNode {
             webSocketUtils.sendNodeStart(state.getWebSocketSession(), "params");
 
             // QnA ID 생성
-            String qnaId = generationService.createQnaId(state.getTraceId());
+            String qnaId = generationService.createQnaId(state.getNodeId());
 
             // History 조회
             List<Map<String, Object>> paramsHistory = promptBuilder.getParamsHistory(chainId);

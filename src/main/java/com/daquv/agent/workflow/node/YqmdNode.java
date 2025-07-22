@@ -38,7 +38,7 @@ public class YqmdNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String sqlQuery = state.getSqlQuery();
-        String chainId = state.getChainId();
+        String workflowId = state.getWorkflowId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -55,7 +55,7 @@ public class YqmdNode implements WorkflowNode {
         }
 
         // 벡터 스토어 API 호출하여 YQMD 분류
-        String classification = classifyYqmd(userQuestion, sqlQuery, chainId);
+        String classification = classifyYqmd(userQuestion, sqlQuery, workflowId);
         state.setSqlQuery(classification);
 
         // WebSocket 메시지 전송 (yqmd는 단순 분류이므로 시작 메시지만)

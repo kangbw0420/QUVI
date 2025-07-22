@@ -36,7 +36,7 @@ public class IsApiNode implements WorkflowNode {
     @Override
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
-        String chainId = state.getChainId();
+        String workflowId = state.getWorkflowId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -46,7 +46,7 @@ public class IsApiNode implements WorkflowNode {
 
         try {
             // 벡터 스토어 API 호출하여 isApi/isNotApi 분류
-            String classification = classifyApi(userQuestion, chainId);
+            String classification = classifyApi(userQuestion, workflowId);
 
             if ("1".equals(classification)) {
                 log.info("isApi로 분류 됨: {}", userQuestion);

@@ -44,7 +44,7 @@ public class NodeService {
     public String createNode(String workflowId, String nodeName) {
         log.info("createNode start - workflowId: {}, nodeType: {}", workflowId, nodeName);
 
-        DatabaseProfilerAspect.setChainId(workflowId);
+        DatabaseProfilerAspect.setWorkflowId(workflowId);
         log.debug("TraceService에서 workflowId 설정: {}", workflowId);
 
         try {

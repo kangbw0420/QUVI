@@ -45,7 +45,7 @@ public class NodataNode implements WorkflowNode {
     @Override
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
-        String chainId = state.getChainId();
+        String chainId = state.getWorkflowId();
         Boolean noteChanged = state.getNoteChanged();
         // WebSocket 메시지 전송 (node.py의 nodata 참고)
         webSocketUtils.sendNodeStart(state.getWebSocketSession(), "nodata");
@@ -66,7 +66,7 @@ public class NodataNode implements WorkflowNode {
         log.info("데이터 없음 답변 생성 시작: {}", userQuestion);
 
         // QnA ID 생성
-        String qnaId = generationService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getNodeId());
         
         // History 조회
         List<Map<String, Object>> nodataHistory = promptBuilder.getNodataHistory(chainId);

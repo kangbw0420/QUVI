@@ -54,7 +54,7 @@ public class StateService {
 
         String chainId = getCurrentChainId();
         if (chainId != null) {
-            DatabaseProfilerAspect.setChainId(chainId);
+            DatabaseProfilerAspect.setWorkflowId(chainId);
             log.debug("StateService에서 chainId 설정: {}", chainId);
         }
 

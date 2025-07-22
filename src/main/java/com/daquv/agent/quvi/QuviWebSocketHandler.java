@@ -191,29 +191,29 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         }
     }
     
-    private List<String> getRecommendations(String userQuestion, String chainId) {
+    private List<String> getRecommendations(String userQuestion, String workflowId) {
         try {
-            List<String> recommendList = vectorRequest.getRecommend(userQuestion, 4, chainId);
+            List<String> recommendList = vectorRequest.getRecommend(userQuestion, 4, workflowId);
             log.info("📚 추천 질문 검색 완료: {}", recommendList);
-            chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.INFO,
+            chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.INFO,
                     String.format("📚 추천 질문 검색 완료: %d개", recommendList.size()));
             return recommendList;
         } catch (Exception e) {
             log.error("📚 추천 질문 검색 실패: {}", e.getMessage(), e);
-            chainLogManager.addLog(chainId, "WEBSOCKET_HANDLER", LogLevel.ERROR,
+            chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.ERROR,
                     "📚 벡터 스토어 연결 실패로 추천 질문을 가져올 수 없습니다");
             return new ArrayList<>();
         }
     }
     
-    private void initializeState(WorkflowState state, QuviRequestDto request, String conversationId, String chainId, WebSocketSession session) {
+    private void initializeState(WorkflowState state, QuviRequestDto request, String conversationId, String workflowId, WebSocketSession session) {
         state.setUserQuestion(request.getUserQuestion());
         state.setUserInfo(UserInfo.builder()
                 .userId(request.getUserId())
                 .companyId(request.getCompanyId())
                 .build());
-        state.setChainId(chainId);
-        state.setTraceId("trace_" + System.currentTimeMillis());
+        state.setWorkflowId(workflowId);
+        state.setNodeId("node_" + System.currentTimeMillis());
         
         // 기본값들 설정
         state.setSafeCount(0);
@@ -231,7 +231,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         
         // WebSocket 세션 설정
         state.setWebSocketSession(session);
-        log.info("🔄 워크플로우 상태 초기화 완료 - chainId: {}, conversationId: {}", chainId, conversationId);
+        log.info("🔄 워크플로우 상태 초기화 완료 - chainId: {}, conversationId: {}", workflowId, conversationId);
     }
     
     private Map<String, Object> buildResponse(String conversationId, String chainId, 

@@ -61,10 +61,10 @@ public class SessionService {
         String companyId = getCompanyIdByUserId(userId);
         log.debug("Retrieved companyId: {} for userId: {}", companyId, userId);
 
-        String chainId = getCurrentChainId();
-        if (chainId != null) {
-            DatabaseProfilerAspect.setChainId(chainId);
-            log.debug("ConversationService에서 chainId 설정: {}", chainId);
+        String workflowId = getCurrentChainId();
+        if (workflowId != null) {
+            DatabaseProfilerAspect.setWorkflowId(workflowId);
+            log.debug("ConversationService에서 chainId 설정: {}", workflowId);
         }
 
         try {

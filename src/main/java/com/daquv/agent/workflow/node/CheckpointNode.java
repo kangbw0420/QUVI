@@ -46,7 +46,7 @@ public class CheckpointNode implements WorkflowNode {
 
         try {
             // 벡터 스토어 API 호출하여 joy/fin 분류
-            String classification = classifyJoy(userQuestion, state.getChainId());
+            String classification = classifyJoy(userQuestion, state.getWorkflowId());
             
             if ("joy".equals(classification)) {
                 log.info("일상 대화로 분류됨: {}", userQuestion);

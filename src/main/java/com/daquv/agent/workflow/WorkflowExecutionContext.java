@@ -189,8 +189,8 @@ public class WorkflowExecutionContext {
                 WorkflowNode node = (WorkflowNode) nodeBean;
                 
                 // 1. Node 생성
-                nodeId = nodeService.createNode(state.getChainId(), node.getId());
-                state.setTraceId(nodeId);
+                nodeId = nodeService.createNode(state.getWorkflowId(), node.getId());
+                state.setNodeId(nodeId);
                 
                 // 2. 노드 실행
                 node.execute(state);
@@ -208,7 +208,7 @@ public class WorkflowExecutionContext {
             }
             
         } catch (Exception e) {
-            log.error("노드 실행 실패: {} - chainId: {}", nodeBeanName, state.getChainId(), e);
+            log.error("노드 실행 실패: {} - chainId: {}", nodeBeanName, state.getWorkflowId(), e);
             
             // Trace 오류 상태로 변경
             if (nodeId != null) {

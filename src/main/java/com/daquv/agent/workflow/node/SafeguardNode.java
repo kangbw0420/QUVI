@@ -67,7 +67,7 @@ public class SafeguardNode implements WorkflowNode {
         String userQuestion = state.getUserQuestion();
         String sqlError = state.getSqlError();
         Boolean queryError = state.getQueryError();
-        String chainId = state.getChainId();
+        String workflowId = state.getWorkflowId();
 
         if (unsafeQuery == null || unsafeQuery.trim().isEmpty()) {
             log.error("수정할 SQL 쿼리가 비어있습니다.");
@@ -87,7 +87,7 @@ public class SafeguardNode implements WorkflowNode {
             String prompt = promptTemplate.build();
 
             log.info("2단계: QnA ID 생성");
-            String qnaId = generationService.createQnaId(state.getTraceId());
+            String qnaId = generationService.createQnaId(state.getNodeId());
             log.info("생성된 QnA ID: {}", qnaId);
 
             log.info("3단계: LLM을 통한 쿼리 수정 시작");

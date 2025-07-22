@@ -16,8 +16,8 @@ import java.util.Map;
 @Builder
 @ToString
 public class WorkflowState {
-    private String chainId;
-    private String traceId;
+    private String workflowId;
+    private String nodeId;
     private UserInfo userInfo;
     private WebSocketSession webSocketSession;
     

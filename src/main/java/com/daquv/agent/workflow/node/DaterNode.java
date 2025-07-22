@@ -49,7 +49,7 @@ public class DaterNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String selectedTable = state.getSelectedTable();
-        String chainId = state.getChainId();
+        String chainId = state.getWorkflowId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -66,7 +66,7 @@ public class DaterNode implements WorkflowNode {
         }
 
         // QnA ID 생성
-        String qnaId = generationService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getNodeId());
 
         // History 조회
         List<Map<String, Object>> daterHistory = promptBuilder.getDaterHistory(chainId);

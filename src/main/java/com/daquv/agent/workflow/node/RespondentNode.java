@@ -59,7 +59,7 @@ public class RespondentNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
         List<Map<String, Object>> queryResult = state.getQueryResult();
-        String chainId = state.getChainId();
+        String chainId = state.getWorkflowId();
         Boolean isApi = state.getIsApi();
         String startDate = state.getStartDate();
         String endDate = state.getEndDate();
@@ -102,7 +102,7 @@ public class RespondentNode implements WorkflowNode {
 
         // QnA ID 생성
         log.info("3단계: QnA ID 생성");
-        String qnaId = generationService.createQnaId(state.getTraceId());
+        String qnaId = generationService.createQnaId(state.getNodeId());
         log.info("생성된 QnA ID: {}", qnaId);
 
         // hasNext에 따른 프롬프트 분기

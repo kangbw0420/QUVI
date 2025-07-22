@@ -55,7 +55,7 @@ public class QueryExecutorNode implements WorkflowNode {
     public void execute(WorkflowState state) {
         String rawQuery = state.getSqlQuery();
         String companyId = state.getUserInfo().getCompanyId();
-        String chainId = state.getChainId();
+        String workflowId = state.getWorkflowId();
         List<Map<String, Object>> queryResult = new ArrayList<>();
         List<String> columnList = new ArrayList<>();
 
@@ -79,8 +79,8 @@ public class QueryExecutorNode implements WorkflowNode {
             if (state.getIsApi()) {
                 // API 쿼리 처리
 
-                log.info("API 쿼리용 chainId 설정: {}", chainId);
-                DatabaseProfilerAspect.setChainId(chainId);
+                log.info("API 쿼리용 chainId 설정: {}", workflowId);
+                DatabaseProfilerAspect.setWorkflowId(workflowId);
                 queryResult = mainJdbcTemplate.queryForList(rawQuery);
                 log.info("API 쿼리 완료, 반환 행 수: {}", queryResult.size());
                 
@@ -132,8 +132,8 @@ public class QueryExecutorNode implements WorkflowNode {
                 
                 // 5. 행 수 계산 및 페이지네이션
                 String countResult;
-                log.info("COUNT 쿼리용 chainId 설정: {}", chainId);
-                DatabaseProfilerAspect.setChainId(chainId);
+                log.info("COUNT 쿼리용 chainId 설정: {}", workflowId);
+                DatabaseProfilerAspect.setWorkflowId(workflowId);
                 countResult = queryRequest.countRows(viewQuery, LIMIT);
                 log.info("COUNT 쿼리 완료");
 
@@ -167,8 +167,8 @@ public class QueryExecutorNode implements WorkflowNode {
                 
                 // 6. 쿼리 실행
 
-                log.info("메인 쿼리용 chainId 설정: {}", chainId);
-                DatabaseProfilerAspect.setChainId(chainId);
+                log.info("메인 쿼리용 chainId 설정: {}", workflowId);
+                DatabaseProfilerAspect.setWorkflowId(workflowId);
                 queryResult = mainJdbcTemplate.queryForList(viewQuery);
                 log.info("메인 쿼리 완료, 반환 행 수: {}", queryResult.size());
 
@@ -188,7 +188,7 @@ public class QueryExecutorNode implements WorkflowNode {
                     List<String> noteConditions = queryUtils.findColumnConditions(viewQuery, "note1");
                     
                     if ((queryResult.isEmpty() || queryUtils.isNullOnly(queryResult)) && !noteConditions.isEmpty()) {
-                        Map<String, Object> evernoteResult = queryUtils.everNote(viewQuery, chainId);
+                        Map<String, Object> evernoteResult = queryUtils.everNote(viewQuery, workflowId);
                         
                         List<String> originNote = (List<String>) evernoteResult.get("origin_note");
                         List<String> vectorNotes = (List<String>) evernoteResult.get("vector_notes");
@@ -218,8 +218,8 @@ public class QueryExecutorNode implements WorkflowNode {
                         // 수정된 쿼리로 재실행
                         if (modifiedQuery != null && !modifiedQuery.equals(viewQuery)) {
 
-                            log.info("수정된 쿼리용 chainId 설정: {}", chainId);
-                            DatabaseProfilerAspect.setChainId(chainId);
+                            log.info("수정된 쿼리용 chainId 설정: {}", workflowId);
+                            DatabaseProfilerAspect.setWorkflowId(workflowId);
                             queryResult = mainJdbcTemplate.queryForList(modifiedQuery);
                             log.info("수정된 쿼리 완료, 반환 행 수: {}", queryResult.size());
 

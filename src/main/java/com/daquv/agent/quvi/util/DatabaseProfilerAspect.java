@@ -242,10 +242,10 @@ public class DatabaseProfilerAspect {
     /**
      * ThreadLocal에 chainId 설정 (외부에서 호출 가능)
      */
-    public static void setChainId(String chainId) {
-        if (chainId != null) {
-            chainIdThreadLocal.set(chainId);
-            log.debug("ThreadLocal에 chainId 설정: {}", chainId);
+    public static void setWorkflowId(String workflowId) {
+        if (workflowId != null) {
+            chainIdThreadLocal.set(workflowId);
+            log.debug("ThreadLocal에 chainId 설정: {}", workflowId);
         }
     }
 

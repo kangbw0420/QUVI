@@ -372,16 +372,16 @@ public class QuviController {
     /**
      * 워크플로우 상태 초기화 (HTTP용 - WebSocket 세션 없음)
      */
-    private void initializeState(WorkflowState state, QuviRequestDto request, String conversationId,
-                                 String chainId) {
+    private void initializeState(WorkflowState state, QuviRequestDto request, String sessionId,
+                                 String workflowId) {
         state.setUserQuestion(request.getUserQuestion());
         state.setUserInfo(UserInfo.builder()
                 .userId(request.getUserId())
                 .companyId(request.getCompanyId())
                 .useInttId(request.getUseInttId())
                 .build());
-        state.setChainId(chainId);
-        state.setTraceId("trace_" + System.currentTimeMillis());
+        state.setWorkflowId(workflowId);
+        state.setNodeId("node_" + System.currentTimeMillis());
 
         // 기본 상태 초기화
         state.setSafeCount(0);
@@ -402,7 +402,7 @@ public class QuviController {
         state.setQueryChanged(false);
         state.setHasNext(false);
 
-        log.info("🔄 워크플로우 상태 초기화 완료 - chainId: {}, conversationId: {}", chainId, conversationId);
+        log.info("🔄 워크플로우 상태 초기화 완료 - chainId: {}, conversationId: {}", workflowId, sessionId);
     }
 
     /**

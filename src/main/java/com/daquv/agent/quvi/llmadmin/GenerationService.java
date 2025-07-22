@@ -55,10 +55,10 @@ public class GenerationService {
     public String createQnaId(String traceId) {
         log.info("createQnaId start - traceId: {}", traceId);
 
-        String chainId = getCurrentChainId();
-        if (chainId != null) {
-            DatabaseProfilerAspect.setChainId(chainId);
-            log.debug("QnaService에서 chainId 설정: {}", chainId);
+        String workflowId = getCurrentChainId();
+        if (workflowId != null) {
+            DatabaseProfilerAspect.setWorkflowId(workflowId);
+            log.debug("QnaService에서 chainId 설정: {}", workflowId);
         }
 
         long startTime = System.currentTimeMillis();
@@ -94,10 +94,10 @@ public class GenerationService {
         log.info("recordFewshot start - qnaId: {}, retrieved: {}, human: {}, ai: {}, order: {}",
                 qnaId, retrieved, human, ai, order);
 
-        String chainId = getCurrentChainId();
-        if (chainId != null) {
-            DatabaseProfilerAspect.setChainId(chainId);
-            log.debug("QnaService.recordFewshot에서 chainId 설정: {}", chainId);
+        String workflowId = getCurrentChainId();
+        if (workflowId != null) {
+            DatabaseProfilerAspect.setWorkflowId(workflowId);
+            log.debug("QnaService.recordFewshot에서 chainId 설정: {}", workflowId);
         }
 
         long startTime = System.currentTimeMillis();

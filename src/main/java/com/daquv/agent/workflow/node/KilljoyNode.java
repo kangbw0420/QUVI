@@ -45,7 +45,7 @@ public class KilljoyNode implements WorkflowNode {
     @Override
     public void execute(WorkflowState state) {
         String userQuestion = state.getUserQuestion();
-        String chainId = state.getChainId();
+        String chainId = state.getWorkflowId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -60,7 +60,7 @@ public class KilljoyNode implements WorkflowNode {
             webSocketUtils.sendNodeStart(state.getWebSocketSession(), "killjoy");
 
             // QnA ID 생성
-            String qnaId = generationService.createQnaId(state.getTraceId());
+            String qnaId = generationService.createQnaId(state.getNodeId());
             
             // History 조회
             List<Map<String, Object>> killjoyHistory = promptBuilder.getKilljoyHistory(chainId);

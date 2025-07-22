@@ -61,7 +61,7 @@ public class HistoryService {
         try {
             // conversation_id를 직접 조회하는 쿼리 사용
             String sessionIdQuery  = "SELECT w.session_id FROM workflow w WHERE w.workflow_id = :chainId";
-            Query convQuery = entityManager.createNativeQuery(sessionIdQuery );
+            Query convQuery = entityManager.createNativeQuery(sessionIdQuery);
             convQuery.setParameter("chainId", chainId);
             String sessionId = (String) convQuery.getSingleResult();
             

@@ -53,7 +53,7 @@ public class NextPageNode implements WorkflowNode {
         
         try {
             String userQuestion = state.getUserQuestion();
-            String chainId = state.getChainId();
+            String chainId = state.getWorkflowId();
             
             log.info("사용자 질문: {}", userQuestion);
             log.info("체인 ID: {}", chainId);
