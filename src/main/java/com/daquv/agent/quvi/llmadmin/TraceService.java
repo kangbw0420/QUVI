@@ -37,12 +37,12 @@ public class TraceService {
      * 노드 실행 시작 시 trace 기록 생성
      *
      * @param chainId 체인 ID
-     * @param nodeType 노드 타입
+     * @param nodeName 노드 타입
      * @return 생성된 trace ID
      */
     @Transactional
-    public String createTrace(String chainId, String nodeType) {
-        log.info("createTrace start - chainId: {}, nodeType: {}", chainId, nodeType);
+    public String createTrace(String chainId, String nodeName) {
+        log.info("createTrace start - chainId: {}, nodeType: {}", chainId, nodeName);
 
         DatabaseProfilerAspect.setChainId(chainId);
         log.debug("TraceService에서 chainId 설정: {}", chainId);
@@ -59,6 +59,7 @@ public class TraceService {
             Node node = new Node();
             node.setNodeId(traceId);
             node.setWorkflow(workflow);
+            node.setNodeName(nodeName);
             node.setNodeStatus(Node.NodeStatus.active);
 
             traceRepository.save(node);
@@ -67,7 +68,7 @@ public class TraceService {
             return traceId;
 
         } catch (Exception e) {
-            log.error("Error in createTrace - chainId: {}, nodeType: {}", chainId, nodeType, e);
+            log.error("Error in createTrace - chainId: {}, nodeType: {}", chainId, nodeName, e);
             throw new RuntimeException("Failed to create trace", e);
         }
     }
@@ -82,13 +83,9 @@ public class TraceService {
     public boolean completeTrace(String traceId) {
         log.info("completeTrace start - traceId: {}", traceId);
 
-        String chainId = null;
-        long startTime = System.currentTimeMillis();
         try {
             Node node = traceRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
-
-            chainId = node.getWorkflow().getWorkflowId();
 
             node.completeTrace();
             traceRepository.save(node);
@@ -112,12 +109,9 @@ public class TraceService {
     public boolean markTraceError(String traceId) {
         log.info("markTraceError start - traceId: {}", traceId);
 
-        String chainId = null;
         try {
             Node node = traceRepository.findById(traceId)
                     .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
-
-            chainId = node.getWorkflow().getWorkflowId();
 
             node.completeTrace(); // 종료 시간 기록
             node.updateStatus(Node.NodeStatus.error); // 상태를 error로 변경
