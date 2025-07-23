@@ -472,6 +472,8 @@ public class PromptBuilder {
     public List<Map<String, Object>> getNl2sqlHistory(String chainId) {
         List<String> requiredFields = Arrays.asList("user_question", "sql_query");
         Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "nl2sql", 5);
+        log.info("=====NL2SQL DICT ======");
+        log.info("{}", historyDict);
         return convertToChatHistory(historyDict, requiredFields, "user_question", "sql_query");
     }
 

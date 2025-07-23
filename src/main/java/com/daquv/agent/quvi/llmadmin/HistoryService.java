@@ -47,22 +47,22 @@ public class HistoryService {
     /**
      * Retrieve conversation history grouped by chain_id.
      * 
-     * @param chainId 체인 ID
+     * @param workflowId 체인 ID
      * @param stateHistory 조회할 상태 컬럼 목록
      * @param nodeType 노드 타입
      * @param limit 조회할 최대 개수
      * @return 체인별 히스토리 맵
      */
-    public Map<String, List<Map<String, Object>>> getHistory(String chainId, List<String> stateHistory, 
+    public Map<String, List<Map<String, Object>>> getHistory(String workflowId, List<String> stateHistory,
                                                              String nodeType, int limit) {
-        log.info("getHistory start - chainId: {}, stateHistory: {}, nodeType: {}, limit: {}", 
-                chainId, stateHistory, nodeType, limit);
+        log.info("getHistory start - workflowId: {}, stateHistory: {}, nodeType: {}, limit: {}",
+                workflowId, stateHistory, nodeType, limit);
         
         try {
             // conversation_id를 직접 조회하는 쿼리 사용
-            String sessionIdQuery  = "SELECT w.session_id FROM workflow w WHERE w.workflow_id = :chainId";
+            String sessionIdQuery  = "SELECT w.session_id FROM workflow w WHERE w.workflow_id = :workflowId";
             Query convQuery = entityManager.createNativeQuery(sessionIdQuery);
-            convQuery.setParameter("chainId", chainId);
+            convQuery.setParameter("chainId", workflowId);
             String sessionId = (String) convQuery.getSingleResult();
             
             // 동적 쿼리 생성 (JSONB 컬럼 제외)
@@ -90,12 +90,14 @@ public class HistoryService {
             query.setParameter("sessionId", sessionId );
             query.setParameter("nodeType", nodeType);
             query.setParameter("limit", limit);
-            
+            log.info("getHistory end - query: {}", query.toString());
             @SuppressWarnings("unchecked")
             List<Object[]> results = query.getResultList();
+
+            log.info("getHistory end - results: {}", results);
             
             if (results.isEmpty()) {
-                log.warn("No history found for chain_id: {}", chainId);
+                log.warn("No history found for workflow_id: {}", workflowId);
                 return new HashMap<>();
             }
             
@@ -127,8 +129,8 @@ public class HistoryService {
             return historyByChain;
             
         } catch (Exception e) {
-            log.error("Error in getHistory - chainId: {}, stateHistory: {}, nodeType: {}", 
-                     chainId, stateHistory, nodeType, e);
+            log.error("Error in getHistory - workflowId: {}, stateHistory: {}, nodeType: {}",
+                    workflowId, stateHistory, nodeType, e);
             return new HashMap<>();
         }
     }
