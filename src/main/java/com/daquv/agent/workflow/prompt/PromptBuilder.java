@@ -678,12 +678,12 @@ public class PromptBuilder {
 
         systemPromptBuilder.append("사용가능한 워크플로우:\n");
         systemPromptBuilder.append("- JOY: 일상 대화나 인사말, 단순 질문\n");
-        systemPromptBuilder.append("- API: 특정 API 함수 호출이 필요한 금융 데이터 요청\n");
+        systemPromptBuilder.append("- TOOLUSE: 특정 API 함수 호출이 필요한 금융 데이터 요청\n");
         systemPromptBuilder.append("- SQL: 일반적인 데이터베이스 쿼리가 필요한 질문\n");
         systemPromptBuilder.append("- DEFAULT: 분류가 애매한 경우\n\n");
 
         systemPromptBuilder.append("위 질문을 분석하여 가장 적합한 워크플로우를 하나만 선택하세요.\n");
-        systemPromptBuilder.append("응답은 JOY, API, SQL, DEFAULT 중 하나만 출력하세요.");
+        systemPromptBuilder.append("응답은 JOY, TOOLUSE, SQL, DEFAULT 중 하나만 출력하세요.");
 
         String systemPrompt = systemPromptBuilder.toString();
 

@@ -388,15 +388,6 @@ public class QuviController {
     }
 
     /**
-     * 체인 로그에서 에러 발생 여부 확인
-     */
-    private boolean checkChainLogForErrors(String chainId) {
-        // ChainLogManager에서 현재 체인의 에러 로그 확인
-        // 이 방법은 ChainLogManager에 에러 로그 확인 메서드가 필요함
-        return chainLogManager.hasErrorLogs(chainId);
-    }
-
-    /**
      * 추천 질문 검색
      */
     private List<String> getRecommendations(String userQuestion, String workflowId) {
@@ -446,7 +437,7 @@ public class QuviController {
                 log.info("🎉 JOY 워크플로우용 상태 초기화");
                 break;
 
-            case "API":
+            case "TOOLUSE":
                 state.setIsJoy(false);
                 state.setIsApi(true);
                 log.info("🔌 API 워크플로우용 상태 초기화");
@@ -488,7 +479,8 @@ public class QuviController {
                 case "JOY":
                     executeJoyWorkflow(state);
                     break;
-                case "API":
+
+                case "TOOLUSE":
                     executeApiWorkflow(state);
                     break;
                 case "SQL":
@@ -527,16 +519,11 @@ public class QuviController {
     private void executeApiWorkflow(WorkflowState state) {
         log.info("🔌 API 워크플로우 실행");
 
-        workflowContext.executeNode("funkNode", state);
-        workflowContext.executeNode("paramsNode", state);
+        workflowContext.executeNode("toolUseNode", state);
 
         if (state.getInvalidDate() != null && state.getInvalidDate()) {
             log.info("invalid_date 감지 - 워크플로우 종료");
             return;
-        }
-
-        if ("aicfo_get_financial_flow".equals(state.getSelectedApi())) {
-            workflowContext.executeNode("yqmdNode", state);
         }
 
         workflowContext.executeNode("queryExecutorNode", state);

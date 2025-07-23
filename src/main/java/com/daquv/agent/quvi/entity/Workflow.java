@@ -42,6 +42,12 @@ public class Workflow implements Serializable {
     @Column(name = "workflow_status")
     private WorkflowStatus workflowStatus = WorkflowStatus.active;
 
+    @Column(name = "workflow_question", columnDefinition = "TEXT")
+    private String workflowQuestion;
+
+    @Column(name = "workflow_answer", columnDefinition = "TEXT")
+    private String workflowAnswer;
+
     @OneToMany(mappedBy = "workflow", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Node> nodes = new ArrayList<>();
 
@@ -50,6 +56,7 @@ public class Workflow implements Serializable {
      */
     public void completeChain(String answer) {
         this.workflowEnd = LocalDateTime.now();
+        this.workflowAnswer = answer;
         this.workflowStatus = WorkflowStatus.completed;
     }
 
@@ -96,6 +103,7 @@ public class Workflow implements Serializable {
     public static Workflow create(String workflowId, Session session, String question, WorkflowStatus status) {
         Workflow workflow = new Workflow();
         workflow.workflowId = workflowId;
+        workflow.workflowQuestion = question;
         workflow.session = session;
         workflow.workflowStatus = status;
         return workflow;
