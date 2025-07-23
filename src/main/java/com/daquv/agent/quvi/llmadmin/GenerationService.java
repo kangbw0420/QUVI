@@ -2,10 +2,8 @@ package com.daquv.agent.quvi.llmadmin;
 
 import com.daquv.agent.quvi.entity.Node;
 import com.daquv.agent.quvi.entity.Generation;
-//import com.daquv.agent.quvi.entity.Fewshot;
 import com.daquv.agent.quvi.repository.GenerationRepository;
 import com.daquv.agent.quvi.repository.NodeRepository;
-//import com.daquv.agent.quvi.repository.FewshotRepository;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import org.slf4j.Logger;
@@ -30,7 +28,7 @@ public class GenerationService {
     private static final Logger log = LoggerFactory.getLogger(GenerationService.class);
     private final GenerationRepository generationRepository;
     private final NodeRepository nodeRepository;
-//    private final FewshotRepository fewshotRepository;
+    //private final FewshotRepository fewshotRepository;
 
     @Autowired
     private RequestProfiler requestProfiler;
@@ -99,7 +97,6 @@ public class GenerationService {
             log.debug("QnaService.recordFewshot에서 chainId 설정: {}", workflowId);
         }
 
-        long startTime = System.currentTimeMillis();
         try {
             // Qna(Generation) 존재 여부 확인
             Generation generation = generationRepository.findById(qnaId)
@@ -109,7 +106,7 @@ public class GenerationService {
 
             String fewshotId = UUID.randomUUID().toString();
 
-//            // Fewshot 생성
+            // Fewshot 생성
 //            Fewshot fewshot = Fewshot.builder()
 //                    .id(fewshotId)
 //                    .generation(generation)
@@ -142,9 +139,6 @@ public class GenerationService {
     @Transactional
     public boolean updateQuestion(String qnaId, Object question, String model) {
         log.info("updateQuestion start - qnaId: {}, question: {}, model: {}", qnaId, question, model);
-
-        String chainId = getCurrentChainId();
-        long startTime = System.currentTimeMillis();
 
         try {
             // ChatPromptTemplate인 경우 문자열로 변환

@@ -39,6 +39,8 @@ public class WorkflowState {
     private List<String> queryResultList;
     private VectorNotes vectorNotes;
 
+    private String promptContext;
+
     @Builder.Default
     private Boolean isJoy = false;
     @Builder.Default

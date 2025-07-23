@@ -1,14 +1,21 @@
 package com.daquv.agent.workflow.killjoy;
 
+import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.llmadmin.StateService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
 import com.daquv.agent.workflow.ChainStateManager;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -25,6 +32,9 @@ public class KilljoyWorkflowExecutionContext {
 
     @Autowired
     private StateService stateService;
+
+    @Autowired
+    private HistoryService historyService;
 
     /**
      * Killjoy 워크플로우 실행
@@ -130,7 +140,7 @@ public class KilljoyWorkflowExecutionContext {
 
             // Node 엔티티의 nodeStateJson에도 JSON으로 저장
             try {
-                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                ObjectMapper objectMapper = new ObjectMapper();
                 String stateJson = objectMapper.writeValueAsString(stateMap);
 
                 // NodeService를 통해 nodeStateJson 업데이트

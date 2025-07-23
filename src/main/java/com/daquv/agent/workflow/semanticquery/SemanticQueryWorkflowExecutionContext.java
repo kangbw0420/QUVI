@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.semanticquery;
 
+import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.llmadmin.StateService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
 import com.daquv.agent.workflow.ChainStateManager;
@@ -10,6 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -26,6 +32,9 @@ public class SemanticQueryWorkflowExecutionContext {
 
     @Autowired
     private StateService stateService;
+
+    @Autowired
+    private HistoryService historyService;
 
     /**
      * SemanticQuery 워크플로우 실행
@@ -210,7 +219,7 @@ public class SemanticQueryWorkflowExecutionContext {
      */
     private void saveStateToDatabase(String traceId, WorkflowState state) {
         try {
-            java.util.Map<String, Object> stateMap = new java.util.HashMap<>();
+            Map<String, Object> stateMap = new java.util.HashMap<>();
 
             // SemanticQuery 워크플로우에서 중요한 필드들을 Map으로 변환 (빈 값이 아닐 때만)
             if (state.getUserQuestion() != null && !state.getUserQuestion().trim().isEmpty()) {
@@ -244,7 +253,6 @@ public class SemanticQueryWorkflowExecutionContext {
                 stateMap.put("date_info", dateInfo);
             }
 
-
             // StateService를 통해 기존 State 테이블에도 저장 (빈 맵이 아닐 때만)
             if (!stateMap.isEmpty()) {
                 stateService.updateState(traceId, stateMap);
@@ -252,7 +260,7 @@ public class SemanticQueryWorkflowExecutionContext {
 
             // Node 엔티티의 nodeStateJson에도 JSON으로 저장
             try {
-                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                ObjectMapper objectMapper = new ObjectMapper();
                 String stateJson = objectMapper.writeValueAsString(stateMap);
 
                 // NodeService를 통해 nodeStateJson 업데이트

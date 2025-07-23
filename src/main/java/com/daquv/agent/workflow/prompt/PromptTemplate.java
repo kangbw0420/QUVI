@@ -161,7 +161,7 @@ public class PromptTemplate {
                     }
 
                     // Dater 전용: output을 JSON 형태로 감쌈
-                    String formattedOutput = "{" + output + "}";
+                    String formattedOutput =  output;
 
                     fewShotMessages.add(new ChatMessage("human", input));
                     fewShotMessages.add(new ChatMessage("ai", formattedOutput));
