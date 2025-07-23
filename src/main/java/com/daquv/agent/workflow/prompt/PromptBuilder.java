@@ -188,6 +188,8 @@ public class PromptBuilder {
             String qnaId, String companyId, String startDate, String endDate, String chainId
     ) {
         String dateInfoStr = String.format("(%s, %s)", startDate, endDate);
+
+        log.info("====NL2SQL HISTORY==== {}", nl2sqlHistory);
         
         // 기본 시스템 프롬프트 로드
         PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
