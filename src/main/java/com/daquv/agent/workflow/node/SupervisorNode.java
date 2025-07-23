@@ -89,7 +89,7 @@ public class SupervisorNode implements WorkflowNode {
             double elapsedTime = (endTime - startTime) / 1000.0;
             requestProfiler.recordLlmCall(workflowId, elapsedTime, "supervisor");
 
-            String selectedWorkflow = LlmOutputHandler.extractAnswer(llmResponse);
+            String selectedWorkflow = LlmOutputHandler.extractWorkflowSelection(llmResponse);
             selectedWorkflow = LlmOutputHandler.handleAiColon(selectedWorkflow);
 
             if (selectedWorkflow == null || selectedWorkflow.trim().isEmpty()) {

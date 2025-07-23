@@ -111,7 +111,7 @@ public class ToolUseNode implements WorkflowNode {
     }
 
     /**
-     * 1단계: 사용자 질문을 분석하여 적절한 도구/API 선택
+     * 사용자 질문을 분석하여 적절한 도구/API 선택
      */
     private String selectTool(String userQuestion, String chainId, WorkflowState state) {
         try {
@@ -153,7 +153,7 @@ public class ToolUseNode implements WorkflowNode {
     }
 
     /**
-     * 2단계: 선택된 도구에 필요한 파라미터 생성
+     * 선택된 도구에 필요한 파라미터 생성
      */
     private boolean generateParameters(String userQuestion, String selectedTool, String chainId, WorkflowState state) {
         try {
@@ -252,7 +252,7 @@ public class ToolUseNode implements WorkflowNode {
     }
 
     /**
-     * 3단계: 도구별 특수 처리 (예: YQMD 분류 등)
+     *  도구별 특수 처리
      */
     private void performToolSpecificProcessing(String selectedTool, String userQuestion, String chainId, WorkflowState state) {
         log.info("3단계: 도구별 특수 처리 시작 - 도구: {}", selectedTool);
@@ -287,7 +287,7 @@ public class ToolUseNode implements WorkflowNode {
     }
 
     /**
-     * YQMD 분류 처리 (기존 YqmdNode 로직 통합)
+     * YQMD 분류 처리
      */
     private void performYqmdProcessing(String userQuestion, String chainId, WorkflowState state) {
         try {

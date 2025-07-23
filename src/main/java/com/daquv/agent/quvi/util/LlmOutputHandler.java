@@ -265,6 +265,61 @@ public class LlmOutputHandler {
         }
     }
 
+    public static String extractWorkflowSelection(String llmResponse) {
+        if (llmResponse == null || llmResponse.trim().isEmpty()) {
+            return null;
+        }
+
+        log.info("워크플로우 선택 응답 원본: {}", llmResponse);
+
+        // AI 콜론 제거
+        String cleaned = handleAiColon(llmResponse);
+        cleaned = cleaned.trim();
+
+        log.info("AI 콜론 제거 후: {}", cleaned);
+
+        // 줄바꿈 제거
+        cleaned = cleaned.replaceAll("\n", "").trim();
+
+        // 유효한 워크플로우 목록
+        String[] validWorkflows = {"JOY", "TOOLUSE", "SQL", "DEFAULT"};
+
+        // 1순위: 정확히 일치하는 워크플로우 찾기
+        for (String workflow : validWorkflows) {
+            if (workflow.equalsIgnoreCase(cleaned)) {
+                log.info("정확 일치 워크플로우 발견: {}", workflow);
+                return workflow.toUpperCase();
+            }
+        }
+
+        // 2순위: "선택된 워크플로우: TOOLUSE" 패턴 찾기
+        Pattern workflowPattern = Pattern.compile("선택된\\s*워크플로우\\s*:\\s*(\\w+)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = workflowPattern.matcher(cleaned);
+        if (matcher.find()) {
+            String workflow = matcher.group(1).toUpperCase().trim();
+            log.info("패턴에서 워크플로우 추출: {}", workflow);
+
+            // 유효성 검사
+            for (String validWorkflow : validWorkflows) {
+                if (validWorkflow.equals(workflow)) {
+                    return workflow;
+                }
+            }
+        }
+
+        // 3순위: 부분 일치 검사 (응답에 워크플로우명이 포함된 경우)
+        for (String workflow : validWorkflows) {
+            if (cleaned.toUpperCase().contains(workflow.toUpperCase())) {
+                log.info("부분 일치 워크플로우 발견: {}", workflow);
+                return workflow.toUpperCase();
+            }
+        }
+
+        log.warn("응답에서 유효한 워크플로우를 찾을 수 없습니다. 원본: '{}', 정리된 버전: '{}'", llmResponse, cleaned);
+        return null;
+    }
+
+
     private static String convertDateFormat(String dateStr) {
         if (dateStr == null) return dateStr;
 
