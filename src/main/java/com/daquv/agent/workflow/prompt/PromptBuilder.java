@@ -32,7 +32,7 @@ public class PromptBuilder {
         private final PromptTemplate promptTemplate;
         private final BigDecimal retrieveTime;
 
-        PromptWithRetrieveTime(PromptTemplate promptTemplate, BigDecimal retrieveTime) {
+        public PromptWithRetrieveTime(PromptTemplate promptTemplate, BigDecimal retrieveTime) {
             this.promptTemplate = promptTemplate;
             this.retrieveTime = retrieveTime;
         }
@@ -404,18 +404,6 @@ public class PromptBuilder {
             .withUserMessage(userQuestion);
     }
 
-    // Killjoy 프롬프트 생성 (history 포함)
-    public PromptTemplate buildKilljoyPromptWithHistory(String userQuestion, List<Map<String, Object>> killjoyHistory) {
-        PromptTemplate template = PromptTemplate.fromFile("killjoy");
-        String systemPrompt = template.replace("{user_question}", userQuestion);
-        
-        // 프롬프트 구성
-        return PromptTemplate.from("")
-            .withSystemPrompt(systemPrompt)
-            .withHistory(killjoyHistory)
-            .withUserMessage(userQuestion);
-    }
-
     // Safeguard 프롬프트 생성 (SQL 에러 수정)
     public PromptTemplate buildSafeguardPrompt(String userQuestion, String unsafeQuery, String sqlError) {
         String today = DateUtils.getTodayFormatted();
@@ -434,7 +422,7 @@ public class PromptBuilder {
     }
 
     // 유틸리티: Chat history 변환 (노드별 필드 매핑 지원)
-    private List<Map<String, Object>> convertToChatHistory(Map<String, List<Map<String, Object>>> historyDict,
+    public List<Map<String, Object>> convertToChatHistory(Map<String, List<Map<String, Object>>> historyDict,
                                                           List<String> requiredFields,
                                                           String humanField,
                                                           String aiField) {
@@ -504,15 +492,6 @@ public class PromptBuilder {
     }
 
     /**
-     * Killjoy 노드용 history 조회 및 변환
-     */
-    public List<Map<String, Object>> getKilljoyHistory(String chainId) {
-        List<String> requiredFields = Arrays.asList("user_question", "final_answer");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "killjoy", 5);
-        return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
-    }
-
-    /**
      * 일반적인 history 조회 및 변환 (필드명 지정 가능)
      */
     public List<Map<String, Object>> getHistory(String chainId, List<String> requiredFields, String nodeType, int limit) {
@@ -533,142 +512,6 @@ public class PromptBuilder {
             .withUserMessage(userQuestion);
     }
 
-    /**
-     * Funk 노드용 history 조회 및 변환
-     */
-    public List<Map<String, Object>> getFunkHistory(String chainId) {
-        List<String> requiredFields = Arrays.asList("user_question", "selected_api");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "funk", 5);
-        return convertToChatHistory(historyDict, requiredFields, "user_question", "selected_api");
-    }
-    
-    /**
-     * Funk 프롬프트 생성 (few-shot 포함, QnA 저장)
-     */
-    public PromptWithRetrieveTime buildFunkPromptWithFewShots(String userQuestion, List<Map<String, Object>> funkHistory, String qnaId, String chainId) {
-        try {
-            // Few-shot 예제 검색
-            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_api_selector", 5, chainId);
-            
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
-            BigDecimal retrieveTime = BigDecimal.valueOf((Double) fewShotResult.getOrDefault("retrieve_time", 0.0));
-            
-            // 기본 시스템 프롬프트 로드
-            PromptTemplate template = PromptTemplate.fromFile("funk");
-            String systemPrompt = template.replace("{today}", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-            
-            // Few-shot 예제 QnA 저장
-            if (qnaId != null && fewShots != null) {
-                for (int i = 0; i < fewShots.size(); i++) {
-                    Map<String, Object> shot = fewShots.get(i);
-                    String input = (String) shot.get("input");
-                    String output = (String) shot.get("output");
-                    
-                    if (input != null && output != null) {
-                        generationService.recordFewshot(qnaId, input, input, output, i + 1);
-                    }
-                }
-            }
-            
-            // 프롬프트 구성
-            PromptTemplate finalTemplate = PromptTemplate.from("")
-                .withSystemPrompt(systemPrompt)
-                .withFewShots(fewShots)
-                .withHistory(funkHistory)
-                .withUserMessage(userQuestion);
-            
-            return new PromptWithRetrieveTime(finalTemplate, retrieveTime);
-            
-        } catch (Exception e) {
-            log.error("Funk 프롬프트 생성 중 오류 발생: {}", e.getMessage(), e);
-            
-            // 오류 발생 시 기본 프롬프트 반환
-            PromptTemplate template = PromptTemplate.fromFile("funk");
-            String systemPrompt = template.replace("{today}", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-            
-            PromptTemplate finalTemplate = PromptTemplate.from("")
-                .withSystemPrompt(systemPrompt)
-                .withHistory(funkHistory)
-                .withUserMessage(userQuestion);
-            
-            return new PromptWithRetrieveTime(finalTemplate, BigDecimal.ZERO);
-        }
-    }
-
-    /**
-     * Params 노드용 history 조회 및 변환
-     */
-    public List<Map<String, Object>> getParamsHistory(String chainId) {
-        List<String> requiredFields = Arrays.asList("user_question", "date_info");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "params", 5);
-        return convertToChatHistory(historyDict, requiredFields, "user_question", "date_info");
-    }
-
-    /**
-     * Params 프롬프트 생성 (few-shot 포함)
-     */
-    public PromptWithRetrieveTime buildParamsPromptWithFewShots(String userQuestion, List<Map<String, Object>> paramsHistory, String qnaId, String todayFormatted, String jsonFormat, String chainId) {
-        try {
-            // Few-shot 예제 검색
-            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_params_creator", 5, chainId);
-            
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
-            BigDecimal retrieveTime = BigDecimal.valueOf((Double) fewShotResult.getOrDefault("retrieve_time", 0.0));
-            
-            // 기본 시스템 프롬프트 로드
-            PromptTemplate template = PromptTemplate.fromFile("params");
-            String systemPrompt = template.replace("{today}", todayFormatted)
-                                         .replace("{json_format}", jsonFormat);
-            
-            // Few-shot 예제 처리 및 QnA 저장
-            if (qnaId != null && fewShots != null) {
-                for (int i = 0; i < fewShots.size(); i++) {
-                    Map<String, Object> shot = fewShots.get(i);
-                    String input = (String) shot.get("input");
-                    String output = (String) shot.get("output");
-                    String date = (String) shot.get("date");
-                    
-                    if (input != null && output != null) {
-                        // 날짜 정보가 있으면 추가
-                        String humanWithDate = date != null ? input + ", 오늘: " + date + "." : input;
-                        String formattedOutput = "{" + output + "}";
-                        
-                        generationService.recordFewshot(qnaId, input, humanWithDate, formattedOutput, i + 1);
-                    }
-                }
-            }
-            
-            // 프롬프트 구성
-            PromptTemplate finalTemplate = PromptTemplate.from("")
-                .withSystemPrompt(systemPrompt)
-                .withFewShots(fewShots)
-                .withHistory(paramsHistory)
-                .withUserMessage(userQuestion);
-            
-            return new PromptWithRetrieveTime(finalTemplate, retrieveTime);
-            
-        } catch (Exception e) {
-            log.error("Params 프롬프트 생성 중 오류 발생: {}", e.getMessage(), e);
-            
-            // 오류 발생 시 기본 프롬프트 반환
-            PromptTemplate template = PromptTemplate.fromFile("params");
-            String systemPrompt = template.replace("{today}", todayFormatted)
-                                         .replace("{json_format}", jsonFormat);
-            
-            PromptTemplate finalTemplate = PromptTemplate.from("")
-                .withSystemPrompt(systemPrompt)
-                .withHistory(paramsHistory)
-                .withUserMessage(userQuestion);
-            
-            return new PromptWithRetrieveTime(finalTemplate, BigDecimal.ZERO);
-        }
-    }
-
-    public List<Map<String, Object>> getSupervisorHistory(String chainId) {
-        return getHistory(chainId, Arrays.asList("user_question", "selected_workflow"), "supervisor", 5);
-    }
 
     public PromptTemplate buildSupervisorPrompt(String userQuestion, List<Map<String, Object>> history) {
         // 시스템 프롬프트 생성
@@ -695,103 +538,5 @@ public class PromptBuilder {
                 .withSystemPrompt(systemPrompt)
                 .withHistory(history)  // 히스토리가 있으면 추가
                 .withUserMessage(formattedUserQuestion);
-    }
-
-    public List<Map<String, Object>> getSemanticHistory(String workflowId) {
-        return getHistory(workflowId,
-                Arrays.asList("user_question", "question_type", "intent", "complexity", "search_strategy"),
-                "semantic_query", 3);
-    }
-
-    public PromptTemplate buildSqlStrategyAnalysisPrompt(String userQuestion, List<Map<String, Object>> history) {
-        // 시스템 프롬프트 구성 (Java 8 호환)
-        String systemPrompt = "당신은 SQL 쿼리 생성을 위한 전략을 분석하는 전문가입니다.\n\n" +
-                "사용자의 질문을 분석하여 최적의 SQL 쿼리 전략을 JSON 형태로 제안해주세요:\n\n" +
-                "1. query_type: 쿼리 유형\n" +
-                "   - select: 단순 조회\n" +
-                "   - aggregation: 집계/요약\n" +
-                "   - join: 테이블 조인\n" +
-                "   - subquery: 서브쿼리 필요\n" +
-                "   - time_series: 시계열 분석\n" +
-                "   - comparison: 비교 분석\n\n" +
-                "2. complexity: 쿼리 복잡도\n" +
-                "   - low: 단순한 SELECT\n" +
-                "   - medium: 조인이나 GROUP BY 포함\n" +
-                "   - high: 복잡한 서브쿼리나 윈도우 함수\n\n" +
-                "3. target_tables: 예상 대상 테이블들\n" +
-                "   - [\"amt\", \"trsc\", \"stock\"] 중에서 선택\n\n" +
-                "4. optimization_hints: 최적화 힌트들\n" +
-                "   - use_index: 인덱스 활용\n" +
-                "   - limit_early: 조기 LIMIT 적용\n" +
-                "   - avoid_subquery: 서브쿼리 회피\n" +
-                "   - use_partition: 파티션 활용\n\n" +
-                "5. date_range: 날짜 범위 (있는 경우)\n" +
-                "   - {\"start\": \"YYYYMMDD\", \"end\": \"YYYYMMDD\"}\n\n" +
-                "6. confidence: 분석 신뢰도 (0.0 ~ 1.0)\n\n" +
-                "응답은 반드시 유효한 JSON 형태로만 제공하세요.";
-
-        List<Map<String, Object>> fewShots = new ArrayList<>();
-
-        Map<String, Object> shot1 = new HashMap<>();
-        shot1.put("input", "우리 회사 계좌 잔액 조회해줘");
-        shot1.put("output", "{\n" +
-                "  \"query_type\": \"select\",\n" +
-                "  \"complexity\": \"low\",\n" +
-                "  \"target_tables\": [\"amt\"],\n" +
-                "  \"optimization_hints\": [\"use_index\"],\n" +
-                "  \"confidence\": 0.9\n" +
-                "}");
-        fewShots.add(shot1);
-
-        Map<String, Object> shot2 = new HashMap<>();
-        shot2.put("input", "지난 3개월 거래 총액을 월별로 집계해줘");
-        shot2.put("output", "{\n" +
-                "  \"query_type\": \"aggregation\",\n" +
-                "  \"complexity\": \"medium\",\n" +
-                "  \"target_tables\": [\"trsc\"],\n" +
-                "  \"optimization_hints\": [\"use_index\", \"use_partition\"],\n" +
-                "  \"date_range\": {\"start\": \"20240401\", \"end\": \"20240723\"},\n" +
-                "  \"confidence\": 0.85\n" +
-                "}");
-        fewShots.add(shot2);
-
-        Map<String, Object> shot3 = new HashMap<>();
-        shot3.put("input", "작년 대비 올해 예금과 주식 잔액 증감률 비교 분석");
-        shot3.put("output", "{\n" +
-                "  \"query_type\": \"comparison\",\n" +
-                "  \"complexity\": \"high\",\n" +
-                "  \"target_tables\": [\"amt\", \"stock\"],\n" +
-                "  \"optimization_hints\": [\"use_index\", \"avoid_subquery\"],\n" +
-                "  \"date_range\": {\"start\": \"20230101\", \"end\": \"20240723\"},\n" +
-                "  \"confidence\": 0.75\n" +
-                "}");
-        fewShots.add(shot3);
-
-        // History를 기존 형식으로 변환
-        List<Map<String, Object>> processedHistory = new ArrayList<>();
-        if (history != null && !history.isEmpty()) {
-            for (Map<String, Object> entry : history) {
-                String question = (String) entry.get("user_question");
-                String queryType = (String) entry.get("query_type");
-                String complexity = (String) entry.get("complexity");
-
-                if (question != null && queryType != null) {
-                    Map<String, Object> historyEntry = new HashMap<>();
-                    historyEntry.put("user_question", String.format("Q: %s -> Type: %s, Complexity: %s", question, queryType, complexity));
-                    historyEntry.put("final_answer", "이전 쿼리 전략 맥락입니다.");
-                    processedHistory.add(historyEntry);
-                }
-            }
-        }
-
-        // 최종 사용자 질문
-        String finalUserMessage = "다음 질문에 대한 SQL 쿼리 전략을 분석해주세요: " + userQuestion;
-
-        // 기존 PromptTemplate 체이닝 방식 사용
-        return PromptTemplate.from("")
-                .withSystemPrompt(systemPrompt)
-                .withFewShotsWithoutDateModification(fewShots)
-                .withHistory(processedHistory)
-                .withUserMessage(finalUserMessage);
     }
 }

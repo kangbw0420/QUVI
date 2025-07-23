@@ -12,7 +12,7 @@ import com.daquv.agent.workflow.ChainStateManager;
 import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.UserInfo;
-import com.daquv.agent.workflow.node.SupervisorNode;
+import com.daquv.agent.workflow.SupervisorNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

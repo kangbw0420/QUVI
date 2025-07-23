@@ -1,4 +1,4 @@
-package com.daquv.agent.workflow;
+package com.daquv.agent.workflow.semanticquery;
 
 import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.ErrorHandler;
@@ -47,7 +47,7 @@ public class SemanticQueryNode implements WorkflowNode {
     private LLMRequest llmService;
 
     @Autowired
-    private PromptBuilder promptBuilder;
+    private SemanticQueryPromptBuilder promptBuilder;
 
     @Autowired
     private GenerationService generationService;
