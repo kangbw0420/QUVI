@@ -124,20 +124,9 @@ public class KilljoyWorkflowExecutionContext {
                 stateMap.put("final_answer", state.getFinalAnswer());
             }
 
-            // Killjoy는 테이블이나 SQL 쿼리가 없으므로 빈 값으로 설정
-            stateMap.put("selected_table", "");
-            stateMap.put("sql_query", "");
-            stateMap.put("query_result", new java.util.ArrayList<>());
-            stateMap.put("table_pipe", "");
-            stateMap.put("fstring_answer", "");
-            stateMap.put("date_info", new java.util.ArrayList<>());
-
-            // 추가적인 컨텍스트 정보 (히스토리에는 필요 없지만 디버깅용)
-            stateMap.put("workflow_type", "killjoy");
-            stateMap.put("is_joy", state.getIsJoy());
-
-            // StateService를 통해 기존 State 테이블에도 저장
-            stateService.updateState(traceId, stateMap);
+            if (!stateMap.isEmpty()) {
+                stateService.updateState(traceId, stateMap);
+            }
 
             // Node 엔티티의 nodeStateJson에도 JSON으로 저장
             try {

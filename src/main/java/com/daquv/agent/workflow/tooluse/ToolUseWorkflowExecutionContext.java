@@ -177,47 +177,42 @@ public class ToolUseWorkflowExecutionContext {
         try {
             java.util.Map<String, Object> stateMap = new java.util.HashMap<>();
 
-            // 히스토리 조회에 필요한 핵심 필드들만 저장
-            if (state.getUserQuestion() != null) {
+            // 히스토리 조회에 필요한 핵심 필드들만 저장 (빈 값이 아닐 때만)
+            if (state.getUserQuestion() != null && !state.getUserQuestion().trim().isEmpty()) {
                 stateMap.put("user_question", state.getUserQuestion());
             }
-            if (state.getSelectedApi() != null) {
+            if (state.getSelectedApi() != null && !state.getSelectedApi().trim().isEmpty()) {
                 stateMap.put("selected_table", state.getSelectedApi()); // API명을 selected_table에 저장
             }
-            if (state.getSqlQuery() != null) {
+            if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
                 stateMap.put("sql_query", state.getSqlQuery());
             }
-            if (state.getQueryResult() != null) {
+            if (state.getQueryResult() != null && !state.getQueryResult().isEmpty()) {
                 stateMap.put("query_result", state.getQueryResult());
             }
-            if (state.getFinalAnswer() != null) {
+            if (state.getFinalAnswer() != null && !state.getFinalAnswer().trim().isEmpty()) {
                 stateMap.put("final_answer", state.getFinalAnswer());
             }
-            if (state.getTablePipe() != null) {
+            if (state.getTablePipe() != null && !state.getTablePipe().trim().isEmpty()) {
                 stateMap.put("table_pipe", state.getTablePipe());
             }
-            if (state.getFString() != null) {
+            if (state.getFString() != null && !state.getFString().trim().isEmpty()) {
                 stateMap.put("fstring_answer", state.getFString());
             }
 
-            // 날짜 정보 (배열 형태로)
-            if (state.getStartDate() != null && state.getEndDate() != null) {
+            // 날짜 정보 (배열 형태로) - 둘 다 null이 아니고 빈 문자열이 아닐 때만
+            if (state.getStartDate() != null && !state.getStartDate().trim().isEmpty() &&
+                    state.getEndDate() != null && !state.getEndDate().trim().isEmpty()) {
                 java.util.List<String> dateInfo = new java.util.ArrayList<>();
                 dateInfo.add(state.getStartDate());
                 dateInfo.add(state.getEndDate());
                 stateMap.put("date_info", dateInfo);
             }
 
-            // 추가적인 컨텍스트 정보 (히스토리에는 필요 없지만 디버깅용)
-            stateMap.put("workflow_type", "tooluse");
-            stateMap.put("selected_api", state.getSelectedApi());
-            stateMap.put("query_result_status", state.getQueryResultStatus());
-            if (state.getSqlError() != null) {
-                stateMap.put("sql_error", state.getSqlError());
+            // StateService를 통해 기존 State 테이블에도 저장 (빈 맵이 아닐 때만)
+            if (!stateMap.isEmpty()) {
+                stateService.updateState(traceId, stateMap);
             }
-
-            // StateService를 통해 기존 State 테이블에도 저장
-            stateService.updateState(traceId, stateMap);
 
             // Node 엔티티의 nodeStateJson에도 JSON으로 저장
             try {
