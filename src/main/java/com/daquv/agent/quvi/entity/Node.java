@@ -57,6 +57,11 @@ public class Node {
     @OneToMany(mappedBy = "node", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Generation> generations = new ArrayList<>();
 
+    public void startTrace() {
+        this.nodeStart = LocalDateTime.now();
+        this.nodeStatus = NodeStatus.active;
+    }
+
     /**
      * 트레이스 완료
      */

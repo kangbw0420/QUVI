@@ -13,6 +13,7 @@ import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.UserInfo;
 import com.daquv.agent.workflow.SupervisorNode;
+import com.daquv.agent.workflow.killjoy.KilljoyWorkflowExecutionContext;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowExecutionContext;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowExecutionContext;
 import org.slf4j.Logger;
@@ -42,6 +43,9 @@ public class QuviController {
     private final WorkflowService workflowService;
     private final ChainLogManager chainLogManager;
     private final RequestProfiler requestProfiler;
+
+    @Autowired
+    private KilljoyWorkflowExecutionContext killjoyWorkflowExecutionContext;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -510,7 +514,7 @@ public class QuviController {
      */
     private void executeJoyWorkflow(WorkflowState state) {
         log.info("🎉 JOY 워크플로우 실행");
-        workflowContext.executeNode("killjoyNode", state);
+        killjoyWorkflowExecutionContext.executeKilljoyWorkflow(state.getWorkflowId());
     }
 
     /**

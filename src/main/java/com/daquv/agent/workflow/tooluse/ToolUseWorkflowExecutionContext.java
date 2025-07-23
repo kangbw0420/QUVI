@@ -177,60 +177,51 @@ public class ToolUseWorkflowExecutionContext {
         try {
             java.util.Map<String, Object> stateMap = new java.util.HashMap<>();
 
-            // ToolUse 워크플로우에서 중요한 필드들을 Map으로 변환
+            // 히스토리 조회에 필요한 핵심 필드들만 저장
             if (state.getUserQuestion() != null) {
-                stateMap.put("userQuestion", state.getUserQuestion());
+                stateMap.put("user_question", state.getUserQuestion());
             }
             if (state.getSelectedApi() != null) {
-                stateMap.put("selectedApi", state.getSelectedApi());
+                stateMap.put("selected_table", state.getSelectedApi()); // API명을 selected_table에 저장
             }
             if (state.getSqlQuery() != null) {
-                stateMap.put("sqlQuery", state.getSqlQuery());
+                stateMap.put("sql_query", state.getSqlQuery());
             }
             if (state.getQueryResult() != null) {
-                stateMap.put("queryResult", state.getQueryResult());
+                stateMap.put("query_result", state.getQueryResult());
             }
             if (state.getFinalAnswer() != null) {
-                stateMap.put("finalAnswer", state.getFinalAnswer());
-            }
-            if (state.getSqlError() != null) {
-                stateMap.put("sqlError", state.getSqlError());
-            }
-            if (state.getQueryResultStatus() != null) {
-                stateMap.put("queryResultStatus", state.getQueryResultStatus());
-            }
-            if (state.getTotalRows() != null) {
-                stateMap.put("totalRows", state.getTotalRows());
-            }
-            if (state.getFString() != null) {
-                stateMap.put("fString", state.getFString());
+                stateMap.put("final_answer", state.getFinalAnswer());
             }
             if (state.getTablePipe() != null) {
-                stateMap.put("tablePipe", state.getTablePipe());
+                stateMap.put("table_pipe", state.getTablePipe());
             }
-            if (state.getStartDate() != null) {
-                stateMap.put("startDate", state.getStartDate());
-            }
-            if (state.getEndDate() != null) {
-                stateMap.put("endDate", state.getEndDate());
-            }
-            if (state.getUserInfo() != null && state.getUserInfo().getCompanyId() != null) {
-                stateMap.put("companyId", state.getUserInfo().getCompanyId());
+            if (state.getFString() != null) {
+                stateMap.put("fstring_answer", state.getFString());
             }
 
-            // ToolUse 관련 Boolean 플래그들
-            stateMap.put("isApi", state.getIsApi());
-            stateMap.put("noData", state.getNoData());
-            stateMap.put("futureDate", state.getFutureDate());
-            stateMap.put("invalidDate", state.getInvalidDate());
-            stateMap.put("queryError", state.getQueryError());
-            stateMap.put("hasNext", state.getHasNext());
+            // 날짜 정보 (배열 형태로)
+            if (state.getStartDate() != null && state.getEndDate() != null) {
+                java.util.List<String> dateInfo = new java.util.ArrayList<>();
+                dateInfo.add(state.getStartDate());
+                dateInfo.add(state.getEndDate());
+                stateMap.put("date_info", dateInfo);
+            }
 
-            // StateService를 통해 DB에 저장
+            // 추가적인 컨텍스트 정보 (히스토리에는 필요 없지만 디버깅용)
+            stateMap.put("workflow_type", "tooluse");
+            stateMap.put("selected_api", state.getSelectedApi());
+            stateMap.put("query_result_status", state.getQueryResultStatus());
+            if (state.getSqlError() != null) {
+                stateMap.put("sql_error", state.getSqlError());
+            }
+
+            // StateService를 통해 기존 State 테이블에도 저장
             stateService.updateState(traceId, stateMap);
 
+            // Node 엔티티의 nodeStateJson에도 JSON으로 저장
             try {
-                ObjectMapper objectMapper = new ObjectMapper();
+                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 String stateJson = objectMapper.writeValueAsString(stateMap);
 
                 // NodeService를 통해 nodeStateJson 업데이트

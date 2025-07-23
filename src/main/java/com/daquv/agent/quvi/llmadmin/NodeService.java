@@ -59,7 +59,7 @@ public class NodeService {
             node.setNodeId(traceId);
             node.setWorkflow(workflow);
             node.setNodeName(nodeName);
-            node.setNodeStatus(Node.NodeStatus.active);
+            node.startTrace();
 
             nodeRepository.save(node);
 

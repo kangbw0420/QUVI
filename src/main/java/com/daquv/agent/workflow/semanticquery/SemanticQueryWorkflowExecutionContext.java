@@ -214,69 +214,48 @@ public class SemanticQueryWorkflowExecutionContext {
 
             // SemanticQuery 워크플로우에서 중요한 필드들을 Map으로 변환
             if (state.getUserQuestion() != null) {
-                stateMap.put("userQuestion", state.getUserQuestion());
+                stateMap.put("user_question", state.getUserQuestion());
             }
             if (state.getSelectedTable() != null) {
-                stateMap.put("selectedTable", state.getSelectedTable());
+                stateMap.put("selected_table", state.getSelectedTable());
             }
             if (state.getSqlQuery() != null) {
-                stateMap.put("sqlQuery", state.getSqlQuery());
+                stateMap.put("sql_query", state.getSqlQuery());
             }
             if (state.getQueryResult() != null) {
-                stateMap.put("queryResult", state.getQueryResult());
+                stateMap.put("query_result", state.getQueryResult());
             }
             if (state.getFinalAnswer() != null) {
-                stateMap.put("finalAnswer", state.getFinalAnswer());
-            }
-            if (state.getSqlError() != null) {
-                stateMap.put("sqlError", state.getSqlError());
-            }
-            if (state.getQueryResultStatus() != null) {
-                stateMap.put("queryResultStatus", state.getQueryResultStatus());
-            }
-            if (state.getTotalRows() != null) {
-                stateMap.put("totalRows", state.getTotalRows());
-            }
-            if (state.getFString() != null) {
-                stateMap.put("fString", state.getFString());
+                stateMap.put("final_answer", state.getFinalAnswer());
             }
             if (state.getTablePipe() != null) {
-                stateMap.put("tablePipe", state.getTablePipe());
+                stateMap.put("table_pipe", state.getTablePipe());
             }
-            if (state.getStartDate() != null) {
-                stateMap.put("startDate", state.getStartDate());
-            }
-            if (state.getEndDate() != null) {
-                stateMap.put("endDate", state.getEndDate());
-            }
-            if (state.getUserInfo() != null && state.getUserInfo().getCompanyId() != null) {
-                stateMap.put("companyId", state.getUserInfo().getCompanyId());
-            }
-            if (state.getColumnList() != null) {
-                stateMap.put("columnList", state.getColumnList());
+            if (state.getFString() != null) {
+                stateMap.put("fstring_answer", state.getFString());
             }
 
-            // SemanticQuery 관련 Boolean 플래그들
-            stateMap.put("isOpendue", state.getIsOpendue());
-            stateMap.put("noData", state.getNoData());
-            stateMap.put("futureDate", state.getFutureDate());
-            stateMap.put("invalidDate", state.getInvalidDate());
-            stateMap.put("queryError", state.getQueryError());
-            stateMap.put("queryChanged", state.getQueryChanged());
-            stateMap.put("hasNext", state.getHasNext());
-            stateMap.put("safeCount", state.getSafeCount());
-            stateMap.put("noteChanged", state.getNoteChanged());
-
-            // Vector Notes 관련 필드들 (필요시)
-            if (state.getVectorNotes() != null) {
-                stateMap.put("vectorNotes", state.getVectorNotes());
+            // 날짜 정보 (배열 형태로)
+            if (state.getStartDate() != null && state.getEndDate() != null) {
+                java.util.List<String> dateInfo = new java.util.ArrayList<>();
+                dateInfo.add(state.getStartDate());
+                dateInfo.add(state.getEndDate());
+                stateMap.put("date_info", dateInfo);
             }
 
-            // StateService를 통해 DB에 저장
+            // 추가적인 컨텍스트 정보 (히스토리에는 필요 없지만 디버깅용)
+            stateMap.put("workflow_type", "semanticquery");
+            stateMap.put("query_result_status", state.getQueryResultStatus());
+            if (state.getSqlError() != null) {
+                stateMap.put("sql_error", state.getSqlError());
+            }
+
+            // StateService를 통해 기존 State 테이블에도 저장
             stateService.updateState(traceId, stateMap);
 
+            // Node 엔티티의 nodeStateJson에도 JSON으로 저장
             try {
-                ObjectMapper objectMapper = new ObjectMapper();
+                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 String stateJson = objectMapper.writeValueAsString(stateMap);
 
                 // NodeService를 통해 nodeStateJson 업데이트
@@ -289,6 +268,7 @@ public class SemanticQueryWorkflowExecutionContext {
 
         } catch (Exception e) {
             log.error("SemanticQuery State DB 저장 실패 - traceId: {}", traceId, e);
+            // State 저장 실패는 워크플로우를 중단하지 않음
         }
     }
 }
