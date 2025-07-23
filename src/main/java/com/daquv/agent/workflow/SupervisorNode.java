@@ -115,6 +115,6 @@ public class SupervisorNode implements WorkflowNode {
      * 유효한 워크플로우인지 검증
      */
     private boolean isValidWorkflow(String workflow) {
-        return Arrays.asList("JOY", "TOOLUSE", "SEMANTICQUERY", "DEFAULT").contains(workflow);
+        return Arrays.asList("JOY", "TOOLUSE", "SEMANTICQUERY").contains(workflow);
     }
 }

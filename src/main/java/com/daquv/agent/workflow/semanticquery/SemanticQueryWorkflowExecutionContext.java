@@ -39,6 +39,14 @@ public class SemanticQueryWorkflowExecutionContext {
         log.info("=== SemanticQuery 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
 
         try {
+
+            executeNode("nextPageNode", state);
+
+            if ("next_page".equals(state.getUserQuestion())) {
+                log.info("next_page 처리 완료 - SemanticQuery 워크플로우 종료");
+                return;
+            }
+
             // 1. Commander Node - 테이블 선택
             executeNode("commanderNode", state);
 

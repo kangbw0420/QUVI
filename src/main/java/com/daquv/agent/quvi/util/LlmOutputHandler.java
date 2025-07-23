@@ -282,7 +282,7 @@ public class LlmOutputHandler {
         cleaned = cleaned.replaceAll("\n", "").trim();
 
         // 유효한 워크플로우 목록
-        String[] validWorkflows = {"JOY", "TOOLUSE", "SQL", "DEFAULT"};
+        String[] validWorkflows = {"JOY", "TOOLUSE", "SEMANTICQUERY", "DEFAULT"};
 
         // 1순위: 정확히 일치하는 워크플로우 찾기
         for (String workflow : validWorkflows) {

@@ -13,6 +13,8 @@ import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.UserInfo;
 import com.daquv.agent.workflow.SupervisorNode;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowExecutionContext;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +45,11 @@ public class QuviController {
 
     @Autowired
     private ApplicationContext applicationContext;
+    @Autowired
+    private ToolUseWorkflowExecutionContext toolUseWorkflowContext;
+
+    @Autowired
+    private SemanticQueryWorkflowExecutionContext semanticQueryWorkflowContext;
 
     public QuviController(ChainStateManager stateManager, WorkflowExecutionContext workflowContext,
                           VectorRequest vectorRequest, SessionService sessionService,
@@ -443,7 +450,7 @@ public class QuviController {
                 log.info("🔌 API 워크플로우용 상태 초기화");
                 break;
 
-            case "SQL":
+            case "SEMANTICQUERY":
                 state.setIsJoy(false);
                 state.setIsApi(false);
                 log.info("💾 SQL 워크플로우용 상태 초기화");
@@ -481,17 +488,10 @@ public class QuviController {
                     break;
 
                 case "TOOLUSE":
-                    executeApiWorkflow(state);
+                    executeToolUseWorkflow(workflowId);
                     break;
-                case "SQL":
-                    executeSqlWorkflow(state);
-                    break;
-                case "DEFAULT":
-                    executeDefaultWorkflow(state);
-                    break;
-                default:
-                    log.warn("알 수 없는 워크플로우: {}. DEFAULT로 실행합니다.", selectedWorkflow);
-                    executeDefaultWorkflow(state);
+                case "SEMANTICQUERY":
+                    executeSemanticQueryWorkflow(workflowId);
                     break;
             }
 
@@ -528,6 +528,23 @@ public class QuviController {
 
         workflowContext.executeNode("queryExecutorNode", state);
         handleExecutorResults(state);
+    }
+
+
+    /**
+     * TOOLUSE 워크플로우 실행 (ToolUseWorkflowExecutionContext 사용)
+     */
+    private void executeToolUseWorkflow(String workflowId) {
+        log.info("🔌 TOOLUSE 워크플로우 실행 - ToolUse Context 사용");
+        toolUseWorkflowContext.executeToolUseWorkflow(workflowId);
+    }
+
+    /**
+     * SEMANTICQUERY 워크플로우 실행 (SemanticQueryWorkflowExecutionContext 사용)
+     */
+    private void executeSemanticQueryWorkflow(String workflowId) {
+        log.info("💾 SEMANTICQUERY 워크플로우 실행 - SemanticQuery Context 사용");
+        semanticQueryWorkflowContext.executeSemanticQueryWorkflow(workflowId);
     }
 
     /**
