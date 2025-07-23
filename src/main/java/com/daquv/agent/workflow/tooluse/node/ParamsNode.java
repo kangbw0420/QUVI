@@ -1,4 +1,4 @@
-package com.daquv.agent.workflow.node;
+package com.daquv.agent.workflow.tooluse.node;
 
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;

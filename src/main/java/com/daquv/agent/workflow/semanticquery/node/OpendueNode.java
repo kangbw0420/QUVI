@@ -1,4 +1,4 @@
-package com.daquv.agent.workflow.node;
+package com.daquv.agent.workflow.semanticquery.node;
 
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.RequestProfiler;
