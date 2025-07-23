@@ -5,6 +5,7 @@ import com.daquv.agent.quvi.llmadmin.NodeService;
 import com.daquv.agent.workflow.ChainStateManager;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -227,6 +228,18 @@ public class ToolUseWorkflowExecutionContext {
 
             // StateService를 통해 DB에 저장
             stateService.updateState(traceId, stateMap);
+
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                String stateJson = objectMapper.writeValueAsString(stateMap);
+
+                // NodeService를 통해 nodeStateJson 업데이트
+                nodeService.updateNodeStateJson(traceId, stateJson);
+
+                log.debug("ToolUse Node state JSON 저장 완료 - traceId: {}", traceId);
+            } catch (Exception jsonException) {
+                log.error("ToolUse JSON 변환 실패 - traceId: {}", traceId, jsonException);
+            }
 
         } catch (Exception e) {
             log.error("ToolUse State DB 저장 실패 - traceId: {}", traceId, e);

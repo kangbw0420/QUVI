@@ -82,6 +82,13 @@ public class Node {
 //        return (double) java.time.Duration.between(nodeStart, nodeEnd).getSeconds();
 //    }
 
+    /**
+     * 노드 상태를 JSON으로 설정
+     */
+    public void setNodeStateAsJson(String stateJson) {
+        this.nodeStateJson = stateJson;
+    }
+
     public enum NodeStatus {
         active, completed, error
     }

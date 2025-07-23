@@ -189,4 +189,31 @@ public class NodeService {
             return nodeRepository.findByNodeName(nodeType);
 
     }
+
+    /**
+     * 노드 상태를 JSON으로 업데이트
+     *
+     * @param nodeId 노드 ID
+     * @param stateJson 상태 JSON 문자열
+     * @return 성공 여부
+     */
+    @Transactional
+    public boolean updateNodeStateJson(String nodeId, String stateJson) {
+        log.info("updateNodeStateJson start - nodeId: {}", nodeId);
+
+        try {
+            Node node = nodeRepository.findById(nodeId)
+                    .orElseThrow(() -> new IllegalArgumentException("Node not found: " + nodeId));
+
+            node.setNodeStateAsJson(stateJson);
+            nodeRepository.save(node);
+
+            log.info("updateNodeStateJson end - nodeId: {}", nodeId);
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error in updateNodeStateJson - nodeId: {}", nodeId, e);
+            throw new RuntimeException("Failed to update node state JSON", e);
+        }
+    }
 }
