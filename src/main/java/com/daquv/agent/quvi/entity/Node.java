@@ -61,7 +61,7 @@ public class Node {
      * 트레이스 완료
      */
     public void completeTrace() {
-        this.nodeStart = LocalDateTime.now();
+        this.nodeEnd = LocalDateTime.now();
         this.nodeStatus = NodeStatus.completed;
     }
 
