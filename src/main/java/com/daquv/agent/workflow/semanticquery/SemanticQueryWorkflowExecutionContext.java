@@ -22,7 +22,7 @@ import java.util.Map;
 public class SemanticQueryWorkflowExecutionContext {
 
     @Autowired
-    private ChainStateManager stateManager;
+    private SemanticQueryStateManager stateManager;
 
     @Autowired
     private ApplicationContext applicationContext;

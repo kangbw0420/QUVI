@@ -1,5 +1,6 @@
-package com.daquv.agent.workflow.semanticquery;
+package com.daquv.agent.workflow.tooluse;
 
+import com.daquv.agent.workflow.WorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -8,12 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Slf4j
 @Component
-
-public class SemanticQueryStateManager {
+@Slf4j
+public class ToolUseStateManager {
     // Chain ID별 State 저장소
-    private final ConcurrentHashMap<String, SemanticQueryWorkflowState> chainStates = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ToolUseWorkflowState> chainStates = new ConcurrentHashMap<>();
 
     // State 생존 시간 관리
     private final ConcurrentHashMap<String, Long> stateTimestamps = new ConcurrentHashMap<>();
@@ -24,16 +24,14 @@ public class SemanticQueryStateManager {
     /**
      * 새 State 생성
      */
-    public SemanticQueryWorkflowState createState(String workflowId) {
-        SemanticQueryWorkflowState state = SemanticQueryWorkflowState.builder()
+    public ToolUseWorkflowState createState(String workflowId) {
+        ToolUseWorkflowState state = ToolUseWorkflowState.builder()
                 .workflowId(workflowId)
                 .nodeId("node_" + System.currentTimeMillis())
                 .safeCount(0)
-                .queryError(false)
                 .noData(false)
                 .futureDate(false)
                 .invalidDate(false)
-                .queryChanged(false)
                 .hasNext(false)
                 .build();
 
@@ -47,7 +45,7 @@ public class SemanticQueryStateManager {
     /**
      * State 조회
      */
-    public SemanticQueryWorkflowState getState(String workflowId) {
+    public ToolUseWorkflowState getState(String workflowId) {
         if (workflowId == null) {
             return null;
         }
@@ -65,7 +63,7 @@ public class SemanticQueryStateManager {
     /**
      * State 업데이트
      */
-    public void updateState(String workflowId, SemanticQueryWorkflowState state) {
+    public void updateState(String workflowId, ToolUseWorkflowState state) {
         if (workflowId != null && state != null) {
             chainStates.put(workflowId, state);
             stateTimestamps.put(workflowId, System.currentTimeMillis());

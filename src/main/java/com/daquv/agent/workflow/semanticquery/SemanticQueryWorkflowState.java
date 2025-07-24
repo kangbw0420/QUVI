@@ -38,6 +38,8 @@ public class SemanticQueryWorkflowState {
     private VectorNotes vectorNotes;
 
     @Builder.Default
+    private Boolean isOpendue = false;
+    @Builder.Default
     private Boolean noData = false;
     @Builder.Default
     private Boolean futureDate = false;
