@@ -68,7 +68,11 @@ public class HistoryService {
 
             String selectedColumns = stateHistory.stream()
                     .filter(col -> !col.equals("date_info"))
-                    .map(col -> "n.node_state_json ->> '" + col + "' as " + col)
+                    .map(col ->{
+                        // snake_case를 camelCase로 변환
+                        String jsonKey = convertToJsonKey(col);
+                        return "n.node_state_json ->> '" + jsonKey + "' as " + col;
+                    })
                     .collect(Collectors.joining(", "));
 
             String queryString =
@@ -82,18 +86,18 @@ public class HistoryService {
                     "    AND jsonb_typeof(n.node_state_json) = 'object' " +
                     "    AND n.node_state_json != '{}' " +
                     "    AND n.node_state_json ->> :firstColumnName IS NOT NULL " +
-                    "    ORDER BY w.workflow_start DESC " +
-                    "    LIMIT :limitCount " +
                     ") " +
                     "SELECT * FROM latest_workflows " +
-                    "ORDER BY workflow_start ASC";
+                    "ORDER BY workflow_start DESC " +
+                    "LIMIT :limitCount";
             log.info("DEBUG: Final query: {}", queryString);
             log.info("DEBUG: Parameters - sessionId: {}, nodeType: {}, limit: {}", sessionId, nodeType, limit);
 
             Query query = entityManager.createNativeQuery(queryString);
             query.setParameter("sessionId", sessionId );
             query.setParameter("nodeType", nodeType);
-            query.setParameter("firstColumnName", stateHistory.get(0));
+            String firstJsonKey = convertToJsonKey(stateHistory.get(0));
+            query.setParameter("firstColumnName", firstJsonKey);
             query.setParameter("limitCount", limit);
 
             @SuppressWarnings("unchecked")
@@ -260,5 +264,29 @@ public class HistoryService {
     public List<State> getStatesByTraceId(String traceId) {
         log.info("getStatesByTraceId - traceId: {}", traceId);
         return stateRepository.findByTraceIdOrderByIdAsc(traceId);
+    }
+
+    /**
+     * snake_case 컬럼명을 JSON의 camelCase 키로 변환
+     */
+    private String convertToJsonKey(String columnName) {
+        switch (columnName) {
+            case "user_question":
+                return "userQuestion";
+            case "final_answer":
+                return "finalAnswer";
+            case "selected_table":
+                return "selectedTable";
+            case "start_date":
+                return "startDate";
+            case "end_date":
+                return "endDate";
+            case "company_id":
+                return "companyId";
+            case "sql_query":
+                return "sqlQuery";
+            default:
+                return columnName;
+        }
     }
 }

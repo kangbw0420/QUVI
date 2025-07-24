@@ -2,20 +2,24 @@ package com.daquv.agent.quvi;
 
 import com.daquv.agent.quvi.dto.LogLevel;
 import com.daquv.agent.quvi.dto.QuviRequestDto;
-import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.daquv.agent.quvi.llmadmin.SessionService;
+import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.daquv.agent.quvi.logging.ChainLogContext;
 import com.daquv.agent.quvi.logging.ChainLogManager;
 import com.daquv.agent.quvi.requests.VectorRequest;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.ChainStateManager;
+import com.daquv.agent.workflow.SupervisorNode;
 import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.UserInfo;
-import com.daquv.agent.workflow.SupervisorNode;
 import com.daquv.agent.workflow.killjoy.KilljoyWorkflowExecutionContext;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryStateManager;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowExecutionContext;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
+import com.daquv.agent.workflow.tooluse.ToolUseStateManager;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowExecutionContext;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,11 +53,18 @@ public class QuviController {
 
     @Autowired
     private ApplicationContext applicationContext;
+
     @Autowired
     private ToolUseWorkflowExecutionContext toolUseWorkflowContext;
 
     @Autowired
+    private ToolUseStateManager toolUseStateManager;
+
+    @Autowired
     private SemanticQueryWorkflowExecutionContext semanticQueryWorkflowContext;
+
+    @Autowired
+    private SemanticQueryStateManager semanticQueryStateManager;
 
     public QuviController(ChainStateManager stateManager, WorkflowExecutionContext workflowContext,
                           VectorRequest vectorRequest, SessionService sessionService,
@@ -126,8 +137,7 @@ public class QuviController {
                     String.format("🎯 선택된 워크플로우: %s", selectedWorkflow));
 
             // 7. 선택된 워크플로우에 따른 완전한 State 생성 및 초기화
-            WorkflowState state = stateManager.createState(workflowId);
-            initializeState(state, request, sessionId, workflowId, selectedWorkflow);
+            Object finalState = createAndInitializeStateForWorkflow(selectedWorkflow, request, sessionId, workflowId);
 
             chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.DEBUG,
                     "🔄 워크플로우 상태 초기화 완료");
@@ -137,7 +147,7 @@ public class QuviController {
                     "🚀 워크플로우 실행 시작");
 
             try {
-                executeSelectedWorkflow(selectedWorkflow, state, workflowId);
+                executeSelectedWorkflow(selectedWorkflow, workflowId);
                 chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO, "✅ 워크플로우 실행 완료");
             } catch (Exception workflowError) {
                 chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.ERROR,
@@ -153,27 +163,25 @@ public class QuviController {
             }
 
             // 8. 최종 결과 조회
-            WorkflowState finalState = stateManager.getState(workflowId);
+            Object retrievedFinalState = getFinalStateForWorkflow(selectedWorkflow, workflowId);
 
             // 9. Chain 완료
-            workflowService.completeWorkflow(workflowId, finalState.getFinalAnswer());
+            String finalAnswer = extractFinalAnswer(retrievedFinalState);
+            workflowService.completeWorkflow(workflowId, finalAnswer);
 
             // 로그 컨텍스트에 최종 결과 저장
-            logContext.setSelectedTable(finalState.getSelectedTable());
-            logContext.setSqlQuery(finalState.getSqlQuery());
-            logContext.setFinalAnswer(finalState.getFinalAnswer());
-            logContext.setUserInfo(finalState.getUserInfo());
+            updateLogContextWithFinalState(logContext, retrievedFinalState);
 
             // 10. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
-            Map<String, Object> response = buildResponse(sessionId, workflowId, recommendList, totalTime, finalState);
+            Map<String, Object> response = buildResponse(sessionId, workflowId, recommendList, totalTime, retrievedFinalState);
 
             logNodeExecutionStatistics(workflowId, totalTime);
 
             // 11. 정리
             chainLogManager.completeWorkflow(workflowId, true);
             requestProfiler.clearProfile(workflowId);
-            stateManager.removeState(workflowId); // 요청 완료 후 즉시 정리
+            cleanupStateForWorkflow(selectedWorkflow, workflowId);
 
             log.info("HTTP Quvi 요청 처리 완료 - 소요시간: {}ms", totalTime);
             return ResponseEntity.ok(response);
@@ -191,7 +199,7 @@ public class QuviController {
             if (workflowId != null) {
                 chainLogManager.completeWorkflow(workflowId, false);
                 requestProfiler.clearProfile(workflowId);
-                stateManager.removeState(workflowId);
+                cleanupAllStates(workflowId);
             }
 
             Map<String, Object> errorResponse = buildErrorResponse(e.getMessage());
@@ -230,134 +238,240 @@ public class QuviController {
     }
 
     /**
-     * 각 노드별 실행 통계 로깅 (워크플로우 노드별)
+     * 워크플로우에 따른 적절한 State 생성 및 초기화
      */
-    private void logNodeExecutionStatistics(String workflowId, long totalTime) {
+    private Object createAndInitializeStateForWorkflow(String selectedWorkflow, QuviRequestDto request,
+                                                       String sessionId, String workflowId) {
+        switch (selectedWorkflow) {
+            case "JOY":
+                // JOY는 기존 ChainStateManager 사용
+                WorkflowState joyState = stateManager.createState(workflowId);
+                initializeJoyState(joyState, request, sessionId, workflowId);
+                return joyState;
+
+            case "TOOLUSE":
+                // TOOLUSE는 ToolUseStateManager 사용
+                ToolUseWorkflowState toolUseState = toolUseStateManager.createState(workflowId);
+                initializeToolUseState(toolUseState, request, sessionId, workflowId);
+                return toolUseState;
+
+            case "SEMANTICQUERY":
+                // SEMANTICQUERY는 SemanticQueryStateManager 사용
+                SemanticQueryWorkflowState semanticState = semanticQueryStateManager.createState(workflowId);
+                initializeSemanticQueryState(semanticState, request, workflowId);
+                return semanticState;
+
+            default:
+                // 기본값은 기존 ChainStateManager 사용
+                WorkflowState defaultState = stateManager.createState(workflowId);
+                initializeDefaultState(defaultState, request, sessionId, workflowId, selectedWorkflow);
+                return defaultState;
+        }
+    }
+
+    /**
+     * 워크플로우별 최종 State 조회
+     */
+    private Object getFinalStateForWorkflow(String selectedWorkflow, String workflowId) {
+        switch (selectedWorkflow) {
+            case "JOY":
+                return stateManager.getState(workflowId);
+            case "TOOLUSE":
+                return toolUseStateManager.getState(workflowId);
+            case "SEMANTICQUERY":
+                return semanticQueryStateManager.getState(workflowId);
+            default:
+                return stateManager.getState(workflowId);
+        }
+    }
+
+    /**
+     * 워크플로우별 State 정리
+     */
+    private void cleanupStateForWorkflow(String selectedWorkflow, String workflowId) {
+        switch (selectedWorkflow) {
+            case "JOY":
+                stateManager.removeState(workflowId);
+                break;
+            case "TOOLUSE":
+                toolUseStateManager.removeState(workflowId);
+                break;
+            case "SEMANTICQUERY":
+                semanticQueryStateManager.removeState(workflowId);
+                break;
+        }
+    }
+
+    /**
+     * 모든 State Manager에서 정리 (에러 시 사용)
+     */
+    private void cleanupAllStates(String workflowId) {
         try {
-            Map<String, Object> profileData = requestProfiler.getProfile(workflowId);
-
-            log.info("📊 ===== 워크플로우 노드별 실행 통계 (Chain ID: {}) =====", workflowId);
-            log.info("📊 전체 처리 시간: {}ms", totalTime);
-
-            // 전체 타입별 요약 통계
-            Map<String, Object> vectorDbStats = (Map<String, Object>) profileData.get("vector_db");
-            Map<String, Object> llmStats = (Map<String, Object>) profileData.get("llm");
-            Map<String, Object> dbMainStats = (Map<String, Object>) profileData.get("db_main");
-            Map<String, Object> dbPromptStats = (Map<String, Object>) profileData.get("db_prompt");
-
-            if (vectorDbStats != null) {
-                int vectorCalls = (Integer) vectorDbStats.getOrDefault("calls", 0);
-                long vectorTotalTime = (Long) vectorDbStats.getOrDefault("total_time_ms", 0L);
-                double vectorAvgTime = (Double) vectorDbStats.getOrDefault("avg_time_ms", 0.0);
-
-                log.info("📊 🔍 Vector DB 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
-                        vectorCalls, vectorTotalTime, vectorAvgTime);
-            }
-
-            if (llmStats != null) {
-                int llmCalls = (Integer) llmStats.getOrDefault("calls", 0);
-                long llmTotalTime = (Long) llmStats.getOrDefault("total_time_ms", 0L);
-                double llmAvgTime = (Double) llmStats.getOrDefault("avg_time_ms", 0.0);
-
-                log.info("📊 🤖 LLM 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
-                        llmCalls, llmTotalTime, llmAvgTime);
-            }
-
-            if (dbMainStats != null) {
-                int dbMainCalls = (Integer) dbMainStats.getOrDefault("calls", 0);
-                long dbMainTotalTime = (Long) dbMainStats.getOrDefault("total_time_ms", 0L);
-                double dbMainAvgTime = (Double) dbMainStats.getOrDefault("avg_time_ms", 0.0);
-
-                log.info("📊 🗄️ DB Main 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
-                        dbMainCalls, dbMainTotalTime, dbMainAvgTime);
-            }
-
-            if (dbPromptStats != null) {
-                int dbPromptCalls = (Integer) dbPromptStats.getOrDefault("calls", 0);
-                long dbPromptTotalTime = (Long) dbPromptStats.getOrDefault("total_time_ms", 0L);
-                double dbPromptAvgTime = (Double) dbPromptStats.getOrDefault("avg_time_ms", 0.0);
-
-                log.info("📊 💾 DB Prompt 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
-                        dbPromptCalls, dbPromptTotalTime, dbPromptAvgTime);
-            }
-
-            // 워크플로우 노드별 세분화된 통계
-            Map<String, Object> workflowNodes = (Map<String, Object>) profileData.get("workflow_nodes");
-            if (workflowNodes != null && !workflowNodes.isEmpty()) {
-                log.info("📊 ===== 워크플로우 노드별 세분화 통계 =====");
-
-                for (Map.Entry<String, Object> nodeEntry : workflowNodes.entrySet()) {
-                    String nodeId = nodeEntry.getKey();
-                    Map<String, Object> nodeData = (Map<String, Object>) nodeEntry.getValue();
-
-                    int totalCalls = (Integer) nodeData.getOrDefault("total_calls", 0);
-                    long totalTimeMs = (Long) nodeData.getOrDefault("total_time_ms", 0L);
-                    double avgTime = (Double) nodeData.getOrDefault("avg_time_ms", 0.0);
-
-                    log.info("📊 🔧 {} 노드 - 총 호출: {}회, 총 시간: {}ms, 평균: {:.2f}ms",
-                            nodeId, totalCalls, totalTimeMs, avgTime);
-
-                    chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
-                            String.format("🔧 %s 노드 - 총 호출: %d회, 총 시간: %dms, 평균: %.2fms",
-                                    nodeId, totalCalls, totalTimeMs, avgTime));
-
-                    // 각 노드의 세부 타입별 통계
-                    Map<String, Object> details = (Map<String, Object>) nodeData.get("details");
-                    if (details != null && !details.isEmpty()) {
-                        for (Map.Entry<String, Object> detailEntry : details.entrySet()) {
-                            String type = detailEntry.getKey();
-                            Map<String, Object> typeStats = (Map<String, Object>) detailEntry.getValue();
-
-                            int typeCalls = (Integer) typeStats.getOrDefault("calls", 0);
-                            long typeTime = (Long) typeStats.getOrDefault("total_time_ms", 0L);
-                            double typeAvg = (Double) typeStats.getOrDefault("avg_time_ms", 0.0);
-
-                            String typeIcon = getTypeIcon(type);
-                            log.info("📊   └─ {} {}: {}회, {}ms, 평균 {:.2f}ms",
-                                    typeIcon, type, typeCalls, typeTime, typeAvg);
-
-                            chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
-                                    String.format("    └─ %s %s: %d회, %dms, 평균 %.2fms",
-                                            typeIcon, type, typeCalls, typeTime, typeAvg));
-                        }
-                    }
-                }
-            }
-
-            // 전체 요약
-            int totalCalls = 0;
-            long totalProfiledTime = 0L;
-
-            if (vectorDbStats != null) {
-                totalCalls += (Integer) vectorDbStats.getOrDefault("calls", 0);
-                totalProfiledTime += (Long) vectorDbStats.getOrDefault("total_time_ms", 0L);
-            }
-            if (llmStats != null) {
-                totalCalls += (Integer) llmStats.getOrDefault("calls", 0);
-                totalProfiledTime += (Long) llmStats.getOrDefault("total_time_ms", 0L);
-            }
-            if (dbMainStats != null) {
-                totalCalls += (Integer) dbMainStats.getOrDefault("calls", 0);
-                totalProfiledTime += (Long) dbMainStats.getOrDefault("total_time_ms", 0L);
-            }
-            if (dbPromptStats != null) {
-                totalCalls += (Integer) dbPromptStats.getOrDefault("calls", 0);
-                totalProfiledTime += (Long) dbPromptStats.getOrDefault("total_time_ms", 0L);
-            }
-
-            double profiledPercentage = totalTime > 0 ? (double) totalProfiledTime / totalTime * 100 : 0.0;
-
-            log.info("📊 ⭐ 전체 요약 - 총 노드 호출: {}회, 프로파일된 시간: {}ms ({:.1f}%), 기타 처리 시간: {}ms",
-                    totalCalls, totalProfiledTime, profiledPercentage, totalTime - totalProfiledTime);
-
-            chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
-                    String.format("⭐ 전체 요약 - 총 노드 호출: %d회, 프로파일된 시간: %dms (%.1f%%), 기타 처리 시간: %dms",
-                            totalCalls, totalProfiledTime, profiledPercentage, totalTime - totalProfiledTime));
-
-            log.info("📊 ===== 통계 종료 =====");
-
+            stateManager.removeState(workflowId);
         } catch (Exception e) {
-            log.warn("📊 워크플로우 노드별 실행 통계 로깅 중 오류 발생: {}", e.getMessage(), e);
+            log.warn("ChainStateManager cleanup 실패: {}", e.getMessage());
+        }
+
+        try {
+            toolUseStateManager.removeState(workflowId);
+        } catch (Exception e) {
+            log.warn("ToolUseStateManager cleanup 실패: {}", e.getMessage());
+        }
+
+        try {
+            semanticQueryStateManager.removeState(workflowId);
+        } catch (Exception e) {
+            log.warn("SemanticQueryStateManager cleanup 실패: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * JOY 워크플로우 State 초기화
+     */
+    private void initializeJoyState(WorkflowState state, QuviRequestDto request, String sessionId, String workflowId) {
+        state.setUserQuestion(request.getUserQuestion());
+        state.setUserInfo(UserInfo.builder()
+                .userId(request.getUserId())
+                .companyId(request.getCompanyId())
+                .useInttId(request.getUseInttId())
+                .build());
+        state.setWorkflowId(workflowId);
+        state.setNodeId("node_" + System.currentTimeMillis());
+        state.setSelectedWorkflow("JOY");
+        state.setIsJoy(true);
+        state.setIsApi(false);
+
+        initializeCommonFlags(state);
+        log.info("🎉 JOY 워크플로우용 상태 초기화 완료");
+    }
+
+    /**
+     * TOOLUSE 워크플로우 State 초기화
+     */
+    private void initializeToolUseState(ToolUseWorkflowState state, QuviRequestDto request, String sessionId, String workflowId) {
+        state.setUserQuestion(request.getUserQuestion());
+        state.setUserInfo(UserInfo.builder()
+                .userId(request.getUserId())
+                .companyId(request.getCompanyId())
+                .useInttId(request.getUseInttId())
+                .build());
+        state.setWorkflowId(workflowId);
+        state.setNodeId("node_" + System.currentTimeMillis());
+        state.setSelectedWorkflow("TOOLUSE");
+
+        // TOOLUSE 특화 초기화
+        state.setSafeCount(0);
+        state.setQueryResultStatus("");
+        state.setSqlError("");
+        state.setSqlQuery("");
+        state.setQueryResult(new ArrayList<>());
+        state.setFinalAnswer("");
+        state.setSelectedApi(""); // TOOLUSE는 API 사용
+        state.setFString("");
+
+        // 플래그 초기화
+        state.setNoData(false);
+        state.setFutureDate(false);
+        state.setInvalidDate(false);
+        state.setQueryError(false);
+        state.setQueryChanged(false);
+        state.setHasNext(false);
+
+        log.info("🔌 TOOLUSE 워크플로우용 상태 초기화 완료");
+    }
+
+    /**
+     * SEMANTICQUERY 워크플로우 State 초기화
+     */
+    private void initializeSemanticQueryState(SemanticQueryWorkflowState state, QuviRequestDto request, String workflowId) {
+        state.setUserQuestion(request.getUserQuestion());
+        state.setUserInfo(UserInfo.builder()
+                .userId(request.getUserId())
+                .companyId(request.getCompanyId())
+                .useInttId(request.getUseInttId())
+                .build());
+        state.setWorkflowId(workflowId);
+        state.setNodeId("node_" + System.currentTimeMillis());
+
+        log.info("💾 SEMANTICQUERY 워크플로우용 상태 초기화 완료");
+    }
+
+    /**
+     * 기본 워크플로우 State 초기화 (기존 로직 유지)
+     */
+    private void initializeDefaultState(WorkflowState state, QuviRequestDto request, String sessionId,
+                                        String workflowId, String selectedWorkflow) {
+        state.setUserQuestion(request.getUserQuestion());
+        state.setUserInfo(UserInfo.builder()
+                .userId(request.getUserId())
+                .companyId(request.getCompanyId())
+                .useInttId(request.getUseInttId())
+                .build());
+        state.setWorkflowId(workflowId);
+        state.setNodeId("node_" + System.currentTimeMillis());
+        state.setSelectedWorkflow(selectedWorkflow);
+
+        // 기본 상태 초기화
+        state.setSafeCount(0);
+        state.setQueryResultStatus("");
+        state.setSqlError("");
+        state.setSqlQuery("");
+        state.setQueryResult(new ArrayList<>());
+        state.setFinalAnswer("");
+        state.setSelectedTable("");
+        state.setFString("");
+
+        initializeCommonFlags(state);
+        log.info("⚙️ {} 워크플로우용 기본 상태 초기화 완료", selectedWorkflow);
+    }
+
+    /**
+     * 공통 플래그 초기화
+     */
+    private void initializeCommonFlags(WorkflowState state) {
+        state.setIsJoy(false);
+        state.setNoData(false);
+        state.setFutureDate(false);
+        state.setInvalidDate(false);
+        state.setQueryError(false);
+        state.setQueryChanged(false);
+        state.setHasNext(false);
+    }
+
+    /**
+     * State 객체에서 최종 답변 추출
+     */
+    private String extractFinalAnswer(Object state) {
+        if (state instanceof WorkflowState) {
+            return ((WorkflowState) state).getFinalAnswer();
+        } else if (state instanceof ToolUseWorkflowState) {
+            return ((ToolUseWorkflowState) state).getFinalAnswer();
+        } else if (state instanceof SemanticQueryWorkflowState) {
+            return ((SemanticQueryWorkflowState) state).getFinalAnswer();
+        }
+        return "처리 중 오류가 발생했습니다.";
+    }
+
+    /**
+     * 로그 컨텍스트에 최종 상태 업데이트
+     */
+    private void updateLogContextWithFinalState(ChainLogContext logContext, Object state) {
+        if (state instanceof WorkflowState) {
+            WorkflowState ws = (WorkflowState) state;
+            logContext.setSelectedTable(ws.getSelectedTable());
+            logContext.setSqlQuery(ws.getSqlQuery());
+            logContext.setFinalAnswer(ws.getFinalAnswer());
+            logContext.setUserInfo(ws.getUserInfo());
+        } else if (state instanceof ToolUseWorkflowState) {
+            ToolUseWorkflowState tus = (ToolUseWorkflowState) state;
+            logContext.setSelectedTable(tus.getSelectedApi()); // API명을 selected_table에
+            logContext.setSqlQuery(tus.getSqlQuery());
+            logContext.setFinalAnswer(tus.getFinalAnswer());
+            logContext.setUserInfo(tus.getUserInfo());
+        } else if (state instanceof SemanticQueryWorkflowState) {
+            SemanticQueryWorkflowState sqs = (SemanticQueryWorkflowState) state;
+            logContext.setFinalAnswer(sqs.getFinalAnswer());
+            logContext.setUserInfo(sqs.getUserInfo());
         }
     }
 
@@ -417,78 +531,13 @@ public class QuviController {
     }
 
     /**
-     * 워크플로우 상태 초기화 (HTTP용 - WebSocket 세션 없음)
-     */
-    private void initializeState(WorkflowState state, QuviRequestDto request, String sessionId,
-                                 String workflowId, String selectedWorkflow) {
-        state.setUserQuestion(request.getUserQuestion());
-        state.setUserInfo(UserInfo.builder()
-                .userId(request.getUserId())
-                .companyId(request.getCompanyId())
-                .useInttId(request.getUseInttId())
-                .build());
-        state.setWorkflowId(workflowId);
-        state.setNodeId("node_" + System.currentTimeMillis());
-        state.setSelectedWorkflow(selectedWorkflow);
-
-        // 기본 상태 초기화
-        state.setSafeCount(0);
-        state.setQueryResultStatus("");
-        state.setSqlError("");
-        state.setSqlQuery("");
-        state.setQueryResult(new ArrayList<>());
-        state.setFinalAnswer("");
-        state.setSelectedTable("");
-        state.setFString("");
-
-        switch (selectedWorkflow) {
-            case "JOY":
-                state.setIsJoy(true);
-                state.setIsApi(false);
-                log.info("🎉 JOY 워크플로우용 상태 초기화");
-                break;
-
-            case "TOOLUSE":
-                state.setIsJoy(false);
-                state.setIsApi(true);
-                log.info("🔌 API 워크플로우용 상태 초기화");
-                break;
-
-            case "SEMANTICQUERY":
-                state.setIsJoy(false);
-                state.setIsApi(false);
-                log.info("💾 SQL 워크플로우용 상태 초기화");
-                break;
-
-            case "DEFAULT":
-            default:
-                state.setIsJoy(false);
-                state.setIsApi(false);
-                log.info("⚙️ DEFAULT 워크플로우용 상태 초기화");
-                break;
-        }
-
-        // 플래그 초기화
-        state.setIsJoy(false);
-        state.setNoData(false);
-        state.setFutureDate(false);
-        state.setInvalidDate(false);
-        state.setQueryError(false);
-        state.setQueryChanged(false);
-        state.setHasNext(false);
-
-        log.info("🔄 {} 워크플로우용 완전한 상태 초기화 완료 - workflowId: {}, sessionId: {}",
-                selectedWorkflow, workflowId, sessionId);
-    }
-
-    /**
      * 선택된 워크플로우를 실행합니다.
      */
-    private void executeSelectedWorkflow(String selectedWorkflow, WorkflowState state, String workflowId) {
+    private void executeSelectedWorkflow(String selectedWorkflow, String workflowId) {
         try {
             switch (selectedWorkflow) {
                 case "JOY":
-                    executeJoyWorkflow(state);
+                    executeJoyWorkflow(workflowId);
                     break;
 
                 case "TOOLUSE":
@@ -512,9 +561,9 @@ public class QuviController {
     /**
      * JOY 워크플로우 실행 (일상 대화)
      */
-    private void executeJoyWorkflow(WorkflowState state) {
+    private void executeJoyWorkflow(String workflowId) {
         log.info("🎉 JOY 워크플로우 실행");
-        killjoyWorkflowExecutionContext.executeKilljoyWorkflow(state.getWorkflowId());
+        killjoyWorkflowExecutionContext.executeKilljoyWorkflow(workflowId);
     }
 
     /**
@@ -650,7 +699,7 @@ public class QuviController {
      */
     private Map<String, Object> buildResponse(String conversationId, String chainId,
                                               List<String> recommendList, long totalTime,
-                                              WorkflowState finalState) {
+                                              Object finalState) {
         Map<String, Object> response = new HashMap<>();
 
         // 기본 응답
@@ -663,21 +712,20 @@ public class QuviController {
         Map<String, Object> body = new HashMap<>();
 
         // 에러 상태 확인
-        String finalAnswer = finalState.getFinalAnswer();
+        String finalAnswer = extractFinalAnswer(finalState);
         if (finalAnswer == null || finalAnswer.trim().isEmpty()) {
             finalAnswer = "죄송합니다. 요청을 처리하는 중 오류가 발생했습니다.";
         }
-
         body.put("answer", finalAnswer);
-        body.put("raw_data", finalState.getQueryResult());
+        body.put("raw_data", extractQueryResult(finalState));
         body.put("session_id", conversationId);
         body.put("chain_id", chainId);
         body.put("recommend", recommendList);
         body.put("is_api", false);
-        body.put("date_info", Arrays.asList(finalState.getStartDate(), finalState.getEndDate()));
-        body.put("sql_query", finalState.getSqlQuery());
-        body.put("selected_table", finalState.getSelectedTable());
-        body.put("has_next", finalState.getHasNext() != null ? finalState.getHasNext() : false);
+        body.put("date_info", Arrays.asList(extractStartDate(finalState), extractEndDate(finalState)));
+        body.put("sql_query", extractSqlQuery(finalState));
+        body.put("selected_table", extractSelectedTable(finalState));
+        body.put("has_next", extractHasNext(finalState));
 
         // 프로파일링 정보
         Map<String, Object> profile = new HashMap<>();
@@ -745,6 +793,60 @@ public class QuviController {
         return response;
     }
 
+    private List<?> extractQueryResult(Object state) {
+        if (state instanceof WorkflowState) {
+            return ((WorkflowState) state).getQueryResult();
+        } else if (state instanceof ToolUseWorkflowState) {
+            return ((ToolUseWorkflowState) state).getQueryResult();
+        }
+        return new ArrayList<>();
+    }
+
+    private String extractStartDate(Object state) {
+        if (state instanceof WorkflowState) {
+            return ((WorkflowState) state).getStartDate();
+        } else if (state instanceof ToolUseWorkflowState) {
+            return ((ToolUseWorkflowState) state).getStartDate();
+        }
+        return null;
+    }
+
+    private String extractEndDate(Object state) {
+        if (state instanceof WorkflowState) {
+            return ((WorkflowState) state).getEndDate();
+        } else if (state instanceof ToolUseWorkflowState) {
+            return ((ToolUseWorkflowState) state).getEndDate();
+        }
+        return null;
+    }
+
+    private String extractSqlQuery(Object state) {
+        if (state instanceof WorkflowState) {
+            return ((WorkflowState) state).getSqlQuery();
+        } else if (state instanceof ToolUseWorkflowState) {
+            return ((ToolUseWorkflowState) state).getSqlQuery();
+        }
+        return null;
+    }
+
+    private String extractSelectedTable(Object state) {
+        if (state instanceof WorkflowState) {
+            return ((WorkflowState) state).getSelectedTable();
+        } else if (state instanceof ToolUseWorkflowState) {
+            return ((ToolUseWorkflowState) state).getSelectedApi(); // API명을 selected_table로
+        }
+        return null;
+    }
+
+    private Boolean extractHasNext(Object state) {
+        if (state instanceof WorkflowState) {
+            return ((WorkflowState) state).getHasNext() != null ? ((WorkflowState) state).getHasNext() : false;
+        } else if (state instanceof ToolUseWorkflowState) {
+            return ((ToolUseWorkflowState) state).getHasNext() != null ? ((ToolUseWorkflowState) state).getHasNext() : false;
+        }
+        return false;
+    }
+
     /**
      * 오류 응답 생성
      */
@@ -770,5 +872,137 @@ public class QuviController {
 
         // "java.lang" 을 "java_lang" 으로 치환
         return text.replaceAll("java\\.lang", "java_lang");
+    }
+
+    /**
+     * 각 노드별 실행 통계 로깅 (워크플로우 노드별)
+     */
+    private void logNodeExecutionStatistics(String workflowId, long totalTime) {
+        try {
+            Map<String, Object> profileData = requestProfiler.getProfile(workflowId);
+
+            log.info("📊 ===== 워크플로우 노드별 실행 통계 (Chain ID: {}) =====", workflowId);
+            log.info("📊 전체 처리 시간: {}ms", totalTime);
+
+            // 전체 타입별 요약 통계
+            Map<String, Object> vectorDbStats = (Map<String, Object>) profileData.get("vector_db");
+            Map<String, Object> llmStats = (Map<String, Object>) profileData.get("llm");
+            Map<String, Object> dbMainStats = (Map<String, Object>) profileData.get("db_main");
+            Map<String, Object> dbPromptStats = (Map<String, Object>) profileData.get("db_prompt");
+
+            if (vectorDbStats != null) {
+                int vectorCalls = (Integer) vectorDbStats.getOrDefault("calls", 0);
+                long vectorTotalTime = (Long) vectorDbStats.getOrDefault("total_time_ms", 0L);
+                double vectorAvgTime = (Double) vectorDbStats.getOrDefault("avg_time_ms", 0.0);
+
+                log.info("📊 🔍 Vector DB 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
+                        vectorCalls, vectorTotalTime, vectorAvgTime);
+            }
+
+            if (llmStats != null) {
+                int llmCalls = (Integer) llmStats.getOrDefault("calls", 0);
+                long llmTotalTime = (Long) llmStats.getOrDefault("total_time_ms", 0L);
+                double llmAvgTime = (Double) llmStats.getOrDefault("avg_time_ms", 0.0);
+
+                log.info("📊 🤖 LLM 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
+                        llmCalls, llmTotalTime, llmAvgTime);
+            }
+
+            if (dbMainStats != null) {
+                int dbMainCalls = (Integer) dbMainStats.getOrDefault("calls", 0);
+                long dbMainTotalTime = (Long) dbMainStats.getOrDefault("total_time_ms", 0L);
+                double dbMainAvgTime = (Double) dbMainStats.getOrDefault("avg_time_ms", 0.0);
+
+                log.info("📊 🗄️ DB Main 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
+                        dbMainCalls, dbMainTotalTime, dbMainAvgTime);
+            }
+
+            if (dbPromptStats != null) {
+                int dbPromptCalls = (Integer) dbPromptStats.getOrDefault("calls", 0);
+                long dbPromptTotalTime = (Long) dbPromptStats.getOrDefault("total_time_ms", 0L);
+                double dbPromptAvgTime = (Double) dbPromptStats.getOrDefault("avg_time_ms", 0.0);
+
+                log.info("📊 💾 DB Prompt 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
+                        dbPromptCalls, dbPromptTotalTime, dbPromptAvgTime);
+            }
+
+            // 워크플로우 노드별 세분화된 통계
+            Map<String, Object> workflowNodes = (Map<String, Object>) profileData.get("workflow_nodes");
+            if (workflowNodes != null && !workflowNodes.isEmpty()) {
+                log.info("📊 ===== 워크플로우 노드별 세분화 통계 =====");
+
+                for (Map.Entry<String, Object> nodeEntry : workflowNodes.entrySet()) {
+                    String nodeId = nodeEntry.getKey();
+                    Map<String, Object> nodeData = (Map<String, Object>) nodeEntry.getValue();
+
+                    int totalCalls = (Integer) nodeData.getOrDefault("total_calls", 0);
+                    long totalTimeMs = (Long) nodeData.getOrDefault("total_time_ms", 0L);
+                    double avgTime = (Double) nodeData.getOrDefault("avg_time_ms", 0.0);
+
+                    log.info("📊 🔧 {} 노드 - 총 호출: {}회, 총 시간: {}ms, 평균: {:.2f}ms",
+                            nodeId, totalCalls, totalTimeMs, avgTime);
+
+                    chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
+                            String.format("🔧 %s 노드 - 총 호출: %d회, 총 시간: %dms, 평균: %.2fms",
+                                    nodeId, totalCalls, totalTimeMs, avgTime));
+
+                    // 각 노드의 세부 타입별 통계
+                    Map<String, Object> details = (Map<String, Object>) nodeData.get("details");
+                    if (details != null && !details.isEmpty()) {
+                        for (Map.Entry<String, Object> detailEntry : details.entrySet()) {
+                            String type = detailEntry.getKey();
+                            Map<String, Object> typeStats = (Map<String, Object>) detailEntry.getValue();
+
+                            int typeCalls = (Integer) typeStats.getOrDefault("calls", 0);
+                            long typeTime = (Long) typeStats.getOrDefault("total_time_ms", 0L);
+                            double typeAvg = (Double) typeStats.getOrDefault("avg_time_ms", 0.0);
+
+                            String typeIcon = getTypeIcon(type);
+                            log.info("📊   └─ {} {}: {}회, {}ms, 평균 {:.2f}ms",
+                                    typeIcon, type, typeCalls, typeTime, typeAvg);
+
+                            chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
+                                    String.format("    └─ %s %s: %d회, %dms, 평균 %.2fms",
+                                            typeIcon, type, typeCalls, typeTime, typeAvg));
+                        }
+                    }
+                }
+            }
+
+            // 전체 요약
+            int totalCalls = 0;
+            long totalProfiledTime = 0L;
+
+            if (vectorDbStats != null) {
+                totalCalls += (Integer) vectorDbStats.getOrDefault("calls", 0);
+                totalProfiledTime += (Long) vectorDbStats.getOrDefault("total_time_ms", 0L);
+            }
+            if (llmStats != null) {
+                totalCalls += (Integer) llmStats.getOrDefault("calls", 0);
+                totalProfiledTime += (Long) llmStats.getOrDefault("total_time_ms", 0L);
+            }
+            if (dbMainStats != null) {
+                totalCalls += (Integer) dbMainStats.getOrDefault("calls", 0);
+                totalProfiledTime += (Long) dbMainStats.getOrDefault("total_time_ms", 0L);
+            }
+            if (dbPromptStats != null) {
+                totalCalls += (Integer) dbPromptStats.getOrDefault("calls", 0);
+                totalProfiledTime += (Long) dbPromptStats.getOrDefault("total_time_ms", 0L);
+            }
+
+            double profiledPercentage = totalTime > 0 ? (double) totalProfiledTime / totalTime * 100 : 0.0;
+
+            log.info("📊 ⭐ 전체 요약 - 총 노드 호출: {}회, 프로파일된 시간: {}ms ({:.1f}%), 기타 처리 시간: {}ms",
+                    totalCalls, totalProfiledTime, profiledPercentage, totalTime - totalProfiledTime);
+
+            chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
+                    String.format("⭐ 전체 요약 - 총 노드 호출: %d회, 프로파일된 시간: %dms (%.1f%%), 기타 처리 시간: %dms",
+                            totalCalls, totalProfiledTime, profiledPercentage, totalTime - totalProfiledTime));
+
+            log.info("📊 ===== 통계 종료 =====");
+
+        } catch (Exception e) {
+            log.warn("📊 워크플로우 노드별 실행 통계 로깅 중 오류 발생: {}", e.getMessage(), e);
+        }
     }
 }

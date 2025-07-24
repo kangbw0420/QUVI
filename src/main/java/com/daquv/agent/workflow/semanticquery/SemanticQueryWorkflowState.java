@@ -23,6 +23,7 @@ public class SemanticQueryWorkflowState {
     private WebSocketSession webSocketSession;
     private String userQuestion;
     private Map<String, SemanticQueryExecution> semanticQueryExecutionMap;
+    private String finalAnswer;
 
     @Data
     @Builder

@@ -4,6 +4,8 @@ import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.*;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowNode;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,7 +19,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class ToolUseExecutorNode implements WorkflowNode {
+public class ToolUseExecutorNode implements ToolUseWorkflowNode {
 
     private static final int LIMIT = 100;
 
@@ -40,7 +42,7 @@ public class ToolUseExecutorNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(ToolUseWorkflowState state) {
         String rawQuery = state.getSqlQuery();
         String workflowId = state.getWorkflowId();
         List<Map<String, Object>> queryResult = new ArrayList<>();
