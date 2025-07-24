@@ -1,18 +1,14 @@
 package com.daquv.agent.workflow.semanticquery;
 
 import com.daquv.agent.quvi.llmadmin.HistoryService;
-import com.daquv.agent.quvi.llmadmin.StateService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
-import com.daquv.agent.workflow.ChainStateManager;
-import com.daquv.agent.workflow.WorkflowNode;
-import com.daquv.agent.workflow.WorkflowState;
+import com.daquv.agent.quvi.llmadmin.StateService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -130,7 +126,7 @@ public class SemanticQueryWorkflowExecutionContext {
         try {
             Object nodeBean = applicationContext.getBean(nodeBeanName);
 
-            if (nodeBean instanceof WorkflowNode) {
+            if (nodeBean instanceof SemanticQueryWorkflowNode) {
                 SemanticQueryWorkflowNode node = (SemanticQueryWorkflowNode) nodeBean;
 
                 // 1. Node 생성
