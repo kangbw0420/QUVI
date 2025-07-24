@@ -52,8 +52,10 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
         TIME_SUFFIXES = new HashSet<>();
         TIME_SUFFIXES.add("bal__reg_dt");
         TIME_SUFFIXES.add("bal__open_dt");
+        TIME_SUFFIXES.add("bal__due_dt");
         TIME_SUFFIXES.add("bal_fore__reg_dt");
         TIME_SUFFIXES.add("bal_fore__open_dt");
+        TIME_SUFFIXES.add("bal_fore__due_dt");
         TIME_SUFFIXES.add("trsc__trsc_dt");
         TIME_SUFFIXES.add("trsc_fore__trsc_dt");
     }

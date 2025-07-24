@@ -1,7 +1,7 @@
 semantic_models:
   - name: bal
     model: ref('fct_bal')
-    description: 금융 계좌 정보를 관리하는 semantic 모델. 수시, 예적금, 대출, 증권, 신탁, 퇴직연금 등 다양한 금융상품의 잔액 및 계약 정보를 포함
+    description: 한화 금융 계좌 정보를 관리하는 semantic 모델. 수시, 예적금, 대출, 증권, 신탁, 퇴직연금 등 다양한 금융상품의 잔액 및 계약 정보를 포함
     defaults:
       agg_time_dimension: reg_dt
 
@@ -23,24 +23,25 @@ semantic_models:
         expr: TO_DATE(CAST(reg_dt AS TEXT), 'YYYYMMDD')
         type_params:
           time_granularity: day
-        description: 등록일시(YYYY-MM-DD). 기본 시간값. 기간으로 조회시 해당기간의 마지막날만 조회합니다. 예시) "작년 3분기 잔액" => reg_dt = 작년 9월30일 조회 (작년7월1일부터 작년9월30일까지중 마지막날인 9월30일 조회)
+        description: 등록일시(YYYY-MM-DD). 기본 시간값. 기간으로 조회시 해당기간의 마지막날만 조회합니다. 반드시 '=' 조건을 사용합니다. 예시) "작년 3분기 잔액" => reg_dt = 작년 9월30일 조회 (작년7월1일부터 작년9월30일까지중 마지막날인 9월30일 조회)
       - name: open_dt
         type: time
-        expr: TO_DATE(open_dt, 'YYYYMMDD')
+        expr: TO_DATE(CAST(open_dt AS TEXT), 'YYYYMMDD')
         type_params:
           time_granularity: day
-        description: 개설일자(YYYYMMDD). 사용자가 개설일자를 명시적으로 물어봤을 때만 사용합니다. 
+        description: 개설일자(YYYYMMDD). 사용자가 예적금/대출 개설일자 관련 질문을 했을 경우 filter 조건과 group by에 포함시켜야합니다. 예시) "1년전 개설한 계좌 조회" => filter 조건에 open_dt 추가, group by에 open_dt 포함
       - name: due_dt
         type: time
-        expr: due_dt
+        expr: TO_DATE(CAST(due_dt AS TEXT), 'YYYYMMDD')
         type_params:
           time_granularity: day
-        description: 만기일자(YYYYMMDD).
+        description: 만기일자(YYYYMMDD). 사용자가 예적금/대출 만기일자 관련 질문을 했을 경우 filter 조건과 group by에 포함시켜야합니다. 예시) "3개월 내로 갚을 대출","올해 만기되는 대출 계좌" => filter 조건에 due_dt 추가, group by에 due_dt 포함 (3개월 내로 갚을, 올해 만기되는 = 만기되는 대출 이므로)
+      - name: trmn_dt
         type: time
-        expr: trmn_dt
+        expr: TO_DATE(CAST(trmn_dt AS TEXT), 'YYYYMMDD')
         type_params:
           time_granularity: day
-        description: 해지일자
+        description: 해지일자. 사용자가 계좌 해지일자 관련 질문을 했을 경우 filter 조건과 group by에 포함시켜야합니다. 예시) "해지일자 조회" => filter 조건에 trmn_dt 추가, group by에 trmn_dt 포함. 해지와 만기는 다릅니다.
       - name: acct_bal_upd_dtm
         type: time
         expr: acct_bal_upd_dtm
@@ -109,7 +110,7 @@ semantic_models:
 
 metrics:
   - name: total_acct_bal_amt
-    description: 총 잔고. 계좌 관련 metric은 특별한 이유가 없으면 이걸 선택합니다. 예시) "대출 잔액 얼마야?" ->  metric = total_acct_bal_amt, "대출 갚아야될돈 얼마야?" -> metric = total_acct_bal_amt
+    description: 총 잔고. 계좌 관련 metric은 특별한 이유가 없으면 이걸 선택합니다. 예시) "대출 잔액 얼마야?", "잔액", "대출 갚아야될돈 얼마야?", "만기도래 차입금" ->  metric = total_acct_bal_amt
     type: simple
     label: total_acct_bal_amt
     type_params:
@@ -157,7 +158,7 @@ metrics:
     type_params:
       measure: mnth_pay
   - name: avg_acct_intr_rate
-    description: 평균 이자율.  대출 이자 관련 언급이 있을경우 기본 metric으로 선택합니다. 예시) "대출 이자율 얼마야?" -> metric = avg_acct_intr_rate_fore
+    description: 평균 이자율.  대출 이자 또는 예금 금리 관련 언급이 있을경우 기본 metric으로 선택합니다. 예시) "대출 이자율 얼마야?", "예금 금리 얼마야?" -> metric = avg_acct_intr_rate
     type: simple
     label: avg_acct_intr_rate
     type_params:

@@ -11,7 +11,11 @@ semantic_models:
       - name: view_dv
         type: categorical
         description:
-          계좌 구분. 가능한 값 = [수시, 예적금, 대출, 증권, 신탁, 퇴직연금]
+          계좌 구분. 가능한 값 = [수시, 예적금, 대출, 증권, 신탁, 퇴직연금]. 사용자 질문에 view_dv가 포함되어 있으면 반드시 filter 와 group by에 반드시 포함시켜야합니다.
+            예시) "수시잔액", "수시 거래내역" → acct__view_dv = '수시' , group by에 view_dv 포함 (사용자 질문에 수시가 들어있기 때문)
+                 "예적금 잔액", "예적금 거래내역", "예적금 개설일자", "예적금 만기일자" → acct__view_dv = '예적금' , group by에 view_dv 포함 (사용자 질문에 예적금이 들어있기 때문) 
+                 "외화 대출잔액", "대출 거래내역", "대출 개설일자", "대출 만기일자" → acct__view_dv = '대출' , group by에 view_dv 포함 (사용자 질문에 대출이 들어있기 때문)
+                 "증권잔액", "외화증권 거래내역" → acct__view_dv = '증권' , group by에 view_dv 포함 (사용자 질문에 증권이 들어있기 때문)
           잔액의 group by 조건에 디폴트로 사용됩니다.
       - name: com_nm
         type: categorical
