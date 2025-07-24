@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -131,6 +132,72 @@ public class WorkflowService {
         } catch (Exception e) {
             log.error("❌ 체인 로그 업데이트 실패 - chainId: {}, error: {}", chainId, e.getMessage(), e);
             throw new RuntimeException("Failed to update chain log", e);
+        }
+    }
+
+    /**
+     * 워크플로우를 대기 상태로 설정
+     */
+    public void waitingWorkflow(String workflowId, String message) {
+        try {
+            Optional<Workflow> workflowOpt = workflowRepository.findById(workflowId);
+            if (workflowOpt.isPresent()) {
+                Workflow workflow = workflowOpt.get();
+                workflow.waitingWorkflow(message);
+                workflowRepository.save(workflow);
+
+                log.info("워크플로우를 대기 상태로 설정: workflowId={}, message={}", workflowId, message);
+            } else {
+                log.error("워크플로우를 찾을 수 없습니다: {}", workflowId);
+                throw new IllegalArgumentException("워크플로우를 찾을 수 없습니다: " + workflowId);
+            }
+        } catch (Exception e) {
+            log.error("워크플로우 대기 상태 설정 실패: workflowId={}", workflowId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 워크플로우가 대기 상태인지 확인
+     */
+    public boolean isWorkflowWaiting(String workflowId) {
+        try {
+            Optional<Workflow> workflowOpt = workflowRepository.findById(workflowId);
+            if (workflowOpt.isPresent()) {
+                Workflow workflow = workflowOpt.get();
+                return workflow.getWorkflowStatus() == Workflow.WorkflowStatus.waiting;
+            }
+            return false;
+        } catch (Exception e) {
+            log.error("워크플로우 대기 상태 확인 실패: workflowId={}", workflowId, e);
+            return false;
+        }
+    }
+
+    /**
+     * 대기 중인 워크플로우를 활성 상태로 변경
+     */
+    public void resumeWorkflow(String workflowId) {
+        try {
+            Optional<Workflow> workflowOpt = workflowRepository.findById(workflowId);
+            if (workflowOpt.isPresent()) {
+                Workflow workflow = workflowOpt.get();
+                if (workflow.getWorkflowStatus() == Workflow.WorkflowStatus.waiting) {
+                    workflow.updateStatus(Workflow.WorkflowStatus.active);
+                    workflowRepository.save(workflow);
+
+                    log.info("워크플로우를 활성 상태로 재개: workflowId={}", workflowId);
+                } else {
+                    log.warn("워크플로우가 대기 상태가 아닙니다: workflowId={}, status={}",
+                            workflowId, workflow.getWorkflowStatus());
+                }
+            } else {
+                log.error("워크플로우를 찾을 수 없습니다: {}", workflowId);
+                throw new IllegalArgumentException("워크플로우를 찾을 수 없습니다: " + workflowId);
+            }
+        } catch (Exception e) {
+            log.error("워크플로우 재개 실패: workflowId={}", workflowId, e);
+            throw e;
         }
     }
 }
