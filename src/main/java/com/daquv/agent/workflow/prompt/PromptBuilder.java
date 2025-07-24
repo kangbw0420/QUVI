@@ -89,6 +89,27 @@ public class PromptBuilder {
         return new PromptWithRetrieveTime(result, lastRetrieveTimeFromResults);
     }
 
+    public PromptWithRetrieveTime buildDateCheckerPromptForHIL(String userQuestion, String qnaId, String chainId) {
+        String today = DateUtils.getTodayDash();
+        String jsonFormat = "\"from_date\": from_date, \"to_date\": to_date";
+
+        // HIL용 프롬프트 파일 로드
+        PromptTemplate template = PromptTemplate.fromFile("datechecker");
+        String systemPrompt = template.replaceAll(
+                "{today}", today,
+                "{json_format}", jsonFormat
+        );
+
+        // 사용자 질문 포맷팅 (날짜 정보 포함)
+        String formattedQuestion = DateUtils.formatQuestionWithDate(userQuestion);
+
+        PromptTemplate result = PromptTemplate.from("")
+                .withSystemPrompt(systemPrompt)
+                .withUserMessage(formattedQuestion);
+
+        return new PromptWithRetrieveTime(result, BigDecimal.ZERO);
+    }
+
     // Dater 프롬프트 생성 및 RetrieveTime 반환
     public PromptWithRetrieveTime buildDaterPromptWithFewShots(String selectedTable, String userQuestion,
                                                        List<Map<String, Object>> daterHistory, String qnaId, String chainId) {
