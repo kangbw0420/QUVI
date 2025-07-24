@@ -18,7 +18,7 @@ public class QuviRequestDto {
     private String companyId = "aicfo_dev";
 
     @JsonProperty("user_id")
-    private String userId = "dev01";
+    private String userId = "qv_id";
 
     @JsonProperty("session_id")
     private String sessionId = "";

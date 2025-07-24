@@ -30,9 +30,15 @@ public class SemanticQueryWorkflowExecutionContext {
     @Autowired
     private NodeService nodeService;
 
+    @Autowired
+    private StateService stateService;
+
+    @Autowired
+    private HistoryService historyService;
+
     /**
      * SemanticQuery 워크플로우 실행
-     * - SQL 경로: commander -> opendue -> (nl2sql or dater) -> nl2sql -> executor -> (safeguard or respondent)
+     * - DSL 경로: extractMetrics -> extractFilter -> manipulation -> dsl2sql -> runSql -> postProcess -> respondent
      */
     public void executeSemanticQueryWorkflow(String workflowId) {
         SemanticQueryWorkflowState state = stateManager.getState(workflowId);
@@ -40,10 +46,10 @@ public class SemanticQueryWorkflowExecutionContext {
             throw new IllegalStateException("Workflow ID에 해당하는 State를 찾을 수 없습니다: " + workflowId);
         }
 
-        log.info("=== SemanticQuery 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
+        log.info("=== SemanticQuery DSL 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
 
         try {
-
+            // Next Page 처리
             executeNode("nextPageNode", state);
 
             if ("next_page".equals(state.getUserQuestion())) {
@@ -51,109 +57,79 @@ public class SemanticQueryWorkflowExecutionContext {
                 return;
             }
 
-            // 1. Commander Node - 테이블 선택
-            executeNode("commanderNode", state);
+            // 1. ExtractMetrics Node - 메트릭과 그룹바이 추출
+            executeNode("extractMetricsNode", state);
 
-            if (state.getSelectedTable() == null || state.getSelectedTable().trim().isEmpty()) {
-                log.error("SemanticQuery: Commander에서 테이블 선택 실패");
-                state.setQueryResultStatus("failed");
-                state.setSqlError("테이블 선택에 실패했습니다.");
+            // SemanticQueryExecution이 생성되었는지 확인
+            if (state.getSemanticQueryExecutionMap() == null || state.getSemanticQueryExecutionMap().isEmpty()) {
+                log.error("SemanticQuery: ExtractMetrics에서 DSL 추출 실패");
                 return;
             }
 
-            // 2. OpenDue Node - 개설일/만기일 분류
-            executeNode("opendueNode", state);
+            // 2. ExtractFilter Node - 필터 추출 및 적용
+            executeNode("extractFilterNode", state);
 
-            // opendue 조건부 엣지
-            if (state.getIsOpendue() != null && state.getIsOpendue()) {
-                // 2-1a. NL2SQL 직접 실행 (개설일/만기일인 경우)
-                log.info("SemanticQuery: 개설일/만기일 질문으로 분류 - NL2SQL 직접 실행");
-                executeNode("nl2sqlNode", state);
-            } else {
-                // 2-1b. Dater -> NL2SQL (일반적인 경우)
-                log.info("SemanticQuery: 일반 질문으로 분류 - Dater -> NL2SQL 순서 실행");
-                executeNode("daterNode", state);
+            // 3. Manipulation Node - order by/limit 추출 및 커스텀 조작
+            executeNode("manipulationNode", state);
 
-                // 날짜 추출 실패 시 종료
-                if (state.getStartDate() == null || state.getEndDate() == null) {
-                    log.error("SemanticQuery: 날짜 정보 추출에 실패했습니다.");
-                    state.setQueryResultStatus("failed");
-                    state.setSqlError("날짜 정보 추출에 실패했습니다.");
-                    return;
+            // 4. Dsl2Sql Node - DSL을 SQL로 변환
+            executeNode("dsl2SqlNode", state);
+
+            // SQL 변환 실패 확인
+            boolean hasSqlQueries = false;
+            for (SemanticQueryWorkflowState.SemanticQueryExecution execution : state.getSemanticQueryExecutionMap().values()) {
+                if (execution.getSqlQuery() != null && !execution.getSqlQuery().isEmpty()) {
+                    hasSqlQueries = true;
+                    break;
                 }
-
-                executeNode("nl2sqlNode", state);
             }
 
-            // SQL 쿼리 생성 실패 시 종료
-            if (state.getSqlQuery() == null || state.getSqlQuery().trim().isEmpty()) {
-                log.error("SemanticQuery: SQL 쿼리 생성에 실패했습니다.");
-                state.setQueryResultStatus("failed");
-                state.setSqlError("SQL 쿼리 생성에 실패했습니다.");
+            if (!hasSqlQueries) {
+                log.error("SemanticQuery: DSL to SQL 변환에 실패했습니다.");
                 return;
             }
 
-            // 3. SemanticQuery Executor - SQL 실행
-            executeNode("semanticQueryExecutorNode", state);
+            // 5. RunSql Node - SQL 실행 및 결과 저장
+            executeNode("runSqlNode", state);
 
-            // executor 조건부 엣지
-            if (state.getInvalidDate() != null && state.getInvalidDate()) {
-                log.info("SemanticQuery: executor에서 invalid_date 감지 - 워크플로우 종료");
-                return;
+            // 쿼리 실행 결과 확인
+            boolean hasValidResults = false;
+            boolean hasNoData = true;
+            for (SemanticQueryWorkflowState.SemanticQueryExecution execution : state.getSemanticQueryExecutionMap().values()) {
+                if ("success".equals(execution.getQueryResultStatus())) {
+                    hasValidResults = true;
+                }
+                if (execution.getNoData() == null || !execution.getNoData()) {
+                    hasNoData = false;
+                }
             }
 
-            if (state.getNoData() != null && state.getNoData()) {
-                // 3-1. NoData 처리
+            // NoData 처리
+            if (hasNoData) {
                 executeNode("nodataNode", state);
                 log.info("SemanticQuery: nodata 처리 완료 - 워크플로우 종료");
                 return;
             }
 
-            if (state.getQueryError() != null && state.getQueryError() &&
-                    (state.getSafeCount() == null || state.getSafeCount() < 2)) {
-                // 3-2. Safeguard - 쿼리 오류 수정
-                executeNode("safeguardNode", state);
+            // 쿼리 실행에 성공한 경우만 후처리 진행
+            if (hasValidResults) {
+                // 6. PostProcess Node - DuckDB 후처리
+                executeNode("postProcessNode", state);
 
-                // safeguard에서 쿼리가 변경되었다면 executor 재실행
-                if (state.getQueryChanged() != null && state.getQueryChanged()) {
-                    log.info("SemanticQuery: Safeguard에서 쿼리 수정됨 - Executor 재실행");
-                    executeNode("semanticQueryExecutorNode", state);
-
-                    // 재실행 후 다시 조건 체크
-                    if (state.getInvalidDate() != null && state.getInvalidDate()) {
-                        log.info("SemanticQuery: safeguard 후 executor에서 invalid_date 감지 - 워크플로우 종료");
-                        return;
-                    }
-
-                    if (state.getNoData() != null && state.getNoData()) {
-                        executeNode("nodataNode", state);
-                        log.info("SemanticQuery: safeguard 후 nodata 처리 완료 - 워크플로우 종료");
-                        return;
-                    }
-                }
-            }
-
-            // 4. SemanticQuery Respondent - 최종 응답 생성
-            if ("success".equals(state.getQueryResultStatus())) {
+                // 7. SemanticQuery Respondent - 최종 응답 생성
                 executeNode("semanticQueryRespondentNode", state);
                 log.info("SemanticQuery: respondent 처리 완료 - 워크플로우 종료");
             } else {
-                log.warn("SemanticQuery: 쿼리 실행이 성공하지 않아 응답 생성을 건너뜁니다. status: {}", state.getQueryResultStatus());
+                log.warn("SemanticQuery: 모든 쿼리 실행이 실패하여 후처리를 건너뜁니다.");
             }
 
             // 변경된 State 저장
             stateManager.updateState(workflowId, state);
 
-            log.info("=== SemanticQuery 워크플로우 실행 완료 - workflowId: {} ===", workflowId);
+            log.info("=== SemanticQuery DSL 워크플로우 실행 완료 - workflowId: {} ===", workflowId);
 
         } catch (Exception e) {
-            log.error("SemanticQuery 워크플로우 실행 실패 - workflowId: {}", workflowId, e);
-
-            state.setQueryResultStatus("failed");
-            state.setSqlError("SemanticQuery Workflow 실행 실패: " + e.getMessage());
-            state.setQueryError(true);
-            state.setFinalAnswer("SemanticQuery 처리 중 오류가 발생했습니다.");
-
+            log.error("SemanticQuery DSL 워크플로우 실행 실패 - workflowId: {}", workflowId, e);
             stateManager.updateState(workflowId, state);
             throw e;
         }
@@ -170,7 +146,7 @@ public class SemanticQueryWorkflowExecutionContext {
         try {
             Object nodeBean = applicationContext.getBean(nodeBeanName);
 
-            if (nodeBean instanceof SemanticQueryWorkflowNode) {
+            if (nodeBean instanceof WorkflowNode) {
                 SemanticQueryWorkflowNode node = (SemanticQueryWorkflowNode) nodeBean;
 
                 // 1. Node 생성
@@ -215,55 +191,144 @@ public class SemanticQueryWorkflowExecutionContext {
      */
     private void saveStateToDatabase(String traceId, SemanticQueryWorkflowState state) {
         try {
-            Map<String, Object> stateMap = new java.util.HashMap<>();
+            Map<String, Object> stateMap = new HashMap<>();
 
-            if (state.getUserQuestion() != null && !state.getUserQuestion().trim().isEmpty()) {
-                stateMap.put("userQuestion", state.getUserQuestion());
-            }
-            if (state.getSelectedTable() != null && !state.getSelectedTable().trim().isEmpty()) {
-                stateMap.put("selectedTable", state.getSelectedTable());  // 이 부분이 누락됨
-            }
-            if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
-                stateMap.put("sqlQuery", state.getSqlQuery());
-            }
-            if (state.getQueryResult() != null && !state.getQueryResult().isEmpty()) {
-                stateMap.put("queryResult", state.getQueryResult());
-            }
-            if (state.getFinalAnswer() != null && !state.getFinalAnswer().trim().isEmpty()) {
-                stateMap.put("finalAnswer", state.getFinalAnswer());
-            }
-            if (state.getSqlError() != null && !state.getSqlError().trim().isEmpty()) {
-                stateMap.put("sqlError", state.getSqlError());
-            }
-            if (state.getQueryResultStatus() != null && !state.getQueryResultStatus().trim().isEmpty()) {
-                stateMap.put("queryResultStatus", state.getQueryResultStatus());
-            }
-            if (state.getTablePipe() != null && !state.getTablePipe().trim().isEmpty()) {
-                stateMap.put("tablePipe", state.getTablePipe());
-            }
-            if (state.getFString() != null && !state.getFString().trim().isEmpty()) {
-                stateMap.put("fstringAnswer", state.getFString());
-            }
-            if (state.getStartDate() != null && !state.getStartDate().trim().isEmpty()) {
-                stateMap.put("startDate", state.getStartDate());
-            }
-            if (state.getEndDate() != null  && !state.getEndDate().trim().isEmpty()) {
-                stateMap.put("endDate", state.getEndDate());
-            }
-            if (state.getUserInfo().getCompanyId() != null  && !state.getUserInfo().getCompanyId().trim().isEmpty()) {
-                stateMap.put("companyId", state.getUserInfo().getCompanyId());
+            // 기본 필드들 처리
+            addStringFieldIfNotEmpty(stateMap, "userQuestion", state.getUserQuestion());
+            addStringFieldIfNotEmpty(stateMap, "workflowId", state.getWorkflowId());
+            addStringFieldIfNotEmpty(stateMap, "nodeId", state.getNodeId());
+
+            // UserInfo에서 companyId 추가
+            if (state.getUserInfo() != null) {
+                addStringFieldIfNotEmpty(stateMap, "companyId", state.getUserInfo().getCompanyId());
             }
 
-            ObjectMapper objectMapper = new ObjectMapper();
-            String stateJson = objectMapper.writeValueAsString(stateMap);
-            nodeService.updateNodeStateJson(traceId, stateJson);
+            // SemanticQueryExecutionMap 처리
+            if (state.getSemanticQueryExecutionMap() != null && !state.getSemanticQueryExecutionMap().isEmpty()) {
+                Map<String, Object> executionSummary = new HashMap<>();
 
-            log.debug("SemanticQuery Node state JSON 저장 완료 - traceId: {}", traceId);
+                state.getSemanticQueryExecutionMap().forEach((entity, execution) -> {
 
+                    Map<String, Object> executionData = new HashMap<>();
+
+                    // SQL 쿼리들
+                    addMapFieldIfNotEmpty(executionData, "sqlQuery", execution.getSqlQuery());
+
+                    // 쿼리 결과들
+                    addMapFieldIfNotEmpty(executionData, "queryResult", execution.getQueryResult());
+                    addCollectionFieldIfNotEmpty(executionData, "postQueryResult", execution.getPostQueryResult());
+
+                    // 문자열 필드들
+                    addStringFieldIfNotEmpty(executionData, "sqlError", execution.getSqlError());
+                    addStringFieldIfNotEmpty(executionData, "fString", execution.getFString());
+                    addStringFieldIfNotEmpty(executionData, "finalAnswer", execution.getFinalAnswer());
+                    addStringFieldIfNotEmpty(executionData, "tablePipe", execution.getTablePipe());
+                    addStringFieldIfNotEmpty(executionData, "startDate", execution.getStartDate());
+                    addStringFieldIfNotEmpty(executionData, "endDate", execution.getEndDate());
+                    addStringFieldIfNotEmpty(executionData, "queryResultStatus", execution.getQueryResultStatus());
+
+                    // 컬렉션 필드들
+                    addMapFieldIfNotEmpty(executionData, "totalRows", execution.getTotalRows());
+                    addCollectionFieldIfNotEmpty(executionData, "queryResultList", execution.getQueryResultList());
+
+                    // Boolean 필드들 (기본값이 아닌 경우만 저장)
+                    addBooleanFieldIfNotDefault(executionData, "noData", execution.getNoData(), false);
+                    addBooleanFieldIfNotDefault(executionData, "futureDate", execution.getFutureDate(), false);
+                    addBooleanFieldIfNotDefault(executionData, "invalidDate", execution.getInvalidDate(), false);
+                    addBooleanFieldIfNotDefault(executionData, "queryError", execution.getQueryError(), false);
+                    addBooleanFieldIfNotDefault(executionData, "queryChanged", execution.getQueryChanged(), false);
+                    addBooleanFieldIfNotDefault(executionData, "hasNext", execution.getHasNext(), false);
+                    addBooleanFieldIfNotDefault(executionData, "noteChanged", execution.getNoteChanged(), false);
+
+                    // Integer 필드들 (기본값이 아닌 경우만 저장)
+                    addIntegerFieldIfNotDefault(executionData, "safeCount", execution.getSafeCount(), 0);
+
+                    // VectorNotes 처리
+                    if (execution.getVectorNotes() != null) {
+                        executionData.put("vectorNotes", execution.getVectorNotes());
+                    }
+
+                    // DSL 처리
+                    if (execution.getDsl() != null && !execution.getDsl().isEmpty()) {
+                        executionData.put("dsl", execution.getDsl());
+                    }
+
+                    if (!executionData.isEmpty()) {
+                        executionSummary.put(entity, executionData);
+                    }
+                });
+                
+                if (!executionSummary.isEmpty()) {
+                    stateMap.put("semanticQueryExecutions", executionSummary);
+                }
+            }
+
+            // JSON 변환 및 저장
+            if (!stateMap.isEmpty()) {
+                ObjectMapper objectMapper = new ObjectMapper();
+                String stateJson = objectMapper.writeValueAsString(stateMap);
+                nodeService.updateNodeStateJson(traceId, stateJson);
+                log.debug("SemanticQuery Node state JSON 저장 완료 - traceId: {}, fields: {}", traceId, stateMap.keySet());
+            } else {
+                log.debug("SemanticQuery Node state가 비어있어 저장하지 않음 - traceId: {}", traceId);
+            }
 
         } catch (Exception e) {
             log.error("SemanticQuery State DB 저장 실패 - traceId: {}", traceId, e);
             // State 저장 실패는 워크플로우를 중단하지 않음
+        }
+    }
+
+    /**
+     * 문자열 필드가 null이 아니고 비어있지 않으면 Map에 추가
+     */
+    private void addStringFieldIfNotEmpty(Map<String, Object> map, String key, String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            map.put(key, value.trim());
+        }
+    }
+
+    /**
+     * 컬렉션 필드가 null이 아니고 비어있지 않으면 Map에 추가
+     */
+    private void addCollectionFieldIfNotEmpty(Map<String, Object> map, String key, Object collection) {
+        if (collection instanceof List) {
+            List<?> list = (List<?>) collection;
+            if (!list.isEmpty()) {
+                map.put(key, collection);
+            }
+        } else if (collection instanceof Map) {
+            Map<?, ?> mapValue = (Map<?, ?>) collection;
+            if (!mapValue.isEmpty()) {
+                map.put(key, collection);
+            }
+        }
+    }
+
+    /**
+     * Map 필드가 null이 아니고 비어있지 않으면 Map에 추가
+     */
+    private void addMapFieldIfNotEmpty(Map<String, Object> map, String key, Map<?, ?> mapValue) {
+        if (mapValue != null && !mapValue.isEmpty()) {
+            map.put(key, mapValue);
+        }
+    }
+
+    /**
+     * Boolean 필드가 기본값과 다르면 Map에 추가
+     */
+    private void addBooleanFieldIfNotDefault(Map<String, Object> map, String key, Boolean value, Boolean defaultValue) {
+        if (value != null && !value.equals(defaultValue)) {
+            map.put(key, value);
+        }
+    }
+
+    /**
+     * Integer 필드가 기본값과 다르면 Map에 추가
+     */
+    private void addIntegerFieldIfNotDefault(Map<String, Object> map, String key, Integer value, Integer defaultValue) {
+        if (value != null && !value.equals(defaultValue)) {
+            map.put(key, value);
         }
     }
 }
