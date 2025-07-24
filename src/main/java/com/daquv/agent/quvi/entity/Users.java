@@ -3,7 +3,7 @@ package com.daquv.agent.quvi.entity;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "users", schema = "public")
+@Table(name = "users")
 public class Users {
 
     @Id
