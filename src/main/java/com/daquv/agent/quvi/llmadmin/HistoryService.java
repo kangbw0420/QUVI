@@ -114,8 +114,7 @@ public class HistoryService {
             String queryString =
                     "WITH latest_workflows AS (" +
                     "    SELECT " + selectedColumns + ", w.workflow_id, w.workflow_start " +
-                    "    FROM state s " +
-                    "    JOIN node n ON s.node_id = n.node_id " +
+                    "    FROM node n " +
                     "    JOIN workflow w ON n.workflow_id = w.workflow_id " +
                     "    WHERE w.session_id = :sessionId " +
                     "    AND n.node_name = :nodeType " +
@@ -132,7 +131,7 @@ public class HistoryService {
             query.setParameter("sessionId", sessionId );
             query.setParameter("nodeType", nodeType);
             query.setParameter("limit", limit);
-            
+
             @SuppressWarnings("unchecked")
             List<Object[]> results = query.getResultList();
 
@@ -197,13 +196,14 @@ public class HistoryService {
             String sessionId = currentWorkflow.getSession().getSessionId();
 
             String queryString =
-                "SELECT s." + column + " " +
-                "FROM state s " +
-                "JOIN node n ON s.node_id = n.node_id " +
+                "SELECT JSON_UNQUOTE(JSON_EXTRACT(n.node_context, '$." + column + "')) as " + column + " " +
+                "FROM node n " +
                 "JOIN workflow w ON n.workflow_id = w.workflow_id " +
                 "WHERE w.session_id = :sessionId " +
-                "AND s." + column + " IS NOT NULL " +
-                "ORDER BY s.id DESC " +
+                "AND n.node_context IS NOT NULL " +
+                "AND n.node_context != '{}' " +
+                "AND JSON_EXTRACT(n.node_context, '$." + column + "') IS NOT NULL " +
+                "ORDER BY n.created_at DESC " +  // 또는 w.workflow_start DESC
                 "LIMIT :n";
             
             Query query = entityManager.createNativeQuery(queryString);
