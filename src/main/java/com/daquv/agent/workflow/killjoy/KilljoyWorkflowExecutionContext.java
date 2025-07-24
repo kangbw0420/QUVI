@@ -128,15 +128,13 @@ public class KilljoyWorkflowExecutionContext {
 
             // 히스토리 조회에 필요한 핵심 필드들만 저장
             if (state.getUserQuestion() != null) {
-                stateMap.put("user_question", state.getUserQuestion());
+                stateMap.put("userQuestion", state.getUserQuestion());
             }
             if (state.getFinalAnswer() != null) {
-                stateMap.put("final_answer", state.getFinalAnswer());
+                stateMap.put("finalAnswer", state.getFinalAnswer());
             }
 
-            if (!stateMap.isEmpty()) {
-                stateService.updateState(traceId, stateMap);
-            }
+            stateService.updateState(traceId, stateMap);
 
             // Node 엔티티의 nodeStateJson에도 JSON으로 저장
             try {

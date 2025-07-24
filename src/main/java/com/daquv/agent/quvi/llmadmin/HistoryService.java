@@ -62,9 +62,49 @@ public class HistoryService {
             // conversation_id를 직접 조회하는 쿼리 사용
             String sessionIdQuery  = "SELECT w.session_id FROM workflow w WHERE w.workflow_id = :workflowId";
             Query convQuery = entityManager.createNativeQuery(sessionIdQuery);
-            convQuery.setParameter("chainId", workflowId);
+            convQuery.setParameter("workflowId", workflowId);
             String sessionId = (String) convQuery.getSingleResult();
-            
+            log.info("DEBUG: Found sessionId: {}", sessionId);
+
+            // 2. 해당 session에 있는 모든 workflow 확인
+            String debugWorkflowQuery = "SELECT workflow_id, workflow_start FROM workflow WHERE session_id = :sessionId ORDER BY workflow_start DESC";
+            Query debugWorkflow = entityManager.createNativeQuery(debugWorkflowQuery);
+            debugWorkflow.setParameter("sessionId", sessionId);
+            List<Object[]> workflowResults = debugWorkflow.getResultList();
+            log.info("DEBUG: All workflows in session {}: {}", sessionId, workflowResults);
+
+            // 3. 해당 session에 있는 모든 node 확인
+            String debugNodeQuery = "SELECT n.node_id, n.node_name, n.workflow_id FROM node n " +
+                    "JOIN workflow w ON n.workflow_id = w.workflow_id " +
+                    "WHERE w.session_id = :sessionId";
+            Query debugNode = entityManager.createNativeQuery(debugNodeQuery);
+            debugNode.setParameter("sessionId", sessionId);
+            List<Object[]> nodeResults = debugNode.getResultList();
+            log.info("DEBUG: All nodes in session {}: {}", sessionId, nodeResults);
+
+            // 4. 특정 nodeType의 node만 확인
+            String debugSpecificNodeQuery = "SELECT n.node_id, n.node_name, n.workflow_id FROM node n " +
+                    "JOIN workflow w ON n.workflow_id = w.workflow_id " +
+                    "WHERE w.session_id = :sessionId AND n.node_name = :nodeType";
+            Query debugSpecificNode = entityManager.createNativeQuery(debugSpecificNodeQuery);
+            debugSpecificNode.setParameter("sessionId", sessionId);
+            debugSpecificNode.setParameter("nodeType", nodeType);
+            List<Object[]> specificNodeResults = debugSpecificNode.getResultList();
+            log.info("DEBUG: Nodes with type '{}' in session {}: {}", nodeType, sessionId, specificNodeResults);
+
+            // 5. 해당 node들에 연결된 state 확인
+            if (!specificNodeResults.isEmpty()) {
+                String nodeIds = specificNodeResults.stream()
+                        .map(row -> "'" + row[0] + "'")
+                        .collect(Collectors.joining(","));
+
+                String debugStateQuery = "SELECT s.id, s.node_id, s.user_question, s.sql_query FROM state s " +
+                        "WHERE s.node_id IN (" + nodeIds + ")";
+                Query debugState = entityManager.createNativeQuery(debugStateQuery);
+                List<Object[]> stateResults = debugState.getResultList();
+                log.info("DEBUG: States for nodes {}: {}", nodeIds, stateResults);
+            }
+
             // 동적 쿼리 생성 (JSONB 컬럼 제외)
             String selectedColumns = stateHistory.stream()
                     .filter(col -> !col.equals("date_info"))
@@ -85,12 +125,14 @@ public class HistoryService {
                     "SELECT * " +
                     "FROM latest_workflows " +
                     "ORDER BY workflow_start ASC";
-            
+            log.info("DEBUG: Final query: {}", queryString);
+            log.info("DEBUG: Parameters - sessionId: {}, nodeType: {}, limit: {}", sessionId, nodeType, limit);
+
             Query query = entityManager.createNativeQuery(queryString);
             query.setParameter("sessionId", sessionId );
             query.setParameter("nodeType", nodeType);
             query.setParameter("limit", limit);
-            log.info("getHistory end - query: {}", query.toString());
+            
             @SuppressWarnings("unchecked")
             List<Object[]> results = query.getResultList();
 
