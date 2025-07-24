@@ -1,4 +1,4 @@
-package com.daquv.agent.quvi.requests;
+package com.daquv.agent.requests;
 
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.fasterxml.jackson.databind.JsonNode;
