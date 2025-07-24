@@ -153,11 +153,11 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
     private Map<String, Object> executeSqlMap(Map<String, String> sqlMap, String workflowId) {
         Map<String, Object> resultMap = new HashMap<>();
-        
+
         for (Map.Entry<String, String> entry : sqlMap.entrySet()) {
             String queryKey = entry.getKey();
             String sql = entry.getValue();
-            
+
             if (sql == null || sql.trim().isEmpty()) {
                 log.warn("Empty SQL query for key '{}', skipping", queryKey);
                 resultMap.put(queryKey, new ArrayList<>());
@@ -165,34 +165,132 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
             }
 
             try {
+                // Cross-database 참조 문제 해결을 위한 SQL 전처리
+                String processedSql = preprocessSqlForCrossDatabase(sql);
+
                 // 페이지네이션 적용
-                String paginatedSql = countAndPaginate(sql, workflowId);
-                
+                String paginatedSql = countAndPaginate(processedSql, workflowId);
+
                 // SQL 실행
-                log.debug("Executing SQL for key '{}': {}", queryKey, 
-                         paginatedSql.substring(0, Math.min(100, paginatedSql.length())) + "...");
-                
+                log.debug("Executing SQL for key '{}': {}", queryKey,
+                        paginatedSql.substring(0, Math.min(100, paginatedSql.length())) + "...");
+
                 DatabaseProfilerAspect.setWorkflowId(workflowId);
                 List<Map<String, Object>> result = jdbcTemplate.queryForList(paginatedSql);
-                
+
                 // 숫자 자동 변환
                 List<Map<String, Object>> processedResult = autoCastNumeric(result);
-                
+
                 resultMap.put(queryKey, processedResult);
                 log.debug("SQL execution successful for key '{}': {} rows", queryKey, result.size());
-                
-            } catch (Exception e) {
+
+            } catch (DataAccessException e) {
                 log.error("SQL execution failed for key '{}': {}", queryKey, e.getMessage());
-                
+
+                // Cross-database 오류 특별 처리
+                if (isCrossDatabaseError(e)) {
+                    log.warn("Cross-database reference detected for key '{}'. Attempting to fix SQL...", queryKey);
+
+                    try {
+                        // SQL에서 데이터베이스 참조 제거하고 재시도
+                        String fixedSql = fixCrossDatabaseReferences(sql);
+                        String paginatedFixedSql = countAndPaginate(fixedSql, workflowId);
+
+                        log.debug("Retrying with fixed SQL for key '{}': {}", queryKey,
+                                paginatedFixedSql.substring(0, Math.min(100, paginatedFixedSql.length())) + "...");
+
+                        DatabaseProfilerAspect.setWorkflowId(workflowId);
+                        List<Map<String, Object>> result = jdbcTemplate.queryForList(paginatedFixedSql);
+                        List<Map<String, Object>> processedResult = autoCastNumeric(result);
+
+                        resultMap.put(queryKey, processedResult);
+                        log.info("SQL execution successful after fixing cross-database references for key '{}': {} rows",
+                                queryKey, result.size());
+                        continue;
+
+                    } catch (Exception retryException) {
+                        log.error("Retry after fixing cross-database references also failed for key '{}': {}",
+                                queryKey, retryException.getMessage());
+                    }
+                }
+
                 // 에러 발생 시 에러 정보를 결과에 포함
+                Map<String, Object> errorMap = new HashMap<>();
+                errorMap.put("error", "SQL execution failed: " + e.getMessage());
+                errorMap.put("query_key", queryKey);
+
+                // Cross-database 오류인 경우 더 구체적인 메시지 제공
+                if (isCrossDatabaseError(e)) {
+                    errorMap.put("error_type", "cross_database_reference");
+                    errorMap.put("suggestion", "Check MetricFlow configuration to remove database references from table names");
+                }
+
+                resultMap.put(queryKey, Collections.singletonList(errorMap));
+
+            } catch (Exception e) {
+                log.error("Unexpected error during SQL execution for key '{}': {}", queryKey, e.getMessage());
+
                 Map<String, Object> errorMap = new HashMap<>();
                 errorMap.put("error", "SQL execution failed: " + e.getMessage());
                 errorMap.put("query_key", queryKey);
                 resultMap.put(queryKey, Collections.singletonList(errorMap));
             }
         }
-        
+
         return resultMap;
+    }
+
+    /**
+     * Cross-database 오류인지 확인
+     */
+    private boolean isCrossDatabaseError(DataAccessException e) {
+        String message = e.getMessage();
+        return message != null &&
+                (message.contains("cross-database references are not implemented") ||
+                        message.contains("cross-database"));
+    }
+
+    /**
+     * SQL 전처리 - Cross-database 참조 제거
+     */
+    private String preprocessSqlForCrossDatabase(String sql) {
+        if (sql == null) {
+            return sql;
+        }
+
+        // 모든 3단계 참조를 2단계로 변환: "any_db"."schema"."table" -> "schema"."table"
+        return sql.replaceAll("\"[^\"]+\"\\.\"([^\"]+)\"\\.\"([^\"]+)\"", "\"$1\".\"$2\"");
+    }
+
+    /**
+     * Cross-database 참조를 수정하는 범용적인 방법
+     */
+    private String fixCrossDatabaseReferences(String sql) {
+        if (sql == null) {
+            return sql;
+        }
+
+        String fixedSql = sql;
+
+        // 1. 따옴표로 감싸진 3단계 참조: "database"."schema"."table" -> "schema"."table"
+        fixedSql = fixedSql.replaceAll("\"[^\"]+\"\\.\"([^\"]+)\"\\.\"([^\"]+)\"", "\"$1\".\"$2\"");
+
+        // 2. 따옴표 없는 3단계 참조: database.schema.table -> schema.table
+        fixedSql = fixedSql.replaceAll("\\b[a-zA-Z_][a-zA-Z0-9_]*\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)", "$1.$2");
+
+        // 3. 혼합형 참조도 처리: database."schema"."table" -> "schema"."table"
+        fixedSql = fixedSql.replaceAll("\\b[a-zA-Z_][a-zA-Z0-9_]*\\.\"([^\"]+)\"\\.\"([^\"]+)\"", "\"$1\".\"$2\"");
+
+        // 4. 또 다른 혼합형: "database".schema.table -> schema.table
+        fixedSql = fixedSql.replaceAll("\"[^\"]+\"\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)", "$1.$2");
+
+        if (!fixedSql.equals(sql)) {
+            log.debug("Fixed cross-database references in SQL:\nBefore: {}\nAfter: {}",
+                    sql.substring(0, Math.min(200, sql.length())),
+                    fixedSql.substring(0, Math.min(200, fixedSql.length())));
+        }
+
+        return fixedSql;
     }
 
     private String countAndPaginate(String sql, String workflowId) {
