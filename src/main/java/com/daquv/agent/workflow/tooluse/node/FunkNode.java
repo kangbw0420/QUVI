@@ -9,6 +9,8 @@ import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
 import com.daquv.agent.workflow.tooluse.ToolUsePromptBuilder;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowNode;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import com.daquv.agent.workflow.util.LLMRequest;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +22,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class FunkNode implements WorkflowNode {
+public class FunkNode implements ToolUseWorkflowNode {
 
     @Autowired
     private LLMRequest llmService;
@@ -43,7 +45,7 @@ public class FunkNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(ToolUseWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String chainId = state.getWorkflowId();
 

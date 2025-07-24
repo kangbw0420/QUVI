@@ -9,6 +9,8 @@ import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
 import com.daquv.agent.workflow.tooluse.ToolUsePromptBuilder;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowNode;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import com.daquv.agent.workflow.util.LLMRequest;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.util.DateUtils;
@@ -25,7 +27,7 @@ import java.util.regex.Pattern;
 
 @Slf4j
 @Component
-public class ParamsNode implements WorkflowNode {
+public class ParamsNode implements ToolUseWorkflowNode {
 
     /**
      * Python의 parameters 함수와 동일한 기능을 수행하는 Java 구현
@@ -62,7 +64,7 @@ public class ParamsNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(ToolUseWorkflowState state) {
         String selectedApi = state.getSelectedApi();
         String userQuestion = state.getUserQuestion();
         String companyId = state.getUserInfo().getCompanyId();
