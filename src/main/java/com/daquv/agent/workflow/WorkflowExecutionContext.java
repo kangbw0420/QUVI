@@ -261,11 +261,12 @@ public class WorkflowExecutionContext {
             if (state.getTablePipe() != null) {
                 stateMap.put("tablePipe", state.getTablePipe());
             }
-            if (state.getStartDate() != null) {
-                stateMap.put("startDate", state.getStartDate());
-            }
-            if (state.getEndDate() != null) {
-                stateMap.put("endDate", state.getEndDate());
+            if (state.getStartDate() != null && !state.getStartDate().trim().isEmpty() &&
+                    state.getEndDate() != null && !state.getEndDate().trim().isEmpty()) {
+                java.util.List<String> dateInfo = new java.util.ArrayList<>();
+                dateInfo.add(state.getStartDate());
+                dateInfo.add(state.getEndDate());
+                stateMap.put("date_info", dateInfo);
             }
             if (state.getUserInfo().getCompanyId() != null) {
                 stateMap.put("companyId", state.getUserInfo().getCompanyId());
