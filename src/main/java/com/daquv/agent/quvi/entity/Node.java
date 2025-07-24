@@ -1,13 +1,7 @@
 package com.daquv.agent.quvi.entity;
 
-import com.daquv.agent.entity.State;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.TypeDef;
 
@@ -50,9 +44,6 @@ public class Node {
     @Enumerated(EnumType.STRING)
     @Column(name = "node_status")
     private NodeStatus nodeStatus = NodeStatus.active;
-
-    @OneToMany(mappedBy = "node", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<State> states = new ArrayList<>();
 
     @OneToMany(mappedBy = "node", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Generation> generations = new ArrayList<>();

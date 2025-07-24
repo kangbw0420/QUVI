@@ -1,7 +1,6 @@
 package com.daquv.agent.workflow.killjoy;
 
 import com.daquv.agent.quvi.llmadmin.HistoryService;
-import com.daquv.agent.quvi.llmadmin.StateService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
 import com.daquv.agent.workflow.ChainStateManager;
 import com.daquv.agent.workflow.WorkflowNode;
@@ -11,11 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Component
 @Slf4j
@@ -29,9 +23,6 @@ public class KilljoyWorkflowExecutionContext {
 
     @Autowired
     private NodeService nodeService;
-
-    @Autowired
-    private StateService stateService;
 
     @Autowired
     private HistoryService historyService;

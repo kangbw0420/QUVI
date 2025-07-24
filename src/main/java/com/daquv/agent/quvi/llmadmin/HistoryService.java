@@ -1,11 +1,9 @@
 package com.daquv.agent.quvi.llmadmin;
 
-import com.daquv.agent.entity.State;
 import com.daquv.agent.quvi.entity.Workflow;
-import com.daquv.agent.repository.StateRepository;
-import com.daquv.agent.quvi.repository.WorkflowRepository;
-import com.daquv.agent.quvi.repository.SessionRepository;
 import com.daquv.agent.quvi.repository.NodeRepository;
+import com.daquv.agent.quvi.repository.SessionRepository;
+import com.daquv.agent.quvi.repository.WorkflowRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -16,7 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,8 +25,7 @@ import java.util.stream.Collectors;
 public class HistoryService {
 
     private static final Logger log = LoggerFactory.getLogger(HistoryService.class);
-    
-    private final StateRepository stateRepository;
+
     private final WorkflowRepository workflowRepository;
     private final SessionRepository sessionRepository;
     private final NodeRepository nodeRepository;
@@ -34,10 +34,8 @@ public class HistoryService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public HistoryService(StateRepository stateRepository, WorkflowRepository workflowRepository,
-                          SessionRepository sessionRepository, NodeRepository nodeRepository,
-                          ObjectMapper objectMapper) {
-        this.stateRepository = stateRepository;
+    public HistoryService(WorkflowRepository workflowRepository,
+                          SessionRepository sessionRepository, NodeRepository nodeRepository, ObjectMapper objectMapper) {
         this.workflowRepository = workflowRepository;
         this.sessionRepository = sessionRepository;
         this.nodeRepository = nodeRepository;
@@ -242,28 +240,6 @@ public class HistoryService {
             log.debug("Failed to parse JSON, returning original value: {}", jsonString);
             return value;
         }
-    }
-
-    /**
-     * 체인 ID로 모든 상태 히스토리 조회
-     * 
-     * @param chainId 체인 ID
-     * @return 상태 목록
-     */
-    public List<State> getStatesByChainId(String chainId) {
-        log.info("getStatesByChainId - chainId: {}", chainId);
-        return stateRepository.findByChainId(chainId);
-    }
-
-    /**
-     * 트레이스 ID로 상태 히스토리 조회
-     * 
-     * @param traceId 트레이스 ID
-     * @return 상태 목록
-     */
-    public List<State> getStatesByTraceId(String traceId) {
-        log.info("getStatesByTraceId - traceId: {}", traceId);
-        return stateRepository.findByTraceIdOrderByIdAsc(traceId);
     }
 
     /**

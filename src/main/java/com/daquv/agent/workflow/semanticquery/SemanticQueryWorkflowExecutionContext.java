@@ -28,6 +28,8 @@ public class SemanticQueryWorkflowExecutionContext {
     private NodeService nodeService;
 
     @Autowired
+    private HistoryService historyService;
+    @Autowired
     private WorkflowService workflowService;
 
     /**
