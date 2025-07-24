@@ -36,4 +36,19 @@ public class SemanticQueryWorkflowState {
     private String queryResultStatus;
     private List<String> queryResultList;
     private VectorNotes vectorNotes;
+
+    @Builder.Default
+    private Boolean noData = false;
+    @Builder.Default
+    private Boolean futureDate = false;
+    @Builder.Default
+    private Boolean invalidDate = false;
+    @Builder.Default
+    private Boolean queryChanged = false;
+    @Builder.Default
+    private Boolean hasNext = false;
+    @Builder.Default
+    private Boolean queryError = false;
+    @Builder.Default
+    private Integer safeCount = 0;
 }
