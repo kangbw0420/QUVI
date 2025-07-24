@@ -5,6 +5,8 @@ import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowNode;
+import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +18,7 @@ import java.util.Map;
 
 @Component
 @Slf4j
-public class YqmdNode implements WorkflowNode {
+public class YqmdNode implements ToolUseWorkflowNode {
     @Value("${api.vector-store-domain}")
     private String vectorStoreDomain;
 
@@ -35,7 +37,7 @@ public class YqmdNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(ToolUseWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String sqlQuery = state.getSqlQuery();
         String workflowId = state.getWorkflowId();

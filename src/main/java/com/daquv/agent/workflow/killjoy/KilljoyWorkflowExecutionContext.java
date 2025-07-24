@@ -128,28 +128,15 @@ public class KilljoyWorkflowExecutionContext {
 
             // 히스토리 조회에 필요한 핵심 필드들만 저장
             if (state.getUserQuestion() != null) {
-                stateMap.put("user_question", state.getUserQuestion());
+                stateMap.put("userQuestion", state.getUserQuestion());
             }
             if (state.getFinalAnswer() != null) {
-                stateMap.put("final_answer", state.getFinalAnswer());
+                stateMap.put("finalAnswer", state.getFinalAnswer());
             }
 
-            if (!stateMap.isEmpty()) {
-                stateService.updateState(traceId, stateMap);
-            }
-
-            // Node 엔티티의 nodeStateJson에도 JSON으로 저장
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                String stateJson = objectMapper.writeValueAsString(stateMap);
-
-                // NodeService를 통해 nodeStateJson 업데이트
-                nodeService.updateNodeStateJson(traceId, stateJson);
-
-                log.debug("Killjoy Node state JSON 저장 완료 - traceId: {}", traceId);
-            } catch (Exception jsonException) {
-                log.error("Killjoy JSON 변환 실패 - traceId: {}", traceId, jsonException);
-            }
+            ObjectMapper objectMapper = new ObjectMapper();
+            String stateJson = objectMapper.writeValueAsString(stateMap);
+            nodeService.updateNodeStateJson(traceId, stateJson);
 
         } catch (Exception e) {
             log.error("Killjoy State DB 저장 실패 - traceId: {}", traceId, e);
