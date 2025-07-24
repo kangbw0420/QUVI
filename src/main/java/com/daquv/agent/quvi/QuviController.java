@@ -944,7 +944,7 @@ public class QuviController {
 
         body.put("answer", hilMessage);
         body.put("session_id", conversationId);
-        body.put("chain_id", chainId);
+        body.put("workflow_id", chainId);
         body.put("workflow_status", "waiting");
         body.put("hil_required", true); // HIL이 필요함을 명시
         body.put("is_api", false);
