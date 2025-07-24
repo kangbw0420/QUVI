@@ -130,18 +130,28 @@ public class ResponseParser {
         if (trimmed.startsWith("{{") && trimmed.endsWith("}}")) {
             log.debug("Found double braces pattern, attempting to extract inner JSON");
 
-            // 가장 바깥쪽 이중 중괄호를 단일 중괄호로 변경
+            // 첫 번째 시도: 가장 바깥쪽 이중 중괄호를 단일 중괄호로 변경
             String withSingleBraces = "{" + trimmed.substring(2, trimmed.length() - 2) + "}";
 
             // 변경된 문자열이 유효한 JSON인지 확인
-            try {
-                objectMapper.readTree(withSingleBraces);
+            if (isValidJsonStructure(withSingleBraces)) {
                 log.debug("Successfully converted double braces to single: {}", withSingleBraces);
                 return withSingleBraces;
-            } catch (Exception e) {
-                log.warn("Failed to parse after converting double braces, trying alternative methods");
-                // 대안: 정규식을 사용해서 JSON 부분만 추출
-                return extractJsonWithRegex(trimmed);
+            }
+
+            log.warn("Failed to parse after converting double braces, trying to extract complete JSON structure");
+
+            // 두 번째 시도: 완전한 JSON 구조 추출
+            String extracted = extractLargestJsonObject(trimmed);
+            if (extracted != null) {
+                return extracted;
+            }
+
+            // 세 번째 시도: 이중 중괄호 내부의 완전한 구조 찾기
+            String inner = trimmed.substring(2, trimmed.length() - 2).trim();
+            extracted = extractLargestJsonObject(inner);
+            if (extracted != null) {
+                return extracted;
             }
         }
 
@@ -160,31 +170,67 @@ public class ResponseParser {
     }
 
     /**
-     * 정규식을 사용한 JSON 추출
+     * 정규식을 사용한 JSON 추출 - 중첩된 구조 지원
      */
     private String extractJsonWithRegex(String input) {
-        // 중괄호 균형을 맞춘 JSON 객체 찾기
-        Pattern jsonObjectPattern = Pattern.compile("\\{(?:[^{}]|\\{[^{}]*\\})*\\}", Pattern.DOTALL);
-        Matcher matcher = jsonObjectPattern.matcher(input);
-
-        if (matcher.find()) {
-            String found = matcher.group();
-            log.debug("Extracted JSON object with regex: {}", found);
+        // 가장 큰(완전한) JSON 객체를 찾기 위해 개선된 정규식 사용
+        String found = extractLargestJsonObject(input);
+        if (found != null) {
+            log.debug("Extracted complete JSON object: {}", found);
             return found;
         }
 
         // 대괄호 균형을 맞춘 JSON 배열 찾기
         Pattern jsonArrayPattern = Pattern.compile("\\[(?:[^\\[\\]]|\\[[^\\[\\]]*\\])*\\]", Pattern.DOTALL);
-        matcher = jsonArrayPattern.matcher(input);
+        Matcher matcher = jsonArrayPattern.matcher(input);
 
         if (matcher.find()) {
-            String found = matcher.group();
+            found = matcher.group();
             log.debug("Extracted JSON array with regex: {}", found);
             return found;
         }
 
         log.warn("Could not extract valid JSON from input: {}", input);
         return input;
+    }
+
+    /**
+     * 중첩된 구조를 포함한 가장 큰 JSON 객체 추출
+     */
+    private String extractLargestJsonObject(String input) {
+        int firstBrace = input.indexOf('{');
+        if (firstBrace == -1) {
+            return null;
+        }
+
+        int braceCount = 0;
+        int start = firstBrace;
+        int end = -1;
+
+        for (int i = firstBrace; i < input.length(); i++) {
+            char c = input.charAt(i);
+
+            if (c == '{') {
+                braceCount++;
+            } else if (c == '}') {
+                braceCount--;
+                if (braceCount == 0) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+
+        if (end != -1) {
+            String extracted = input.substring(start, end + 1);
+
+            // 추출된 JSON이 유효한지 검증
+            if (isValidJsonStructure(extracted)) {
+                return extracted;
+            }
+        }
+
+        return null;
     }
 
     /**
