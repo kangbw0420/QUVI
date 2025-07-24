@@ -24,25 +24,37 @@ public class SemanticQueryWorkflowState {
     private String userQuestion;
     private Map<String, SemanticQueryExecution> semanticQueryExecutionMap;
     private String finalAnswer;
+    private String selectedTable;
+
+    private String startDate;
+    private String endDate;
+
+    private Boolean dateClarificationNeeded = false; // 날짜 명확화가 필요한지 여부
+
+    private String currentNode; // HIL이 발생한 현재 노드
 
     @Data
     @Builder
     public static class SemanticQueryExecution {
         private Map<String, String> sqlQuery;
         private String sqlError;
+
         private Map<String, Object> queryResult;
         private List<Map<String, Object>> postQueryResult;
-        private String fString;
-        private String finalAnswer;
-        private String tablePipe;
         private Map<String, Integer> totalRows;
-        private String startDate;
-        private String endDate;
         private VectorNotes vectorNotes;
         @Builder.Default
         private Map<String, DSL> dsl = new HashMap<>();
         private String queryResultStatus;
         private List<String> queryResultList;
+
+        private String fString;
+        private String finalAnswer;
+
+        private String tablePipe;
+        private String startDate;
+        private String endDate;
+
 
         @Builder.Default
         private Boolean noData = false;
@@ -94,5 +106,28 @@ public class SemanticQueryWorkflowState {
         private List<String> filters = new ArrayList<>();
         private List<String> orderBy = new ArrayList<>();
         private Integer limit;
+    }
+
+    /**
+     * HIL 상태 확인
+     */
+    public boolean isHilRequired() {
+        return dateClarificationNeeded != null && dateClarificationNeeded;
+    }
+
+    /**
+     * HIL 상태 초기화
+     */
+    public void clearHilState() {
+        this.dateClarificationNeeded = false;
+        this.currentNode = null;
+    }
+
+    /**
+     * 날짜 정보가 설정되었는지 확인
+     */
+    public boolean hasDateInfo() {
+        return startDate != null && !startDate.trim().isEmpty() &&
+                endDate != null && !endDate.trim().isEmpty();
     }
 }

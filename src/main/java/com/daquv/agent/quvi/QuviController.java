@@ -1,6 +1,7 @@
 package com.daquv.agent.quvi;
 
 import com.daquv.agent.quvi.dto.LogLevel;
+import com.daquv.agent.quvi.dto.QuviHilResumeDto;
 import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.llmadmin.SessionService;
 import com.daquv.agent.quvi.llmadmin.WorkflowService;
@@ -148,7 +149,25 @@ public class QuviController {
 
             try {
                 executeSelectedWorkflow(selectedWorkflow, workflowId);
-                chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO, "✅ 워크플로우 실행 완료");
+                // HIL 상태 확인
+                if (isWorkflowWaitingForHil(selectedWorkflow, workflowId)) {
+                    log.info("워크플로우가 HIL 대기 상태입니다 - workflowId: {}", workflowId);
+                    chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
+                            "⏸️ 워크플로우 HIL 대기 상태로 전환");
+
+                    // HIL 응답 생성 및 반환 - 여기서 workflow_status: waiting 응답
+                    long totalTime = System.currentTimeMillis() - startTime;
+                    Map<String, Object> hilResponse = buildHilWaitingResponse(
+                            getOrCreateSessionId(request), workflowId, totalTime, selectedWorkflow);
+
+                    logNodeExecutionStatistics(workflowId, totalTime);
+
+                    // HIL 대기 상태에서는 정리하지 않고 상태 유지
+                    log.info("HIL 대기 상태로 인해 상태를 유지합니다 - workflowId: {}", workflowId);
+                    return ResponseEntity.ok(hilResponse);
+                } else {
+                    chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO, "✅ 워크플로우 실행 완료");
+                }
             } catch (Exception workflowError) {
                 chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.ERROR,
                         String.format("❌ 워크플로우 실행 실패: %s", removeHttpProtocol(workflowError.getMessage())), workflowError);
@@ -162,26 +181,31 @@ public class QuviController {
                 throw workflowError;
             }
 
-            // 8. 최종 결과 조회
+            // 9. 최종 결과 조회
             Object finalState = getFinalStateForWorkflow(selectedWorkflow, workflowId);
 
-            // 9. Chain 완료
+            // 10. Chain 완료
             String finalAnswer = extractFinalAnswer(finalState);
             workflowService.completeWorkflow(workflowId, finalAnswer);
 
             // 로그 컨텍스트에 최종 결과 저장
             updateLogContextWithFinalState(logContext, finalState);
 
-            // 10. 응답 생성
+            // 11. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
             Map<String, Object> response = buildResponse(sessionId, workflowId, recommendList, totalTime, finalState);
 
             logNodeExecutionStatistics(workflowId, totalTime);
 
-            // 11. 정리
-            chainLogManager.completeWorkflow(workflowId, true);
-            requestProfiler.clearProfile(workflowId);
-            cleanupStateForWorkflow(selectedWorkflow, workflowId);
+            // 12. 정리
+            if (!isWorkflowWaitingForHil(selectedWorkflow, workflowId)) {
+                chainLogManager.completeWorkflow(workflowId, true);
+                requestProfiler.clearProfile(workflowId);
+                cleanupStateForWorkflow(selectedWorkflow, workflowId);
+            } else {
+                // HIL 대기 상태인 경우는 정리하지 않고 상태 유지
+                log.info("HIL 대기 상태로 인해 상태를 유지합니다 - workflowId: {}", workflowId);
+            }
 
             log.info("HTTP Quvi 요청 처리 완료 - 소요시간: {}ms", totalTime);
             return ResponseEntity.ok(response);
@@ -205,6 +229,173 @@ public class QuviController {
             Map<String, Object> errorResponse = buildErrorResponse(e.getMessage());
             return ResponseEntity.ok(errorResponse);
         }
+    }
+
+    /**
+     * 워크플로우가 HIL 대기 상태인지 확인
+     */
+    private boolean isWorkflowWaitingForHil(String selectedWorkflow, String workflowId) {
+        try {
+            switch (selectedWorkflow) {
+                case "SEMANTICQUERY":
+                    SemanticQueryWorkflowState semanticState = semanticQueryStateManager.getState(workflowId);
+                    if (semanticState != null) {
+                        boolean hilRequired = semanticState.isHilRequired();
+                        log.debug("SemanticQuery HIL 상태 확인 - workflowId: {}, hilRequired: {}", workflowId, hilRequired);
+                        return hilRequired;
+                    }
+                    break;
+
+                case "TOOLUSE":
+                    ToolUseWorkflowState toolUseState = toolUseStateManager.getState(workflowId);
+                    if (toolUseState != null) {
+                        // ToolUse에서 HIL이 필요한 경우의 로직 (향후 확장)
+                        return false; // 현재는 HIL 미지원
+                    }
+                    break;
+
+                case "JOY":
+                    WorkflowState joyState = stateManager.getState(workflowId);
+                    if (joyState != null) {
+                        // JOY에서 HIL이 필요한 경우의 로직 (향후 확장)
+                        return false; // 현재는 HIL 미지원
+                    }
+                    break;
+
+                default:
+                    log.warn("알 수 없는 워크플로우 타입: {}", selectedWorkflow);
+                    return false;
+            }
+
+            // State가 없는 경우 DB에서 워크플로우 상태 확인
+            boolean isWaiting = workflowService.isWorkflowWaiting(workflowId);
+            log.debug("DB에서 워크플로우 대기 상태 확인 - workflowId: {}, isWaiting: {}", workflowId, isWaiting);
+            return isWaiting;
+
+        } catch (Exception e) {
+            log.error("HIL 상태 확인 중 오류 발생 - workflowId: {}", workflowId, e);
+            return false;
+        }
+    }
+
+    /**
+     * HIL 재개 처리를 위한 새로운 엔드포인트
+     */
+    @PostMapping("/resume")
+    public ResponseEntity<Map<String, Object>> resumeWorkflow(@RequestBody QuviHilResumeDto request,
+                                                              HttpServletRequest httpRequest) {
+        log.info("🔄 HIL 워크플로우 재개 요청 수신: workflowId={}, userInput={}",
+                request.getWorkflowId(), request.getUserInput());
+
+        String workflowId = request.getWorkflowId();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 워크플로우 상태 확인
+            if (!workflowService.isWorkflowWaiting(workflowId)) {
+                throw new IllegalStateException("워크플로우가 대기 상태가 아닙니다: " + workflowId);
+            }
+
+            workflowService.resumeWorkflow(workflowId);
+
+            httpRequest.setAttribute("workflowId", workflowId);
+            httpRequest.setAttribute("X-Workflow-Id", workflowId);
+
+            // 프로파일링 시작
+            requestProfiler.startRequest(workflowId);
+
+            // 로그 컨텍스트 재개
+            ChainLogContext logContext = chainLogManager.resumeChainLog(workflowId);
+
+            chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.INFO,
+                    String.format("🔄 HIL 워크플로우 재개 - userInput: %s", request.getUserInput()));
+
+            // 워크플로우 타입 확인 및 재개
+            String workflowType = determineWorkflowType(workflowId);
+
+            switch (workflowType) {
+                case "SEMANTICQUERY":
+                    resumeSemanticQueryWorkflow(workflowId, request.getUserInput());
+                    break;
+                case "TOOLUSE":
+                    // 필요시 ToolUse HIL 재개 로직 추가
+                    throw new UnsupportedOperationException("TOOLUSE HIL 재개는 아직 지원되지 않습니다.");
+                case "JOY":
+                    // 필요시 JOY HIL 재개 로직 추가
+                    throw new UnsupportedOperationException("JOY HIL 재개는 아직 지원되지 않습니다.");
+                default:
+                    throw new IllegalStateException("알 수 없는 워크플로우 타입: " + workflowType);
+            }
+
+            // 최종 결과 조회
+            Object finalState = getFinalStateForWorkflow(workflowType, workflowId);
+
+            // Chain 완료
+            String finalAnswer = extractFinalAnswer(finalState);
+            workflowService.completeWorkflow(workflowId, finalAnswer);
+
+            // 로그 컨텍스트 업데이트
+            updateLogContextWithFinalState(logContext, finalState);
+
+            // 응답 생성
+            long totalTime = System.currentTimeMillis() - startTime;
+            Map<String, Object> response = buildResponse(
+                    request.getSessionId(), workflowId, new ArrayList<>(), totalTime, finalState);
+
+            logNodeExecutionStatistics(workflowId, totalTime);
+
+            // 정리
+            chainLogManager.completeWorkflow(workflowId, true);
+            requestProfiler.clearProfile(workflowId);
+            cleanupStateForWorkflow(workflowType, workflowId);
+
+            log.info("HIL 워크플로우 재개 처리 완료 - 소요시간: {}ms", totalTime);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("❌ HIL 워크플로우 재개 처리 중 예외 발생: {}", e.getMessage(), e);
+
+            if (workflowId != null) {
+                long totalTime = System.currentTimeMillis() - startTime;
+                logNodeExecutionStatistics(workflowId, totalTime);
+                chainLogManager.completeWorkflow(workflowId, false);
+                requestProfiler.clearProfile(workflowId);
+                cleanupAllStates(workflowId);
+            }
+
+            Map<String, Object> errorResponse = buildErrorResponse(e.getMessage());
+            return ResponseEntity.ok(errorResponse);
+        }
+    }
+
+    private void resumeSemanticQueryWorkflow(String workflowId, String userInput) {
+        log.info("💾 SemanticQuery HIL 워크플로우 재개 실행");
+        semanticQueryWorkflowContext.resumeSemanticQueryWorkflowAfterDateClarification(workflowId, userInput);
+    }
+
+    /**
+     * 워크플로우 타입 확인
+     */
+    private String determineWorkflowType(String workflowId) {
+        // SemanticQuery State가 있는지 확인
+        SemanticQueryWorkflowState semanticState = semanticQueryStateManager.getState(workflowId);
+        if (semanticState != null) {
+            return "SEMANTICQUERY";
+        }
+
+        // ToolUse State가 있는지 확인
+        ToolUseWorkflowState toolUseState = toolUseStateManager.getState(workflowId);
+        if (toolUseState != null) {
+            return "TOOLUSE";
+        }
+
+        // 기본 WorkflowState가 있는지 확인
+        WorkflowState workflowState = stateManager.getState(workflowId);
+        if (workflowState != null) {
+            return workflowState.getSelectedWorkflow() != null ? workflowState.getSelectedWorkflow() : "JOY";
+        }
+
+        throw new IllegalStateException("워크플로우 상태를 찾을 수 없습니다: " + workflowId);
     }
 
     private String selectWorkflowUsingSupervisor(String userQuestion, String workflowId) {
@@ -657,6 +848,8 @@ public class QuviController {
         body.put("sql_query", extractSqlQuery(finalState));
         body.put("selected_table", extractSelectedTable(finalState));
         body.put("has_next", extractHasNext(finalState));
+        body.put("workflow_status", "completed");
+        body.put("hil_required", false);
 
         // 프로파일링 정보
         Map<String, Object> profile = new HashMap<>();
@@ -723,6 +916,79 @@ public class QuviController {
 
         return response;
     }
+
+
+    /**
+     * HIL 대기 상태 응답 생성
+     */
+    private Map<String, Object> buildHilWaitingResponse(String conversationId, String chainId,
+                                                        long totalTime, String selectedWorkflow) {
+        Map<String, Object> response = new HashMap<>();
+
+        // 기본 응답
+        response.put("status", 200);
+        response.put("success", true);
+        response.put("retCd", 200);
+        response.put("message", "HIL 대기 중");
+
+        // 응답 본문
+        Map<String, Object> body = new HashMap<>();
+
+        // HIL 상태에서 필요한 정보들
+        Object finalState = getFinalStateForWorkflow(selectedWorkflow, chainId);
+        String hilMessage = extractFinalAnswer(finalState);
+
+        if (hilMessage == null || hilMessage.trim().isEmpty()) {
+            hilMessage = "추가 정보가 필요합니다. 사용자 입력을 기다리고 있습니다.";
+        }
+
+        body.put("answer", hilMessage);
+        body.put("session_id", conversationId);
+        body.put("chain_id", chainId);
+        body.put("workflow_status", "waiting");
+        body.put("hil_required", true); // HIL이 필요함을 명시
+        body.put("is_api", false);
+        body.put("recommend", new ArrayList<>()); // HIL 상태에서는 추천 질문 없음
+
+        // 프로파일링 정보 (기본값)
+        Map<String, Object> profile = new HashMap<>();
+        if (chainId != null) {
+            Map<String, Object> profileData = requestProfiler.getProfile(chainId);
+
+            // 기본 프로파일 구조 유지
+            Map<String, Object> vectorDbDefault = new HashMap<>();
+            vectorDbDefault.put("calls", 0);
+            vectorDbDefault.put("total_time_ms", 0);
+            vectorDbDefault.put("avg_time_ms", 0.0);
+            profile.put("vector_db", profileData.getOrDefault("vector_db", vectorDbDefault));
+
+            Map<String, Object> llmDefault = new HashMap<>();
+            llmDefault.put("calls", 0);
+            llmDefault.put("total_time_ms", 0);
+            llmDefault.put("avg_time_ms", 0.0);
+            profile.put("llm", profileData.getOrDefault("llm", llmDefault));
+
+            Map<String, Object> dbNormalDefault = new HashMap<>();
+            dbNormalDefault.put("calls", 0);
+            dbNormalDefault.put("total_time_ms", 0);
+            dbNormalDefault.put("avg_time_ms", 0.0);
+            profile.put("db_normal", profileData.getOrDefault("db_main", dbNormalDefault));
+
+            Map<String, Object> dbPromptDefault = new HashMap<>();
+            dbPromptDefault.put("calls", 0);
+            dbPromptDefault.put("total_time_ms", 0);
+            dbPromptDefault.put("avg_time_ms", 0.0);
+            profile.put("db_prompt", profileData.getOrDefault("db_prompt", dbPromptDefault));
+        }
+        profile.put("total_time_ms", totalTime);
+        body.put("profile", profile);
+
+        response.put("body", body);
+
+        log.info("HIL 대기 응답 생성 완료 - workflowId: {}, status: waiting", chainId);
+        return response;
+    }
+
 
     private List<?> extractQueryResult(Object state) {
         if (state instanceof WorkflowState) {

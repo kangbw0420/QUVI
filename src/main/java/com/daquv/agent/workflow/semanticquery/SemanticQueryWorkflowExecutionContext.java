@@ -2,6 +2,7 @@ package com.daquv.agent.workflow.semanticquery;
 
 import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
+import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,8 @@ public class SemanticQueryWorkflowExecutionContext {
 
     @Autowired
     private HistoryService historyService;
+    @Autowired
+    private WorkflowService workflowService;
 
     /**
      * SemanticQuery 워크플로우 실행
@@ -41,6 +44,23 @@ public class SemanticQueryWorkflowExecutionContext {
         log.info("=== SemanticQuery DSL 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
 
         try {
+            // 0. DateChecker Node - 날짜 정보 확인 및 HIL 처리
+            executeNode("dateCheckerNode", state);
+
+            // HIL 상태 체크 - 날짜 명확화가 필요한 경우 워크플로우 중단
+            if (state.getDateClarificationNeeded() != null && state.getDateClarificationNeeded()) {
+                log.info("SemanticQuery: 날짜 명확화가 필요하여 워크플로우를 대기 상태로 전환합니다.");
+
+                // 워크플로우를 waiting 상태로 변경
+                workflowService.waitingWorkflow(workflowId, state.getFinalAnswer());
+
+                // 변경된 State 저장
+                stateManager.updateState(workflowId, state);
+
+                log.info("=== SemanticQuery DSL 워크플로우 대기 상태 - workflowId: {} ===", workflowId);
+                return; // 워크플로우 중단, 사용자 입력 대기
+            }
+
             // 1. ExtractMetrics Node - 메트릭과 그룹바이 추출
             executeNode("extractMetricsNode", state);
 
@@ -53,10 +73,11 @@ public class SemanticQueryWorkflowExecutionContext {
             // 2. ExtractFilter Node - 필터 추출 및 적용
             executeNode("extractFilterNode", state);
 
-            // 3. Manipulation Node - order by/limit 추출 및 커스텀 조작
+
+            // 4. Manipulation Node - order by/limit 추출 및 커스텀 조작
             executeNode("manipulationNode", state);
 
-            // 4. Dsl2Sql Node - DSL을 SQL로 변환
+            // 5. Dsl2Sql Node - DSL을 SQL로 변환
             executeNode("dsl2SqlNode", state);
 
             // SQL 변환 실패 확인
@@ -73,7 +94,7 @@ public class SemanticQueryWorkflowExecutionContext {
                 return;
             }
 
-            // 5. RunSql Node - SQL 실행 및 결과 저장
+            // 6. RunSql Node - SQL 실행 및 결과 저장
             executeNode("runSqlNode", state);
 
             // 쿼리 실행 결과 확인
@@ -89,10 +110,10 @@ public class SemanticQueryWorkflowExecutionContext {
             }
             // 쿼리 실행에 성공한 경우만 후처리 진행
             if (hasValidResults) {
-                // 6. PostProcess Node - DuckDB 후처리
+                // 7. PostProcess Node - DuckDB 후처리
                 executeNode("postProcessNode", state);
 
-//                // 7. SemanticQuery Respondent - 최종 응답 생성
+//                // 8. SemanticQuery Respondent - 최종 응답 생성
 //                executeNode("semanticQueryRespondentNode", state);
 //                log.info("SemanticQuery: respondent 처리 완료 - 워크플로우 종료");
             } else {
@@ -106,6 +127,86 @@ public class SemanticQueryWorkflowExecutionContext {
 
         } catch (Exception e) {
             log.error("SemanticQuery DSL 워크플로우 실행 실패 - workflowId: {}", workflowId, e);
+            stateManager.updateState(workflowId, state);
+            throw e;
+        }
+    }
+
+    /**
+     * HIL 이후 워크플로우 재개 (날짜 정보가 명확해진 후)
+     */
+    public void resumeSemanticQueryWorkflowAfterDateClarification(String workflowId, String userInput) {
+        SemanticQueryWorkflowState state = stateManager.getState(workflowId);
+        if (state == null) {
+            throw new IllegalStateException("Workflow ID에 해당하는 State를 찾을 수 없습니다: " + workflowId);
+        }
+
+        log.info("=== SemanticQuery 워크플로우 재개 - 날짜 명확화 후 - workflowId: {} ===", workflowId);
+
+        try {
+            // 사용자 입력을 기존 질문에 추가
+            String enhancedQuestion = state.getUserQuestion() + " " + userInput;
+            state.setUserQuestion(enhancedQuestion);
+
+            // HIL 상태 초기화
+            state.clearHilState();
+
+            // 날짜 체커 노드부터 재실행
+            executeNode("dateCheckerNode", state);
+
+            // 여전히 날짜가 불명확한 경우
+            if (state.getDateClarificationNeeded() != null && state.getDateClarificationNeeded()) {
+                log.warn("SemanticQuery: 추가 입력 후에도 날짜가 불명확합니다.");
+                workflowService.waitingWorkflow(workflowId, state.getFinalAnswer());
+                stateManager.updateState(workflowId, state);
+                return;
+            }
+
+            // 날짜가 명확해진 경우 이후 단계 진행
+            executeNode("manipulationNode", state);
+            executeNode("dsl2SqlNode", state);
+
+            // SQL 변환 확인
+            boolean hasSqlQueries = false;
+            for (SemanticQueryWorkflowState.SemanticQueryExecution execution : state.getSemanticQueryExecutionMap().values()) {
+                if (execution.getSqlQuery() != null && !execution.getSqlQuery().isEmpty()) {
+                    hasSqlQueries = true;
+                    break;
+                }
+            }
+
+            if (!hasSqlQueries) {
+                log.error("SemanticQuery: DSL to SQL 변환에 실패했습니다.");
+                return;
+            }
+
+            executeNode("runSqlNode", state);
+
+            // 쿼리 실행 결과 확인
+            boolean hasValidResults = false;
+            for (SemanticQueryWorkflowState.SemanticQueryExecution execution : state.getSemanticQueryExecutionMap().values()) {
+                if ("success".equals(execution.getQueryResultStatus())) {
+                    hasValidResults = true;
+                    break;
+                }
+            }
+
+            if (hasValidResults) {
+                executeNode("postProcessNode", state);
+                executeNode("semanticQueryRespondentNode", state);
+                log.info("SemanticQuery: 재개된 워크플로우 완료");
+            } else {
+                log.warn("SemanticQuery: 재개된 워크플로우에서 쿼리 실행 실패");
+            }
+
+            // 워크플로우 완료 상태로 변경
+            workflowService.completeWorkflow(workflowId, state.getFinalAnswer());
+            stateManager.updateState(workflowId, state);
+
+            log.info("=== SemanticQuery 워크플로우 재개 완료 - workflowId: {} ===", workflowId);
+
+        } catch (Exception e) {
+            log.error("SemanticQuery 워크플로우 재개 실패 - workflowId: {}", workflowId, e);
             stateManager.updateState(workflowId, state);
             throw e;
         }

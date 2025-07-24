@@ -109,14 +109,57 @@ public class WebSocketUtils {
             log.error("WebSocket 메시지 전송 실패 - chainId: {}, nodeId: {}", chainId, nodeId, e);
         }
     }
-    
+
     /**
-     * Commander 노드 진행 상황 전송
+     * HIL 요청을 클라이언트에 전송
      */
-    public void sendCommanderProgress(String chainId, String selectedTable) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("selected_table", selectedTable);
-        sendNodeProgress(chainId, "commander", "테이블 선택 완료", data);
+    public void sendHilRequest(WebSocketSession session, String nodeId, Map<String, Object> hilData) {
+        if (session == null || !session.isOpen()) {
+            log.warn("WebSocket 세션이 null이거나 닫혀있어 HIL 요청을 전송할 수 없습니다.");
+            return;
+        }
+
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "hil_request");
+            message.put("node_id", nodeId);
+            message.put("timestamp", System.currentTimeMillis());
+            message.put("data", hilData);
+
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            session.sendMessage(new TextMessage(jsonMessage));
+
+            log.info("HIL 요청 전송 완료: nodeId={}, type={}", nodeId, hilData.get("type"));
+
+        } catch (Exception e) {
+            log.error("HIL 요청 전송 실패: nodeId={}", nodeId, e);
+        }
+    }
+
+    /**
+     * HIL 응답 수신 확인을 클라이언트에 전송
+     */
+    public void sendHilResponseReceived(WebSocketSession session, String nodeId, Map<String, Object> responseData) {
+        if (session == null || !session.isOpen()) {
+            log.warn("WebSocket 세션이 null이거나 닫혀있어 HIL 응답 확인을 전송할 수 없습니다.");
+            return;
+        }
+
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "hil_response_received");
+            message.put("node_id", nodeId);
+            message.put("timestamp", System.currentTimeMillis());
+            message.put("data", responseData);
+
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            session.sendMessage(new TextMessage(jsonMessage));
+
+            log.info("HIL 응답 수신 확인 전송 완료: nodeId={}", nodeId);
+
+        } catch (Exception e) {
+            log.error("HIL 응답 수신 확인 전송 실패: nodeId={}", nodeId, e);
+        }
     }
     
     /**

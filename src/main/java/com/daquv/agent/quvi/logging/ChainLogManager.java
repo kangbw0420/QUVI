@@ -48,6 +48,25 @@ public class ChainLogManager {
     }
 
     /**
+     * HIL 후 체인 로그 재개
+     */
+    public ChainLogContext resumeChainLog(String chainId) {
+        ChainLogContext context = chainLogs.get(chainId);
+        if (context == null) {
+            log.warn("재개할 체인 로그 컨텍스트를 찾을 수 없습니다: {}", chainId);
+            // 컨텍스트가 없는 경우 기본 컨텍스트 생성
+            context = new ChainLogContext(chainId, "unknown", "HIL 재개");
+            chainLogs.put(chainId, context);
+        }
+
+        // HIL 재개 로그 추가
+        addLog(chainId, "CONTROLLER", LogLevel.INFO, "🔄 HIL 워크플로우 재개");
+
+        log.info("🔄 체인 로그 재개 - chainId: {}", chainId);
+        return context;
+    }
+
+    /**
      * 체인별 로그 추가
      */
     public void addLog(String chainId, String nodeId, LogLevel level, String message) {
