@@ -66,13 +66,6 @@ public class ResponseParser {
     private String repairJsonFormat(String json) {
         String repaired = json.trim();
 
-        // 이중 중괄호 문제가 있는 경우 더 적극적으로 수리
-        if (repaired.contains("{{") || repaired.contains("}}")) {
-            // 모든 이중 중괄호를 단일 중괄호로 교체
-            repaired = repaired.replaceAll("\\{\\{", "{");
-            repaired = repaired.replaceAll("\\}\\}", "}");
-        }
-
         // 시작과 끝이 없는 경우 추가
         if (!repaired.startsWith("{") && !repaired.startsWith("[")) {
             repaired = "{" + repaired;
@@ -92,7 +85,7 @@ public class ResponseParser {
         // 2. 코드 블록 마커 제거
         cleaned = removeCodeBlocks(cleaned);
 
-        // 3. JSON 객체 추출 (중괄호 두 개 이상 감싸진 경우 처리)
+        // 3. JSON 객체 추출 (수정된 로직)
         cleaned = extractValidJson(cleaned);
 
         // 4. Python 리터럴을 JSON으로 변환
@@ -127,23 +120,28 @@ public class ResponseParser {
         return result.trim();
     }
 
+    /**
+     * 수정된 JSON 추출 로직
+     */
     private String extractValidJson(String input) {
         String trimmed = input.trim();
 
-        // 1. 이중 중괄호로 감싸진 경우 처리 ({{...}}) - 수정된 부분
+        // 1. 이중 중괄호 패턴 처리 (템플릿 문법 등)
         if (trimmed.startsWith("{{") && trimmed.endsWith("}}")) {
-            // 더 안전한 방법으로 이중 중괄호 처리
-            String inner = trimmed.substring(2, trimmed.length() - 2).trim();
+            log.debug("Found double braces pattern, attempting to extract inner JSON");
 
-            // 중괄호 개수 확인하여 올바른 JSON 구조인지 검증
-            if (isValidJsonStructure(inner)) {
-                log.debug("Extracted from double braces: {}", inner);
-                return inner;
-            } else {
-                // 이중 중괄호가 실제로는 단일 JSON 객체를 의미하는 경우
-                String singleBrace = "{" + inner + "}";
-                log.debug("Converted double braces to single: {}", singleBrace);
-                return singleBrace;
+            // 가장 바깥쪽 이중 중괄호를 단일 중괄호로 변경
+            String withSingleBraces = "{" + trimmed.substring(2, trimmed.length() - 2) + "}";
+
+            // 변경된 문자열이 유효한 JSON인지 확인
+            try {
+                objectMapper.readTree(withSingleBraces);
+                log.debug("Successfully converted double braces to single: {}", withSingleBraces);
+                return withSingleBraces;
+            } catch (Exception e) {
+                log.warn("Failed to parse after converting double braces, trying alternative methods");
+                // 대안: 정규식을 사용해서 JSON 부분만 추출
+                return extractJsonWithRegex(trimmed);
             }
         }
 
@@ -152,17 +150,41 @@ public class ResponseParser {
             return trimmed;
         }
 
-        // 3. 문자열 중간에 JSON이 있는 경우 추출
-        Pattern jsonPattern = Pattern.compile("\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)*\\}", Pattern.DOTALL);
-        Matcher matcher = jsonPattern.matcher(trimmed);
+        // 3. 배열 형태
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            return trimmed;
+        }
+
+        // 4. 문자열 중간에 JSON이 있는 경우 추출
+        return extractJsonWithRegex(trimmed);
+    }
+
+    /**
+     * 정규식을 사용한 JSON 추출
+     */
+    private String extractJsonWithRegex(String input) {
+        // 중괄호 균형을 맞춘 JSON 객체 찾기
+        Pattern jsonObjectPattern = Pattern.compile("\\{(?:[^{}]|\\{[^{}]*\\})*\\}", Pattern.DOTALL);
+        Matcher matcher = jsonObjectPattern.matcher(input);
 
         if (matcher.find()) {
             String found = matcher.group();
-            log.debug("Extracted JSON from text: {}", found);
+            log.debug("Extracted JSON object with regex: {}", found);
             return found;
         }
 
-        return trimmed;
+        // 대괄호 균형을 맞춘 JSON 배열 찾기
+        Pattern jsonArrayPattern = Pattern.compile("\\[(?:[^\\[\\]]|\\[[^\\[\\]]*\\])*\\]", Pattern.DOTALL);
+        matcher = jsonArrayPattern.matcher(input);
+
+        if (matcher.find()) {
+            String found = matcher.group();
+            log.debug("Extracted JSON array with regex: {}", found);
+            return found;
+        }
+
+        log.warn("Could not extract valid JSON from input: {}", input);
+        return input;
     }
 
     /**
@@ -173,18 +195,12 @@ public class ResponseParser {
             return false;
         }
 
-        String trimmed = json.trim();
-
-        // 기본적인 JSON 구조 확인
-        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        try {
+            objectMapper.readTree(json.trim());
             return true;
+        } catch (Exception e) {
+            return false;
         }
-
-        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-            return true;
-        }
-
-        return false;
     }
 
     private String convertSingleQuotesToDouble(String input) {
