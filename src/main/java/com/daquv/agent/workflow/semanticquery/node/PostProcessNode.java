@@ -137,7 +137,18 @@ public class PostProcessNode implements SemanticQueryWorkflowNode {
         log.debug("Calling LLM for DuckDB post-processing");
         String rawSql = llmRequest.callQwenLlm(formattedPrompt, qnaId);
         log.debug("LLM response received, length: {} characters", rawSql.length());
-        
+        if ("pass".equals(rawSql.trim())) {
+            log.debug("LLM returned 'pass' - no post-processing needed, returning original results");
+            // queryResultMap의 모든 값을 List<Map<String, Object>> 형태로 변환하여 반환
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Object value : queryResultMap.values()) {
+                if (value instanceof List) {
+                    List<Map<String, Object>> listValue = (List<Map<String, Object>>) value;
+                    result.addAll(listValue);
+                }
+            }
+            return result;
+        }
         // SQL 정리
         String cleanedSql = sqlCleanUtils.fixMismatchedQuotes(
             rawSql.replace("sql", "").replace("`", "").trim()
