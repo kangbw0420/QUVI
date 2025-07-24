@@ -105,10 +105,9 @@ public class HistoryService {
                 log.info("DEBUG: States for nodes {}: {}", nodeIds, stateResults);
             }
 
-            // 동적 쿼리 생성 (JSONB 컬럼 제외)
             String selectedColumns = stateHistory.stream()
                     .filter(col -> !col.equals("date_info"))
-                    .map(col -> "s." + col)
+                    .map(col -> "n.node_state_json ->> '" + col + "' as " + col)
                     .collect(Collectors.joining(", "));
             
             String queryString =
@@ -118,6 +117,9 @@ public class HistoryService {
                     "    JOIN workflow w ON n.workflow_id = w.workflow_id " +
                     "    WHERE w.session_id = :sessionId " +
                     "    AND n.node_name = :nodeType " +
+                    "    AND n.node_state_json IS NOT NULL " +
+                    "    AND n.node_state_json != '{}' " +
+                    "    AND n.node_state_json ->> '" + stateHistory.get(0) + "' IS NOT NULL " +
                     "    ORDER BY w.workflow_start DESC " +
                     "    LIMIT :limit " +
                     ") " +
