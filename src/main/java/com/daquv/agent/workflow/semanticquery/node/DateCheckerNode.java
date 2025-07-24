@@ -84,8 +84,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
             }
 
             // Dater 프롬프트 생성 (few-shot + history 포함 + QnA 저장)
-            PromptWithRetrieveTime promptResult = promptBuilder.buildDaterPromptWithFewShots(
-                    tableForPrompt, userQuestion, daterHistory, generationId, chainId);
+            PromptWithRetrieveTime promptResult = promptBuilder.buildDateCheckerPromptForHIL(userQuestion, generationId, chainId);
             PromptTemplate promptTemplate = promptResult.getPromptTemplate();
             BigDecimal retrieveTime = promptResult.getRetrieveTime();
 
