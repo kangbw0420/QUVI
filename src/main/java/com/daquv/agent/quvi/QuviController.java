@@ -2,17 +2,17 @@ package com.daquv.agent.quvi;
 
 import com.daquv.agent.quvi.dto.LogLevel;
 import com.daquv.agent.quvi.dto.QuviRequestDto;
-import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.daquv.agent.quvi.llmadmin.SessionService;
+import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.daquv.agent.quvi.logging.ChainLogContext;
 import com.daquv.agent.quvi.logging.ChainLogManager;
 import com.daquv.agent.quvi.requests.VectorRequest;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.workflow.ChainStateManager;
+import com.daquv.agent.workflow.SupervisorNode;
 import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.UserInfo;
-import com.daquv.agent.workflow.SupervisorNode;
 import com.daquv.agent.workflow.killjoy.KilljoyWorkflowExecutionContext;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryStateManager;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowExecutionContext;
@@ -258,7 +258,7 @@ public class QuviController {
             case "SEMANTICQUERY":
                 // SEMANTICQUERY는 SemanticQueryStateManager 사용
                 SemanticQueryWorkflowState semanticState = semanticQueryStateManager.createState(workflowId);
-                initializeSemanticQueryState(semanticState, request, sessionId, workflowId);
+                initializeSemanticQueryState(semanticState, request, workflowId);
                 return semanticState;
 
             default:
@@ -383,7 +383,7 @@ public class QuviController {
     /**
      * SEMANTICQUERY 워크플로우 State 초기화
      */
-    private void initializeSemanticQueryState(SemanticQueryWorkflowState state, QuviRequestDto request, String sessionId, String workflowId) {
+    private void initializeSemanticQueryState(SemanticQueryWorkflowState state, QuviRequestDto request, String workflowId) {
         state.setUserQuestion(request.getUserQuestion());
         state.setUserInfo(UserInfo.builder()
                 .userId(request.getUserId())
@@ -392,25 +392,6 @@ public class QuviController {
                 .build());
         state.setWorkflowId(workflowId);
         state.setNodeId("node_" + System.currentTimeMillis());
-        state.setSelectedWorkflow("SEMANTICQUERY");
-
-        // SEMANTICQUERY 특화 초기화
-        state.setSafeCount(0);
-        state.setQueryResultStatus("");
-        state.setSqlError("");
-        state.setSqlQuery("");
-        state.setQueryResult(new ArrayList<>());
-        state.setFinalAnswer("");
-        state.setSelectedTable(""); // SEMANTICQUERY는 테이블 사용
-        state.setFString("");
-
-        // 플래그 초기화
-        state.setNoData(false);
-        state.setFutureDate(false);
-        state.setInvalidDate(false);
-        state.setQueryError(false);
-        state.setQueryChanged(false);
-        state.setHasNext(false);
 
         log.info("💾 SEMANTICQUERY 워크플로우용 상태 초기화 완료");
     }
@@ -489,8 +470,6 @@ public class QuviController {
             logContext.setUserInfo(tus.getUserInfo());
         } else if (state instanceof SemanticQueryWorkflowState) {
             SemanticQueryWorkflowState sqs = (SemanticQueryWorkflowState) state;
-            logContext.setSelectedTable(sqs.getSelectedTable());
-            logContext.setSqlQuery(sqs.getSqlQuery());
             logContext.setFinalAnswer(sqs.getFinalAnswer());
             logContext.setUserInfo(sqs.getUserInfo());
         }
@@ -819,8 +798,6 @@ public class QuviController {
             return ((WorkflowState) state).getQueryResult();
         } else if (state instanceof ToolUseWorkflowState) {
             return ((ToolUseWorkflowState) state).getQueryResult();
-        } else if (state instanceof SemanticQueryWorkflowState) {
-            return ((SemanticQueryWorkflowState) state).getQueryResult();
         }
         return new ArrayList<>();
     }
@@ -830,8 +807,6 @@ public class QuviController {
             return ((WorkflowState) state).getStartDate();
         } else if (state instanceof ToolUseWorkflowState) {
             return ((ToolUseWorkflowState) state).getStartDate();
-        } else if (state instanceof SemanticQueryWorkflowState) {
-            return ((SemanticQueryWorkflowState) state).getStartDate();
         }
         return null;
     }
@@ -841,8 +816,6 @@ public class QuviController {
             return ((WorkflowState) state).getEndDate();
         } else if (state instanceof ToolUseWorkflowState) {
             return ((ToolUseWorkflowState) state).getEndDate();
-        } else if (state instanceof SemanticQueryWorkflowState) {
-            return ((SemanticQueryWorkflowState) state).getEndDate();
         }
         return null;
     }
@@ -852,8 +825,6 @@ public class QuviController {
             return ((WorkflowState) state).getSqlQuery();
         } else if (state instanceof ToolUseWorkflowState) {
             return ((ToolUseWorkflowState) state).getSqlQuery();
-        } else if (state instanceof SemanticQueryWorkflowState) {
-            return ((SemanticQueryWorkflowState) state).getSqlQuery();
         }
         return null;
     }
@@ -863,8 +834,6 @@ public class QuviController {
             return ((WorkflowState) state).getSelectedTable();
         } else if (state instanceof ToolUseWorkflowState) {
             return ((ToolUseWorkflowState) state).getSelectedApi(); // API명을 selected_table로
-        } else if (state instanceof SemanticQueryWorkflowState) {
-            return ((SemanticQueryWorkflowState) state).getSelectedTable();
         }
         return null;
     }
@@ -874,8 +843,6 @@ public class QuviController {
             return ((WorkflowState) state).getHasNext() != null ? ((WorkflowState) state).getHasNext() : false;
         } else if (state instanceof ToolUseWorkflowState) {
             return ((ToolUseWorkflowState) state).getHasNext() != null ? ((ToolUseWorkflowState) state).getHasNext() : false;
-        } else if (state instanceof SemanticQueryWorkflowState) {
-            return ((SemanticQueryWorkflowState) state).getHasNext() != null ? ((SemanticQueryWorkflowState) state).getHasNext() : false;
         }
         return false;
     }

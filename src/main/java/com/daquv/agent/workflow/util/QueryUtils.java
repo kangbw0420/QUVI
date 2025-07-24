@@ -1,21 +1,18 @@
 package com.daquv.agent.workflow.util;
 
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import com.daquv.agent.quvi.requests.AicfoVectorRequest;
+import com.daquv.agent.quvi.requests.ColumnRequest;
+import com.daquv.agent.quvi.requests.QueryRequest;
+import com.daquv.agent.quvi.util.RequestProfiler;
+import com.daquv.agent.requests.AicfoVectorRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import com.daquv.agent.quvi.requests.QueryRequest;
-import com.daquv.agent.quvi.requests.VectorRequest;
-import com.daquv.agent.quvi.requests.ColumnRequest;
-import com.daquv.agent.quvi.util.RequestProfiler;
-
-import lombok.extern.slf4j.Slf4j;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component

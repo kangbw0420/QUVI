@@ -1,0 +1,170 @@
+semantic_models:
+  - name: bal
+    model: ref('fct_bal')
+    description: 금융 계좌 정보를 관리하는 semantic 모델. 수시, 예적금, 대출, 증권, 신탁, 퇴직연금 등 다양한 금융상품의 잔액 및 계약 정보를 포함
+    defaults:
+      agg_time_dimension: reg_dt
+
+    entities:
+      - name: bal
+        type: primary
+      - name: acct
+        type: foreign
+        expr: acct_id
+
+    dimensions:
+      - name: acct_dv
+        type: categorical
+        description: 
+            filter 조건 = 사용자질의에 상품명이 들어가면 like 조건 검색. 예시) "예금 금리 얼마야?" => acct_dv like '%예금%', "적금 금리 얼마야?" => acct_dv like '%적금%'  "ELS 계좌 잔고" => acct_dv like '%ELS%
+            group by 조건 = 사용자질의에 상품명이 들어가면 group by에 반드시 넣어주세요. 예시) "예금 계좌 잔액", "적금 금리 얼마야?" => group by 에 acct_dv 포함
+      - name: reg_dt
+        type: time
+        expr: TO_DATE(CAST(reg_dt AS TEXT), 'YYYYMMDD')
+        type_params:
+          time_granularity: day
+        description: 등록일시(YYYY-MM-DD). 기본 시간값. 기간으로 조회시 해당기간의 마지막날만 조회합니다. 예시) "작년 3분기 잔액" => reg_dt = 작년 9월30일 조회 (작년7월1일부터 작년9월30일까지중 마지막날인 9월30일 조회)
+      - name: open_dt
+        type: time
+        expr: TO_DATE(open_dt, 'YYYYMMDD')
+        type_params:
+          time_granularity: day
+        description: 개설일자(YYYYMMDD). 사용자가 개설일자를 명시적으로 물어봤을 때만 사용합니다. 
+      - name: due_dt
+        type: time
+        expr: due_dt
+        type_params:
+          time_granularity: day
+        description: 만기일자(YYYYMMDD).
+        type: time
+        expr: trmn_dt
+        type_params:
+          time_granularity: day
+        description: 해지일자
+      - name: acct_bal_upd_dtm
+        type: time
+        expr: acct_bal_upd_dtm
+        type_params:
+          time_granularity: day
+        description: 잔액 데이터 데이터베이스 로드 시간. 사용자가 정확하게 잔액 데이터가 언제 업데이트 되었는지 물어봤을 때만 사용합니다. 그 외에는 절대 사용하지 마세요. reg_dt를 사용하는 경우 사용하지 마세요.
+      - name: mnth_pay_dt
+        type: categorical
+        description: 월납입일자
+      - name: trmn_yn
+        type: categorical
+        description: 해지여부. 가능한 값 = [Y, N]. 사용자의 발화에 명시되지 않으면 이 값은 무시하세요.
+
+
+    measures:
+      - name: acct_bal
+        description: 잔고
+        expr: acct_bal_amt
+        agg: sum
+        agg_time_dimension: reg_dt
+      - name: avg_acct_bal
+        description: 평균 잔고
+        expr: acct_bal_amt
+        agg: average
+        agg_time_dimension: reg_dt
+      - name: real
+        description: 인출가능잔액 
+        expr: real_amt
+        agg: sum
+        agg_time_dimension: reg_dt
+      - name: avg_real
+        description: 평균 인출가능잔액
+        expr: real_amt
+        agg: average
+        agg_time_dimension: reg_dt
+      - name: cntrct
+        description: 약정금액
+        expr: cntrct_amt
+        agg: sum
+        agg_time_dimension: reg_dt
+      - name: appr_amt
+        description: 평가금액
+        expr: appr_amt
+        agg: sum
+        agg_time_dimension: reg_dt
+      - name: deposit_amt
+        description: 예수금
+        expr: deposit_amt
+        agg: sum
+        agg_time_dimension: reg_dt
+      - name: mnth_pay
+        description: 월납입금액
+        expr: mnth_pay_amt
+        agg: sum
+        agg_time_dimension: reg_dt
+      - name: rate
+        description: 이자율
+        expr: intr_rate::numeric
+        agg: average
+        agg_time_dimension: reg_dt
+      - name: cnt
+        description: 계좌 수
+        expr: acct_no
+        agg: count_distinct
+        agg_time_dimension: reg_dt
+
+metrics:
+  - name: total_acct_bal_amt
+    description: 총 잔고. 계좌 관련 metric은 특별한 이유가 없으면 이걸 선택합니다. 예시) "대출 잔액 얼마야?" ->  metric = total_acct_bal_amt, "대출 갚아야될돈 얼마야?" -> metric = total_acct_bal_amt
+    type: simple
+    label: total_acct_bal_amt
+    type_params:
+      measure: acct_bal
+  - name: average_acct_bal_amt
+    description: 평균 잔고
+    type: simple
+    label: average_acct_bal_amt
+    type_params:
+      measure: avg_acct_bal
+  - name: total_real_amt
+    description: 총 인출가능잔액. '인출가능잔액' 또는 '이체가능잔액'같은 의미를 명시할 때만 선택합니다. 예) "내 계좌 인출가능잔액이 얼마야?" -> total_real_amt, "얼마 이체 가능해?", "지금 돈 얼마나 뺄수있어?" -> total_real_amt
+    type: simple
+    label: total_real_amt
+    type_params:
+      measure: real
+  - name: average_real_amt
+    description: 평균 인출가능잔액
+    type: simple
+    label: average_real_amt
+    type_params:
+      measure: avg_real
+  - name: total_cntrct_amt
+    description: 총 약정금액. 대출 약정금액 조회시에만 사용됩니다.
+    type: simple
+    label: total_cntrct_amt
+    type_params:
+      measure: cntrct
+  - name: total_appr_amt
+    description: 총 평가금액
+    type: simple
+    label: total_appr_amt
+    type_params:
+      measure: appr_amt
+  - name: total_deposit_amt
+    description: 총 예수금
+    type: simple
+    label: total_deposit_amt
+    type_params:
+      measure: deposit_amt
+  - name: total_mnth_pay_amt
+    description: 총 월납입금액. 월에 납부해야하는 금액 관련한 질문이면 이걸 선택해주세요. 예시) "월납입금액 보여줘" , "매월 29일 납부해야하는 예적금 계좌" => metric = total_mnth_pay_amt
+    type: simple
+    label: total_mnth_pay_amt
+    type_params:
+      measure: mnth_pay
+  - name: avg_acct_intr_rate
+    description: 평균 이자율.  대출 이자 관련 언급이 있을경우 기본 metric으로 선택합니다. 예시) "대출 이자율 얼마야?" -> metric = avg_acct_intr_rate_fore
+    type: simple
+    label: avg_acct_intr_rate
+    type_params:
+      measure: rate
+  - name: total_acct_cnt
+    description: 총 계좌 수
+    type: simple
+    label: total_acct_cnt
+    type_params:
+      measure: cnt

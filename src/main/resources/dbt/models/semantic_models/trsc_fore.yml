@@ -1,0 +1,210 @@
+semantic_models:
+  - name: trsc_fore
+    model: ref('fct_trsc_fore')
+    description: 외화 금융 계좌의 거래 내역을 관리하는 semantic 모델. 입출금, 대출 거래, 주식 거래 등 다양한 외화 거래 유형의 정보를 포함
+    defaults:
+      agg_time_dimension: trsc_dt
+
+    entities:
+      - name: trsc_fore
+        type: primary
+      - name: acct
+        type: foreign
+        expr: acct_id
+
+    dimensions:
+      - name: acct_dv
+        type: categorical
+        description: 상품명. 검색은 like 검색이 기본
+      - name: seq_no
+        type: categorical
+        description: 거래순번
+      - name: trsc_dt
+        type: time
+        expr: TO_DATE(CAST(trsc_dt AS TEXT), 'YYYY-MM-DD')
+        type_params:
+          time_granularity: day
+        description:
+          거래일자. YYYY-MM-DD 형식으로 표현해 주세요. 일별로 보여줄때 사용합니다. 기본 시간값은 오늘 포함 이전 한달(today-30 ~ today)입니다.
+          사용자 질문에서 시간 관련 단어가 있을 경우 group by에 포함시켜야 합니다.
+          특정 날짜 하루만 조회할 경우 trsc에 대해 '=' 조건으로 filter 조건 추가. 예시) "작년 12월31일 거래내역" => trsc_dt = '20241231' 조회
+          특정 기간부터 특정 기간까지 연속된 기간이 명시된 경우에는 해당 범위 전체를 조회해야 하며,이때는 trsc_dt에 대해 >=, <= 조건으로 filter 추가. 예시) "2월 12일 부터 3월 14일까지 거래내역" => trsc_dt >= 20250212 , trsc_dt <= 20250314 조회. 
+          연속적이지 않은 날짜를 2개 이상 조회할때는 IN 조건으로 조회합니다. 예시) "1월2일, 1월 16일 거래내역" => trsc_dt IN ('20250102', '20250116') 조회
+      - name: trsc_tm
+        type: categorical
+        description: 거래시간
+      - name: note1
+        type: categorical
+        description: 
+          거래처/적요/메모. 기업명, 개인명, 거래처명, 메모 등 다양한 텍스트가 포함될 수 있음. 
+          무조건 like 검색으로 처리해야 함. 예시) 웹케시에서 입금된거 있어?, 웹케시로 출금된거 있어? = note1 like '%웹케시%' 조건 
+          사용자 질문에 note1 관련 단어가 있을 경우 group by에 포함시켜야 합니다.
+          2개이상의 note1을 함께 조회할경우 IN 조건으로 조회합니다. 예시) "보험료와 임대료 나간 돈" => note1 IN ('보험료', '임대료') 조회
+      - name: stock_nm
+        type: categorical
+        description: 종목명
+      - name: stock_trsc_type
+        type: categorical
+        description: 증권거래구분
+      - name: trsc_month
+        type: categorical
+        expr: TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYY-MM-DD'), 'YYYYMM')
+        description:
+          거래일자를 월(YYYYMM) 단위로 변환한 값. 월별로 보여줄때 사용합니다.
+          사용자 질문에서 시간(month 조회) 관련 단어가 있을 경우 group by에 포함시켜야 합니다.
+          특정 월만 조회할 경우 trsc에 대해 '=' 조건으로 filter 조건 추가. 예시) "올해1월 거래내역" => trsc_month = '202501' 조회
+          특정 month부터 특정 month까지 연속된 기간이 명시된 경우에는 해당 범위 전체를 조회해야 하며,이때는 trsc_month에 대해 >=, <= 조건으로 filter 추가. 예시) "2월부터 5월까지 거래내역" => trsc_month >= 202502 , trsc_month <= 202505 조회. 
+          연속적이지 않은 month를 2개 이상 조회할때는 IN 조건으로 조회합니다. 예시) "1월과 4월 거래내역" => trsc_month IN ('202501', '202504') 조회
+
+    measures:
+      - name: trsc_amount_fore
+        description: 외화 거래금액
+        expr: trsc_amt
+        agg: sum
+        agg_time_dimension: trsc_dt
+      - name: avg_trsc_amt_fore
+        description: 평균 외화 거래금액
+        expr: trsc_amt
+        agg: average
+        agg_time_dimension: trsc_dt
+      - name: trsc_balance_fore
+        description: 외화 잔액
+        expr: trsc_bal
+        agg: average
+        agg_time_dimension: trsc_dt
+      - name: fee_amount_fore
+        description: 외화 수수료
+        expr: fee_amt
+        agg: sum
+        agg_time_dimension: trsc_dt
+      - name: loan_trsc_amount_fore
+        description: 외화 대출상환금액
+        expr: loan_trsc_amt
+        agg: sum
+        agg_time_dimension: trsc_dt
+      - name: trsc_intr_rate_fore
+        description: 외화 이자율
+        expr: intr_rate
+        agg: average
+        agg_time_dimension: trsc_dt
+      - name: loan_intr_amount_fore
+        description: 외화 이자납부액
+        expr: loan_intr_amt
+        agg: sum
+        agg_time_dimension: trsc_dt
+      - name: item_quantity_fore
+        description: 외화 수량
+        expr: item_qunt
+        agg: sum
+        agg_time_dimension: trsc_dt
+      - name: pres_quantity_fore
+        description: 외화 금잔수량
+        expr: pres_qunt
+        agg: sum
+        agg_time_dimension: trsc_dt
+      - name: pres_amount_fore
+        description: 외화 금잔금액
+        expr: pres_amt
+        agg: sum
+        agg_time_dimension: trsc_dt
+      - name: trsc_count_fore
+        description: 외화 거래 건수
+        expr: 1
+        agg: sum
+        agg_time_dimension: trsc_dt
+      - name: trsc_amount_in_fore
+        description: 외화 입금금액
+        expr: (CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END)
+        agg: sum
+      - name: trsc_amount_out_fore
+        description: 외화 출금금액
+        expr: (CASE WHEN in_out_dv = '출금' THEN trsc_amt ELSE 0 END)
+        agg: sum
+      - name: trsc_count_in_fore
+        description: 외화 입금건수
+        expr: (CASE WHEN in_out_dv = '입금' THEN 1 ELSE 0 END)
+        agg: sum
+      - name: trsc_count_out_fore
+        description: 외화 출금건수
+        expr: (CASE WHEN in_out_dv = '출금' THEN 1 ELSE 0 END)
+        agg: sum
+
+metrics:
+  - name: total_trsc_amt_fore
+    description: 총 외화 거래금액. 사용자 질문에서 '증권' 관련 단어가 있고, 별다른 metric 관련 언급이 없으면 디폴트 metric으로 선택해주세요.  예시) '외화증권 거래내역' => metric = 'total_trsc_amt_fore'
+    type: simple
+    label: total_trsc_amt_fore
+    type_params:
+      measure: trsc_amount_fore
+  - name: total_trsc_balance_fore
+    description: 총 외화 거래금액
+    type: simple
+    label: total_trsc_balance_fore
+    type_params:
+      measure: trsc_balance_fore
+  - name: total_fee_amt_fore
+    description: 총 외화 수수료
+    type: simple
+    label: total_fee_amt_fore
+    type_params:
+      measure: fee_amount_fore
+  - name: total_loan_trsc_amt_fore
+    description: 총 외화 대출상환금액. 사용자 질문에서 '대출' 관련 단어가 있고, 별다른 metric 관련 언급이 없으면 디폴트 metric으로 선택해주세요. 예시) '외화대출 거래내역' => metric = 'total_loan_trsc_amt_fore'
+    type: simple
+    label: total_loan_trsc_amt_fore
+    type_params:
+      measure: loan_trsc_amount_fore
+  - name: total_loan_intr_amt_fore
+    description: 총 외화 이자납부액
+    type: simple
+    label: total_loan_intr_amt_fore
+    type_params:
+      measure: loan_intr_amount_fore
+  - name: avg_trsc_intr_rate_fore
+    description: 평균 외화 이자율
+    type: simple
+    label: avg_trsc_intr_rate_fore
+    type_params:
+      measure: trsc_intr_rate_fore
+  - name: total_pres_amt_fore
+    description: 총 외화 금잔금액
+    type: simple
+    label: total_pres_amt_fore
+    type_params:
+      measure: pres_amount_fore
+  - name: total_trsc_count_fore
+    description: 총 외화 거래 건수
+    type: simple
+    label: total_trsc_count_fore
+    type_params:
+      measure: trsc_count_fore
+  - name: avg_trsc_amt_fore
+    description: 평균 외화 거래금액
+    type: simple
+    label: avg_trsc_amt_fore
+    type_params:
+      measure: avg_trsc_amt_fore
+  - name: total_trsc_amt_in_fore
+    description: 총 외화 입금금액. 사용자 질문에서 '증권' 또는 '대출' 관련 단어가 없고, 별다른 metric 관련 언급이 없으면 디폴트 metric으로 선택해주세요.  예시) '외화 거래내역' => metric = 'total_trsc_amt_in_fore' 
+    type: simple
+    label: total_trsc_amt_in_fore
+    type_params:
+      measure: trsc_amount_in_fore
+  - name: total_trsc_amt_out_fore
+    description: 총 외화 출금금액. 사용자 질문에서 '증권' 또는 '대출' 관련 단어가 없고, 별다른 metric 관련 언급이 없으면 디폴트 metric으로 선택해주세요.  예시) '외화 거래내역' => metric = 'total_trsc_amt_out_fore' 
+    type: simple
+    label: total_trsc_amt_out_fore
+    type_params:
+      measure: trsc_amount_out_fore
+  - name: total_trsc_count_in_fore
+    description: 총 외화 입금건수. 예시) "어제랑 오늘 입금된 내역 보여줘" -> 입금 건수를 명시하지 않았으므로 해당 metric을 사용하지 않습니다.
+    type: simple
+    label: total_trsc_count_in_fore
+    type_params:
+      measure: trsc_count_in_fore
+  - name: total_trsc_count_out_fore
+    description: 총 외화 출금건수. 예시) "어제랑 오늘 출금된 내역 보여줘" -> 출금 건수를 명시하지 않았으므로 해당 metric을 사용하지 않습니다.
+    type: simple
+    label: total_trsc_count_out_fore
+    type_params:
+      measure: trsc_count_out_fore
