@@ -282,9 +282,6 @@ public class WorkflowExecutionContext {
             stateMap.put("safeCount", state.getSafeCount());
             stateMap.put("selectedApi", state.getSelectedApi());
             
-            // StateService를 통해 DB에 저장
-            stateService.updateState(traceId, stateMap);
-            
         } catch (Exception e) {
             log.error("State DB 저장 실패 - traceId: {}", traceId, e);
             // State 저장 실패는 워크플로우를 중단하지 않음
