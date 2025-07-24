@@ -22,7 +22,7 @@ import java.util.Map;
 public class SemanticQueryWorkflowExecutionContext {
 
     @Autowired
-    private ChainStateManager stateManager;
+    private SemanticQueryStateManager stateManager;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -41,7 +41,7 @@ public class SemanticQueryWorkflowExecutionContext {
      * - SQL 경로: commander -> opendue -> (nl2sql or dater) -> nl2sql -> executor -> (safeguard or respondent)
      */
     public void executeSemanticQueryWorkflow(String workflowId) {
-        WorkflowState state = stateManager.getState(workflowId);
+        SemanticQueryWorkflowState state = stateManager.getState(workflowId);
         if (state == null) {
             throw new IllegalStateException("Workflow ID에 해당하는 State를 찾을 수 없습니다: " + workflowId);
         }
@@ -168,7 +168,7 @@ public class SemanticQueryWorkflowExecutionContext {
     /**
      * 개별 노드 실행 (State 직접 주입 + Trace/State 처리)
      */
-    public void executeNode(String nodeBeanName, WorkflowState state) {
+    public void executeNode(String nodeBeanName, SemanticQueryWorkflowState state) {
         String nodeId = null;
 
         log.info("SemanticQuery node executing: {} - state: {}", nodeBeanName, state.getWorkflowId());
@@ -177,7 +177,7 @@ public class SemanticQueryWorkflowExecutionContext {
             Object nodeBean = applicationContext.getBean(nodeBeanName);
 
             if (nodeBean instanceof WorkflowNode) {
-                WorkflowNode node = (WorkflowNode) nodeBean;
+                SemanticQueryWorkflowNode node = (SemanticQueryWorkflowNode) nodeBean;
 
                 // 1. Node 생성
                 nodeId = nodeService.createNode(state.getWorkflowId(), node.getId());
@@ -188,6 +188,8 @@ public class SemanticQueryWorkflowExecutionContext {
 
                 // 3. Trace 완료
                 nodeService.completeNode(nodeId);
+
+                log.info("State 어떻게 되어있니 {}", state);
 
                 // 4. State DB 저장 (현재 state의 모든 필드를 저장)
                 saveStateToDatabase(nodeId, state);
@@ -217,59 +219,53 @@ public class SemanticQueryWorkflowExecutionContext {
     /**
      * SemanticQuery State를 DB에 저장
      */
-    private void saveStateToDatabase(String traceId, WorkflowState state) {
+    private void saveStateToDatabase(String traceId, SemanticQueryWorkflowState state) {
         try {
             Map<String, Object> stateMap = new java.util.HashMap<>();
 
-            // SemanticQuery 워크플로우에서 중요한 필드들을 Map으로 변환 (빈 값이 아닐 때만)
             if (state.getUserQuestion() != null && !state.getUserQuestion().trim().isEmpty()) {
-                stateMap.put("user_question", state.getUserQuestion());
+                stateMap.put("userQuestion", state.getUserQuestion());
             }
-            if (state.getSelectedTable() != null && !state.getSelectedTable().trim().isEmpty()) {
-                stateMap.put("selected_table", state.getSelectedTable());
+            if (state.getSelectedApi() != null && !state.getSelectedApi().trim().isEmpty()) {
+                stateMap.put("selectedTable", state.getSelectedApi()); // API명을 selected_table에 저장
             }
             if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
-                stateMap.put("sql_query", state.getSqlQuery());
+                stateMap.put("sqlQuery", state.getSqlQuery());
             }
             if (state.getQueryResult() != null && !state.getQueryResult().isEmpty()) {
-                stateMap.put("query_result", state.getQueryResult());
+                stateMap.put("queryResult", state.getQueryResult());
             }
             if (state.getFinalAnswer() != null && !state.getFinalAnswer().trim().isEmpty()) {
-                stateMap.put("final_answer", state.getFinalAnswer());
+                stateMap.put("finalAnswer", state.getFinalAnswer());
+            }
+            if (state.getSqlError() != null && !state.getSqlError().trim().isEmpty()) {
+                stateMap.put("sqlError", state.getSqlError());
+            }
+            if (state.getQueryResultStatus() != null && !state.getQueryResultStatus().trim().isEmpty()) {
+                stateMap.put("queryResultStatus", state.getQueryResultStatus());
             }
             if (state.getTablePipe() != null && !state.getTablePipe().trim().isEmpty()) {
-                stateMap.put("table_pipe", state.getTablePipe());
+                stateMap.put("tablePipe", state.getTablePipe());
             }
             if (state.getFString() != null && !state.getFString().trim().isEmpty()) {
-                stateMap.put("fstring_answer", state.getFString());
+                stateMap.put("fstringAnswer", state.getFString());
+            }
+            if (state.getStartDate() != null && !state.getStartDate().trim().isEmpty()) {
+                stateMap.put("startDate", state.getStartDate());
+            }
+            if (state.getEndDate() != null  && !state.getEndDate().trim().isEmpty()) {
+                stateMap.put("endDate", state.getEndDate());
+            }
+            if (state.getUserInfo().getCompanyId() != null  && !state.getUserInfo().getCompanyId().trim().isEmpty()) {
+                stateMap.put("companyId", state.getUserInfo().getCompanyId());
             }
 
-            // 날짜 정보 (배열 형태로) - 둘 다 null이 아니고 빈 문자열이 아닐 때만
-            if (state.getStartDate() != null && !state.getStartDate().trim().isEmpty() &&
-                    state.getEndDate() != null && !state.getEndDate().trim().isEmpty()) {
-                java.util.List<String> dateInfo = new java.util.ArrayList<>();
-                dateInfo.add(state.getStartDate());
-                dateInfo.add(state.getEndDate());
-                stateMap.put("date_info", dateInfo);
-            }
+            ObjectMapper objectMapper = new ObjectMapper();
+            String stateJson = objectMapper.writeValueAsString(stateMap);
+            nodeService.updateNodeStateJson(traceId, stateJson);
 
-            // StateService를 통해 기존 State 테이블에도 저장 (빈 맵이 아닐 때만)
-            if (!stateMap.isEmpty()) {
-                stateService.updateState(traceId, stateMap);
-            }
+            log.debug("SemanticQuery Node state JSON 저장 완료 - traceId: {}", traceId);
 
-            // Node 엔티티의 nodeStateJson에도 JSON으로 저장
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                String stateJson = objectMapper.writeValueAsString(stateMap);
-
-                // NodeService를 통해 nodeStateJson 업데이트
-                nodeService.updateNodeStateJson(traceId, stateJson);
-
-                log.debug("SemanticQuery Node state JSON 저장 완료 - traceId: {}", traceId);
-            } catch (Exception jsonException) {
-                log.error("SemanticQuery JSON 변환 실패 - traceId: {}", traceId, jsonException);
-            }
 
         } catch (Exception e) {
             log.error("SemanticQuery State DB 저장 실패 - traceId: {}", traceId, e);

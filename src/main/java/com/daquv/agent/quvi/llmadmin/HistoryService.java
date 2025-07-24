@@ -47,55 +47,62 @@ public class HistoryService {
     /**
      * Retrieve conversation history grouped by chain_id.
      * 
-     * @param chainId 체인 ID
+     * @param workflowId 체인 ID
      * @param stateHistory 조회할 상태 컬럼 목록
      * @param nodeType 노드 타입
      * @param limit 조회할 최대 개수
      * @return 체인별 히스토리 맵
      */
-    public Map<String, List<Map<String, Object>>> getHistory(String chainId, List<String> stateHistory, 
+    public Map<String, List<Map<String, Object>>> getHistory(String workflowId, List<String> stateHistory,
                                                              String nodeType, int limit) {
-        log.info("getHistory start - chainId: {}, stateHistory: {}, nodeType: {}, limit: {}", 
-                chainId, stateHistory, nodeType, limit);
+        log.info("getHistory start - workflowId: {}, stateHistory: {}, nodeType: {}, limit: {}",
+                workflowId, stateHistory, nodeType, limit);
         
         try {
             // conversation_id를 직접 조회하는 쿼리 사용
-            String sessionIdQuery  = "SELECT w.session_id FROM workflow w WHERE w.workflow_id = :chainId";
+            String sessionIdQuery  = "SELECT w.session_id FROM workflow w WHERE w.workflow_id = :workflowId";
             Query convQuery = entityManager.createNativeQuery(sessionIdQuery);
-            convQuery.setParameter("chainId", chainId);
+            convQuery.setParameter("workflowId", workflowId);
             String sessionId = (String) convQuery.getSingleResult();
-            
-            // 동적 쿼리 생성 (JSONB 컬럼 제외)
+            log.info("DEBUG: Found sessionId: {}", sessionId);
+
             String selectedColumns = stateHistory.stream()
                     .filter(col -> !col.equals("date_info"))
-                    .map(col -> "s." + col)
+                    .map(col -> "n.node_state_json ->> '" + col + "' as " + col)
                     .collect(Collectors.joining(", "));
-            
+
             String queryString =
                     "WITH latest_workflows AS (" +
                     "    SELECT " + selectedColumns + ", w.workflow_id, w.workflow_start " +
-                    "    FROM state s " +
-                    "    JOIN node n ON s.node_id = n.node_id " +
+                    "    FROM node n " +
                     "    JOIN workflow w ON n.workflow_id = w.workflow_id " +
                     "    WHERE w.session_id = :sessionId " +
                     "    AND n.node_name = :nodeType " +
+                    "    AND n.node_state_json IS NOT NULL " +
+                    "    AND jsonb_typeof(n.node_state_json) = 'object' " +
+                    "    AND n.node_state_json != '{}' " +
+                    "    AND n.node_state_json ->> :firstColumnName IS NOT NULL " +
                     "    ORDER BY w.workflow_start DESC " +
-                    "    LIMIT :limit " +
+                    "    LIMIT :limitCount " +
                     ") " +
-                    "SELECT * " +
-                    "FROM latest_workflows " +
+                    "SELECT * FROM latest_workflows " +
                     "ORDER BY workflow_start ASC";
-            
+            log.info("DEBUG: Final query: {}", queryString);
+            log.info("DEBUG: Parameters - sessionId: {}, nodeType: {}, limit: {}", sessionId, nodeType, limit);
+
             Query query = entityManager.createNativeQuery(queryString);
             query.setParameter("sessionId", sessionId );
             query.setParameter("nodeType", nodeType);
-            query.setParameter("limit", limit);
-            
+            query.setParameter("firstColumnName", stateHistory.get(0));
+            query.setParameter("limitCount", limit);
+
             @SuppressWarnings("unchecked")
             List<Object[]> results = query.getResultList();
+
+            log.info("getHistory end - results: {}", results);
             
             if (results.isEmpty()) {
-                log.warn("No history found for chain_id: {}", chainId);
+                log.warn("No history found for workflow_id: {}", workflowId);
                 return new HashMap<>();
             }
             
@@ -127,8 +134,8 @@ public class HistoryService {
             return historyByChain;
             
         } catch (Exception e) {
-            log.error("Error in getHistory - chainId: {}, stateHistory: {}, nodeType: {}", 
-                     chainId, stateHistory, nodeType, e);
+            log.error("Error in getHistory - workflowId: {}, stateHistory: {}, nodeType: {}",
+                    workflowId, stateHistory, nodeType, e);
             return new HashMap<>();
         }
     }
@@ -153,13 +160,14 @@ public class HistoryService {
             String sessionId = currentWorkflow.getSession().getSessionId();
 
             String queryString =
-                "SELECT s." + column + " " +
-                "FROM state s " +
-                "JOIN node n ON s.node_id = n.node_id " +
+                "SELECT JSON_UNQUOTE(JSON_EXTRACT(n.node_context, '$." + column + "')) as " + column + " " +
+                "FROM node n " +
                 "JOIN workflow w ON n.workflow_id = w.workflow_id " +
                 "WHERE w.session_id = :sessionId " +
-                "AND s." + column + " IS NOT NULL " +
-                "ORDER BY s.id DESC " +
+                "AND n.node_context IS NOT NULL " +
+                "AND n.node_context != '{}' " +
+                "AND JSON_EXTRACT(n.node_context, '$." + column + "') IS NOT NULL " +
+                "ORDER BY n.created_at DESC " +  // 또는 w.workflow_start DESC
                 "LIMIT :n";
             
             Query query = entityManager.createNativeQuery(queryString);
