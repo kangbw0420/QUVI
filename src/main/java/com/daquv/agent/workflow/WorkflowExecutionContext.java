@@ -1,6 +1,5 @@
 package com.daquv.agent.workflow;
 
-import com.daquv.agent.quvi.llmadmin.StateService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +18,7 @@ public class WorkflowExecutionContext {
     
     @Autowired
     private NodeService nodeService;
-    
-    @Autowired
-    private StateService stateService;
-    
+
     /**
      * 워크플로우 실행 (State를 노드들에게 직접 전달)
      */

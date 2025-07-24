@@ -2,7 +2,6 @@ package com.daquv.agent.workflow.semanticquery;
 
 import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
-import com.daquv.agent.quvi.llmadmin.StateService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,9 +24,6 @@ public class SemanticQueryWorkflowExecutionContext {
 
     @Autowired
     private NodeService nodeService;
-
-    @Autowired
-    private StateService stateService;
 
     @Autowired
     private HistoryService historyService;
