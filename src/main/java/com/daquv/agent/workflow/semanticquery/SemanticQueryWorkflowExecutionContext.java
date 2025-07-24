@@ -55,7 +55,7 @@ public class SemanticQueryWorkflowExecutionContext {
             }
 
             // 2. ExtractFilter Node - 필터 추출 및 적용
-            executeNode("extractFilterMode", state);
+            executeNode("extractFilterNode", state);
 
             // 3. Manipulation Node - order by/limit 추출 및 커스텀 조작
             executeNode("manipulationNode", state);
