@@ -33,7 +33,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
     @Override
     public String getId() {
-        return "run_sql";
+        return "runSql";
     }
 
     @Override

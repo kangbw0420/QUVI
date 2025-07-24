@@ -83,7 +83,7 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
 
     @Override
     public String getId() {
-        return "extract_filter";
+        return "extractFilter";
     }
 
     @Override
