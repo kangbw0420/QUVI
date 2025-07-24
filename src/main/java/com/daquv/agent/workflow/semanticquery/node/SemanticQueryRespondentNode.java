@@ -10,6 +10,8 @@ import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptBuilder.PromptWithRetrieveTime;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
 import com.daquv.agent.quvi.requests.FstringRequest;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.util.LLMRequest;
 import com.daquv.agent.workflow.util.PipeTable;
 import com.daquv.agent.quvi.util.WebSocketUtils;
@@ -24,7 +26,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class SemanticQueryRespondentNode implements WorkflowNode {
+public class SemanticQueryRespondentNode implements SemanticQueryWorkflowNode {
 
     @Autowired
     private LLMRequest llmService;
@@ -56,7 +58,7 @@ public class SemanticQueryRespondentNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         List<Map<String, Object>> queryResult = state.getQueryResult();
         String chainId = state.getWorkflowId();

@@ -23,7 +23,6 @@ public class ToolUseWorkflowState {
     private String selectedWorkflow;
 
     private String userQuestion;
-    private String selectedTable;
     private String selectedApi;
     private String sqlQuery;
     private String sqlError;
@@ -50,4 +49,8 @@ public class ToolUseWorkflowState {
     private Boolean hasNext = false;
     @Builder.Default
     private Integer safeCount = 0;
+    @Builder.Default
+    private Boolean queryError = false;
+    @Builder.Default
+    private Boolean queryChanged = false;
 }

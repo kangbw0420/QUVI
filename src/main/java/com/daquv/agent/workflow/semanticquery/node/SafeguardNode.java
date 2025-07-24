@@ -9,6 +9,8 @@ import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.util.LLMRequest;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +28,7 @@ import java.util.regex.Pattern;
 
 @Slf4j
 @Component
-public class SafeguardNode implements WorkflowNode {
+public class SafeguardNode implements SemanticQueryWorkflowNode {
 
     private static final int LIMIT = 100;
 
@@ -61,7 +63,7 @@ public class SafeguardNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(SemanticQueryWorkflowState state) {
         state.incrementSafeCount();
         String unsafeQuery = state.getSqlQuery();
         String userQuestion = state.getUserQuestion();
@@ -140,7 +142,6 @@ public class SafeguardNode implements WorkflowNode {
                 state.setSqlQuery(modifiedQuery);
                 state.setTotalRows(modifiedTotalRows);
                 state.setQueryResult(queryResult);
-                state.setColumnList(columnList);
                 state.setQueryResultStatus("success");
                 state.setQueryChanged(true);
                 

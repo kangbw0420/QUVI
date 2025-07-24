@@ -23,7 +23,6 @@ public class SemanticQueryWorkflowState {
 
     private String userQuestion;
     private String selectedTable;
-    private String selectedApi;
     private String sqlQuery;
     private String sqlError;
     private List<Map<String, Object>> queryResult;
@@ -53,4 +52,10 @@ public class SemanticQueryWorkflowState {
     private Boolean queryError = false;
     @Builder.Default
     private Integer safeCount = 0;
+    @Builder.Default
+    private Boolean noteChanged = false;
+
+    public void incrementSafeCount() {
+        this.safeCount = (this.safeCount != null ? this.safeCount : 0) + 1;
+    }
 }

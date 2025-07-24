@@ -5,6 +5,8 @@ import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,7 +17,7 @@ import java.util.Map;
 
 @Component
 @Slf4j
-public class OpendueNode implements WorkflowNode {
+public class OpendueNode implements SemanticQueryWorkflowNode {
     @Value("${api.vector-store-domain}")
     private String vectorStoreDomain;
 
@@ -34,7 +36,7 @@ public class OpendueNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String chainId = state.getWorkflowId();
 

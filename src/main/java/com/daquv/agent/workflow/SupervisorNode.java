@@ -25,12 +25,6 @@ public class SupervisorNode {
     private PromptBuilder promptBuilder;
 
     @Autowired
-    private GenerationService generationService;
-
-    @Autowired
-    private WebSocketUtils webSocketUtils;
-
-    @Autowired
     private RequestProfiler requestProfiler;
 
 

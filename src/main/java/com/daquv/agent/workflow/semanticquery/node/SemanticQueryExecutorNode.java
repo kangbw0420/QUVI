@@ -5,6 +5,8 @@ import com.daquv.agent.quvi.util.*;
 import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.VectorNotes;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.util.NameModifierUtils;
 import com.daquv.agent.workflow.util.QueryUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +23,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class SemanticQueryExecutorNode implements WorkflowNode {
+public class SemanticQueryExecutorNode implements SemanticQueryWorkflowNode {
 
     private static final int LIMIT = 100;
 
@@ -50,7 +52,7 @@ public class SemanticQueryExecutorNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(SemanticQueryWorkflowState state) {
         String rawQuery = state.getSqlQuery();
         String companyId = state.getUserInfo().getCompanyId();
         String workflowId = state.getWorkflowId();
@@ -213,7 +215,6 @@ public class SemanticQueryExecutorNode implements WorkflowNode {
 
             log.info("SemanticQuery 쿼리 실행 성공, 결과 저장");
             state.setQueryResult(queryResult);
-            state.setColumnList(columnList);
             state.setQueryResultStatus("success");
 
             // WebSocket 메시지 전송

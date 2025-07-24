@@ -1,12 +1,13 @@
 package com.daquv.agent.workflow.semanticquery.node;
 
 import com.daquv.agent.quvi.util.RequestProfiler;
-import com.daquv.agent.workflow.WorkflowNode;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,7 +20,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class NextPageNode implements WorkflowNode {
+public class NextPageNode implements SemanticQueryWorkflowNode {
 
     private static final int LIMIT = 100;
 
@@ -48,7 +49,7 @@ public class NextPageNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(SemanticQueryWorkflowState state) {
         log.info("=== NextPageNode 실행 시작 ===");
         
         try {

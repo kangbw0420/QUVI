@@ -10,6 +10,8 @@ import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptBuilder.PromptWithRetrieveTime;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.util.DateUtils;
 import com.daquv.agent.workflow.util.LLMRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +25,7 @@ import java.util.Map;
 
 @Component
 @Slf4j
-public class DaterNode implements WorkflowNode {
+public class DaterNode implements SemanticQueryWorkflowNode {
 
     @Autowired
     private PromptBuilder promptBuilder;
@@ -46,7 +48,7 @@ public class DaterNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String selectedTable = state.getSelectedTable();
         String chainId = state.getWorkflowId();

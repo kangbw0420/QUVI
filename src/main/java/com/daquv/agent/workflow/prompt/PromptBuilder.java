@@ -461,9 +461,40 @@ public class PromptBuilder {
     // History 관련 메서드들
 
     public List<Map<String, Object>> getDaterHistory(String chainId) {
-        List<String> requiredFields = Arrays.asList("user_question", "date_info");
+        // date_info 대신 start_date, end_date로 조회
+        List<String> requiredFields = Arrays.asList("user_question", "start_date", "end_date");
         Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "dater", 5);
-        return convertToChatHistory(historyDict, requiredFields, "user_question", "date_info");
+
+        // start_date, end_date를 date_info 배열로 변환하여 반환
+        List<Map<String, Object>> chatHistory = new ArrayList<>();
+
+        if (historyDict != null) {
+            for (List<Map<String, Object>> historyList : historyDict.values()) {
+                for (Map<String, Object> historyItem : historyList) {
+                    // 모든 필수 필드가 존재하고 null이 아닌 경우에만 추가
+                    boolean allFieldsPresent = requiredFields.stream()
+                            .allMatch(field -> historyItem.containsKey(field) && historyItem.get(field) != null);
+
+                    if (allFieldsPresent) {
+                        Object userQuestion = historyItem.get("user_question");
+                        Object startDate = historyItem.get("start_date");
+                        Object endDate = historyItem.get("end_date");
+
+                        if (userQuestion != null && startDate != null && endDate != null) {
+                            // startDate, endDate를 배열로 합성하여 date_info 생성
+                            List<String> dateInfo = Arrays.asList(startDate.toString(), endDate.toString());
+
+                            Map<String, Object> historyEntry = new HashMap<>();
+                            historyEntry.put("user_question", userQuestion);
+                            historyEntry.put("date_info", dateInfo);
+                            chatHistory.add(historyEntry);
+                        }
+                    }
+                }
+            }
+        }
+
+        return chatHistory;
     }
 
     /**

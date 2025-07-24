@@ -30,12 +30,6 @@ public class SemanticQueryWorkflowExecutionContext {
     @Autowired
     private NodeService nodeService;
 
-    @Autowired
-    private StateService stateService;
-
-    @Autowired
-    private HistoryService historyService;
-
     /**
      * SemanticQuery 워크플로우 실행
      * - SQL 경로: commander -> opendue -> (nl2sql or dater) -> nl2sql -> executor -> (safeguard or respondent)
@@ -176,7 +170,7 @@ public class SemanticQueryWorkflowExecutionContext {
         try {
             Object nodeBean = applicationContext.getBean(nodeBeanName);
 
-            if (nodeBean instanceof WorkflowNode) {
+            if (nodeBean instanceof SemanticQueryWorkflowNode) {
                 SemanticQueryWorkflowNode node = (SemanticQueryWorkflowNode) nodeBean;
 
                 // 1. Node 생성
@@ -226,8 +220,8 @@ public class SemanticQueryWorkflowExecutionContext {
             if (state.getUserQuestion() != null && !state.getUserQuestion().trim().isEmpty()) {
                 stateMap.put("userQuestion", state.getUserQuestion());
             }
-            if (state.getSelectedApi() != null && !state.getSelectedApi().trim().isEmpty()) {
-                stateMap.put("selectedTable", state.getSelectedApi()); // API명을 selected_table에 저장
+            if (state.getSelectedTable() != null && !state.getSelectedTable().trim().isEmpty()) {
+                stateMap.put("selectedTable", state.getSelectedTable());  // 이 부분이 누락됨
             }
             if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
                 stateMap.put("sqlQuery", state.getSqlQuery());

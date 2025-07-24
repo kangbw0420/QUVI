@@ -10,6 +10,8 @@ import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptBuilder.PromptWithRetrieveTime;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
+import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.util.LLMRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +24,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class Nl2sqlNode implements WorkflowNode {
+public class Nl2sqlNode implements SemanticQueryWorkflowNode {
 
     @Autowired
     private LLMRequest llmService;
@@ -45,7 +47,7 @@ public class Nl2sqlNode implements WorkflowNode {
     }
 
     @Override
-    public void execute(WorkflowState state) {
+    public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String selectedTable = state.getSelectedTable();
         String chainId = state.getWorkflowId();
