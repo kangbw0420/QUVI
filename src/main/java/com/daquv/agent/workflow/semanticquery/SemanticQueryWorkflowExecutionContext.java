@@ -50,7 +50,7 @@ public class SemanticQueryWorkflowExecutionContext {
 
         try {
             // 1. ExtractMetrics Node - 메트릭과 그룹바이 추출
-            executeNode("extractMetrics", state);
+            executeNode("extractMetricsNode", state);
 
             // SemanticQueryExecution이 생성되었는지 확인
             if (state.getSemanticQueryExecutionMap() == null || state.getSemanticQueryExecutionMap().isEmpty()) {
@@ -59,13 +59,13 @@ public class SemanticQueryWorkflowExecutionContext {
             }
 
             // 2. ExtractFilter Node - 필터 추출 및 적용
-            executeNode("extractFilter", state);
+            executeNode("extractFilterMode", state);
 
             // 3. Manipulation Node - order by/limit 추출 및 커스텀 조작
-            executeNode("manipulation", state);
+            executeNode("manipulationNode", state);
 
             // 4. Dsl2Sql Node - DSL을 SQL로 변환
-            executeNode("dsl2Sql", state);
+            executeNode("dsl2SqlNode", state);
 
             // SQL 변환 실패 확인
             boolean hasSqlQueries = false;
@@ -82,7 +82,7 @@ public class SemanticQueryWorkflowExecutionContext {
             }
 
             // 5. RunSql Node - SQL 실행 및 결과 저장
-            executeNode("runSql", state);
+            executeNode("runSqlNode", state);
 
             // 쿼리 실행 결과 확인
             boolean hasValidResults = false;
@@ -98,7 +98,7 @@ public class SemanticQueryWorkflowExecutionContext {
             // 쿼리 실행에 성공한 경우만 후처리 진행
             if (hasValidResults) {
                 // 6. PostProcess Node - DuckDB 후처리
-                executeNode("postProcess", state);
+                executeNode("postProcessNode", state);
 
                 // 7. SemanticQuery Respondent - 최종 응답 생성
                 executeNode("semanticQueryRespondentNode", state);
