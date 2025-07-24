@@ -60,6 +60,12 @@ public class Workflow implements Serializable {
         this.workflowStatus = WorkflowStatus.completed;
     }
 
+    public void waitingWorkflow(String answer) {
+        this.workflowAnswer = answer;
+        this.workflowEnd = LocalDateTime.now();
+        this.workflowStatus = WorkflowStatus.waiting;
+    }
+
     /**
      * 체인 상태 변경
      */
@@ -78,7 +84,7 @@ public class Workflow implements Serializable {
 //    }
 
     public enum WorkflowStatus {
-        active, completed, error
+        active, completed, error, waiting
     }
 
 //    /**
