@@ -96,9 +96,9 @@ public class SemanticQueryWorkflowExecutionContext {
                 // 6. PostProcess Node - DuckDB 후처리
                 executeNode("postProcessNode", state);
 
-                // 7. SemanticQuery Respondent - 최종 응답 생성
-                executeNode("semanticQueryRespondentNode", state);
-                log.info("SemanticQuery: respondent 처리 완료 - 워크플로우 종료");
+//                // 7. SemanticQuery Respondent - 최종 응답 생성
+//                executeNode("semanticQueryRespondentNode", state);
+//                log.info("SemanticQuery: respondent 처리 완료 - 워크플로우 종료");
             } else {
                 log.warn("SemanticQuery: 모든 쿼리 실행이 실패하여 후처리를 건너뜁니다.");
             }
