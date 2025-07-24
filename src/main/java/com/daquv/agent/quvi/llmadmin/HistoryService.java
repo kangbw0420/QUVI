@@ -66,11 +66,11 @@ public class HistoryService {
             String sessionId = (String) convQuery.getSingleResult();
             log.info("DEBUG: Found sessionId: {}", sessionId);
 
-            String checkDataQuery = "SELECT node_id, node_state_json::text " +
+            String checkDataQuery = "SELECT node_id, CAST(node_state_json AS text) " +
                     "FROM node n " +
                     "JOIN workflow w ON n.workflow_id = w.workflow_id " +
-                    "WHERE w.session_id = ? " +
-                    "AND n.node_name = ? " +
+                    "WHERE w.session_id = :sessionId " +
+                    "AND n.node_name = :nodeType " +
                     "AND n.node_state_json IS NOT NULL " +
                     "AND jsonb_typeof(n.node_state_json) = 'object' " +
                     "AND n.node_state_json != '{}'";
@@ -95,30 +95,30 @@ public class HistoryService {
                     .map(col -> "n.node_state_json ->> '" + col + "' as " + col)
                     .collect(Collectors.joining(", "));
 
-            String queryString = String.format(
+            String queryString =
                     "WITH latest_workflows AS (" +
-                    "    SELECT %s, w.workflow_id, w.workflow_start " +
+                    "    SELECT " + selectedColumns + ", w.workflow_id, w.workflow_start " +
                     "    FROM node n " +
                     "    JOIN workflow w ON n.workflow_id = w.workflow_id " +
-                    "    WHERE w.session_id = ? " +
-                    "    AND n.node_name = ? " +
+                    "    WHERE w.session_id = :sessionId " +
+                    "    AND n.node_name = :nodeType " +
                     "    AND n.node_state_json IS NOT NULL " +
                     "    AND jsonb_typeof(n.node_state_json) = 'object' " +
                     "    AND n.node_state_json != '{}' " +
-                    "    AND n.node_state_json ->> '%s' IS NOT NULL " +
+                    "    AND n.node_state_json ->> :firstColumnName IS NOT NULL " +
                     "    ORDER BY w.workflow_start DESC " +
-                    "    LIMIT ?" +
+                    "    LIMIT :limitCount " +
                     ") " +
                     "SELECT * FROM latest_workflows " +
-                    "ORDER BY workflow_start ASC",
-                    selectedColumns, stateHistory.get(0));
+                    "ORDER BY workflow_start ASC";
             log.info("DEBUG: Final query: {}", queryString);
             log.info("DEBUG: Parameters - sessionId: {}, nodeType: {}, limit: {}", sessionId, nodeType, limit);
 
             Query query = entityManager.createNativeQuery(queryString);
-            query.setParameter(1, sessionId );
+            query.setParameter("sessionId", sessionId );
             query.setParameter("nodeType", nodeType);
-            query.setParameter("limit", limit);
+            query.setParameter("firstColumnName", stateHistory.get(0));
+            query.setParameter("limitCount", limit);
 
             @SuppressWarnings("unchecked")
             List<Object[]> results = query.getResultList();
