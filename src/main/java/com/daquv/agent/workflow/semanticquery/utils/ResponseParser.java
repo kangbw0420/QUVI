@@ -88,18 +88,35 @@ public class ResponseParser {
         // 3. JSON 객체 추출 (수정된 로직)
         cleaned = extractValidJson(cleaned);
 
-        // 4. Python 리터럴을 JSON으로 변환
+        // 4. 이중 중괄호 처리 (전역 변환)
+        cleaned = processDoubleBraces(cleaned);
+
+        // 5. Python 리터럴을 JSON으로 변환
         cleaned = cleaned.replace("None", "null")
                 .replace("True", "true")
                 .replace("False", "false");
 
-        // 5. 작은따옴표를 큰따옴표로 변환 (JSON 표준)
+        // 6. 작은따옴표를 큰따옴표로 변환 (JSON 표준)
         cleaned = convertSingleQuotesToDouble(cleaned);
 
-        // 6. 후행 쉼표 제거
+        // 7. 후행 쉼표 제거
         cleaned = removeTrailingCommas(cleaned);
 
         return cleaned;
+    }
+
+    /**
+     * 이중 중괄호를 단일 중괄호로 변환
+     */
+    private String processDoubleBraces(String input) {
+        // 이중 중괄호가 있는 경우 전역 변환
+        if (input.contains("{{") || input.contains("}}")) {
+            log.debug("Processing double braces in: {}", input);
+            String result = input.replace("{{", "{").replace("}}", "}");
+            log.debug("After double brace conversion: {}", result);
+            return result;
+        }
+        return input;
     }
 
     private String removeCodeBlocks(String input) {
@@ -126,67 +143,90 @@ public class ResponseParser {
     private String extractValidJson(String input) {
         String trimmed = input.trim();
 
-        // 1. 이중 중괄호 패턴 처리 (템플릿 문법 등)
-        if (trimmed.startsWith("{{") && trimmed.endsWith("}}")) {
-            log.debug("Found double braces pattern, attempting to extract inner JSON");
-
-            // 첫 번째 시도: 가장 바깥쪽 이중 중괄호를 단일 중괄호로 변경
-            String withSingleBraces = "{" + trimmed.substring(2, trimmed.length() - 2) + "}";
-
-            // 변경된 문자열이 유효한 JSON인지 확인
-            if (isValidJsonStructure(withSingleBraces)) {
-                log.debug("Successfully converted double braces to single: {}", withSingleBraces);
-                return withSingleBraces;
-            }
-
-            log.warn("Failed to parse after converting double braces, trying to extract complete JSON structure");
-
-            // 두 번째 시도: 완전한 JSON 구조 추출
-            String extracted = extractLargestJsonObject(trimmed);
-            if (extracted != null) {
-                return extracted;
-            }
-
-            // 세 번째 시도: 이중 중괄호 내부의 완전한 구조 찾기
-            String inner = trimmed.substring(2, trimmed.length() - 2).trim();
-            extracted = extractLargestJsonObject(inner);
-            if (extracted != null) {
-                return extracted;
-            }
-        }
-
-        // 2. 일반적인 JSON 객체
+        // 1. 이미 올바른 JSON 형태인 경우
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
             return trimmed;
         }
-
-        // 3. 배열 형태
         if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
             return trimmed;
         }
 
-        // 4. 문자열 중간에 JSON이 있는 경우 추출
-        return extractJsonWithRegex(trimmed);
+        // 2. 텍스트 중에서 JSON 부분 추출
+        String extracted = extractJsonFromText(trimmed);
+        if (extracted != null) {
+            return extracted;
+        }
+
+        // 3. 추출 실패 시 원본 반환
+        log.warn("Could not extract JSON from input, returning original: {}", trimmed);
+        return trimmed;
     }
 
     /**
-     * 정규식을 사용한 JSON 추출 - 중첩된 구조 지원
+     * 텍스트에서 JSON 부분을 추출 (이중 중괄호 패턴 포함)
+     */
+    private String extractJsonFromText(String input) {
+        // 이중 중괄호 패턴 찾기
+        int doubleBraceStart = input.indexOf("{{");
+        if (doubleBraceStart != -1) {
+            log.debug("Found double brace pattern at position: {}", doubleBraceStart);
+            return extractBalancedJson(input, doubleBraceStart, "{{", "}}");
+        }
+
+        // 일반 중괄호 패턴 찾기
+        int singleBraceStart = input.indexOf("{");
+        if (singleBraceStart != -1) {
+            log.debug("Found single brace pattern at position: {}", singleBraceStart);
+            return extractBalancedJson(input, singleBraceStart, "{", "}");
+        }
+
+        // 배열 패턴 찾기
+        int arrayStart = input.indexOf("[");
+        if (arrayStart != -1) {
+            log.debug("Found array pattern at position: {}", arrayStart);
+            return extractBalancedJson(input, arrayStart, "[", "]");
+        }
+
+        return null;
+    }
+
+    /**
+     * 균형잡힌 브레이스/브래킷으로 JSON 추출
+     */
+    private String extractBalancedJson(String input, int startPos, String openToken, String closeToken) {
+        int openCount = 0;
+        int currentPos = startPos;
+
+        while (currentPos < input.length()) {
+            if (input.startsWith(openToken, currentPos)) {
+                openCount++;
+                currentPos += openToken.length();
+            } else if (input.startsWith(closeToken, currentPos)) {
+                openCount--;
+                currentPos += closeToken.length();
+
+                if (openCount == 0) {
+                    String extracted = input.substring(startPos, currentPos);
+                    log.debug("Extracted balanced JSON: {}", extracted);
+                    return extracted;
+                }
+            } else {
+                currentPos++;
+            }
+        }
+
+        log.warn("Could not find balanced closing token for: {}", openToken);
+        return null;
+    }
+
+    /**
+     * 정규식을 사용한 JSON 추출 - 중첩된 구조 지원 (폴백용)
      */
     private String extractJsonWithRegex(String input) {
         // 가장 큰(완전한) JSON 객체를 찾기 위해 개선된 정규식 사용
         String found = extractLargestJsonObject(input);
         if (found != null) {
             log.debug("Extracted complete JSON object: {}", found);
-            return found;
-        }
-
-        // 대괄호 균형을 맞춘 JSON 배열 찾기
-        Pattern jsonArrayPattern = Pattern.compile("\\[(?:[^\\[\\]]|\\[[^\\[\\]]*\\])*\\]", Pattern.DOTALL);
-        Matcher matcher = jsonArrayPattern.matcher(input);
-
-        if (matcher.find()) {
-            found = matcher.group();
-            log.debug("Extracted JSON array with regex: {}", found);
             return found;
         }
 
