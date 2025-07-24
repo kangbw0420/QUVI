@@ -96,7 +96,7 @@ public class ManipulationNode implements SemanticQueryWorkflowNode {
         try {
             Map<String, SemanticQueryExecution> executionMap =
                 state.getSemanticQueryExecutionMap();
-            String qnaId = generationService.createQnaId(state.getWorkflowId());
+            String qnaId = generationService.createQnaId(state.getNodeId());
             if (executionMap == null || executionMap.isEmpty()) {
                 log.error("No SemanticQueryExecution found in state. Previous nodes should run first.");
                 throw new IllegalStateException("No SemanticQueryExecution found in state");

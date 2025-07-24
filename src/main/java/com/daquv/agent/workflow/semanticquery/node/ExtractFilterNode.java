@@ -92,7 +92,7 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
     public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String workflowId = state.getWorkflowId();
-        String qnaId = generationService.createQnaId(state.getWorkflowId());
+        String qnaId = generationService.createQnaId(state.getNodeId());
         
         log.info("Starting filter extraction and application for user question: '{}'", userQuestion);
 

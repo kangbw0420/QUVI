@@ -81,7 +81,7 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
     public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String workflowId = state.getWorkflowId();
-        String qnaId = generationService.createQnaId(state.getWorkflowId());
+        String qnaId = generationService.createQnaId(state.getNodeId());
         // 날짜 정보 생성 (매번 최신 날짜 사용)
         String[] dateStrings = createDateStrings();
         String todayStr = dateStrings[0];

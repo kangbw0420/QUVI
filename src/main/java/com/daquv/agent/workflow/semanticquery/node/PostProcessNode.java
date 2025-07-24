@@ -59,7 +59,7 @@ public class PostProcessNode implements SemanticQueryWorkflowNode {
             for (Map.Entry<String, SemanticQueryExecution> entry : executionMap.entrySet()) {
                 String entity = entry.getKey();
                 SemanticQueryExecution execution = entry.getValue();
-                String qnaId = generationService.createQnaId(state.getWorkflowId());
+                String qnaId = generationService.createQnaId(state.getNodeId());
                 log.debug("Processing DuckDB post-processing for entity: '{}'", entity);
 
                 // DSL과 쿼리 결과가 있는지 확인
