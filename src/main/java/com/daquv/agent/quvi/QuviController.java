@@ -588,24 +588,6 @@ public class QuviController {
     }
 
     /**
-     * API 워크플로우 실행
-     */
-    private void executeApiWorkflow(WorkflowState state) {
-        log.info("🔌 API 워크플로우 실행");
-
-        workflowContext.executeNode("toolUseNode", state);
-
-        if (state.getInvalidDate() != null && state.getInvalidDate()) {
-            log.info("invalid_date 감지 - 워크플로우 종료");
-            return;
-        }
-
-        workflowContext.executeNode("queryExecutorNode", state);
-        handleExecutorResults(state);
-    }
-
-
-    /**
      * TOOLUSE 워크플로우 실행 (ToolUseWorkflowExecutionContext 사용)
      */
     private void executeToolUseWorkflow(String workflowId) {
@@ -619,57 +601,6 @@ public class QuviController {
     private void executeSemanticQueryWorkflow(String workflowId) {
         log.info("💾 SEMANTICQUERY 워크플로우 실행 - SemanticQuery Context 사용");
         semanticQueryWorkflowContext.executeSemanticQueryWorkflow(workflowId);
-    }
-
-    /**
-     * SQL 워크플로우 실행
-     */
-    private void executeSqlWorkflow(WorkflowState state) {
-        log.info("💾 SQL 워크플로우 실행");
-
-        workflowContext.executeNode("commanderNode", state);
-
-        if (state.getSelectedTable() == null || state.getSelectedTable().trim().isEmpty()) {
-            state.setQueryResultStatus("failed");
-            state.setSqlError("테이블 선택에 실패했습니다.");
-            log.error("Commander에서 테이블 선택 실패");
-            return;
-        }
-
-        workflowContext.executeNode("opendueNode", state);
-
-        if (state.getIsOpendue() != null && state.getIsOpendue()) {
-            workflowContext.executeNode("nl2sqlNode", state);
-        } else {
-            workflowContext.executeNode("daterNode", state);
-            workflowContext.executeNode("nl2sqlNode", state);
-        }
-
-        workflowContext.executeNode("queryExecutorNode", state);
-        handleExecutorResults(state);
-    }
-
-    /**
-     * DEFAULT 워크플로우 실행 (기존 로직)
-     */
-    private void executeDefaultWorkflow(WorkflowState state) {
-        log.info("⚙️ DEFAULT 워크플로우 실행");
-
-        // 기존 전체 워크플로우 실행 (checkpoint -> isapi 분기 등)
-        workflowContext.executeNode("checkpointNode", state);
-
-        if (state.getIsJoy() != null && state.getIsJoy()) {
-            workflowContext.executeNode("killjoyNode", state);
-            return;
-        }
-
-        workflowContext.executeNode("isApiNode", state);
-
-        if (state.getIsApi() != null && state.getIsApi()) {
-            executeApiWorkflow(state);
-        } else {
-            executeSqlWorkflow(state);
-        }
     }
 
     /**
