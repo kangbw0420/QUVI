@@ -6,10 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,14 +36,26 @@ public class MetricFlowRequest {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
+            // semantic_manifest.json 절대 경로 구하기
+            String manifestPath;
+            try {
+                ClassPathResource resource = new ClassPathResource("dbt/semantic_manifest.json");
+                manifestPath = resource.getFile().getAbsolutePath();
+            } catch (IOException e) {
+                log.error("Failed to get semantic_manifest.json absolute path", e);
+                return createErrorResponse("Failed to locate semantic_manifest.json: " + e.getMessage());
+            }
+
             // Python DTO 구조에 맞게 요청 데이터 래핑
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("requests", requests);
+            requestBody.put("manifest_path", manifestPath);
 
             // HTTP 요청 생성
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
             log.info("Sending batch MetricFlow request to Python server: {}", url);
+            log.info("Using manifest path: {}", manifestPath);
             log.debug("Request body: {}", requestBody);
 
             // Python 서버로 요청 전송
