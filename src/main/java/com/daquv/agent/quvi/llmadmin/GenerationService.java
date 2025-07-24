@@ -28,10 +28,6 @@ public class GenerationService {
     private static final Logger log = LoggerFactory.getLogger(GenerationService.class);
     private final GenerationRepository generationRepository;
     private final NodeRepository nodeRepository;
-    //private final FewshotRepository fewshotRepository;
-
-    @Autowired
-    private RequestProfiler requestProfiler;
 
     public GenerationService(GenerationRepository generationRepository, NodeRepository nodeRepository
                     ) {
@@ -199,91 +195,6 @@ public class GenerationService {
             throw new RuntimeException("Failed to record answer", e);
         }
     }
-
-    /**
-     * QnA 조회
-     *
-     * @param qnaId QnA ID
-     * @return QnA 정보 (Optional)
-     */
-    public Optional<Generation> getQna(String qnaId) {
-        log.info("getQna - qnaId: {}", qnaId);
-        return generationRepository.findById(qnaId);
-    }
-
-    /**
-     * 트레이스 ID로 QnA 목록 조회
-     *
-     * @param traceId 트레이스 ID
-     * @return QnA 목록
-     */
-    public List<Generation> getQnasByTraceId(String traceId) {
-        log.info("getQnasByTraceId - traceId: {}", traceId);
-        return generationRepository.findByTraceIdOrderByQuestionTimestampAsc(traceId);
-    }
-
-    /**
-     * 모델로 QnA 목록 조회
-     *
-     * @param model 모델명
-     * @return QnA 목록
-     */
-    public List<Generation> getQnasByModel(String model) {
-        log.info("getQnasByModel - model: {}", model);
-        return generationRepository.findByModel(model);
-    }
-
-    /**
-     * 답변이 있는 QnA 목록 조회
-     *
-     * @return 답변이 있는 QnA 목록
-     */
-    public List<Generation> getQnasWithAnswer() {
-        log.info("getQnasWithAnswer");
-        return generationRepository.findByAnswerIsNotNull();
-    }
-//
-//    /**
-//     * QnA ID로 Fewshot 목록 조회
-//     *
-//     * @param qnaId QnA ID
-//     * @return Fewshot 목록
-//     */
-//    public List<Fewshot> getFewshotsByQnaId(String qnaId) {
-//        log.info("getFewshotsByQnaId - qnaId: {}", qnaId);
-//        return fewshotRepository.findByQnaIdOrderByOrderSeqAsc(qnaId);
-//    }
-
-    /**
-     * 모델별 QnA 수 조회
-     *
-     * @param model 모델명
-     * @return QnA 수
-     */
-    public long countByModel(String model) {
-        log.info("countByModel - model: {}", model);
-        return generationRepository.countByModel(model);
-    }
-
-    /**
-     * 답변이 있는 QnA 수 조회
-     *
-     * @return 답변이 있는 QnA 수
-     */
-    public long countWithAnswer() {
-        log.info("countWithAnswer");
-        return generationRepository.countByAnswerIsNotNull();
-    }
-
-//    /**
-//     * 평균 검색 시간 조회
-//     *
-//     * @return 평균 검색 시간
-//     */
-//    public BigDecimal getAverageRetrieveTime() {
-//        log.info("getAverageRetrieveTime");
-//        return qnaRepository.getAverageRetrieveTime();
-//    }
 
     private String getCurrentChainId() {
         try {
