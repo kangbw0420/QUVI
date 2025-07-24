@@ -49,14 +49,6 @@ public class SemanticQueryWorkflowExecutionContext {
         log.info("=== SemanticQuery DSL 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
 
         try {
-            // Next Page 처리
-            executeNode("nextPageNode", state);
-
-            if ("next_page".equals(state.getUserQuestion())) {
-                log.info("next_page 처리 완료 - SemanticQuery 워크플로우 종료");
-                return;
-            }
-
             // 1. ExtractMetrics Node - 메트릭과 그룹바이 추출
             executeNode("extractMetricsNode", state);
 
@@ -103,14 +95,6 @@ public class SemanticQueryWorkflowExecutionContext {
                     hasNoData = false;
                 }
             }
-
-            // NoData 처리
-            if (hasNoData) {
-                executeNode("nodataNode", state);
-                log.info("SemanticQuery: nodata 처리 완료 - 워크플로우 종료");
-                return;
-            }
-
             // 쿼리 실행에 성공한 경우만 후처리 진행
             if (hasValidResults) {
                 // 6. PostProcess Node - DuckDB 후처리
