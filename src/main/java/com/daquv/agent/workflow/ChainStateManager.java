@@ -18,8 +18,8 @@ public class ChainStateManager {
     // State 생존 시간 관리
     private final ConcurrentHashMap<String, Long> stateTimestamps = new ConcurrentHashMap<>();
     
-    // State 만료 시간 (30분)
-    private static final long STATE_EXPIRY_MS = 30 * 60 * 1000;
+    // State 만료 시간 (5분)
+    private static final long STATE_EXPIRY_MS = 5 * 60 * 1000;
     
     /**
      * 새 State 생성
