@@ -15,7 +15,7 @@ import java.util.*;
 
 @Slf4j
 @Component
-public class SupervisorNode implements WorkflowNode {
+public class SupervisorNode {
     // input - user_question -> output : 어디로 가야하는지 node
 
     @Autowired
@@ -34,29 +34,9 @@ public class SupervisorNode implements WorkflowNode {
     private RequestProfiler requestProfiler;
 
 
-    @Override
+
     public String getId() {
         return "supervisor";
-    }
-
-    @Override
-    public void execute(WorkflowState state) {
-        String userQuestion = state.getUserQuestion();
-        String workflowId = state.getWorkflowId();
-
-        String selectedWorkflow = selectWorkflow(userQuestion, workflowId);
-        state.setSelectedWorkflow(selectedWorkflow);
-
-        // WebSocket 메시지 전송 (WebSocket 세션이 있는 경우만)
-        if (state.getWebSocketSession() != null) {
-            try {
-                Map<String, Object> data = new HashMap<>();
-                data.put("selected_workflow", selectedWorkflow);
-                webSocketUtils.sendNodeEnd(state.getWebSocketSession(), "supervisor", data);
-            } catch (Exception e) {
-                log.warn("WebSocket 메시지 전송 실패: {}", e.getMessage());
-            }
-        }
     }
 
     public String selectWorkflow(String userQuestion, String workflowId) {

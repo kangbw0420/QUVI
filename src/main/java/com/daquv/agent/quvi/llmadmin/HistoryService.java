@@ -66,30 +66,6 @@ public class HistoryService {
             String sessionId = (String) convQuery.getSingleResult();
             log.info("DEBUG: Found sessionId: {}", sessionId);
 
-            String checkDataQuery = "SELECT node_id, CAST(node_state_json AS text) " +
-                    "FROM node n " +
-                    "JOIN workflow w ON n.workflow_id = w.workflow_id " +
-                    "WHERE w.session_id = :sessionId " +
-                    "AND n.node_name = :nodeType " +
-                    "AND n.node_state_json IS NOT NULL " +
-                    "AND jsonb_typeof(n.node_state_json) = 'object' " +
-                    "AND n.node_state_json != '{}'";
-
-            Query checkQuery = entityManager.createNativeQuery(checkDataQuery);
-            checkQuery.setParameter("sessionId", sessionId);
-            checkQuery.setParameter("nodeType", nodeType);
-            List<Object[]> checkResults = checkQuery.getResultList();
-
-            log.info("DEBUG: Found {} nodes with state data", checkResults.size());
-            for (Object[] row : checkResults) {
-                log.info("DEBUG: NodeId: {}, StateJson: {}", row[0], row[1]);
-            }
-
-            if (checkResults.isEmpty()) {
-                log.warn("No nodes found with state data for nodeType: {}", nodeType);
-                return new HashMap<>();
-            }
-
             String selectedColumns = stateHistory.stream()
                     .filter(col -> !col.equals("date_info"))
                     .map(col -> "n.node_state_json ->> '" + col + "' as " + col)

@@ -28,7 +28,6 @@ public class WorkflowState {
     private String sqlQuery;
     private String sqlError;
     private List<Map<String, Object>> queryResult;
-    private List<String> columnList;
     private String fString;
     private String finalAnswer;
     private String tablePipe;

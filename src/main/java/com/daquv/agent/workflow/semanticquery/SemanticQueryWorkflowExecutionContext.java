@@ -41,7 +41,7 @@ public class SemanticQueryWorkflowExecutionContext {
      * - SQL 경로: commander -> opendue -> (nl2sql or dater) -> nl2sql -> executor -> (safeguard or respondent)
      */
     public void executeSemanticQueryWorkflow(String workflowId) {
-        WorkflowState state = stateManager.getState(workflowId);
+        SemanticQueryWorkflowState state = stateManager.getState(workflowId);
         if (state == null) {
             throw new IllegalStateException("Workflow ID에 해당하는 State를 찾을 수 없습니다: " + workflowId);
         }
@@ -168,7 +168,7 @@ public class SemanticQueryWorkflowExecutionContext {
     /**
      * 개별 노드 실행 (State 직접 주입 + Trace/State 처리)
      */
-    public void executeNode(String nodeBeanName, WorkflowState state) {
+    public void executeNode(String nodeBeanName, SemanticQueryWorkflowState state) {
         String nodeId = null;
 
         log.info("SemanticQuery node executing: {} - state: {}", nodeBeanName, state.getWorkflowId());
@@ -177,7 +177,7 @@ public class SemanticQueryWorkflowExecutionContext {
             Object nodeBean = applicationContext.getBean(nodeBeanName);
 
             if (nodeBean instanceof WorkflowNode) {
-                WorkflowNode node = (WorkflowNode) nodeBean;
+                SemanticQueryWorkflowNode node = (SemanticQueryWorkflowNode) nodeBean;
 
                 // 1. Node 생성
                 nodeId = nodeService.createNode(state.getWorkflowId(), node.getId());
@@ -219,7 +219,7 @@ public class SemanticQueryWorkflowExecutionContext {
     /**
      * SemanticQuery State를 DB에 저장
      */
-    private void saveStateToDatabase(String traceId, WorkflowState state) {
+    private void saveStateToDatabase(String traceId, SemanticQueryWorkflowState state) {
         try {
             Map<String, Object> stateMap = new java.util.HashMap<>();
 
