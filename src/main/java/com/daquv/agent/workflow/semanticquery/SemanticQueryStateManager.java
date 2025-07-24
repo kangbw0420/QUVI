@@ -28,13 +28,6 @@ public class SemanticQueryStateManager {
         SemanticQueryWorkflowState state = SemanticQueryWorkflowState.builder()
                 .workflowId(workflowId)
                 .nodeId("node_" + System.currentTimeMillis())
-                .safeCount(0)
-                .queryError(false)
-                .noData(false)
-                .futureDate(false)
-                .invalidDate(false)
-                .queryChanged(false)
-                .hasNext(false)
                 .build();
 
         chainStates.put(workflowId, state);

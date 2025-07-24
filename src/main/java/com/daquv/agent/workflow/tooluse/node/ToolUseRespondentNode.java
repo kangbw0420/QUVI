@@ -13,7 +13,7 @@ import com.daquv.agent.quvi.requests.FstringRequest;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowNode;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import com.daquv.agent.workflow.util.LLMRequest;
-import com.daquv.agent.workflow.util.PipeTable;
+import com.daquv.agent.workflow.util.PipeTableUtils;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +38,7 @@ public class ToolUseRespondentNode implements ToolUseWorkflowNode {
     private GenerationService generationService;
 
     @Autowired
-    private PipeTable pipeTable;
+    private PipeTableUtils pipeTableUtils;
 
     private final FstringRequest fstringRequest;
 
@@ -95,7 +95,7 @@ public class ToolUseRespondentNode implements ToolUseWorkflowNode {
 
         // 테이블 파이프 생성
         log.info("2단계: ToolUse 테이블 파이프 생성 시작");
-        String tablePipe = pipeTable.pipeTable(queryResult);
+        String tablePipe = pipeTableUtils.pipeTable(queryResult);
         state.setTablePipe(tablePipe);
         log.info("ToolUse 테이블 파이프 생성 완료");
 
