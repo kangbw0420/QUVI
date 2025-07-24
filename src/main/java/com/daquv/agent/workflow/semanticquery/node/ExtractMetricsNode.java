@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.semanticquery.node;
 
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.semanticquery.SemanticEntity;
@@ -32,6 +33,7 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
     private final YamlUtils yamlUtils;
     private final WebSocketUtils webSocketUtils;
     private final RequestProfiler requestProfiler;
+    private final GenerationService generationService;
 
     private static final String[] ENTITIES = SemanticEntity.getValues();
 
@@ -79,7 +81,7 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
     public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String workflowId = state.getWorkflowId();
-        
+        String qnaId = generationService.createQnaId(state.getWorkflowId());
         // 날짜 정보 생성 (매번 최신 날짜 사용)
         String[] dateStrings = createDateStrings();
         String todayStr = dateStrings[0];
@@ -97,7 +99,7 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
 
             // 메트릭과 그룹바이 추출
             long startTime = System.currentTimeMillis();
-            Map<String, SemanticQueryWorkflowState.DSL> dslMap = extractMetricsAndGroupBy(userQuestion);
+            Map<String, SemanticQueryWorkflowState.DSL> dslMap = extractMetricsAndGroupBy(userQuestion, qnaId);
             long endTime = System.currentTimeMillis();
             
             double elapsedTime = (endTime - startTime) / 1000.0;
@@ -136,7 +138,7 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
         }
     }
 
-    private Map<String, SemanticQueryWorkflowState.DSL> extractMetricsAndGroupBy(String userInput) {
+    private Map<String, SemanticQueryWorkflowState.DSL> extractMetricsAndGroupBy(String userInput, String qnaId) {
         log.debug("Extracting metrics and group by from user input");
 
         String prompt = extractMetricsAndGroupByPrompt
@@ -146,7 +148,8 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
                 .replace("{time_dimensions}", aggregateTimeDimensionsPrompt);
 
         log.debug("Calling LLM for metrics and group by extraction");
-        String response = llmRequest.callQwenLlm(prompt, userInput);
+
+        String response = llmRequest.callQwenLlm(userInput + "\n" + prompt, qnaId);
         log.debug("LLM response received, length: {} characters", response.length());
 
         Map<String, Object> rawDict = responseParser.parseResponse(response);

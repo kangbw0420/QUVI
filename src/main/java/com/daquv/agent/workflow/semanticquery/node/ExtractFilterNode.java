@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.semanticquery.node;
 
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.semanticquery.SemanticEntity;
@@ -31,6 +32,7 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
     private final YamlUtils yamlUtils;
     private final WebSocketUtils webSocketUtils;
     private final RequestProfiler requestProfiler;
+    private final GenerationService generationService;
 
     private static final String[] ENTITIES = SemanticEntity.getValues();
 
@@ -90,6 +92,7 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
     public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String workflowId = state.getWorkflowId();
+        String qnaId = generationService.createQnaId(state.getWorkflowId());
         
         log.info("Starting filter extraction and application for user question: '{}'", userQuestion);
 
@@ -121,7 +124,7 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
             String thirtyDaysAgoStr = dateStrings[2];
             log.debug("Date strings: today={}, yesterday={}, thirtyDaysAgo={}", todayStr, yesterdayStr, thirtyDaysAgoStr);
             
-            Map<String, List<String>> filtersDict = extractFilters(userQuestion, dslMap, todayStr, yesterdayStr, thirtyDaysAgoStr);
+            Map<String, List<String>> filtersDict = extractFilters(userQuestion, dslMap, todayStr, yesterdayStr, thirtyDaysAgoStr, qnaId);
             long endTime = System.currentTimeMillis();
             
             double elapsedTime = (endTime - startTime) / 1000.0;
@@ -162,7 +165,7 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
     }
 
     private Map<String, List<String>> extractFilters(String userInput, Map<String, SemanticQueryWorkflowState.DSL> dslDict, 
-                                                      String todayStr, String yesterdayStr, String thirtyDaysAgoStr) {
+                                                      String todayStr, String yesterdayStr, String thirtyDaysAgoStr, String qnaId) {
         log.debug("Extracting filters from user input");
 
         String dslString = formatDslMapForPrompt(dslDict);
@@ -179,7 +182,7 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
                 .replace("{user_input}", userInput);
 
         log.debug("Calling LLM for filter extraction");
-        String response = llmRequest.callQwenLlm(systemPrompt, userInput);
+        String response = llmRequest.callQwenLlm(systemPrompt, qnaId);
         log.debug("LLM response received for filters, length: {} characters", response.length());
 
         Map<String, Object> parsedResponse = responseParser.parseResponse(response);

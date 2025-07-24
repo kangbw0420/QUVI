@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.semanticquery.node;
 
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.requests.MetricFlowRequest;
@@ -41,7 +42,7 @@ public class Dsl2SqlNode implements SemanticQueryWorkflowNode {
         try {
             Map<String, SemanticQueryExecution> executionMap = 
                 state.getSemanticQueryExecutionMap();
-            
+
             if (executionMap == null || executionMap.isEmpty()) {
                 log.error("No SemanticQueryExecution found in state. Previous nodes should run first.");
                 throw new IllegalStateException("No SemanticQueryExecution found in state");
@@ -54,7 +55,6 @@ public class Dsl2SqlNode implements SemanticQueryWorkflowNode {
             for (Map.Entry<String, SemanticQueryExecution> entry : executionMap.entrySet()) {
                 String entity = entry.getKey();
                 SemanticQueryExecution execution = entry.getValue();
-                
                 log.debug("Processing DSL to SQL conversion for entity: '{}'", entity);
 
                 Map<String, DSL> dslMap = execution.getDsl();

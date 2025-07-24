@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.semanticquery.node;
 
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
@@ -28,6 +29,7 @@ public class PostProcessNode implements SemanticQueryWorkflowNode {
     private final SQLCleanUtils sqlCleanUtils;
     private final WebSocketUtils webSocketUtils;
     private final RequestProfiler requestProfiler;
+    private final GenerationService generationService;
 
     @Override
     public String getId() {
@@ -57,7 +59,7 @@ public class PostProcessNode implements SemanticQueryWorkflowNode {
             for (Map.Entry<String, SemanticQueryExecution> entry : executionMap.entrySet()) {
                 String entity = entry.getKey();
                 SemanticQueryExecution execution = entry.getValue();
-                
+                String qnaId = generationService.createQnaId(state.getWorkflowId());
                 log.debug("Processing DuckDB post-processing for entity: '{}'", entity);
 
                 // DSL과 쿼리 결과가 있는지 확인
@@ -77,7 +79,7 @@ public class PostProcessNode implements SemanticQueryWorkflowNode {
                 // DuckDB 후처리 실행
                 long startTime = System.currentTimeMillis();
                 List<Map<String, Object>> postProcessedResult = 
-                    postProcessWithDuckDB(userQuestion, dslMap, queryResultMap);
+                    postProcessWithDuckDB(userQuestion, dslMap, queryResultMap, qnaId);
                 long endTime = System.currentTimeMillis();
                 
                 double elapsedTime = (endTime - startTime) / 1000.0;
@@ -117,7 +119,9 @@ public class PostProcessNode implements SemanticQueryWorkflowNode {
     private List<Map<String, Object>> postProcessWithDuckDB(
             String userInput, 
             Map<String, DSL> dslMap, 
-            Map<String, Object> queryResultMap) {
+            Map<String, Object> queryResultMap,
+            String qnaId
+    ) {
         
         // 날짜 정보 생성 (매번 최신 날짜 사용)
         String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -131,7 +135,7 @@ public class PostProcessNode implements SemanticQueryWorkflowNode {
                 .replace("{result_df}", formatQueryResultMapForPrompt(queryResultMap));
         
         log.debug("Calling LLM for DuckDB post-processing");
-        String rawSql = llmRequest.callQwenLlm(formattedPrompt, userInput);
+        String rawSql = llmRequest.callQwenLlm(formattedPrompt, qnaId);
         log.debug("LLM response received, length: {} characters", rawSql.length());
         
         // SQL 정리

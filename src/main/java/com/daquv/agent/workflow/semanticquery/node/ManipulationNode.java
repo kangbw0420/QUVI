@@ -1,5 +1,6 @@
 package com.daquv.agent.workflow.semanticquery.node;
 
+import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.semanticquery.SemanticEntity;
@@ -31,6 +32,7 @@ public class ManipulationNode implements SemanticQueryWorkflowNode {
     private final YamlUtils yamlUtils;
     private final WebSocketUtils webSocketUtils;
     private final RequestProfiler requestProfiler;
+    private final GenerationService generationService;
 
     private static final String[] ENTITIES = SemanticEntity.getValues();
 
@@ -94,7 +96,7 @@ public class ManipulationNode implements SemanticQueryWorkflowNode {
         try {
             Map<String, SemanticQueryExecution> executionMap =
                 state.getSemanticQueryExecutionMap();
-            
+            String qnaId = generationService.createQnaId(state.getWorkflowId());
             if (executionMap == null || executionMap.isEmpty()) {
                 log.error("No SemanticQueryExecution found in state. Previous nodes should run first.");
                 throw new IllegalStateException("No SemanticQueryExecution found in state");
@@ -112,7 +114,7 @@ public class ManipulationNode implements SemanticQueryWorkflowNode {
                 // 1. order_by와 limit 추출
                 long startTime = System.currentTimeMillis();
                 Map<String, DSL> updatedDsls =
-                    extractOrderByAndLimit(userQuestion, execution.getDsl());
+                    extractOrderByAndLimit(qnaId, execution.getDsl());
                 long endTime = System.currentTimeMillis();
                 
                 double elapsedTime = (endTime - startTime) / 1000.0;
@@ -147,7 +149,7 @@ public class ManipulationNode implements SemanticQueryWorkflowNode {
     }
 
     private Map<String, DSL> extractOrderByAndLimit(
-            String userInput, Map<String, DSL> dsls) {
+            String qnaId, Map<String, DSL> dsls) {
         
         log.debug("Extracting order by and limit for {} entities", dsls.size());
         Map<String, DSL> finalDsls = new HashMap<>();
@@ -161,7 +163,7 @@ public class ManipulationNode implements SemanticQueryWorkflowNode {
             log.debug("Single DSL string for entity '{}': {}", entity, singleDslString);
 
             String formattedPrompt = extractOrderByAndLimitPrompt.replace("{dsl}", singleDslString);
-            String response = llmRequest.callQwenLlm(formattedPrompt, userInput);
+            String response = llmRequest.callQwenLlm(formattedPrompt, qnaId);
 
             Map<String, Object> parsedResponse = responseParser.parseResponse(response);
 
