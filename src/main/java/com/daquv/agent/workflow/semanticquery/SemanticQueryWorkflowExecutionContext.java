@@ -51,11 +51,7 @@ public class SemanticQueryWorkflowExecutionContext {
             if (state.getDateClarificationNeeded() != null && state.getDateClarificationNeeded()) {
                 log.info("SemanticQuery: 날짜 명확화가 필요하여 워크플로우를 대기 상태로 전환합니다.");
 
-                // 워크플로우를 waiting 상태로 변경
-                workflowService.waitingWorkflow(workflowId, state.getFinalAnswer());
-
-                // 변경된 State 저장
-                stateManager.updateState(workflowId, state);
+                saveStateToDatabase(state.getNodeId(), state);
 
                 log.info("=== SemanticQuery DSL 워크플로우 대기 상태 - workflowId: {} ===", workflowId);
                 return; // 워크플로우 중단, 사용자 입력 대기
