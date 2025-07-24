@@ -72,7 +72,7 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
 
     @Override
     public String getId() {
-        return "extract_metrics";
+        return "extractMetrics";
     }
 
     @Override

@@ -214,11 +214,12 @@ public class ToolUseWorkflowExecutionContext {
             if (state.getFString() != null && !state.getFString().trim().isEmpty()) {
                 stateMap.put("fstringAnswer", state.getFString());
             }
-            if (state.getStartDate() != null && !state.getStartDate().trim().isEmpty()) {
-                stateMap.put("startDate", state.getStartDate());
-            }
-            if (state.getEndDate() != null  && !state.getEndDate().trim().isEmpty()) {
-                stateMap.put("endDate", state.getEndDate());
+            if (state.getStartDate() != null && !state.getStartDate().trim().isEmpty() &&
+                    state.getEndDate() != null && !state.getEndDate().trim().isEmpty()) {
+                java.util.List<String> dateInfo = new java.util.ArrayList<>();
+                dateInfo.add(state.getStartDate());
+                dateInfo.add(state.getEndDate());
+                stateMap.put("date_info", dateInfo);
             }
             if (state.getUserInfo().getCompanyId() != null  && !state.getUserInfo().getCompanyId().trim().isEmpty()) {
                 stateMap.put("companyId", state.getUserInfo().getCompanyId());

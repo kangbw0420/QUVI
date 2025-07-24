@@ -31,7 +31,7 @@ public class PostProcessNode implements SemanticQueryWorkflowNode {
 
     @Override
     public String getId() {
-        return "post_process";
+        return "postProcess";
     }
 
     @Override

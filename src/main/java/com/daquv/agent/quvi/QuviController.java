@@ -137,7 +137,7 @@ public class QuviController {
                     String.format("🎯 선택된 워크플로우: %s", selectedWorkflow));
 
             // 7. 선택된 워크플로우에 따른 완전한 State 생성 및 초기화
-            Object finalState = createAndInitializeStateForWorkflow(selectedWorkflow, request, sessionId, workflowId);
+            createAndInitializeStateForWorkflow(selectedWorkflow, request, sessionId, workflowId);
 
             chainLogManager.addLog(workflowId, "CONTROLLER", LogLevel.DEBUG,
                     "🔄 워크플로우 상태 초기화 완료");
@@ -163,18 +163,18 @@ public class QuviController {
             }
 
             // 8. 최종 결과 조회
-            Object retrievedFinalState = getFinalStateForWorkflow(selectedWorkflow, workflowId);
+            Object finalState = getFinalStateForWorkflow(selectedWorkflow, workflowId);
 
             // 9. Chain 완료
-            String finalAnswer = extractFinalAnswer(retrievedFinalState);
+            String finalAnswer = extractFinalAnswer(finalState);
             workflowService.completeWorkflow(workflowId, finalAnswer);
 
             // 로그 컨텍스트에 최종 결과 저장
-            updateLogContextWithFinalState(logContext, retrievedFinalState);
+            updateLogContextWithFinalState(logContext, finalState);
 
             // 10. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
-            Map<String, Object> response = buildResponse(sessionId, workflowId, recommendList, totalTime, retrievedFinalState);
+            Map<String, Object> response = buildResponse(sessionId, workflowId, recommendList, totalTime, finalState);
 
             logNodeExecutionStatistics(workflowId, totalTime);
 
@@ -240,32 +240,32 @@ public class QuviController {
     /**
      * 워크플로우에 따른 적절한 State 생성 및 초기화
      */
-    private Object createAndInitializeStateForWorkflow(String selectedWorkflow, QuviRequestDto request,
+    private void  createAndInitializeStateForWorkflow(String selectedWorkflow, QuviRequestDto request,
                                                        String sessionId, String workflowId) {
         switch (selectedWorkflow) {
             case "JOY":
                 // JOY는 기존 ChainStateManager 사용
                 WorkflowState joyState = stateManager.createState(workflowId);
                 initializeJoyState(joyState, request, sessionId, workflowId);
-                return joyState;
+                break;
 
             case "TOOLUSE":
                 // TOOLUSE는 ToolUseStateManager 사용
                 ToolUseWorkflowState toolUseState = toolUseStateManager.createState(workflowId);
                 initializeToolUseState(toolUseState, request, sessionId, workflowId);
-                return toolUseState;
+                break;
 
             case "SEMANTICQUERY":
                 // SEMANTICQUERY는 SemanticQueryStateManager 사용
                 SemanticQueryWorkflowState semanticState = semanticQueryStateManager.createState(workflowId);
                 initializeSemanticQueryState(semanticState, request, workflowId);
-                return semanticState;
+                break;
 
             default:
                 // 기본값은 기존 ChainStateManager 사용
                 WorkflowState defaultState = stateManager.createState(workflowId);
                 initializeDefaultState(defaultState, request, sessionId, workflowId, selectedWorkflow);
-                return defaultState;
+                break;
         }
     }
 
@@ -567,24 +567,6 @@ public class QuviController {
     }
 
     /**
-     * API 워크플로우 실행
-     */
-    private void executeApiWorkflow(WorkflowState state) {
-        log.info("🔌 API 워크플로우 실행");
-
-        workflowContext.executeNode("toolUseNode", state);
-
-        if (state.getInvalidDate() != null && state.getInvalidDate()) {
-            log.info("invalid_date 감지 - 워크플로우 종료");
-            return;
-        }
-
-        workflowContext.executeNode("queryExecutorNode", state);
-        handleExecutorResults(state);
-    }
-
-
-    /**
      * TOOLUSE 워크플로우 실행 (ToolUseWorkflowExecutionContext 사용)
      */
     private void executeToolUseWorkflow(String workflowId) {
@@ -598,57 +580,6 @@ public class QuviController {
     private void executeSemanticQueryWorkflow(String workflowId) {
         log.info("💾 SEMANTICQUERY 워크플로우 실행 - SemanticQuery Context 사용");
         semanticQueryWorkflowContext.executeSemanticQueryWorkflow(workflowId);
-    }
-
-    /**
-     * SQL 워크플로우 실행
-     */
-    private void executeSqlWorkflow(WorkflowState state) {
-        log.info("💾 SQL 워크플로우 실행");
-
-        workflowContext.executeNode("commanderNode", state);
-
-        if (state.getSelectedTable() == null || state.getSelectedTable().trim().isEmpty()) {
-            state.setQueryResultStatus("failed");
-            state.setSqlError("테이블 선택에 실패했습니다.");
-            log.error("Commander에서 테이블 선택 실패");
-            return;
-        }
-
-        workflowContext.executeNode("opendueNode", state);
-
-        if (state.getIsOpendue() != null && state.getIsOpendue()) {
-            workflowContext.executeNode("nl2sqlNode", state);
-        } else {
-            workflowContext.executeNode("daterNode", state);
-            workflowContext.executeNode("nl2sqlNode", state);
-        }
-
-        workflowContext.executeNode("queryExecutorNode", state);
-        handleExecutorResults(state);
-    }
-
-    /**
-     * DEFAULT 워크플로우 실행 (기존 로직)
-     */
-    private void executeDefaultWorkflow(WorkflowState state) {
-        log.info("⚙️ DEFAULT 워크플로우 실행");
-
-        // 기존 전체 워크플로우 실행 (checkpoint -> isapi 분기 등)
-        workflowContext.executeNode("checkpointNode", state);
-
-        if (state.getIsJoy() != null && state.getIsJoy()) {
-            workflowContext.executeNode("killjoyNode", state);
-            return;
-        }
-
-        workflowContext.executeNode("isApiNode", state);
-
-        if (state.getIsApi() != null && state.getIsApi()) {
-            executeApiWorkflow(state);
-        } else {
-            executeSqlWorkflow(state);
-        }
     }
 
     /**
