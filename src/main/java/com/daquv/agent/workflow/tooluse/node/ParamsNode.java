@@ -1,7 +1,5 @@
 package com.daquv.agent.workflow.tooluse.node;
 
-import com.daquv.agent.workflow.WorkflowNode;
-import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
@@ -70,7 +68,7 @@ public class ParamsNode implements ToolUseWorkflowNode {
         String companyId = state.getUserInfo().getCompanyId();
         String userId = state.getUserInfo().getUserId();
         String useInttId = state.getUserInfo().getUseInttId();
-        String chainId = state.getWorkflowId();
+        String workflowId = state.getWorkflowId();
 
         if (selectedApi == null || selectedApi.trim().isEmpty()) {
             log.error("선택된 API가 없습니다.");
@@ -94,7 +92,7 @@ public class ParamsNode implements ToolUseWorkflowNode {
             String qnaId = generationService.createQnaId(state.getNodeId());
 
             // History 조회
-            List<Map<String, Object>> paramsHistory = promptBuilder.getParamsHistory(chainId);
+            List<Map<String, Object>> paramsHistory = promptBuilder.getParamsHistory(workflowId);
 
             // 오늘 날짜 포맷팅
             String todayFormatted = DateUtils.getTodayFormatted();
@@ -106,7 +104,7 @@ public class ParamsNode implements ToolUseWorkflowNode {
 
             // Params 프롬프트 생성 (Few-shot 및 QnA 포함)
             PromptBuilder.PromptWithRetrieveTime promptWithTime = promptBuilder.buildParamsPromptWithFewShots(
-                    formattedQuestion, paramsHistory, qnaId, todayFormatted, JSON_FORMAT, chainId);
+                    formattedQuestion, paramsHistory, qnaId, todayFormatted, JSON_FORMAT, workflowId);
             PromptTemplate promptTemplate = promptWithTime.getPromptTemplate();
             String prompt = promptTemplate.build();
 
@@ -115,12 +113,12 @@ public class ParamsNode implements ToolUseWorkflowNode {
 
             // LLM 호출하여 날짜 파라미터 추출 with 프로파일링
             long startTime = System.currentTimeMillis();
-            String llmResponse = llmService.callQwenLlm(prompt, qnaId, chainId);
+            String llmResponse = llmService.callQwenLlm(prompt, qnaId, workflowId);
             long endTime = System.currentTimeMillis();
 
             // LLM 프로파일링 기록
             double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordLlmCall(chainId, elapsedTime, "params");
+            requestProfiler.recordLlmCall(workflowId, elapsedTime, "params");
 
             String rawOutput = LlmOutputHandler.extractAnswer(llmResponse);
 

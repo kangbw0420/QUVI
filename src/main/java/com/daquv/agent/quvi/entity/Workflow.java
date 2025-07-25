@@ -48,6 +48,9 @@ public class Workflow implements Serializable {
     @Column(name = "workflow_answer", columnDefinition = "TEXT")
     private String workflowAnswer;
 
+    @Column(name = "workflow_log", columnDefinition = "TEXT")
+    private String workflowLog;
+
     @OneToMany(mappedBy = "workflow", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Node> nodes = new ArrayList<>();
 

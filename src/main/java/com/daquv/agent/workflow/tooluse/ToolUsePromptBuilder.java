@@ -35,19 +35,19 @@ public class ToolUsePromptBuilder {
     /**
      * Funk 노드용 history 조회 및 변환
      */
-    public List<Map<String, Object>> getFunkHistory(String chainId) {
+    public List<Map<String, Object>> getFunkHistory(String workflowId) {
         List<String> requiredFields = Arrays.asList("user_question", "selected_api");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "funk", 5);
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields, "funk", 5);
         return promptBuilder.convertToChatHistory(historyDict, requiredFields, "user_question", "selected_api");
     }
 
     /**
      * Funk 프롬프트 생성 (few-shot 포함, QnA 저장)
      */
-    public PromptBuilder.PromptWithRetrieveTime buildFunkPromptWithFewShots(String userQuestion, List<Map<String, Object>> funkHistory, String qnaId, String chainId) {
+    public PromptBuilder.PromptWithRetrieveTime buildFunkPromptWithFewShots(String userQuestion, List<Map<String, Object>> funkHistory, String generationId, String workflowId) {
         try {
             // Few-shot 예제 검색
-            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_api_selector", 5, chainId);
+            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_api_selector", 5, workflowId);
 
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
@@ -58,14 +58,14 @@ public class ToolUsePromptBuilder {
             String systemPrompt = template.replace("{today}", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
 
             // Few-shot 예제 QnA 저장
-            if (qnaId != null && fewShots != null) {
+            if (generationId != null && fewShots != null) {
                 for (int i = 0; i < fewShots.size(); i++) {
                     Map<String, Object> shot = fewShots.get(i);
                     String input = (String) shot.get("input");
                     String output = (String) shot.get("output");
 
                     if (input != null && output != null) {
-                        generationService.recordFewshot(qnaId, input, input, output, i + 1);
+                        generationService.recordFewshot(generationId, input, input, output, i + 1);
                     }
                 }
             }
@@ -99,19 +99,19 @@ public class ToolUsePromptBuilder {
     /**
      * Params 노드용 history 조회 및 변환
      */
-    public List<Map<String, Object>> getParamsHistory(String chainId) {
+    public List<Map<String, Object>> getParamsHistory(String workflowId) {
         List<String> requiredFields = Arrays.asList("user_question", "date_info");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "params", 5);
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields, "params", 5);
         return promptBuilder.convertToChatHistory(historyDict, requiredFields, "user_question", "date_info");
     }
 
     /**
      * Params 프롬프트 생성 (few-shot 포함)
      */
-    public PromptBuilder.PromptWithRetrieveTime buildParamsPromptWithFewShots(String userQuestion, List<Map<String, Object>> paramsHistory, String qnaId, String todayFormatted, String jsonFormat, String chainId) {
+    public PromptBuilder.PromptWithRetrieveTime buildParamsPromptWithFewShots(String userQuestion, List<Map<String, Object>> paramsHistory, String qnaId, String todayFormatted, String jsonFormat, String workflowId) {
         try {
             // Few-shot 예제 검색
-            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_params_creator", 5, chainId);
+            Map<String, Object> fewShotResult = vectorRequest.getFewShots(userQuestion, "shots_params_creator", 5, workflowId);
 
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");

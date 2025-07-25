@@ -2,8 +2,6 @@ package com.daquv.agent.workflow.tooluse.node;
 
 import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.*;
-import com.daquv.agent.workflow.WorkflowNode;
-import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowNode;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import lombok.extern.slf4j.Slf4j;
@@ -61,7 +59,7 @@ public class ToolUseExecutorNode implements ToolUseWorkflowNode {
             log.info("LIMIT 값: {}", LIMIT);
 
             // API 쿼리는 권한/매핑 변환 없이 직접 실행
-            log.info("API 쿼리용 chainId 설정: {}", workflowId);
+            log.info("API 쿼리용 workflowId 설정: {}", workflowId);
             DatabaseProfilerAspect.setWorkflowId(workflowId);
 
             // 1. 행 수 계산

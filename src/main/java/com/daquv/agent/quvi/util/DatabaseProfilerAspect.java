@@ -44,8 +44,8 @@ public class DatabaseProfilerAspect {
     // 중복 호출 방지를 위한 ThreadLocal
     private static final ThreadLocal<Set<String>> processedMethods = new ThreadLocal<>();
 
-    // ChainId 관리를 위한 ThreadLocal
-    private static final ThreadLocal<String> chainIdThreadLocal = new ThreadLocal<>();
+    // workflowId 관리를 위한 ThreadLocal
+    private static final ThreadLocal<String> workflowIdThreadLocal = new ThreadLocal<>();
 
     /**
      *  Repository pointcut 통합 및 상속 구조 중복 제거
@@ -53,8 +53,8 @@ public class DatabaseProfilerAspect {
      */
     @Around("execution(* com.daquv.agent.repository..*(..)) || execution(* com.daquv.agent.quvi.repository..*(..))")
     public Object profilePromptRepositoryCall(ProceedingJoinPoint joinPoint) throws Throwable {
-        String chainId = getChainId();
-        if (chainId == null) {
+        String workflowId = getWorkflowId();
+        if (workflowId == null) {
             return joinPoint.proceed();
         }
 
@@ -71,7 +71,7 @@ public class DatabaseProfilerAspect {
         log.debug("Repository 분류 - actualClassName: {}, isPromptDb: {}", actualClassName, isPromptDb);
 
         String nodeId = determineNodeIdFromStackTrace();
-        return executeWithProfiling(joinPoint, chainId, isPromptDb, "Repository(" + nodeId + ")", methodKey);
+        return executeWithProfiling(joinPoint, workflowId, isPromptDb, "Repository(" + nodeId + ")", methodKey);
     }
 
     /**
@@ -80,8 +80,8 @@ public class DatabaseProfilerAspect {
      */
     @Around("execution(* org.springframework.jdbc.core.JdbcTemplate.*(..))")
     public Object profileJdbcTemplateCall(ProceedingJoinPoint joinPoint) throws Throwable {
-        String chainId = getChainId();
-        if (chainId == null) {
+        String workflowId = getWorkflowId();
+        if (workflowId == null) {
             return joinPoint.proceed();
         }
 
@@ -99,10 +99,10 @@ public class DatabaseProfilerAspect {
         boolean isPromptDb = (target == promptJdbcTemplate);
         String dbType = isPromptDb ? "promptJdbcTemplate" : "mainJdbcTemplate";
 
-        return executeWithProfiling(joinPoint, chainId, isPromptDb, "JdbcTemplate(" + dbType + ")", methodKey);
+        return executeWithProfiling(joinPoint, workflowId, isPromptDb, "JdbcTemplate(" + dbType + ")", methodKey);
     }
 
-    private Object executeWithProfiling(ProceedingJoinPoint joinPoint, String chainId,
+    private Object executeWithProfiling(ProceedingJoinPoint joinPoint, String workflowId,
                                         boolean isPromptDb, String nodeId, String methodKey) throws Throwable {
         long startTime = System.currentTimeMillis();
 
@@ -117,7 +117,7 @@ public class DatabaseProfilerAspect {
 
             // 📌 최소 시간 임계값 적용 (너무 짧은 호출은 무시)
             if (elapsedTime >= 0.001) { // 1ms 이상만 기록
-                requestProfiler.recordDbCall(chainId, elapsedTime, isPromptDb, nodeId);
+                requestProfiler.recordDbCall(workflowId, elapsedTime, isPromptDb, nodeId);
             }
             return result;
 
@@ -126,7 +126,7 @@ public class DatabaseProfilerAspect {
             double elapsedTime = (endTime - startTime) / 1000.0;
 
             if (elapsedTime >= 0.001) {
-                requestProfiler.recordDbCall(chainId, elapsedTime, isPromptDb, nodeId);
+                requestProfiler.recordDbCall(workflowId, elapsedTime, isPromptDb, nodeId);
             }
             throw e;
         } finally {
@@ -215,46 +215,46 @@ public class DatabaseProfilerAspect {
         return false;
     }
 
-    private String getChainId() {
-        // 1. RequestAttributes에서 chainId 조회 시도
+    private String getWorkflowId() {
+        // 1. RequestAttributes에서 workflowId 조회 시도
         try {
             RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
             if (requestAttributes instanceof ServletRequestAttributes) {
                 HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
-                Object chainIdObj = request.getAttribute("chainId");
-                if (chainIdObj != null) {
-                    return chainIdObj.toString();
+                Object workflowIdObj = request.getAttribute("workflowId");
+                if (workflowIdObj != null) {
+                    return workflowIdObj.toString();
                 }
             }
         } catch (Exception e) {
-            log.debug("RequestAttributes에서 chainId 조회 실패", e);
+            log.debug("RequestAttributes에서 workflowId 조회 실패", e);
         }
 
-        // 2. ThreadLocal에서 chainId 조회
-        String threadLocalChainId = chainIdThreadLocal.get();
-        if (threadLocalChainId != null) {
-            return threadLocalChainId;
+        // 2. ThreadLocal에서 workflowId 조회
+        String threadLocalWorkflowId = workflowIdThreadLocal.get();
+        if (threadLocalWorkflowId != null) {
+            return threadLocalWorkflowId;
         }
 
         return null;
     }
 
     /**
-     * ThreadLocal에 chainId 설정 (외부에서 호출 가능)
+     * ThreadLocal에 workflowId 설정 (외부에서 호출 가능)
      */
     public static void setWorkflowId(String workflowId) {
         if (workflowId != null) {
-            chainIdThreadLocal.set(workflowId);
-            log.debug("ThreadLocal에 chainId 설정: {}", workflowId);
+            workflowIdThreadLocal.set(workflowId);
+            log.debug("ThreadLocal에 workflowId 설정: {}", workflowId);
         }
     }
 
     /**
-     * ThreadLocal에서 chainId 제거
+     * ThreadLocal에서 workflowId 제거
      */
-    public static void removeChainId() {
-        chainIdThreadLocal.remove();
-        log.debug("ThreadLocal에서 chainId 제거");
+    public static void removeWorkflowId() {
+        workflowIdThreadLocal.remove();
+        log.debug("ThreadLocal에서 workflowId 제거");
     }
 
     private String determineNodeIdFromStackTrace() {
@@ -296,7 +296,7 @@ public class DatabaseProfilerAspect {
     // ThreadLocal cleanup을 위한 메서드
     public static void clearThreadLocal() {
         processedMethods.remove();
-        chainIdThreadLocal.remove();
+        workflowIdThreadLocal.remove();
         log.debug("ThreadLocal 정리 완료");
     }
 }

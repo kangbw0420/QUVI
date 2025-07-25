@@ -33,9 +33,9 @@ public class KillJoyPromptBuilder {
     /**
      * Killjoy 노드용 history 조회 및 변환
      */
-    public List<Map<String, Object>> getKilljoyHistory(String chainId) {
+    public List<Map<String, Object>> getKilljoyHistory(String workflowId) {
         List<String> requiredFields = Arrays.asList("user_question", "final_answer");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(chainId, requiredFields, "killjoy", 5);
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields, "killjoy", 5);
         return promptBuilder.convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
     }
 }

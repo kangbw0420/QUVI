@@ -91,22 +91,22 @@ public class WebSocketUtils {
      * 특정 노드의 진행 상황을 WebSocket으로 전송 (기존 호환성)
      * 현재는 로그로만 출력 (나중에 실제 WebSocket 전송 구현)
      */
-    public void sendNodeProgress(String chainId, String nodeId, String message, Map<String, Object> data) {
+    public void sendNodeProgress(String workflowId, String nodeId, String message, Map<String, Object> data) {
         try {
             Map<String, Object> progressMessage = new HashMap<>();
             progressMessage.put("type", "node_progress");
-            progressMessage.put("chain_id", chainId);
+            progressMessage.put("workflow_id", workflowId);
             progressMessage.put("node_id", nodeId);
             progressMessage.put("message", message);
             progressMessage.put("data", data);
             progressMessage.put("timestamp", System.currentTimeMillis());
             
             // 현재는 로그로만 출력
-            log.info("노드 진행 상황 - chainId: {}, nodeId: {}, message: {}, data: {}", 
-                    chainId, nodeId, message, data);
+            log.info("노드 진행 상황 - workflowId: {}, nodeId: {}, message: {}, data: {}",
+                    workflowId, nodeId, message, data);
             
         } catch (Exception e) {
-            log.error("WebSocket 메시지 전송 실패 - chainId: {}, nodeId: {}", chainId, nodeId, e);
+            log.error("WebSocket 메시지 전송 실패 - workflowId: {}, nodeId: {}", workflowId, nodeId, e);
         }
     }
 
@@ -165,49 +165,49 @@ public class WebSocketUtils {
     /**
      * NL2SQL 노드 진행 상황 전송
      */
-    public void sendNl2sqlProgress(String chainId, String sqlQuery) {
+    public void sendNl2sqlProgress(String workflowId, String sqlQuery) {
         Map<String, Object> data = new HashMap<>();
         data.put("sql_query", sqlQuery);
-        sendNodeProgress(chainId, "nl2sql", "SQL 쿼리 생성 완료", data);
+        sendNodeProgress(workflowId, "nl2sql", "SQL 쿼리 생성 완료", data);
     }
     
     /**
      * QueryExecutor 노드 진행 상황 전송
      */
-    public void sendQueryExecutorProgress(String chainId, int resultRows, int resultColumns) {
+    public void sendQueryExecutorProgress(String workflowId, int resultRows, int resultColumns) {
         Map<String, Object> data = new HashMap<>();
         data.put("result_rows", resultRows);
         data.put("result_columns", resultColumns);
-        sendNodeProgress(chainId, "queryExecutor", "쿼리 실행 완료", data);
+        sendNodeProgress(workflowId, "queryExecutor", "쿼리 실행 완료", data);
     }
     
     /**
      * Safeguard 노드 시작 알림
      */
-    public void sendSafeguardStart(String chainId) {
-        sendNodeProgress(chainId, "safeguard", "쿼리 검증 시작", new HashMap<>());
+    public void sendSafeguardStart(String workflowId) {
+        sendNodeProgress(workflowId, "safeguard", "쿼리 검증 시작", new HashMap<>());
     }
     
     /**
      * Safeguard 노드 완료 알림
      */
-    public void sendSafeguardComplete(String chainId, String correctedSqlQuery) {
+    public void sendSafeguardComplete(String workflowId, String correctedSqlQuery) {
         Map<String, Object> data = new HashMap<>();
         data.put("corrected_sql_query", correctedSqlQuery);
-        sendNodeProgress(chainId, "safeguard", "쿼리 검증 완료", data);
+        sendNodeProgress(workflowId, "safeguard", "쿼리 검증 완료", data);
     }
     
     /**
      * Nodata 노드 시작 알림
      */
-    public void sendNodataStart(String chainId) {
-        sendNodeProgress(chainId, "nodata", "데이터 없음 응답 생성 시작", new HashMap<>());
+    public void sendNodataStart(String workflowId) {
+        sendNodeProgress(workflowId, "nodata", "데이터 없음 응답 생성 시작", new HashMap<>());
     }
     
     /**
      * Killjoy 노드 시작 알림
      */
-    public void sendKilljoyStart(String chainId) {
-        sendNodeProgress(chainId, "killjoy", "상품권 외 질문 처리 시작", new HashMap<>());
+    public void sendKilljoyStart(String workflowId) {
+        sendNodeProgress(workflowId, "killjoy", "상품권 외 질문 처리 시작", new HashMap<>());
     }
 } 

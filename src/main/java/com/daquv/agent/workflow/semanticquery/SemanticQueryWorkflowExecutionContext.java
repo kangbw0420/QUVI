@@ -1,9 +1,9 @@
 package com.daquv.agent.workflow.semanticquery;
 
-import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
 import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.daquv.agent.workflow.semanticquery.utils.SemanticQueryExecutorResultHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -27,7 +27,8 @@ public class SemanticQueryWorkflowExecutionContext {
     private NodeService nodeService;
 
     @Autowired
-    private HistoryService historyService;
+    private SemanticQueryExecutorResultHandler executorResultHandler;
+
     @Autowired
     private WorkflowService workflowService;
 
@@ -69,11 +70,10 @@ public class SemanticQueryWorkflowExecutionContext {
             // 2. ExtractFilter Node - 필터 추출 및 적용
             executeNode("extractFilterNode", state);
 
-
-            // 4. Manipulation Node - order by/limit 추출 및 커스텀 조작
+            // 3. Manipulation Node - order by/limit 추출 및 커스텀 조작
             executeNode("manipulationNode", state);
 
-            // 5. Dsl2Sql Node - DSL을 SQL로 변환
+            // 4. Dsl2Sql Node - DSL을 SQL로 변환
             executeNode("dsl2SqlNode", state);
 
             // SQL 변환 실패 확인
@@ -90,31 +90,27 @@ public class SemanticQueryWorkflowExecutionContext {
                 return;
             }
 
-            // 6. RunSql Node - SQL 실행 및 결과 저장
+            // 5. RunSql Node - SQL 실행 및 결과 저장
             executeNode("runSqlNode", state);
 
-            // 쿼리 실행 결과 확인
+            // 6. PostProcess Node (쿼리 실행에 성공한 경우만)
             boolean hasValidResults = false;
-            boolean hasNoData = true;
             for (SemanticQueryWorkflowState.SemanticQueryExecution execution : state.getSemanticQueryExecutionMap().values()) {
                 if ("success".equals(execution.getQueryResultStatus())) {
                     hasValidResults = true;
-                }
-                if (execution.getNoData() == null || !execution.getNoData()) {
-                    hasNoData = false;
+                    break;
                 }
             }
-            // 쿼리 실행에 성공한 경우만 후처리 진행
-            if (hasValidResults) {
-                // 7. PostProcess Node - DuckDB 후처리
-                executeNode("postProcessNode", state);
 
-//                // 8. SemanticQuery Respondent - 최종 응답 생성
-//                executeNode("semanticQueryRespondentNode", state);
-//                log.info("SemanticQuery: respondent 처리 완료 - 워크플로우 종료");
+            if (hasValidResults) {
+                executeNode("postProcessNode", state);
             } else {
                 log.warn("SemanticQuery: 모든 쿼리 실행이 실패하여 후처리를 건너뜁니다.");
             }
+
+            // 7. Executor 결과 처리
+            log.info("SemanticQuery: Executor 결과 처리 시작");
+            executorResultHandler.handleSemanticQueryExecutorResults(state);
 
             // 변경된 State 저장
             stateManager.updateState(workflowId, state);
@@ -244,7 +240,7 @@ public class SemanticQueryWorkflowExecutionContext {
             }
 
         } catch (Exception e) {
-            log.error("SemanticQuery 노드 실행 실패: {} - chainId: {}", nodeBeanName, state.getWorkflowId(), e);
+            log.error("SemanticQuery 노드 실행 실패: {} - workflowId: {}", nodeBeanName, state.getWorkflowId(), e);
 
             // Trace 오류 상태로 변경
             if (nodeId != null) {

@@ -2,7 +2,6 @@ package com.daquv.agent.workflow.semanticquery.node;
 
 import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.llmadmin.WorkflowService;
-import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
@@ -53,11 +52,11 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
     public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         String selectedTable = state.getSelectedTable();
-        String chainId = state.getWorkflowId();
+        String workflowId = state.getWorkflowId();
 
 
-        log.info("DateCheckerNode 실행 시작 - userQuestion: {}, selectedTable: {}, chainId: {}",
-                userQuestion, selectedTable, chainId);
+        log.info("DateCheckerNode 실행 시작 - userQuestion: {}, selectedTable: {}, workflowId: {}",
+                userQuestion, selectedTable, workflowId);
 
         // 사용자 질문 검증
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
@@ -85,7 +84,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
             // History 조회 (selectedTable이 null이어도 진행)
             List<Map<String, Object>> daterHistory = null;
             try {
-                daterHistory = promptBuilder.getDaterHistory(chainId);
+                daterHistory = promptBuilder.getDaterHistory(workflowId);
                 log.info("Dater history 조회 완료: {} 개", daterHistory != null ? daterHistory.size() : 0);
             } catch (Exception e) {
                 log.warn("Dater history 조회 실패, 빈 리스트로 진행: {}", e.getMessage());
@@ -98,7 +97,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
             // HIL용 날짜 체크 프롬프트 생성 (UNCLEAR 반환하도록 설계됨)
             PromptWithRetrieveTime promptResult = null;
             try {
-                promptResult = promptBuilder.buildDateCheckerPromptForHIL(userQuestion, generationId, chainId);
+                promptResult = promptBuilder.buildDateCheckerPromptForHIL(userQuestion, generationId, workflowId);
                 log.info("HIL용 프롬프트 빌더 호출 성공");
             } catch (Exception e) {
                 log.error("HIL용 프롬프트 빌더 호출 실패", e);
@@ -126,7 +125,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
             long startTime = System.currentTimeMillis();
             String llmResponse = null;
             try {
-                llmResponse = llmService.callQwenLlm(prompt, generationId, chainId);
+                llmResponse = llmService.callQwenLlm(prompt, generationId, workflowId);
                 log.info("LLM 응답 수신 완료, 길이: {}", llmResponse != null ? llmResponse.length() : 0);
             } catch (Exception e) {
                 log.error("LLM 호출 실패", e);
@@ -140,7 +139,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
 
             // LLM 프로파일링 기록
             double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordLlmCall(chainId, elapsedTime, "dater");
+            requestProfiler.recordLlmCall(workflowId, elapsedTime, "dater");
 
             // JSON 응답에서 날짜 정보 추출
             Map<String, String> dateInfo = LlmOutputHandler.extractDateInfo(llmResponse);
@@ -155,10 +154,10 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                 String clarificationMessage = generateDateClarificationMessage(userQuestion, dateInfo);
 
                 try {
-                    workflowService.waitingWorkflow(chainId, clarificationMessage);
-                    log.info("워크플로우를 waiting 상태로 변경 완료 - workflowId: {}", chainId);
+                    workflowService.waitingWorkflow(workflowId, clarificationMessage);
+                    log.info("워크플로우를 waiting 상태로 변경 완료 - workflowId: {}", workflowId);
                 } catch (Exception e) {
-                    log.error("워크플로우 waiting 상태 변경 실패 - workflowId: {}", chainId, e);
+                    log.error("워크플로우 waiting 상태 변경 실패 - workflowId: {}", workflowId, e);
                     setErrorInExecution(state, selectedTable, "워크플로우 상태 변경 실패: " + e.getMessage());
                     state.setFinalAnswer("죄송합니다. 처리 중 오류가 발생했습니다.");
                     return;

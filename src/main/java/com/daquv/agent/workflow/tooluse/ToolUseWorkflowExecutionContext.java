@@ -2,9 +2,6 @@ package com.daquv.agent.workflow.tooluse;
 
 import com.daquv.agent.quvi.llmadmin.HistoryService;
 import com.daquv.agent.quvi.llmadmin.NodeService;
-import com.daquv.agent.workflow.ChainStateManager;
-import com.daquv.agent.workflow.WorkflowNode;
-import com.daquv.agent.workflow.WorkflowState;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +13,7 @@ import org.springframework.stereotype.Component;
 public class ToolUseWorkflowExecutionContext {
 
     @Autowired
-    private ChainStateManager stateManager;
+    private ToolUseStateManager stateManager;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -33,7 +30,7 @@ public class ToolUseWorkflowExecutionContext {
      * - API 경로: funk -> params -> (yqmd or executor) -> respondent
      */
     public void executeToolUseWorkflow(String workflowId) {
-        WorkflowState state = stateManager.getState(workflowId);
+        ToolUseWorkflowState state = stateManager.getState(workflowId);
         if (state == null) {
             throw new IllegalStateException("Workflow ID에 해당하는 State를 찾을 수 없습니다: " + workflowId);
         }
@@ -41,13 +38,6 @@ public class ToolUseWorkflowExecutionContext {
         log.info("=== ToolUse 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
 
         try {
-            // 0. NextPage 처리 (next_page 요청인 경우)
-            executeNode("nextPageNode", state);
-
-            if ("next_page".equals(state.getUserQuestion())) {
-                log.info("next_page 처리 완료 - ToolUse 워크플로우 종료");
-                return;
-            }
 
             // 1. Funk Node - API 함수 선택
             executeNode("funkNode", state);
@@ -124,7 +114,7 @@ public class ToolUseWorkflowExecutionContext {
     /**
      * 개별 노드 실행 (State 직접 주입 + Trace/State 처리)
      */
-    public void executeNode(String nodeBeanName, WorkflowState state) {
+    public void executeNode(String nodeBeanName, ToolUseWorkflowState state) {
         String nodeId = null;
 
         log.info("ToolUse node executing: {} - state: {}", nodeBeanName, state.getWorkflowId());
@@ -132,8 +122,8 @@ public class ToolUseWorkflowExecutionContext {
         try {
             Object nodeBean = applicationContext.getBean(nodeBeanName);
 
-            if (nodeBean instanceof WorkflowNode) {
-                WorkflowNode node = (WorkflowNode) nodeBean;
+            if (nodeBean instanceof ToolUseWorkflowNode) {
+                ToolUseWorkflowNode node = (ToolUseWorkflowNode) nodeBean;
 
                 // 1. Node 생성
                 nodeId = nodeService.createNode(state.getWorkflowId(), node.getId());
@@ -155,7 +145,7 @@ public class ToolUseWorkflowExecutionContext {
             }
 
         } catch (Exception e) {
-            log.error("ToolUse 노드 실행 실패: {} - chainId: {}", nodeBeanName, state.getWorkflowId(), e);
+            log.error("ToolUse 노드 실행 실패: {} - workflowId: {}", nodeBeanName, state.getWorkflowId(), e);
 
             // Trace 오류 상태로 변경
             if (nodeId != null) {
@@ -173,7 +163,7 @@ public class ToolUseWorkflowExecutionContext {
     /**
      * ToolUse State를 DB에 저장
      */
-    private void saveStateToDatabase(String traceId, WorkflowState state) {
+    private void saveStateToDatabase(String traceId, ToolUseWorkflowState state) {
         try {
             java.util.Map<String, Object> stateMap = new java.util.HashMap<>();
 
@@ -216,18 +206,15 @@ public class ToolUseWorkflowExecutionContext {
                 stateMap.put("companyId", state.getUserInfo().getCompanyId());
             }
 
-            // Node 엔티티의 nodeStateJson에도 JSON으로 저장
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                String stateJson = objectMapper.writeValueAsString(stateMap);
 
-                // NodeService를 통해 nodeStateJson 업데이트
-                nodeService.updateNodeStateJson(traceId, stateJson);
+            ObjectMapper objectMapper = new ObjectMapper();
+            String stateJson = objectMapper.writeValueAsString(stateMap);
 
-                log.debug("ToolUse Node state JSON 저장 완료 - traceId: {}", traceId);
-            } catch (Exception jsonException) {
-                log.error("ToolUse JSON 변환 실패 - traceId: {}", traceId, jsonException);
-            }
+            // NodeService를 통해 nodeStateJson 업데이트
+            nodeService.updateNodeStateJson(traceId, stateJson);
+
+            log.debug("ToolUse Node state JSON 저장 완료 - traceId: {}", traceId);
+
 
         } catch (Exception e) {
             log.error("ToolUse State DB 저장 실패 - traceId: {}", traceId, e);

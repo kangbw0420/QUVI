@@ -1,7 +1,6 @@
 package com.daquv.agent.quvi.dto;
 
-import com.daquv.agent.quvi.dto.AlertType;
-import com.daquv.agent.quvi.logging.ChainLogContext;
+import com.daquv.agent.quvi.logging.WorkflowLogContext;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,14 +20,14 @@ public class LogAlertRule {
     private String ruleName;
     private String description;
     private Predicate<ChainLogEntry> condition;
-    private Predicate<ChainLogContext> contextCondition;
+    private Predicate<WorkflowLogContext> contextCondition;
     private AlertType alertType;
     private boolean enabled;
 
     /**
      * 규칙 매칭 확인
      */
-    public boolean matches(ChainLogContext context, ChainLogEntry entry) {
+    public boolean matches(WorkflowLogContext context, ChainLogEntry entry) {
         if (!enabled) return false;
 
         boolean entryMatches = condition == null || condition.test(entry);

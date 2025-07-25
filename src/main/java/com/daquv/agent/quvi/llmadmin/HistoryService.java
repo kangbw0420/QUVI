@@ -127,9 +127,9 @@ public class HistoryService {
                     historyRow.put(columnName, value);
                 }
                 
-                String resultChainId = (String) row[stateHistory.size()]; // chain_id
+                String resultWorkflowId = (String) row[stateHistory.size()]; // chain_id
                 
-                historyByChain.computeIfAbsent(resultChainId, k -> new ArrayList<>()).add(historyRow);
+                historyByChain.computeIfAbsent(resultWorkflowId, k -> new ArrayList<>()).add(historyRow);
             }
             
             log.info("Processed history: {}", historyByChain);
@@ -145,18 +145,18 @@ public class HistoryService {
     /**
      * Get the nth most recent history for a given chain_id and column.
      * 
-     * @param chainId 체인 ID
+     * @param workflowId 체인 ID
      * @param column 조회할 컬럼명
      * @param n 위치 (1 = 최신, 2 = 두 번째 최신, 등)
      * @return 지정된 컬럼의 n번째 최신 히스토리 값
      */
-    public Object getNthHistory(String chainId, String column, int n) {
-        log.info("getNthHistory - chainId: {}, column: {}, n: {}", chainId, column, n);
+    public Object getNthHistory(String workflowId, String column, int n) {
+        log.info("getNthHistory - workflowId: {}, column: {}, n: {}", workflowId, column, n);
         
         try {
             // 현재 workflow의 session_id 조회
-            Workflow currentWorkflow = workflowRepository.findById(chainId)
-                    .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + chainId));
+            Workflow currentWorkflow = workflowRepository.findById(workflowId)
+                    .orElseThrow(() -> new IllegalArgumentException("Workflow not found: " + workflowId));
             
             // conversation_id를 직접 조회하는 쿼리 사용
             String sessionId = currentWorkflow.getSession().getSessionId();
@@ -180,7 +180,7 @@ public class HistoryService {
             List<Object> results = query.getResultList();
             
             if (results.isEmpty()) {
-                log.warn("No history found for chain_id: {}, column: {}", chainId, column);
+                log.warn("No history found for workflowId: {}, column: {}", workflowId, column);
                 return null;
             }
             
@@ -194,7 +194,7 @@ public class HistoryService {
             return result;
             
         } catch (Exception e) {
-            log.error("Error in getNthHistory - chainId: {}, column: {}, n: {}", chainId, column, n, e);
+            log.error("Error in getNthHistory - workflowId: {}, column: {}, n: {}", workflowId, column, n, e);
             return null;
         }
     }
@@ -202,23 +202,23 @@ public class HistoryService {
     /**
      * Get the most recent history for a given chain_id and column.
      * 
-     * @param chainId 체인 ID
+     * @param workflowId 체인 ID
      * @param column 조회할 컬럼명
      * @return 최신 히스토리 값
      */
-    public Object getRecentHistory(String chainId, String column) {
-        return getNthHistory(chainId, column, 1);
+    public Object getRecentHistory(String workflowId, String column) {
+        return getNthHistory(workflowId, column, 1);
     }
 
     /**
      * Get the second most recent history for a given chain_id and column.
      * 
-     * @param chainId 체인 ID
+     * @param workflowId 체인 ID
      * @param column 조회할 컬럼명
      * @return 두 번째 최신 히스토리 값
      */
-    public Object getFormerHistory(String chainId, String column) {
-        return getNthHistory(chainId, column, 2);
+    public Object getFormerHistory(String workflowId, String column) {
+        return getNthHistory(workflowId, column, 2);
     }
 
     /**
