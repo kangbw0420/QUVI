@@ -404,49 +404,6 @@ public class QuviController {
     }
 
     /**
-     * Executor 결과 처리 공통 로직
-     */
-    private void handleExecutorResults(WorkflowState state) {
-        if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
-            if (state.getInvalidDate() != null && state.getInvalidDate()) {
-                log.info("executor에서 invalid_date 감지 - 워크플로우 종료");
-                return;
-            }
-
-            if (state.getNoData() != null && state.getNoData()) {
-                workflowContext.executeNode("nodataNode", state);
-                return;
-            }
-
-            if (state.getQueryError() != null && state.getQueryError() &&
-                    (state.getSafeCount() == null || state.getSafeCount() < 2)) {
-                workflowContext.executeNode("safeguardNode", state);
-
-                if (state.getQueryChanged() != null && state.getQueryChanged()) {
-                    workflowContext.executeNode("queryExecutorNode", state);
-
-                    if (state.getInvalidDate() != null && state.getInvalidDate()) {
-                        return;
-                    }
-
-                    if (state.getNoData() != null && state.getNoData()) {
-                        workflowContext.executeNode("nodataNode", state);
-                        return;
-                    }
-                }
-            }
-
-            if ("success".equals(state.getQueryResultStatus())) {
-                workflowContext.executeNode("respondentNode", state);
-            }
-        } else {
-            state.setQueryResultStatus("failed");
-            state.setSqlError("SQL 쿼리가 생성되지 않았습니다.");
-            log.error("SQL 쿼리 생성 실패");
-        }
-    }
-
-    /**
      * 성공 응답 생성
      */
     private Map<String, Object> buildResponse(String conversationId, String chainId,
