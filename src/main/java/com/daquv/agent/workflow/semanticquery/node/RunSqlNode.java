@@ -175,17 +175,17 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
             }
 
             try {
-//                // Cross-database 참조 문제 해결을 위한 SQL 전처리
-//                String processedSql = preprocessSqlForCrossDatabase(sql);
-//
-//                // 페이지네이션 적용
-//                String paginatedSql = countAndPaginate(processedSql, workflowId);
+                // Cross-database 참조 문제 해결을 위한 SQL 전처리
+                String processedSql = preprocessSqlForCrossDatabase(sql);
+
+                // 페이지네이션 적용
+                String paginatedSql = countAndPaginate(processedSql, workflowId);
 
                 // 일반 쿼리 처리
                 String selectedTable = queryKey;
 
                 // 1. 권한 있는 회사/계좌 검사
-                String queryRightCom = queryUtils.addComCondition(sql, state.getUserInfo().getCompanyId());
+                String queryRightCom = queryUtils.addComCondition(paginatedSql, state.getUserInfo().getCompanyId());
 
                 // 2. 주식종목/은행명 매핑 변환
                 String queryRightStock = nameModifierUtils.modifyStock(queryRightCom);
