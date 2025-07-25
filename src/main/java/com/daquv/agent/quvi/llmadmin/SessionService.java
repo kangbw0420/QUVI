@@ -1,5 +1,6 @@
 package com.daquv.agent.quvi.llmadmin;
 
+import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.entity.Session;
 import com.daquv.agent.quvi.repository.SessionRepository;
 import com.daquv.agent.quvi.repository.UsersRepository;
@@ -55,10 +56,10 @@ public class SessionService {
      * 새로운 sessionId 생성. UUID로 ID 생성하고 status는 active로 설정
      */
     @Transactional
-    public String makeSessionId(String userId) {
-        log.info("makeSessionId start - userId: {}", userId);
-
-        String companyId = getCompanyIdByUserId(userId);
+    public String makeSessionId(QuviRequestDto request) {
+        log.info("makeSessionId start - userId: {}", request.getUserId());
+        String userId = request.getUserId();
+        String companyId = request.getCompanyId();
         log.debug("Retrieved companyId: {} for userId: {}", companyId, userId);
 
         String workflowId = getCurrentWorkflowId();
@@ -145,18 +146,5 @@ public class SessionService {
             log.debug("getCurrentWorkflowId 실패: {}", e.getMessage());
         }
         return null;
-    }
-
-    /**
-     * userId로 companyId 조회 (성능 최적화된 버전)
-     */
-    private String getCompanyIdByUserId(String userId) {
-        log.debug("getCompanyIdByUserId start - userId: {}", userId);
-
-        return usersRepository.findCompanyIdByUserId(userId)
-                .orElseThrow(() -> {
-                    log.error("User not found or company not assigned for userId: {}", userId);
-                    return new IllegalArgumentException("User not found or company not assigned: " + userId);
-                });
     }
 }
