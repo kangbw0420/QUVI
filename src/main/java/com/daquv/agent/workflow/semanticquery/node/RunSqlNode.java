@@ -12,6 +12,7 @@ import com.daquv.agent.workflow.util.QueryUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -37,6 +38,8 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
     private final QueryUtils queryUtils;
     private final NameModifierUtils nameModifierUtils;
     private final QueryRequest queryRequest;
+    @Value("${view-table.dialect}")
+    private String DIALECT;
 
     @Override
     public String getId() {
