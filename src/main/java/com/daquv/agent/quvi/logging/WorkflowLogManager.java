@@ -128,15 +128,15 @@ public class WorkflowLogManager {
 
         context.complete(actualSuccess);
 
-        String chainLogText = buildChainLogText(context);
+        String workflowLogText = buildChainLogText(context);
 
         try {
-            // Chain 테이블에 로그 저장 - 트랜잭션 내에서 실행
+            // Workflow 테이블에 로그 저장 - 트랜잭션 내에서 실행
             if (actualSuccess) {
-                workflowService.updateChainLog(workflowId, chainLogText);
+                workflowService.updateWorkflowLog(workflowId, workflowLogText);
                 log.info("✅ Chain 로그 저장 성공 - workflowId: {}", workflowId);
             } else {
-                workflowService.markChainError(workflowId, "Workflow execution failed", chainLogText);
+                workflowService.markWorkflowError(workflowId, "Workflow execution failed", workflowLogText);
                 log.info("❌ Chain 에러 로그 저장 성공 - workflowId: {}", workflowId);
             }
         } catch (Exception e) {
@@ -146,7 +146,7 @@ public class WorkflowLogManager {
 
         // 실패한 경우에만 Flow 알림 전송 (비동기)
         if (!actualSuccess) {
-            sendWorkflowErrorAlertAsync(workflowId, context, chainLogText);
+            sendWorkflowErrorAlertAsync(workflowId, context, workflowLogText);
         }
 
         // 메모리에서 제거 (옵션)
@@ -185,7 +185,7 @@ public class WorkflowLogManager {
     private String buildChainLogText(WorkflowLogContext context) {
         StringBuilder logText = new StringBuilder();
 
-        logText.append("=== Chain Log ===\n");
+        logText.append("=== Workflow Log ===\n");
         logText.append("Workflow ID: ").append(context.getWorkflowId()).append("\n");
         logText.append("User ID: ").append(context.getUserId()).append("\n");
         logText.append("Question: ").append(context.getUserQuestion()).append("\n");

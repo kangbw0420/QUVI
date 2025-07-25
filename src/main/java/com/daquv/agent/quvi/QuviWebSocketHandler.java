@@ -297,7 +297,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             log.debug("기존 세션 ID 사용: {}", sessionId);
             return sessionId;
         } else {
-            String newSessionId = sessionService.makeSessionId(request.getUserId());
+            String newSessionId = sessionService.makeSessionId(request);
             log.debug("새 세션 ID 생성: {}", newSessionId);
             return newSessionId;
         }

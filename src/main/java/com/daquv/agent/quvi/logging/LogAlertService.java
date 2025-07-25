@@ -68,20 +68,30 @@ public class LogAlertService {
         }
 
         try {
+            String companyId = "UNKNOWN";
+            if (context.getUserInfo() != null && context.getUserInfo().getCompanyId() != null) {
+                companyId = context.getUserInfo().getCompanyId();
+            }
+
+            log.info("  - 최종 companyId: {}", companyId);
+
             // 제목 생성
-            String title = String.format("🚨 [%s] 체인 실행 실패 - %s",
-                    context.getUserInfo() != null ? context.getUserInfo().getCompanyId() : "UNKNOWN",
-                    workflowId);
+            String title = String.format("[%s] 체인 실행 실패 - %s", companyId, workflowId);
+            if (title.length() > 50) {
+                title = title.substring(0, 47) + "...";
+            }
+
+            log.info("  - 생성된 title: {}", title);
 
             // 내용 생성 (chain_id와 chain_log 중심)
             String contents = buildWorkflowErrorContents(workflowId, context, chainLogText);
 
             // Flow API 요청 본문 생성
             Map<String, Object> body = new HashMap<>();
-            body.put("registerId", registerEmail);
+            body.put("receiverId", registerEmail);
             body.put("title", title);
             body.put("contents", contents);
-            // body.put("status", "request");
+
 
             // HTTP 헤더 설정
             HttpHeaders headers = new HttpHeaders();
@@ -148,8 +158,8 @@ public class LogAlertService {
         contents.append("Workflow Log:\n");
         contents.append("```\n");
         String truncatedLog = workflowLogText;
-        if (workflowId.length() > 4000) {
-            truncatedLog = workflowLogText.substring(0, 4000) + "\n\n... (로그가 길어서 축약됨)";
+        if (workflowLogText.length() > 5000) {
+            truncatedLog = workflowLogText.substring(0, 5000) + "\n\n... (로그가 길어서 축약됨)";
         }
 
         contents.append(truncatedLog);

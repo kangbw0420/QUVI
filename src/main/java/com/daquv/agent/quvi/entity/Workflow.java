@@ -90,16 +90,16 @@ public class Workflow implements Serializable {
         active, completed, error, waiting
     }
 
-//    /**
-//     * 체인 로그 추가
-//     */
-//    public void addChainLog(String logEntry) {
-//        if (this.chainLog == null) {
-//            this.chainLog = logEntry;
-//        } else {
-//            this.chainLog += "\n" + logEntry;
-//        }
-//    }
+    /**
+     * 체인 로그 추가
+     */
+    public void addWorkflowLog(String logEntry) {
+        if (this.workflowLog == null) {
+            this.workflowLog = logEntry;
+        } else {
+            this.workflowLog += "\n" + logEntry;
+        }
+    }
 
     /**
      * 체인 에러 상태로 변경 및 로그 저장
@@ -107,6 +107,10 @@ public class Workflow implements Serializable {
     public void markError(String errorMessage, String errorLog) {
         this.workflowStatus = WorkflowStatus.error;
         this.workflowEnd = LocalDateTime.now();
+        this.workflowAnswer = errorMessage;
+        if(errorLog != null) {
+            addWorkflowLog(errorLog);
+        }
     }
 
     public static Workflow create(String workflowId, Session session, String question, WorkflowStatus status) {
