@@ -107,6 +107,10 @@ public class Workflow implements Serializable {
     public void markError(String errorMessage, String errorLog) {
         this.workflowStatus = WorkflowStatus.error;
         this.workflowEnd = LocalDateTime.now();
+        this.workflowAnswer = errorMessage;
+        if(errorLog != null) {
+            addWorkflowLog(errorLog);
+        }
     }
 
     public static Workflow create(String workflowId, Session session, String question, WorkflowStatus status) {
