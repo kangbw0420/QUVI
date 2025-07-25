@@ -2,7 +2,6 @@ package com.daquv.agent.quvi.logging;
 
 import com.daquv.agent.quvi.dto.ChainLogEntry;
 import com.daquv.agent.quvi.dto.LogAlertRule;
-import com.daquv.agent.quvi.logging.ChainLogContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -44,16 +43,16 @@ public class LogAlertService {
     /**
      * 체인 에러 전용 알림 전송
      */
-    public void sendChainErrorAlert(LogAlertRule rule, String chainId, ChainLogContext context,
+    public void sendChainErrorAlert(LogAlertRule rule, String workflowId, WorkflowLogContext context,
                                     ChainLogEntry entry, String chainLogText) {
-        log.info("🚨 체인 에러 알림 전송 시작 - chainId: {}", chainId);
+        log.info("🚨 체인 에러 알림 전송 시작 - workflowId: {}", workflowId);
 
         CompletableFuture.runAsync(() -> {
             try {
-                sendFlowChainErrorAlert(rule, chainId, context, entry, chainLogText);
-                log.info("✅ 체인 에러 Flow 알림 전송 성공 - chainId: {}", chainId);
+                sendFlowChainErrorAlert(rule, workflowId, context, entry, chainLogText);
+                log.info("✅ 체인 에러 Flow 알림 전송 성공 - workflowId: {}", workflowId);
             } catch (Exception e) {
-                log.error("❌ 체인 에러 Flow 알림 전송 실패 - chainId: {}, error: {}", chainId, e.getMessage(), e);
+                log.error("❌ 체인 에러 Flow 알림 전송 실패 - workflowId: {}, error: {}", workflowId, e.getMessage(), e);
             }
         });
     }
@@ -61,7 +60,7 @@ public class LogAlertService {
     /**
      * Flow API로 체인 에러 알림 전송
      */
-    private void sendFlowChainErrorAlert(LogAlertRule rule, String chainId, ChainLogContext context,
+    private void sendFlowChainErrorAlert(LogAlertRule rule, String workflowId, WorkflowLogContext context,
                                          ChainLogEntry entry, String chainLogText) {
         if (flowApiKey == null || flowApiKey.isEmpty()) {
             log.debug("Flow API Key가 설정되지 않았습니다.");
@@ -72,10 +71,10 @@ public class LogAlertService {
             // 제목 생성
             String title = String.format("🚨 [%s] 체인 실행 실패 - %s",
                     context.getUserInfo() != null ? context.getUserInfo().getCompanyId() : "UNKNOWN",
-                    chainId);
+                    workflowId);
 
             // 내용 생성 (chain_id와 chain_log 중심)
-            String contents = buildChainErrorContents(chainId, context, chainLogText);
+            String contents = buildWorkflowErrorContents(workflowId, context, chainLogText);
 
             // Flow API 요청 본문 생성
             Map<String, Object> body = new HashMap<>();
@@ -118,24 +117,24 @@ public class LogAlertService {
                 throw requestException;
             }
 
-            log.info("✅ 체인 에러 Flow 알림 전송 성공 - chainId: {}", chainId);
+            log.info("✅ 체인 에러 Flow 알림 전송 성공 - workflowId: {}", workflowId);
 
         } catch (Exception e) {
-            log.error("체인 에러 Flow 알림 전송 실패 - chainId: {}, error: {}", chainId, e.getMessage(), e);
+            log.error("체인 에러 Flow 알림 전송 실패 - workflowId: {}, error: {}", workflowId, e.getMessage(), e);
             throw e;
         }
     }
 
     /**
-     * 체인 에러 알림 내용 생성 (chain_id와 chain_log 중심)
+     * 체인 에러 알림 내용 생성 (workflowId와 workflow_log 중심)
      */
-    private String buildChainErrorContents(String chainId, ChainLogContext context, String chainLogText) {
+    private String buildWorkflowErrorContents(String workflowId, WorkflowLogContext context, String workflowLogText) {
         StringBuilder contents = new StringBuilder();
 
         // 기본 정보
         contents.append("체인 실행 실패 알림\n\n");
         contents.append("체인 정보\n");
-        contents.append("Chain ID: ").append(chainId).append("\n");
+        contents.append("Workflow ID: ").append(workflowId).append("\n");
         contents.append("User ID: ").append(context.getUserId()).append("\n");
 
         if (context.getUserInfo() != null && context.getUserInfo().getCompanyId() != null) {
@@ -144,13 +143,13 @@ public class LogAlertService {
 
         contents.append("Question: ").append(context.getUserQuestion()).append("\n");
         contents.append("Duration: ").append(context.getDurationMs()).append("ms\n");
-        contents.append("Session ID: ").append(context.getConversationId()).append("\n\n");
+        contents.append("Session ID: ").append(context.getSessionId()).append("\n\n");
 
-        contents.append("Chain Log:\n");
+        contents.append("Workflow Log:\n");
         contents.append("```\n");
-        String truncatedLog = chainLogText;
-        if (chainLogText.length() > 4000) {
-            truncatedLog = chainLogText.substring(0, 4000) + "\n\n... (로그가 길어서 축약됨)";
+        String truncatedLog = workflowLogText;
+        if (workflowId.length() > 4000) {
+            truncatedLog = workflowLogText.substring(0, 4000) + "\n\n... (로그가 길어서 축약됨)";
         }
 
         contents.append(truncatedLog);

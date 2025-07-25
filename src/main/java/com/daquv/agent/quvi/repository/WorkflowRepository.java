@@ -34,8 +34,8 @@ public interface WorkflowRepository extends JpaRepository<Workflow, String> {
     /**
      * 체인 ID로 체인 조회 (대화 정보 포함)
      */
-    @Query("SELECT c FROM Workflow c JOIN FETCH c.session WHERE c.workflowId = :chainId")
-    Optional<Workflow> findByIdWithConversation(@Param("chainId") String chainId);
+    @Query("SELECT c FROM Workflow c JOIN FETCH c.session WHERE c.workflowId = :workflowId")
+    Optional<Workflow> findByIdWithConversation(@Param("workflowId") String workflowId);
 
     /**
      * 특정 기간 동안의 체인 목록 조회

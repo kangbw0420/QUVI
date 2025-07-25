@@ -49,10 +49,10 @@ public class GenerationService {
     public String createQnaId(String traceId) {
         log.info("createQnaId start - traceId: {}", traceId);
 
-        String workflowId = getCurrentChainId();
+        String workflowId = getCurrentWorkflowId();
         if (workflowId != null) {
             DatabaseProfilerAspect.setWorkflowId(workflowId);
-            log.debug("QnaService에서 chainId 설정: {}", workflowId);
+            log.debug("QnaService에서 workflowId 설정: {}", workflowId);
         }
 
         try {
@@ -87,10 +87,10 @@ public class GenerationService {
         log.info("recordFewshot start - qnaId: {}, retrieved: {}, human: {}, ai: {}, order: {}",
                 qnaId, retrieved, human, ai, order);
 
-        String workflowId = getCurrentChainId();
+        String workflowId = getCurrentWorkflowId();
         if (workflowId != null) {
             DatabaseProfilerAspect.setWorkflowId(workflowId);
-            log.debug("QnaService.recordFewshot에서 chainId 설정: {}", workflowId);
+            log.debug("QnaService.recordFewshot에서 workflowId 설정: {}", workflowId);
         }
 
         try {
@@ -174,15 +174,11 @@ public class GenerationService {
     public boolean recordAnswer(String qnaId, String answer, BigDecimal retrieveTime) {
         log.info("recordAnswer start - qnaId: {}, answer: {}, retrieveTime: {}", qnaId, answer, retrieveTime);
 
-        String chainId = getCurrentChainId();
-        long startTime = System.currentTimeMillis();
-
         try {
             Generation generation = generationRepository.findById(qnaId)
                     .orElseThrow(() -> new IllegalArgumentException("QnA not found: " + qnaId));
 
             generation.setAnswer(answer);
-//            generation.setRetrieveTime(retrieveTime);
 
             generationRepository.save(generation);
 
@@ -196,24 +192,24 @@ public class GenerationService {
         }
     }
 
-    private String getCurrentChainId() {
+    private String getCurrentWorkflowId() {
         try {
             RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
             if (requestAttributes instanceof ServletRequestAttributes) {
                 HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
 
-                Object chainIdAttr = request.getAttribute("chainId");
-                if (chainIdAttr != null) {
-                    return chainIdAttr.toString();
+                Object workflowIdAttr = request.getAttribute("workflowId");
+                if (workflowIdAttr != null) {
+                    return workflowIdAttr.toString();
                 }
 
-                Object xChainIdAttr = request.getAttribute("X-Chain-Id");
-                if (xChainIdAttr != null) {
-                    return xChainIdAttr.toString();
+                Object xWorkflowIdAttr = request.getAttribute("X-Workflow-Id");
+                if (xWorkflowIdAttr != null) {
+                    return xWorkflowIdAttr.toString();
                 }
             }
         } catch (Exception e) {
-            log.debug("getCurrentChainId 실패: {}", e.getMessage());
+            log.debug("getCurrentWorkflowId 실패: {}", e.getMessage());
         }
         return null;
     }

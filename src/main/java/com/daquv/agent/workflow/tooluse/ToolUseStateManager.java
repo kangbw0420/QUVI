@@ -1,6 +1,5 @@
 package com.daquv.agent.workflow.tooluse;
 
-import com.daquv.agent.workflow.WorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -87,18 +86,18 @@ public class ToolUseStateManager {
     @Scheduled(fixedRate = 300000) // 5분마다
     public void cleanupExpiredStates() {
         long currentTime = System.currentTimeMillis();
-        List<String> expiredChainIds = new ArrayList<>();
+        List<String> expiredWorkflowIds = new ArrayList<>();
 
         stateTimestamps.entrySet().forEach(entry -> {
             if ((currentTime - entry.getValue()) > STATE_EXPIRY_MS) {
-                expiredChainIds.add(entry.getKey());
+                expiredWorkflowIds.add(entry.getKey());
             }
         });
 
-        expiredChainIds.forEach(this::removeState);
+        expiredWorkflowIds.forEach(this::removeState);
 
-        if (!expiredChainIds.isEmpty()) {
-            log.info("만료된 State {} 개 정리", expiredChainIds.size());
+        if (!expiredWorkflowIds.isEmpty()) {
+            log.info("만료된 State {} 개 정리", expiredWorkflowIds.size());
         }
     }
 }

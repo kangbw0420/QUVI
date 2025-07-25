@@ -15,10 +15,10 @@ public interface SessionRepository extends JpaRepository<Session, String> {
     /**
      * 사용자 ID로 대화 목록 조회 (최신순)
      */
-    List<Session> findByUserIdOrderByConversationStartDesc(String userId);
+    List<Session> findByUserIdOrderBySessionStartDesc(String userId);
 
     /**
-     * 세션 ID로 대화 조회 (conversationId -> sessionId로 변경)
+     * 세션 ID로 대화 조회
      */
     Optional<Session> findBySessionId(String sessionId);
 
@@ -30,7 +30,7 @@ public interface SessionRepository extends JpaRepository<Session, String> {
     /**
      * 대화 상태로 대화 목록 조회
      */
-    List<Session> findByConversationStatus(Session.SessionStatus status);
+    List<Session> findBySessionStatus(Session.SessionStatus status);
 
     /**
      * 사용자별 대화 수 조회
@@ -40,7 +40,7 @@ public interface SessionRepository extends JpaRepository<Session, String> {
     /**
      * 특정 기간 동안의 대화 목록 조회
      */
-    @Query("SELECT s FROM Session s WHERE s.conversationStart BETWEEN :startDate AND :endDate")
-    List<Session> findByConversationStartBetween(@Param("startDate") java.time.LocalDateTime startDate,
+    @Query("SELECT s FROM Session s WHERE s.sessionStart BETWEEN :startDate AND :endDate")
+    List<Session> findBySessionStartBetween(@Param("startDate") java.time.LocalDateTime startDate,
                                                  @Param("endDate") java.time.LocalDateTime endDate);
 }

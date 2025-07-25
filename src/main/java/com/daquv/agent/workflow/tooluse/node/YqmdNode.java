@@ -3,8 +3,6 @@ package com.daquv.agent.workflow.tooluse.node;
 import com.daquv.agent.quvi.util.ErrorHandler;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
-import com.daquv.agent.workflow.WorkflowNode;
-import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowNode;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +62,7 @@ public class YqmdNode implements ToolUseWorkflowNode {
         webSocketUtils.sendNodeStart(state.getWebSocketSession(), "yqmd");
     }
 
-    private String classifyYqmd(String userQuestion, String sqlQuery, String chainId) {
+    private String classifyYqmd(String userQuestion, String sqlQuery, String workflowId) {
         String classification;
         long startTime = System.currentTimeMillis();
 
@@ -93,7 +91,7 @@ public class YqmdNode implements ToolUseWorkflowNode {
             // 벡터 DB 프로파일링 기록
             long endTime = System.currentTimeMillis();
             double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordVectorDbCall(chainId, elapsedTime, "yqmd");
+            requestProfiler.recordVectorDbCall(workflowId, elapsedTime, "yqmd");
         }
 
         // 분류된 값을 대문자로 변환하여 쿼리에 추가

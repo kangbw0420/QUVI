@@ -16,7 +16,7 @@ class FlowAlertInfo {
     private String title;
     private String contents;
     private AlertType alertType;
-    private String chainId;
+    private String workflowId;
     private String userId;
     private LocalDateTime timestamp;
 }

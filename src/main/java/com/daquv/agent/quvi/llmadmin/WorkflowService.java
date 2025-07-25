@@ -45,7 +45,7 @@ public class WorkflowService {
         String workflowId = UUID.randomUUID().toString();
 
         DatabaseProfilerAspect.setWorkflowId(workflowId);
-        log.debug("ChainService에서 chainId 설정: {}", workflowId);
+        log.debug("ChainService에서 workflowId 설정: {}", workflowId);
 
         try {
             // Session 조회
@@ -56,7 +56,7 @@ public class WorkflowService {
             Workflow workflow = Workflow.create(workflowId, session, userQuestion, Workflow.WorkflowStatus.active);
             workflowRepository.save(workflow);
 
-            log.info("createWorkflow end - chainId: {}", workflowId);
+            log.info("createWorkflow end - workflowId: {}", workflowId);
             return workflowId;
 
         } catch (Exception e) {
@@ -68,27 +68,27 @@ public class WorkflowService {
     /**
      * 체인 완료 시 답변과 종료 시간을 기록
      *
-     * @param chainId 체인 ID
+     * @param workflowId 체인 ID
      * @param finalAnswer 최종 답변
      * @return 성공 여부
      */
     @Transactional
-    public boolean completeWorkflow(String chainId, String finalAnswer) {
-        log.info("completeWorkflow start - chainId: {}, finalAnswer: {}", chainId, finalAnswer);
+    public boolean completeWorkflow(String workflowId, String finalAnswer) {
+        log.info("completeWorkflow start - workflowId: {}, finalAnswer: {}", workflowId, finalAnswer);
 
         long startTime = System.currentTimeMillis();
         try {
-            Workflow workflow = workflowRepository.findById(chainId)
-                    .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + chainId));
+            Workflow workflow = workflowRepository.findById(workflowId)
+                    .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + workflowId));
 
             workflow.completeChain(finalAnswer);
             workflowRepository.save(workflow);
 
-            log.info("completeWorkflow end - chainId: {}", chainId);
+            log.info("completeWorkflow end - workflowId: {}", workflowId);
             return true;
 
         } catch (Exception e) {
-            log.error("Error in completeWorkflow - chainId: {}, finalAnswer: {}", chainId, finalAnswer, e);
+            log.error("Error in completeWorkflow - workflowId: {}, finalAnswer: {}", workflowId, finalAnswer, e);
             throw new RuntimeException("Failed to complete workflow", e);
         }
     }
@@ -96,23 +96,23 @@ public class WorkflowService {
     /**
      * 체인 실행 중 오류 발생 시 상태를 error로 변경
      *
-     * @param chainId 체인 ID
+     * @param workflowId 체인 ID
      * @param errorMessage 오류 메시지
      * @return 성공 여부
      */
     @Transactional
-    public void markChainError(String chainId, String errorMessage, String errorLog) {
+    public void markChainError(String workflowId, String errorMessage, String errorLog) {
         long startTime = System.currentTimeMillis();
         try {
-            Workflow workflow = workflowRepository.findById(chainId)
-                    .orElseThrow(() -> new RuntimeException("Chain not found: " + chainId));
+            Workflow workflow = workflowRepository.findById(workflowId)
+                    .orElseThrow(() -> new RuntimeException("Chain not found: " + workflowId));
 
             workflow.markError(errorMessage, errorLog);
             workflowRepository.saveAndFlush(workflow); // 즉시 DB에 반영
 
-            log.info("✅ 체인 에러 상태 저장 완료 - chainId: {}", chainId);
+            log.info("✅ 체인 에러 상태 저장 완료 - workflowId: {}", workflowId);
         } catch (Exception e) {
-            log.error("❌ 체인 에러 상태 저장 실패 - chainId: {}, error: {}", chainId, e.getMessage(), e);
+            log.error("❌ 체인 에러 상태 저장 실패 - workflowId: {}, error: {}", workflowId, e.getMessage(), e);
             throw new RuntimeException("Failed to save chain error", e);
         }
     }
@@ -121,17 +121,17 @@ public class WorkflowService {
      * 체인 로그 업데이트
      */
     @Transactional
-    public void updateChainLog(String chainId, String chainLogText) {
+    public void updateChainLog(String workflowId, String chainLogText) {
         long startTime = System.currentTimeMillis();
         try {
-            Workflow workflow = workflowRepository.findById(chainId)
-                    .orElseThrow(() -> new RuntimeException("Chain not found: " + chainId));
+            Workflow workflow = workflowRepository.findById(workflowId)
+                    .orElseThrow(() -> new RuntimeException("Chain not found: " + workflowId));
 
             workflowRepository.saveAndFlush(workflow); // 즉시 DB에 반영
 
-            log.info("✅ 체인 로그 업데이트 완료 - chainId: {}", chainId);
+            log.info("✅ 체인 로그 업데이트 완료 - workflowId: {}", workflowId);
         } catch (Exception e) {
-            log.error("❌ 체인 로그 업데이트 실패 - chainId: {}, error: {}", chainId, e.getMessage(), e);
+            log.error("❌ 체인 로그 업데이트 실패 - workflowId: {}, error: {}", workflowId, e.getMessage(), e);
             throw new RuntimeException("Failed to update chain log", e);
         }
     }
