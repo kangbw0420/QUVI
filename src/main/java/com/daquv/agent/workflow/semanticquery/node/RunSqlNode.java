@@ -1,11 +1,14 @@
 package com.daquv.agent.workflow.semanticquery.node;
 
+import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
+import com.daquv.agent.workflow.util.NameModifierUtils;
 import com.daquv.agent.workflow.util.PipeTableUtils;
+import com.daquv.agent.workflow.util.QueryUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,6 +20,7 @@ import java.math.BigDecimal;
 import java.util.*;
 
 import static com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState.*;
+import static org.hibernate.cfg.AvailableSettings.DIALECT;
 
 @Slf4j
 @Component
@@ -30,6 +34,9 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
     private final WebSocketUtils webSocketUtils;
     private final RequestProfiler requestProfiler;
     private final PipeTableUtils pipeTableUtils;
+    private final QueryUtils queryUtils;
+    private final NameModifierUtils nameModifierUtils;
+    private final QueryRequest queryRequest;
 
     @Override
     public String getId() {
@@ -69,7 +76,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
                 // SQL 실행 및 결과 저장
                 long startTime = System.currentTimeMillis();
-                Map<String, Object> resultMap = executeSqlMap(sqlMap, workflowId);
+                Map<String, Object> resultMap = executeSqlMap(sqlMap, workflowId, state);
                 long endTime = System.currentTimeMillis();
                 
                 double elapsedTime = (endTime - startTime) / 1000.0;
@@ -151,7 +158,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
         }
     }
 
-    private Map<String, Object> executeSqlMap(Map<String, String> sqlMap, String workflowId) {
+    private Map<String, Object> executeSqlMap(Map<String, String> sqlMap, String workflowId, SemanticQueryWorkflowState state) {
         Map<String, Object> resultMap = new HashMap<>();
 
         for (Map.Entry<String, String> entry : sqlMap.entrySet()) {
@@ -165,18 +172,48 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
             }
 
             try {
-                // Cross-database 참조 문제 해결을 위한 SQL 전처리
-                String processedSql = preprocessSqlForCrossDatabase(sql);
+//                // Cross-database 참조 문제 해결을 위한 SQL 전처리
+//                String processedSql = preprocessSqlForCrossDatabase(sql);
+//
+//                // 페이지네이션 적용
+//                String paginatedSql = countAndPaginate(processedSql, workflowId);
 
-                // 페이지네이션 적용
-                String paginatedSql = countAndPaginate(processedSql, workflowId);
+                // 일반 쿼리 처리
+                String selectedTable = queryKey;
+
+                // 1. 권한 있는 회사/계좌 검사
+                String queryRightCom = queryUtils.addComCondition(sql, state.getUserInfo().getCompanyId());
+
+                // 2. 주식종목/은행명 매핑 변환
+                String queryRightStock = nameModifierUtils.modifyStock(queryRightCom);
+                String queryRightBank = nameModifierUtils.modifyBank(queryRightStock);
+
+                // 3. order by 추가
+                String queryOrdered = queryUtils.addOrderBy(queryRightBank);
+
+                // User Info 추출
+                List<String> listOfUserInfo = state.getUserInfo().toArray();
+
+                // parameters에 userInfo 삽입
+                List<String> parameters = new ArrayList<>(listOfUserInfo);
+
+                // State에서 필요한 부분 삽입
+                parameters.add(state.getStartDate());
+                parameters.add(state.getEndDate());
+
+                // 4. view table 적용
+                String viewQuery = queryRequest.viewTable(
+                        queryOrdered,
+                        parameters,
+                        DIALECT
+                );
 
                 // SQL 실행
                 log.debug("Executing SQL for key '{}': {}", queryKey,
-                        paginatedSql.substring(0, Math.min(100, paginatedSql.length())) + "...");
+                        viewQuery.substring(0, Math.min(100, viewQuery.length())) + "...");
 
                 DatabaseProfilerAspect.setWorkflowId(workflowId);
-                List<Map<String, Object>> result = jdbcTemplate.queryForList(paginatedSql);
+                List<Map<String, Object>> result = jdbcTemplate.queryForList(viewQuery);
 
                 // 숫자 자동 변환
                 List<Map<String, Object>> processedResult = autoCastNumeric(result);
