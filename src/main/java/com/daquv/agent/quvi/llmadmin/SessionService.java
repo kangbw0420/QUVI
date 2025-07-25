@@ -3,7 +3,6 @@ package com.daquv.agent.quvi.llmadmin;
 import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.entity.Session;
 import com.daquv.agent.quvi.repository.SessionRepository;
-import com.daquv.agent.quvi.repository.UsersRepository;
 import com.daquv.agent.quvi.util.DatabaseProfilerAspect;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import org.slf4j.Logger;
@@ -25,15 +24,12 @@ public class SessionService {
 
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
     private final SessionRepository sessionRepository;
-    private final UsersRepository usersRepository;
 
     @Autowired
     private RequestProfiler requestProfiler;
 
-    public SessionService(SessionRepository sessionRepository,
-                          UsersRepository usersRepository) {
+    public SessionService(SessionRepository sessionRepository) {
         this.sessionRepository = sessionRepository;
-        this.usersRepository = usersRepository;
     }
 
     /**
