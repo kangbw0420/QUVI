@@ -21,7 +21,7 @@ public class AnswerBody {
     private String answer;                    // 답변
     private List<Map<String, Object>> rawData; // 원시 데이터
     private String sessionId;                 // 세션 ID
-    private String chainId;                   // 체인 ID
+    private String workflowId;                   // 워크플로우 ID
     private List<String> recommend;           // 추천 질문 리스트
     private DateInfo dateInfo;                // 날짜 정보
     private String sqlQuery;                  // SQL 쿼리

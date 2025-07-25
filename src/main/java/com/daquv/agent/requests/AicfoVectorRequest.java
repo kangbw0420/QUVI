@@ -42,11 +42,11 @@ public class AicfoVectorRequest {
      * @param availableNotes 검색 대상 노트 리스트
      * @param topK 검색할 상위 결과 수
      * @param threshold 유사도 임계값
-     * @param chainId 프로파일링용 chain_id
+     * @param workflowId 프로파일링용 workflowId
      * @param nodeId 호출한 노드 ID
      * @return 유사한 노트 리스트
      */
-    public List<String> getSimilarNotes(String originalNote, List<String> availableNotes, int topK, double threshold, String chainId, String nodeId) {
+    public List<String> getSimilarNotes(String originalNote, List<String> availableNotes, int topK, double threshold, String workflowId, String nodeId) {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -130,9 +130,9 @@ public class AicfoVectorRequest {
             return new ArrayList<>();
         } finally {
             // 프로파일링 기록
-            if (chainId != null) {
+            if (workflowId != null) {
                 double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
-                profiler.recordVectorDbCall(chainId, elapsedTime, nodeId != null ? nodeId : "aicfo_vector");
+                profiler.recordVectorDbCall(workflowId, elapsedTime, nodeId != null ? nodeId : "aicfo_vector");
             }
         }
     }

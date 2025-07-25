@@ -240,7 +240,7 @@ public class SemanticQueryWorkflowExecutionContext {
             }
 
         } catch (Exception e) {
-            log.error("SemanticQuery 노드 실행 실패: {} - chainId: {}", nodeBeanName, state.getWorkflowId(), e);
+            log.error("SemanticQuery 노드 실행 실패: {} - workflowId: {}", nodeBeanName, state.getWorkflowId(), e);
 
             // Trace 오류 상태로 변경
             if (nodeId != null) {

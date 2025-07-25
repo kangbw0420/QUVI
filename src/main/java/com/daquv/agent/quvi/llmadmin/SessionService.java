@@ -36,43 +36,43 @@ public class SessionService {
     }
 
     /**
-     * conversation_id가 존재하고 status가 active인지 확인
+     * sessionId가 존재하고 status가 active인지 확인
      */
-    public boolean checkConversationId(String conversationId) {
-        log.info("checkConversationId start - conversationId: {}", conversationId);
+    public boolean checkSessionId(String sessionId) {
+        log.info("checkSessionId start - sessionId: {}", sessionId);
 
         try {
-            return sessionRepository.findBySessionId(conversationId)
-                    .map(conversation -> Session.SessionStatus.active.equals(conversation.getConversationStatus()))
+            return sessionRepository.findBySessionId(sessionId)
+                    .map(session -> Session.SessionStatus.active.equals(session.getSessionStatus()))
                     .orElse(false);
         } catch (Exception e) {
-            log.error("Error checking conversation ID: {}", conversationId, e);
+            log.error("Error checking sessionId ID: {}", sessionId, e);
             return false;
         }
     }
 
     /**
-     * 새로운 conversation 생성. UUID로 ID 생성하고 status는 active로 설정
+     * 새로운 sessionId 생성. UUID로 ID 생성하고 status는 active로 설정
      */
     @Transactional
     public String makeSessionId(String userId) {
-        log.info("makeConversationId start - userId: {}", userId);
+        log.info("makeSessionId start - userId: {}", userId);
 
         String companyId = getCompanyIdByUserId(userId);
         log.debug("Retrieved companyId: {} for userId: {}", companyId, userId);
 
-        String workflowId = getCurrentChainId();
+        String workflowId = getCurrentWorkflowId();
         if (workflowId != null) {
             DatabaseProfilerAspect.setWorkflowId(workflowId);
-            log.debug("ConversationService에서 chainId 설정: {}", workflowId);
+            log.debug("SessionService에서 workflowId 설정: {}", workflowId);
         }
 
         try {
-            String conversationId = UUID.randomUUID().toString();
-            Session session = Session.create(userId, conversationId, companyId);
+            String sessionId = UUID.randomUUID().toString();
+            Session session = Session.create(userId, sessionId, companyId);
             sessionRepository.save(session);
-            log.info("makeConversationId end - conversationId: {}", conversationId);
-            return conversationId;
+            log.info("makeSessionId end - sessionId: {}", sessionId);
+            return sessionId;
         } catch (Exception e) {
             log.error("Error creating conversation for userId: {}", userId, e);
             throw new RuntimeException("Failed to create conversation", e);
@@ -83,17 +83,17 @@ public class SessionService {
      * 대화 종료 처리
      */
     @Transactional
-    public void endConversation(String conversationId) {
-        log.info("endConversation start - conversationId: {}", conversationId);
+    public void endConversation(String sessionId) {
+        log.info("endConversation start - sessionId: {}", sessionId);
 
         try {
-            Session session = sessionRepository.findBySessionId(conversationId)
-                    .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+            Session session = sessionRepository.findBySessionId(sessionId)
+                    .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + sessionId));
             session.endConversation();
             sessionRepository.save(session);
-            log.info("endConversation end - conversationId: {}", conversationId);
+            log.info("endConversation end - sessionId: {}", sessionId);
         } catch (Exception e) {
-            log.error("Error ending conversation: {}", conversationId, e);
+            log.error("Error ending conversation: {}", sessionId, e);
             throw new RuntimeException("Failed to end conversation", e);
         }
     }
@@ -102,47 +102,47 @@ public class SessionService {
      * 대화 상태 업데이트
      */
     @Transactional
-    public void updateConversationStatus(String conversationId, Session.SessionStatus status) {
-        log.info("updateConversationStatus start - conversationId: {}, status: {}", conversationId, status);
+    public void updateSessionStatus(String sessionId, Session.SessionStatus status) {
+        log.info("updateSessionStatus start - sessionId: {}, status: {}", sessionId, status);
 
         try {
-            Session session = sessionRepository.findBySessionId(conversationId)
-                    .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+            Session session = sessionRepository.findBySessionId(sessionId)
+                    .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
             session.updateStatus(status);
             sessionRepository.save(session);
-            log.info("updateConversationStatus end - conversationId: {}", conversationId);
+            log.info("updateSessionStatus end - sessionId: {}", sessionId);
         } catch (Exception e) {
-            log.error("Error updating conversation status: {}", conversationId, e);
-            throw new RuntimeException("Failed to update conversation status", e);
+            log.error("Error updating session status: {}", sessionId, e);
+            throw new RuntimeException("Failed to update session status", e);
         }
     }
 
     /**
      * 대화 조회
      */
-    public Optional<Session> getConversation(String conversationId) {
-        log.info("getConversation - conversationId: {}", conversationId);
-        return sessionRepository.findBySessionId(conversationId);
+    public Optional<Session> getSession(String sessionId) {
+        log.info("getSession - sessionId: {}", sessionId);
+        return sessionRepository.findBySessionId(sessionId);
     }
 
-    private String getCurrentChainId() {
+    private String getCurrentWorkflowId() {
         try {
             RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
             if (requestAttributes instanceof ServletRequestAttributes) {
                 HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
 
-                Object chainIdAttr = request.getAttribute("chainId");
-                if (chainIdAttr != null) {
-                    return chainIdAttr.toString();
+                Object workflowIdIdAttr = request.getAttribute("workflowId");
+                if (workflowIdIdAttr != null) {
+                    return workflowIdIdAttr.toString();
                 }
 
-                Object xChainIdAttr = request.getAttribute("X-Chain-Id");
-                if (xChainIdAttr != null) {
-                    return xChainIdAttr.toString();
+                Object xWorkflowIdAttr = request.getAttribute("X-Workflow-Id");
+                if (xWorkflowIdAttr != null) {
+                    return xWorkflowIdAttr.toString();
                 }
             }
         } catch (Exception e) {
-            log.debug("getCurrentChainId 실패: {}", e.getMessage());
+            log.debug("getCurrentWorkflowId 실패: {}", e.getMessage());
         }
         return null;
     }

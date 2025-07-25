@@ -3,8 +3,8 @@ package com.daquv.agent.quvi;
 import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.daquv.agent.quvi.llmadmin.SessionService;
-import com.daquv.agent.quvi.logging.ChainLogContext;
-import com.daquv.agent.quvi.logging.ChainLogManager;
+import com.daquv.agent.quvi.logging.WorkflowLogContext;
+import com.daquv.agent.quvi.logging.WorkflowLogManager;
 import com.daquv.agent.quvi.dto.LogLevel;
 import com.daquv.agent.quvi.requests.VectorRequest;
 import com.daquv.agent.quvi.util.RequestProfiler;
@@ -35,7 +35,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
     private final VectorRequest vectorRequest;
     private final SessionService sessionService;
     private final WorkflowService workflowService;
-    private final ChainLogManager chainLogManager;
+    private final WorkflowLogManager chainLogManager;
     private final RequestProfiler requestProfiler;
     private final ObjectMapper objectMapper;
 
@@ -46,7 +46,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
     private ApplicationContext applicationContext;
 
     public QuviWebSocketHandler(VectorRequest vectorRequest, SessionService sessionService,
-                                WorkflowService workflowService, ChainLogManager chainLogManager,
+                                WorkflowService workflowService, WorkflowLogManager chainLogManager,
                                 RequestProfiler requestProfiler, ObjectMapper objectMapper) {
         this.vectorRequest = vectorRequest;
         this.sessionService = sessionService;
@@ -106,12 +106,12 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
             requestProfiler.startRequest(workflowId);
 
             // 4. 로그 컨텍스트 생성
-            ChainLogContext logContext = chainLogManager.createChainLog(
+            WorkflowLogContext logContext = chainLogManager.createWorkflowLog(
                     workflowId,
                     request.getUserId(),
                     request.getUserQuestion()
             );
-            logContext.setConversationId(sessionId);
+            logContext.setSessionId(sessionId);
             logContext.setCompanyId(request.getCompanyId());
 
             chainLogManager.addLog(workflowId, "WEBSOCKET_HANDLER", LogLevel.INFO,
@@ -292,7 +292,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         String sessionId = request.getSessionId();
 
         if (sessionId != null && !sessionId.isEmpty() &&
-                sessionService.checkConversationId(sessionId)) {
+                sessionService.checkSessionId(sessionId)) {
 
             log.debug("기존 세션 ID 사용: {}", sessionId);
             return sessionId;
@@ -321,7 +321,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
     /**
      * 로그 컨텍스트에 최종 상태 업데이트
      */
-    private void updateLogContextWithFinalState(ChainLogContext logContext, String selectedWorkflow, String workflowId, QuviRequestDto request) {
+    private void updateLogContextWithFinalState(WorkflowLogContext logContext, String selectedWorkflow, String workflowId, QuviRequestDto request) {
         try {
             String selectedTable = workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, workflowId);
             String sqlQuery = workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, workflowId);
@@ -343,7 +343,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private Map<String, Object> buildResponse(String conversationId, String chainId,
+    private Map<String, Object> buildResponse(String sessionId, String workflowId,
                                               List<String> recommendList, long totalTime,
                                               String selectedWorkflow) {
         Map<String, Object> response = new HashMap<>();
@@ -358,31 +358,31 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         Map<String, Object> body = new HashMap<>();
 
         // 매니저를 통해 데이터 추출
-        String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, chainId);
+        String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
         if (finalAnswer == null || finalAnswer.trim().isEmpty()) {
             finalAnswer = "죄송합니다. 요청을 처리하는 중 오류가 발생했습니다.";
         }
 
         body.put("answer", finalAnswer);
-        body.put("raw_data", workflowExecutionManagerService.extractQueryResult(selectedWorkflow, chainId));
-        body.put("session_id", conversationId);
-        body.put("chain_id", chainId);
+        body.put("raw_data", workflowExecutionManagerService.extractQueryResult(selectedWorkflow, workflowId));
+        body.put("session_id", sessionId);
+        body.put("workflow_id", workflowId);
         body.put("recommend", recommendList);
         body.put("is_api", false);
         body.put("date_info", Arrays.asList(
-                workflowExecutionManagerService.extractStartDate(selectedWorkflow, chainId),
-                workflowExecutionManagerService.extractEndDate(selectedWorkflow, chainId)
+                workflowExecutionManagerService.extractStartDate(selectedWorkflow, workflowId),
+                workflowExecutionManagerService.extractEndDate(selectedWorkflow, workflowId)
         ));
-        body.put("sql_query", workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, chainId));
-        body.put("selected_table", workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, chainId));
-        body.put("has_next", workflowExecutionManagerService.extractHasNext(selectedWorkflow, chainId));
+        body.put("sql_query", workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, workflowId));
+        body.put("selected_table", workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, workflowId));
+        body.put("has_next", workflowExecutionManagerService.extractHasNext(selectedWorkflow, workflowId));
         body.put("workflow_status", "completed");
         body.put("hil_required", false);
 
         // 프로파일링 정보
         Map<String, Object> profile = new HashMap<>();
-        if (chainId != null) {
-            Map<String, Object> profileData = requestProfiler.getProfile(chainId);
+        if (workflowId != null) {
+            Map<String, Object> profileData = requestProfiler.getProfile(workflowId);
 
             // vector_db
             Map<String, Object> vectorDbDefault = new HashMap<>();
@@ -422,7 +422,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
     /**
      * HIL 대기 상태 응답 생성
      */
-    private Map<String, Object> buildHilWaitingResponse(String conversationId, String chainId,
+    private Map<String, Object> buildHilWaitingResponse(String sessionId, String workflowId,
                                                         long totalTime, String selectedWorkflow) {
         Map<String, Object> response = new HashMap<>();
 
@@ -436,15 +436,15 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
         Map<String, Object> body = new HashMap<>();
 
         // HIL 상태에서 필요한 정보들 (매니저를 통해 추출)
-        String hilMessage = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, chainId);
+        String hilMessage = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
 
         if (hilMessage == null || hilMessage.trim().isEmpty()) {
             hilMessage = "추가 정보가 필요합니다. 사용자 입력을 기다리고 있습니다.";
         }
 
         body.put("answer", hilMessage);
-        body.put("session_id", conversationId);
-        body.put("workflow_id", chainId);
+        body.put("session_id", sessionId);
+        body.put("workflow_id", workflowId);
         body.put("workflow_status", "waiting");
         body.put("hil_required", true); // HIL이 필요함을 명시
         body.put("is_api", false);
@@ -452,8 +452,8 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
 
         // 프로파일링 정보 (기본값)
         Map<String, Object> profile = new HashMap<>();
-        if (chainId != null) {
-            Map<String, Object> profileData = requestProfiler.getProfile(chainId);
+        if (workflowId != null) {
+            Map<String, Object> profileData = requestProfiler.getProfile(workflowId);
 
             // 기본 프로파일 구조 유지
             Map<String, Object> vectorDbDefault = new HashMap<>();
@@ -485,7 +485,7 @@ public class QuviWebSocketHandler extends TextWebSocketHandler {
 
         response.put("body", body);
 
-        log.info("HIL 대기 응답 생성 완료 - workflowId: {}, status: waiting", chainId);
+        log.info("HIL 대기 응답 생성 완료 - workflowId: {}, status: waiting", workflowId);
         return response;
     }
 

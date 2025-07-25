@@ -59,7 +59,7 @@ public class ToolUseRespondentNode implements ToolUseWorkflowNode {
     public void execute(ToolUseWorkflowState state) {
         String userQuestion = state.getUserQuestion();
         List<Map<String, Object>> queryResult = state.getQueryResult();
-        String chainId = state.getWorkflowId();
+        String workflowId = state.getWorkflowId();
         String startDate = state.getStartDate();
         String endDate = state.getEndDate();
         Boolean hasNext = state.getHasNext();
@@ -81,14 +81,14 @@ public class ToolUseRespondentNode implements ToolUseWorkflowNode {
         log.info("=== ToolUse RespondentNode 실행 시작 ===");
         log.info("ToolUse 사용자 질문: {}", userQuestion);
         log.info("ToolUse 쿼리 결과 행 수: {}", queryResult.size());
-        log.info("ToolUse 체인 ID: {}", chainId);
+        log.info("ToolUse 워크플로우 ID: {}", workflowId);
         log.info("ToolUse hasNext 상태: {}", hasNext);
         log.info("ToolUse totalRows: {}", totalRows);
         log.info("ToolUse selectedApi: {}", selectedApi);
 
         // History 조회 (ToolUse용)
         log.info("1단계: ToolUse 응답 히스토리 조회");
-        List<Map<String, Object>> respondentHistory = promptBuilder.getRespondentHistory(chainId);
+        List<Map<String, Object>> respondentHistory = promptBuilder.getRespondentHistory(workflowId);
         log.info("ToolUse 조회된 히스토리 개수: {}", respondentHistory != null ? respondentHistory.size() : 0);
 
         // 테이블 파이프 생성
@@ -143,8 +143,8 @@ public class ToolUseRespondentNode implements ToolUseWorkflowNode {
             log.info("ToolUse API 모드: 날짜 정보 사용 - startDate: {}, endDate: {}", startDate, endDate);
 
             PromptWithRetrieveTime promptWithRetrieveTime = promptBuilder.buildRespondentPromptWithFewShotsAndHistory(
-                    userQuestion, tablePipe, respondentHistory, qnaId, true, // isApi = true for ToolUse
-                    dateStartForResponse, dateEndForResponse, chainId);
+                    userQuestion, tablePipe, respondentHistory, qnaId, true,
+                    dateStartForResponse, dateEndForResponse, workflowId);
 
             PromptTemplate promptTemplate = promptWithRetrieveTime.getPromptTemplate();
 
@@ -161,7 +161,7 @@ public class ToolUseRespondentNode implements ToolUseWorkflowNode {
 
             // LLM 프로파일링 기록
             double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordLlmCall(chainId, elapsedTime, "tooluse_respondent");
+            requestProfiler.recordLlmCall(workflowId, elapsedTime, "tooluse_respondent");
             log.info("ToolUse LLM 응답 길이: {} 문자", llmResponse != null ? llmResponse.length() : 0);
 
             // QnA 답변 기록

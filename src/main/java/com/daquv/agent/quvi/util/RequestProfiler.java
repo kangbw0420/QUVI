@@ -37,32 +37,32 @@ public class RequestProfiler {
     }
     
     /**
-     * 새 요청 시작 - chain_id로 프로파일링 시작
+     * 새 요청 시작 - workflowId로 프로파일링 시작
      */
-    public void startRequest(String chainId) {
-        if (!enabled || chainId == null) {
-            log.debug("프로파일링이 비활성화되어 요청 시작 스킵 - chainId: {}", chainId);
+    public void startRequest(String workflowId) {
+        if (!enabled || workflowId == null) {
+            log.debug("프로파일링이 비활성화되어 요청 시작 스킵 - workflowId: {}", workflowId);
             return;
         }
         
         // chain_id로 프로파일 데이터 초기화
-        profileDataMap.put(chainId, new ProfileData());
+        profileDataMap.put(workflowId, new ProfileData());
         
-        log.info("프로파일링 시작 - chainId: {}", chainId);
+        log.info("프로파일링 시작 - workflowId: {}", workflowId);
     }
 
     /**
      * 벡터 DB 호출 프로파일링 (노드 정보 포함)
      */
-    public void recordVectorDbCall(String chainId, double elapsedTime, String nodeId) {
-        if (!enabled || chainId == null) {
-            log.debug("벡터 DB 프로파일링 기록 스킵 - enabled: {}, chainId: {}", enabled, chainId);
+    public void recordVectorDbCall(String workflowId, double elapsedTime, String nodeId) {
+        if (!enabled || workflowId == null) {
+            log.debug("벡터 DB 프로파일링 기록 스킵 - enabled: {}, workflowId: {}", enabled, workflowId);
             return;
         }
 
         if ("unknown".equals(nodeId)) {
             StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-            log.warn("🔍 UNKNOWN Vector DB 호출 감지 - chainId: {}", chainId);
+            log.warn("🔍 UNKNOWN Vector DB 호출 감지 - workflowId: {}", workflowId);
             log.warn("  호출 스택:");
             for (int i = 1; i <= Math.min(5, stackTrace.length - 1); i++) {
                 StackTraceElement element = stackTrace[i];
@@ -72,10 +72,10 @@ public class RequestProfiler {
             }
         }
 
-        log.info("벡터 DB 프로파일링 기록 시작 - chainId: {}, nodeId: {}, elapsedTime: {}s", chainId, nodeId, elapsedTime);
+        log.info("벡터 DB 프로파일링 기록 시작 - workflowId: {}, nodeId: {}, elapsedTime: {}s", workflowId, nodeId, elapsedTime);
 
         try {
-            ProfileData data = profileDataMap.get(chainId);
+            ProfileData data = profileDataMap.get(workflowId);
             if (data != null) {
                 int calls = data.vectorDbCalls.incrementAndGet();
                 long totalTime = data.vectorDbTotalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
@@ -83,10 +83,10 @@ public class RequestProfiler {
                 // 노드별 통계 업데이트
                 data.updateNodeStats(nodeId, "vector_db", elapsedTime);
 
-                log.info("벡터 DB 프로파일링 기록 완료 - chainId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
-                        chainId, nodeId, calls, totalTime);
+                log.info("벡터 DB 프로파일링 기록 완료 - workflowId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
+                        workflowId, nodeId, calls, totalTime);
             } else {
-                log.warn("벡터 DB 프로파일링 데이터가 null임 - chainId: {}", chainId);
+                log.warn("벡터 DB 프로파일링 데이터가 null임 - workflowId: {}", workflowId);
             }
         } catch (Exception e) {
             log.warn("벡터 DB 프로파일링 기록 중 오류: {}", e.getMessage());
@@ -96,22 +96,22 @@ public class RequestProfiler {
     /**
      * 벡터 DB 호출 프로파일링 (기존 호환성 유지)
      */
-    public void recordVectorDbCall(String chainId, double elapsedTime) {
-        recordVectorDbCall(chainId, elapsedTime, "unknown");
+    public void recordVectorDbCall(String workflowId, double elapsedTime) {
+        recordVectorDbCall(workflowId, elapsedTime, "unknown");
     }
 
     /**
      * LLM 호출 프로파일링 (노드 정보 포함)
      */
-    public void recordLlmCall(String chainId, double elapsedTime, String nodeId) {
-        if (!enabled || chainId == null) {
-            log.debug("LLM 프로파일링 기록 스킵 - enabled: {}, chainId: {}", enabled, chainId);
+    public void recordLlmCall(String workflowId, double elapsedTime, String nodeId) {
+        if (!enabled || workflowId == null) {
+            log.debug("LLM 프로파일링 기록 스킵 - enabled: {}, workflowId: {}", enabled, workflowId);
             return;
         }
 
         if ("unknown".equals(nodeId)) {
             StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-            log.warn("🔍 UNKNOWN LLM 호출 감지 - chainId: {}", chainId);
+            log.warn("🔍 UNKNOWN LLM 호출 감지 - workflowId: {}", workflowId);
             log.warn("  호출 스택:");
             for (int i = 1; i <= Math.min(5, stackTrace.length - 1); i++) {
                 StackTraceElement element = stackTrace[i];
@@ -121,10 +121,10 @@ public class RequestProfiler {
             }
         }
 
-        log.info("LLM 프로파일링 기록 시작 - chainId: {}, nodeId: {}, elapsedTime: {}s", chainId, nodeId, elapsedTime);
+        log.info("LLM 프로파일링 기록 시작 - workflowId: {}, nodeId: {}, elapsedTime: {}s", workflowId, nodeId, elapsedTime);
 
         try {
-            ProfileData data = profileDataMap.get(chainId);
+            ProfileData data = profileDataMap.get(workflowId);
             if (data != null) {
                 int calls = data.llmCalls.incrementAndGet();
                 long totalTime = data.llmTotalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
@@ -132,10 +132,10 @@ public class RequestProfiler {
                 // 노드별 통계 업데이트
                 data.updateNodeStats(nodeId, "llm", elapsedTime);
 
-                log.info("LLM 프로파일링 기록 완료 - chainId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
-                        chainId, nodeId, calls, totalTime);
+                log.info("LLM 프로파일링 기록 완료 - workflowId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
+                        workflowId, nodeId, calls, totalTime);
             } else {
-                log.warn("LLM 프로파일링 데이터가 null임 - chainId: {}", chainId);
+                log.warn("LLM 프로파일링 데이터가 null임 - workflowId: {}", workflowId);
             }
         } catch (Exception e) {
             log.warn("LLM 프로파일링 기록 중 오류: {}", e.getMessage());
@@ -145,21 +145,21 @@ public class RequestProfiler {
     /**
      * DB 호출 프로파일링 (노드 정보 포함)
      */
-    public void recordDbCall(String chainId, double elapsedTime, boolean isPromptDb, String nodeId) {
-        if (!enabled || chainId == null) {
-            log.debug("DB 프로파일링 기록 스킵 - enabled: {}, chainId: {}", enabled, chainId);
+    public void recordDbCall(String workflowId, double elapsedTime, boolean isPromptDb, String nodeId) {
+        if (!enabled || workflowId == null) {
+            log.debug("DB 프로파일링 기록 스킵 - enabled: {}, workflowId: {}", enabled, workflowId);
             return;
         }
 
         if ("unknown".equals(nodeId)) {
-            ProfileData data = profileDataMap.get(chainId);
+            ProfileData data = profileDataMap.get(workflowId);
             if (data != null) {
                 // unknown DB 호출이 10회마다 한 번씩만 로깅
                 int unknownCount = data.getUnknownDbCallCount();
                 if (unknownCount % 10 == 1) {
                     StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-                    log.warn("🔍 UNKNOWN DB 호출 감지 #{} - chainId: {}, isPromptDb: {}",
-                            unknownCount, chainId, isPromptDb);
+                    log.warn("🔍 UNKNOWN DB 호출 감지 #{} - workflowId: {}, isPromptDb: {}",
+                            unknownCount, workflowId, isPromptDb);
                     log.warn("  호출 스택:");
                     for (int i = 1; i <= Math.min(5, stackTrace.length - 1); i++) {
                         StackTraceElement element = stackTrace[i];
@@ -171,31 +171,31 @@ public class RequestProfiler {
             }
         }
 
-        log.info("DB 프로파일링 기록 시작 - chainId: {}, nodeId: {}, elapsedTime: {}s, isPromptDb: {}",
-                chainId, nodeId, elapsedTime, isPromptDb);
+        log.info("DB 프로파일링 기록 시작 - workflowId: {}, nodeId: {}, elapsedTime: {}s, isPromptDb: {}",
+                workflowId, nodeId, elapsedTime, isPromptDb);
 
         try {
-            ProfileData data = profileDataMap.get(chainId);
+            ProfileData data = profileDataMap.get(workflowId);
             if (data != null) {
                 String dbType = isPromptDb ? "db_prompt" : "db_main";
 
                 if (isPromptDb) {
                     int calls = data.dbPromptCalls.incrementAndGet();
                     long totalTime = data.dbPromptTotalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
-                    log.info("DB Prompt 프로파일링 기록 완료 - chainId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
-                            chainId, nodeId, calls, totalTime);
+                    log.info("DB Prompt 프로파일링 기록 완료 - workflowId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
+                            workflowId, nodeId, calls, totalTime);
                 } else {
                     int calls = data.dbMainCalls.incrementAndGet();
                     long totalTime = data.dbMainTotalTime.addAndGet((long) (elapsedTime * 1000)); // ms로 변환
-                    log.info("DB Main 프로파일링 기록 완료 - chainId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
-                            chainId, nodeId, calls, totalTime);
+                    log.info("DB Main 프로파일링 기록 완료 - workflowId: {}, nodeId: {}, calls: {}, totalTime: {}ms",
+                            workflowId, nodeId, calls, totalTime);
                 }
 
                 // 노드별 통계 업데이트
                 data.updateNodeStats(nodeId, dbType, elapsedTime);
 
             } else {
-                log.warn("DB 프로파일링 데이터가 null임 - chainId: {}", chainId);
+                log.warn("DB 프로파일링 데이터가 null임 - workflowId: {}", workflowId);
             }
         } catch (Exception e) {
             log.warn("DB 프로파일링 기록 중 오류: {}", e.getMessage());
@@ -205,20 +205,20 @@ public class RequestProfiler {
     /**
      * 프로파일 결과 조회
      */
-    public Map<String, Object> getProfile(String chainId) {
+    public Map<String, Object> getProfile(String workflowId) {
         if (!enabled) {
             log.debug("프로파일링이 비활성화되어 있음");
             return new HashMap<>();
         }
         
-        ProfileData data = profileDataMap.get(chainId);
+        ProfileData data = profileDataMap.get(workflowId);
         if (data == null) {
-            log.warn("프로파일 데이터가 null임 - chainId: {}", chainId);
+            log.warn("프로파일 데이터가 null임 - workflowId: {}", workflowId);
             return new HashMap<>();
         }
         
-        log.info("프로파일 데이터 조회 - chainId: {}, vectorDbCalls: {}, llmCalls: {}, dbMainCalls: {}, dbPromptCalls: {}", 
-                chainId, data.vectorDbCalls.get(), data.llmCalls.get(), data.dbMainCalls.get(), data.dbPromptCalls.get());
+        log.info("프로파일 데이터 조회 - workflowId: {}, vectorDbCalls: {}, llmCalls: {}, dbMainCalls: {}, dbPromptCalls: {}",
+                workflowId, data.vectorDbCalls.get(), data.llmCalls.get(), data.dbMainCalls.get(), data.dbPromptCalls.get());
         
         Map<String, Object> result = new ConcurrentHashMap<>();
         
@@ -246,21 +246,21 @@ public class RequestProfiler {
             data.dbPromptTotalTime.get()
         ));
         
-        log.info("프로파일 결과 생성 완료 - chainId: {}, result: {}", chainId, result);
+        log.info("프로파일 결과 생성 완료 - workflowId: {}, result: {}", workflowId, result);
         return result;
     }
     
     /**
      * 프로파일 데이터 삭제
      */
-    public void clearProfile(String chainId) {
+    public void clearProfile(String workflowId) {
         if (!enabled) {
             return;
         }
         
         try {
-            profileDataMap.remove(chainId);
-            log.debug("프로파일링 데이터 삭제 - chainId: {}", chainId);
+            profileDataMap.remove(workflowId);
+            log.debug("프로파일링 데이터 삭제 - workflowId: {}", workflowId);
         } catch (Exception e) {
             log.warn("프로파일링 데이터 삭제 중 오류: {}", e.getMessage());
         }

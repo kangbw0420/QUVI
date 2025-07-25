@@ -46,7 +46,7 @@ public class FunkNode implements ToolUseWorkflowNode {
     @Override
     public void execute(ToolUseWorkflowState state) {
         String userQuestion = state.getUserQuestion();
-        String chainId = state.getWorkflowId();
+        String workflowId = state.getWorkflowId();
 
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
@@ -64,10 +64,10 @@ public class FunkNode implements ToolUseWorkflowNode {
             String qnaId = generationService.createQnaId(state.getNodeId());
 
             // History 조회
-            List<Map<String, Object>> funkHistory = promptBuilder.getFunkHistory(chainId);
+            List<Map<String, Object>> funkHistory = promptBuilder.getFunkHistory(workflowId);
 
             // Funk 프롬프트 생성 (QnA ID 포함)
-            PromptBuilder.PromptWithRetrieveTime promptWithTime = promptBuilder.buildFunkPromptWithFewShots(userQuestion, funkHistory, qnaId, chainId);
+            PromptBuilder.PromptWithRetrieveTime promptWithTime = promptBuilder.buildFunkPromptWithFewShots(userQuestion, funkHistory, qnaId, workflowId);
             PromptTemplate promptTemplate = promptWithTime.getPromptTemplate();
             String prompt = promptTemplate.build();
 
@@ -76,12 +76,12 @@ public class FunkNode implements ToolUseWorkflowNode {
 
             // LLM 호출하여 API 선택 with 프로파일링
             long startTime = System.currentTimeMillis();
-            String llmResponse = llmService.callQwenLlm(prompt, qnaId, chainId);
+            String llmResponse = llmService.callQwenLlm(prompt, qnaId, workflowId);
             long endTime = System.currentTimeMillis();
 
             // LLM 프로파일링 기록
             double elapsedTime = (endTime - startTime) / 1000.0;
-            requestProfiler.recordLlmCall(chainId, elapsedTime, "funk");
+            requestProfiler.recordLlmCall(workflowId, elapsedTime, "funk");
 
             String selectedApi = LlmOutputHandler.extractAnswer(llmResponse);
 

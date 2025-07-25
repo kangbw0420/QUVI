@@ -1,7 +1,7 @@
 package com.daquv.agent.quvi.requests;
 
 import com.daquv.agent.quvi.dto.LogLevel;
-import com.daquv.agent.quvi.logging.ChainLogManager;
+import com.daquv.agent.quvi.logging.WorkflowLogManager;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,7 +31,7 @@ public class VectorRequest {
     protected String VECTOR_STORE_BASE_URL;
 
     @Autowired
-    protected ChainLogManager chainLogManager;
+    protected WorkflowLogManager chainLogManager;
 
     @Autowired
     protected RequestProfiler profiler;
@@ -47,10 +47,10 @@ public class VectorRequest {
      * @param queryText 검색할 쿼리 텍스트
      * @param collectionName 컬렉션 이름
      * @param topK 검색할 상위 결과 수
-     * @param chainId 프로파일링용 chain_id
+     * @param workflowId 프로파일링용 workflowId
      * @return 검색된 문서와 메타데이터를 포함하는 결과 리스트
      */
-    public List<Map<String, Object>> queryVectorStore(String queryText, String collectionName, int topK, String chainId) {
+    public List<Map<String, Object>> queryVectorStore(String queryText, String collectionName, int topK, String workflowId) {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -77,12 +77,12 @@ public class VectorRequest {
             double retrieveTime = (System.currentTimeMillis() - startTime) / 1000.0;
 
             // 프로파일링 기록
-            if (chainId != null) {
+            if (workflowId != null) {
                 String nodeId = determineNodeIdFromStackTrace();
-                profiler.recordVectorDbCall(chainId, retrieveTime, nodeId);
-                log.info("[vector] 프로파일링 기록 완료 - chainId: {}, nodeId: {}", chainId, nodeId);
+                profiler.recordVectorDbCall(workflowId, retrieveTime, nodeId);
+                log.info("[vector] 프로파일링 기록 완료 - workflowId: {}, nodeId: {}", workflowId, nodeId);
             } else {
-                log.warn("[vector] 프로파일링 기록 실패 - chainId가 null임");
+                log.warn("[vector] 프로파일링 기록 실패 - workflowId null임");
             }
 
             if (response.getStatusCode().is2xxSuccessful()) {
@@ -93,8 +93,8 @@ public class VectorRequest {
             } else {
                 log.error("[vector] 벡터 스토어 쿼리 실패 - 상태 코드: {}", response.getStatusCode());
 
-                if (chainId != null) {
-                    chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.ERROR,
+                if (workflowId != null) {
+                    chainLogManager.addLog(workflowId, "VECTOR_STORE", LogLevel.ERROR,
                             String.format("벡터 스토어 쿼리 실패 - 상태 코드: %s", response.getStatusCode()));
                 }
                 return new ArrayList<>();
@@ -104,15 +104,15 @@ public class VectorRequest {
             double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
 
             // 예외 발생 시에도 프로파일링 기록
-            if (chainId != null) {
-                profiler.recordVectorDbCall(chainId, elapsedTime);
+            if (workflowId != null) {
+                profiler.recordVectorDbCall(workflowId, elapsedTime);
 
-                chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.ERROR,
+                chainLogManager.addLog(workflowId, "VECTOR_STORE", LogLevel.ERROR,
                         String.format("벡터 스토어 연결 실패: %s", e.getMessage()), e);
 
-                log.info("[vector] 예외 발생 시 프로파일링 기록 완료 - chainId: {}", chainId);
+                log.info("[vector] 예외 발생 시 프로파일링 기록 완료 - workflowId: {}", workflowId);
             } else {
-                log.warn("[vector] 예외 발생 시 프로파일링 기록 실패 - chainId가 null임");
+                log.warn("[vector] 예외 발생 시 프로파일링 기록 실패 - workflowId null임");
             }
             log.error("[vector] 벡터 스토어 쿼리 중 예외 발생 - 소요시간: {}s, 오류: {}", elapsedTime, e.getMessage(), e);
             return new ArrayList<>();
@@ -220,17 +220,17 @@ public class VectorRequest {
      * @param queryText 검색할 쿼리 텍스트
      * @param collectionName 컬렉션 이름 (null이면 기본값 사용)
      * @param topK 검색할 상위 결과 수
-     * @param chainId 프로파일링용 chain_id
+     * @param workflowId 프로파일링용 workflowId
      * @return few-shot 예제 리스트와 검색 처리 시간
      */
-    public Map<String, Object> getFewShots(String queryText, String collectionName, int topK, String chainId) {
+    public Map<String, Object> getFewShots(String queryText, String collectionName, int topK, String workflowId) {
         try {
-            List<Map<String, Object>> results = queryVectorStore(queryText, collectionName, topK, chainId);
+            List<Map<String, Object>> results = queryVectorStore(queryText, collectionName, topK, workflowId);
             return formatFewShots(results);
         } catch (Exception e) {
             // 체인 로그에 ERROR 레벨로 기록
-            if (chainId != null) {
-                chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.ERROR,
+            if (workflowId != null) {
+                chainLogManager.addLog(workflowId, "VECTOR_STORE", LogLevel.ERROR,
                         String.format("Few-shot 검색 실패: %s", e.getMessage()), e);
             }
 
@@ -258,13 +258,13 @@ public class VectorRequest {
      *
      * @param queryText 검색할 쿼리 텍스트
      * @param topK 검색할 상위 결과 수
-     * @param chainId 프로파일링용 chain_id
+     * @param workflowId 프로파일링용 chain_id
      * @return 선별된 문서 리스트
      */
-    public List<String> getRecommend(String queryText, int topK, String chainId) {
+    public List<String> getRecommend(String queryText, int topK, String workflowId) {
         try {
             // 벡터 DB에서 검색
-            List<Map<String, Object>> results = queryVectorStore(queryText, "hall_of_fame", topK, chainId);
+            List<Map<String, Object>> results = queryVectorStore(queryText, "hall_of_fame", topK, workflowId);
 
             // document 추출 및 정규화
             String queryTextNormalized = queryText.replace(" ", "").trim();
@@ -279,8 +279,8 @@ public class VectorRequest {
 
             if (documents.isEmpty()) {
                 // 빈 결과도 로그로 기록 (ERROR는 아니지만 정보성)
-                if (chainId != null) {
-                    chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.WARN,
+                if (workflowId != null) {
+                    chainLogManager.addLog(workflowId, "VECTOR_STORE", LogLevel.WARN,
                             "추천 질문 검색 결과 없음");
                 }
                 return new ArrayList<>();
@@ -307,8 +307,8 @@ public class VectorRequest {
             }
 
         } catch (Exception e) {
-            if (chainId != null) {
-                chainLogManager.addLog(chainId, "VECTOR_STORE", LogLevel.ERROR,
+            if (workflowId != null) {
+                chainLogManager.addLog(workflowId, "VECTOR_STORE", LogLevel.ERROR,
                         String.format("추천 질문 검색 실패: %s", e.getMessage()), e);
             }
 

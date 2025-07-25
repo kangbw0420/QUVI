@@ -30,14 +30,14 @@ public class Session implements Serializable {
 
     @CreationTimestamp
     @Column(name = "session_start", nullable = false)
-    private LocalDateTime conversationStart;
+    private LocalDateTime sessionStart;
 
     @Column(name = "session_end")
-    private LocalDateTime conversationEnd;
+    private LocalDateTime sessionEnd;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "session_status")
-    private SessionStatus conversationStatus = SessionStatus.active;
+    private SessionStatus sessionStatus = SessionStatus.active;
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Workflow> workflows = new ArrayList<>();
@@ -47,22 +47,23 @@ public class Session implements Serializable {
         this.userId = userId;
         this.sessionId = sessionId;
         this.companyId = companyId;
-        this.conversationStatus = SessionStatus.active;
+        this.sessionStart = LocalDateTime.now();
+        this.sessionStatus = SessionStatus.active;
     }
 
     /**
      * 대화 종료
      */
     public void endConversation() {
-        this.conversationEnd = LocalDateTime.now();
-        this.conversationStatus = SessionStatus.completed;
+        this.sessionEnd = LocalDateTime.now();
+        this.sessionStatus = SessionStatus.completed;
     }
 
     /**
      * 대화 상태 변경
      */
     public void updateStatus(SessionStatus status) {
-        this.conversationStatus = status;
+        this.sessionStatus = status;
     }
 
     public enum SessionStatus {
@@ -70,11 +71,11 @@ public class Session implements Serializable {
     }
     
     // 추가 메서드들
-    public SessionStatus getConversationStatus() {
-        return conversationStatus;
+    public SessionStatus getSessionStatus() {
+        return sessionStatus;
     }
     
-    public static Session create(String userId, String conversationId, String companyId) {
-        return new Session(userId, conversationId, companyId);
+    public static Session create(String userId, String sessionId, String companyId) {
+        return new Session(userId, sessionId, companyId);
     }
 } 

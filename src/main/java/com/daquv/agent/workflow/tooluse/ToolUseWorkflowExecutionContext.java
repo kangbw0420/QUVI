@@ -145,7 +145,7 @@ public class ToolUseWorkflowExecutionContext {
             }
 
         } catch (Exception e) {
-            log.error("ToolUse 노드 실행 실패: {} - chainId: {}", nodeBeanName, state.getWorkflowId(), e);
+            log.error("ToolUse 노드 실행 실패: {} - workflowId: {}", nodeBeanName, state.getWorkflowId(), e);
 
             // Trace 오류 상태로 변경
             if (nodeId != null) {

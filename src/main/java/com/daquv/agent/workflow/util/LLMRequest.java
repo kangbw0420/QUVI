@@ -56,7 +56,7 @@ public class LLMRequest {
         return callModel(modelType, prompt, qnaId, null);
     }
     
-    public String callModel(String modelType, String prompt, String qnaId, String chainId) {
+    public String callModel(String modelType, String prompt, String qnaId, String workflowId) {
         ModelConfig config = modelConfigs.get(modelType);
         if (config == null) {
             throw new IllegalArgumentException("Unknown model type: " + modelType);
@@ -97,12 +97,12 @@ public class LLMRequest {
             
             // 프로파일링 기록
             double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
-            if (chainId != null) {
+            if (workflowId != null) {
                 String nodeId = determineNodeIdFromStackTrace();
-                profiler.recordLlmCall(chainId, elapsedTime, nodeId);
-                log.info("LLM 프로파일링 기록 완료 - chainId: {}, elapsedTime: {}s", chainId, elapsedTime);
+                profiler.recordLlmCall(workflowId, elapsedTime, nodeId);
+                log.info("LLM 프로파일링 기록 완료 - workflowId: {}, elapsedTime: {}s", workflowId, elapsedTime);
             } else {
-                log.debug("LLM 프로파일링 기록 스킵 - chainId가 null임");
+                log.debug("LLM 프로파일링 기록 스킵 - workflowId null임");
             }
             
             String content = extractContent(response);
@@ -129,8 +129,8 @@ public class LLMRequest {
         return callModel("qwen_llm", prompt, qnaId);
     }
 
-    public String callQwenLlm(String prompt, String qnaId, String chainId) {
-        return callModel("qwen_llm", prompt, qnaId, chainId);
+    public String callQwenLlm(String prompt, String qnaId, String workflowId) {
+        return callModel("qwen_llm", prompt, qnaId, workflowId);
     }
 
     public String callQwenHigh(String prompt) {
@@ -141,8 +141,8 @@ public class LLMRequest {
         return callModel("qwen_high", prompt, qnaId);
     }
 
-    public String callQwenHigh(String prompt, String qnaId, String chainId) {
-        return callModel("qwen_high", prompt, qnaId, chainId);
+    public String callQwenHigh(String prompt, String qnaId, String workflowId) {
+        return callModel("qwen_high", prompt, qnaId, workflowId);
     }
 
     public String callQwenBoolean(String prompt) {
@@ -153,8 +153,8 @@ public class LLMRequest {
         return callModel("qwen_boolean", prompt, qnaId);
     }
 
-    public String callQwenBoolean(String prompt, String qnaId, String chainId) {
-        return callModel("qwen_boolean", prompt, qnaId, chainId);
+    public String callQwenBoolean(String prompt, String qnaId, String workflowId) {
+        return callModel("qwen_boolean", prompt, qnaId, workflowId);
     }
 
     public String callSelector(String prompt) {
@@ -165,8 +165,8 @@ public class LLMRequest {
         return callModel("selector", prompt, qnaId);
     }
 
-    public String callSelector(String prompt, String qnaId, String chainId) {
-        return callModel("selector", prompt, qnaId, chainId);
+    public String callSelector(String prompt, String qnaId, String workflowId) {
+        return callModel("selector", prompt, qnaId, workflowId);
     }
 
     public String callNl2sql(String prompt) {
@@ -177,8 +177,8 @@ public class LLMRequest {
         return callModel("nl2sql", prompt, qnaId);
     }
 
-    public String callNl2sql(String prompt, String qnaId, String chainId) {
-        return callModel("nl2sql", prompt, qnaId, chainId);
+    public String callNl2sql(String prompt, String qnaId, String workflowId) {
+        return callModel("nl2sql", prompt, qnaId, workflowId);
     }
 
     public String callSolver(String prompt) {
@@ -189,8 +189,8 @@ public class LLMRequest {
         return callModel("solver", prompt, qnaId);
     }
 
-    public String callSolver(String prompt, String qnaId, String chainId) {
-        return callModel("solver", prompt, qnaId, chainId);
+    public String callSolver(String prompt, String qnaId, String workflowId) {
+        return callModel("solver", prompt, qnaId, workflowId);
     }
     
     /**

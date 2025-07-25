@@ -247,7 +247,7 @@ public class QueryUtils {
      * 3. 벡터 검색 (Java 구현)
      * 4. 쿼리 변환 (Python API)
      */
-    public Map<String, Object> everNote(String query, String chainId) {
+    public Map<String, Object> everNote(String query, String workflowId) {
         try {
             log.info("everNote 처리 시작: {}", query.substring(0, Math.min(query.length(), 100)));
 
@@ -278,11 +278,11 @@ public class QueryUtils {
             Set<String> allSimilarNotes = new HashSet<>();
             for (String originalNote : new HashSet<>(originalNotes)) {
                 // 스택 트레이스에서 자동으로 노드 ID 결정되도록 기존 메서드 사용
-                String currentChainId = getCurrentChainId();
+                String currentWorkflowId = getCurrentWorkflowId();
 
                 // 스택 트레이스에서 자동으로 노드 ID 결정되도록 기존 메서드 사용
-                // getSimilarNotes(originalNote, availableNotes, topK, threshold, chainId, nodeId) 호출
-                List<String> similarNotes = vectorRequest.getSimilarNotes(originalNote, availableNotes, 10, 0.1, currentChainId, "query_utils");
+                // getSimilarNotes(originalNote, availableNotes, topK, threshold, workflowId, nodeId) 호출
+                List<String> similarNotes = vectorRequest.getSimilarNotes(originalNote, availableNotes, 10, 0.1, currentWorkflowId, "query_utils");
                 allSimilarNotes.addAll(similarNotes);
             }
 
@@ -343,9 +343,9 @@ public class QueryUtils {
     }
 
     /**
-     * 현재 요청의 chainId를 가져오기 (RequestProfiler와 동일한 방식)
+     * 현재 요청의 workflowId 가져오기 (RequestProfiler와 동일한 방식)
      */
-    private String getCurrentChainId() {
+    private String getCurrentWorkflowId() {
         try {
             org.springframework.web.context.request.RequestAttributes requestAttributes =
                     org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
@@ -353,18 +353,18 @@ public class QueryUtils {
                 javax.servlet.http.HttpServletRequest request =
                         ((org.springframework.web.context.request.ServletRequestAttributes) requestAttributes).getRequest();
 
-                Object chainIdAttr = request.getAttribute("chainId");
-                if (chainIdAttr != null) {
-                    return chainIdAttr.toString();
+                Object workflowIdAttr = request.getAttribute("workflowId");
+                if (workflowIdAttr != null) {
+                    return workflowIdAttr.toString();
                 }
 
-                Object xChainIdAttr = request.getAttribute("X-Chain-Id");
-                if (xChainIdAttr != null) {
-                    return xChainIdAttr.toString();
+                Object xWorkflowIdAttr = request.getAttribute("X-Workflow-Id");
+                if (xWorkflowIdAttr != null) {
+                    return xWorkflowIdAttr.toString();
                 }
             }
         } catch (Exception e) {
-            log.debug("getCurrentChainId 실패: {}", e.getMessage());
+            log.debug("getCurrentWorkflowId 실패: {}", e.getMessage());
         }
         return null;
     }
