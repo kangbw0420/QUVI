@@ -1,6 +1,7 @@
 package com.daquv.agent.quvi.workflow;
 
 import com.daquv.agent.quvi.dto.QuviRequestDto;
+import com.daquv.agent.workflow.dto.UserInfo;
 
 import java.util.List;
 
@@ -53,5 +54,10 @@ public interface WorkflowExecutionService {
      * State 객체에서 hasNext 플래그 추출
      */
     Boolean extractHasNext(String workflowId);
+
+    /**
+     * State 객체에서 UserInfo 추출
+     */
+    UserInfo extractUserInfo(String workflowId);
 }
 

@@ -156,6 +156,20 @@ public class ToolUseWorkflowExecutionService implements WorkflowExecutionService
         }
     }
 
+    @Override
+    public UserInfo extractUserInfo(String workflowId) {
+        try {
+            ToolUseWorkflowState state = stateManager.getState(workflowId);
+            if (state != null) {
+                return state.getUserInfo();
+            }
+            return null;
+        } catch (Exception e) {
+            log.error("TOOLUSE UserInfo 추출 실패 - workflowId: {}", workflowId, e);
+            return null;
+        }
+    }
+
     /**
      * TOOLUSE 워크플로우 State 초기화
      */

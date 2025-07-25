@@ -46,9 +46,6 @@ public class KilljoyWorkflowExecutionContext {
             // 3. Trace 완료
             nodeService.completeNode(nodeId);
 
-            // 4. State DB 저장 (최소한의 정보만)
-            saveStateToDatabase(nodeId, userQuestion, finalAnswer);
-
             log.info("=== Killjoy 워크플로우 실행 완료 - workflowId: {} ===", workflowId);
             return finalAnswer;
 
@@ -65,31 +62,6 @@ public class KilljoyWorkflowExecutionContext {
             }
 
             return "일상 대화 처리 중 오류가 발생했습니다.";
-        }
-    }
-
-    /**
-     * 최소한의 State를 DB에 저장
-     */
-    private void saveStateToDatabase(String traceId, String userQuestion, String finalAnswer) {
-        try {
-            Map<String, Object> stateMap = new HashMap<>();
-
-            // 히스토리 조회에 필요한 최소한의 필드들만 저장
-            if (userQuestion != null) {
-                stateMap.put("userQuestion", userQuestion);
-            }
-            if (finalAnswer != null) {
-                stateMap.put("finalAnswer", finalAnswer);
-            }
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            String stateJson = objectMapper.writeValueAsString(stateMap);
-            nodeService.updateNodeStateJson(traceId, stateJson);
-
-        } catch (Exception e) {
-            log.error("Killjoy State DB 저장 실패 - traceId: {}", traceId, e);
-            // State 저장 실패는 워크플로우를 중단하지 않음
         }
     }
 }

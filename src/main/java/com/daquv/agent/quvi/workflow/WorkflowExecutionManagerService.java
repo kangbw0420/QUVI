@@ -2,6 +2,7 @@ package com.daquv.agent.quvi.workflow;
 
 import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.workflow.WorkflowExecutionService;
+import com.daquv.agent.workflow.dto.UserInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -177,6 +178,45 @@ public class WorkflowExecutionManagerService { // 클래스 이름도 변경
             return workflowExecutionService.extractSelectedTable(workflowId);
         } catch (Exception e) {
             log.error("선택된 테이블/API 추출 실패 - selectedWorkflow: {}, workflowId: {}", selectedWorkflow, workflowId, e);
+            return null;
+        }
+    }
+
+    /**
+     * State 객체에서 UserInfo 추출
+     */
+    public UserInfo extractUserInfo(String selectedWorkflow, String workflowId, QuviRequestDto fallbackRequest) {
+        try {
+            // JOY 워크플로우는 UserInfo가 필요 없음
+            if ("JOY".equals(selectedWorkflow)) {
+                log.debug("JOY 워크플로우는 UserInfo가 필요하지 않습니다.");
+                return null;
+            }
+
+            WorkflowExecutionService workflowExecutionService = getWorkflowExecutionService(selectedWorkflow);
+            UserInfo userInfo = workflowExecutionService.extractUserInfo(workflowId);
+
+            // JOY 워크플로우이거나 UserInfo가 null인 경우 fallback 사용
+            if (userInfo == null && fallbackRequest != null) {
+                return UserInfo.builder()
+                        .userId(fallbackRequest.getUserId())
+                        .companyId(fallbackRequest.getCompanyId())
+                        .useInttId(fallbackRequest.getUseInttId())
+                        .build();
+            }
+
+            return userInfo;
+        } catch (Exception e) {
+            log.error("UserInfo 추출 실패 - selectedWorkflow: {}, workflowId: {}", selectedWorkflow, workflowId, e);
+
+            // 실패 시 fallback request에서 UserInfo 생성
+            if (fallbackRequest != null) {
+                return UserInfo.builder()
+                        .userId(fallbackRequest.getUserId())
+                        .companyId(fallbackRequest.getCompanyId())
+                        .useInttId(fallbackRequest.getUseInttId())
+                        .build();
+            }
             return null;
         }
     }

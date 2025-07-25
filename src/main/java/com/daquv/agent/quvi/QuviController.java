@@ -14,6 +14,7 @@ import com.daquv.agent.workflow.ChainStateManager;
 import com.daquv.agent.workflow.SupervisorNode;
 import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.WorkflowState;
+import com.daquv.agent.workflow.dto.UserInfo;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import org.slf4j.Logger;
@@ -172,7 +173,7 @@ public class QuviController {
             workflowService.completeWorkflow(workflowId, finalAnswer);
 
             // 로그 컨텍스트에 최종 결과 저장
-            updateLogContextWithFinalState(logContext, selectedWorkflow, workflowId);
+            updateLogContextWithFinalState(logContext, selectedWorkflow, workflowId, request);
 
             // 11. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
@@ -259,7 +260,7 @@ public class QuviController {
             workflowService.completeWorkflow(workflowId, finalAnswer);
 
             // 로그 컨텍스트 업데이트
-            updateLogContextWithFinalState(logContext, workflowType, workflowId);
+            updateLogContextWithFinalState(logContext, workflowType, workflowId, null);
 
             // 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
@@ -325,7 +326,7 @@ public class QuviController {
     /**
      * 로그 컨텍스트에 최종 상태 업데이트
      */
-    private void updateLogContextWithFinalState(ChainLogContext logContext, String selectedWorkflow, String workflowId) {
+    private void updateLogContextWithFinalState(ChainLogContext logContext, String selectedWorkflow, String workflowId, QuviRequestDto request) {
         try {
             String selectedTable = workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, workflowId);
             String sqlQuery = workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, workflowId);
@@ -335,15 +336,13 @@ public class QuviController {
             logContext.setSqlQuery(sqlQuery);
             logContext.setFinalAnswer(finalAnswer);
 
-            // UserInfo는 State 객체에서 직접 가져와야 함 (기존 로직 유지)
-            Object finalState = workflowExecutionManagerService.getFinalStateForWorkflow(selectedWorkflow, workflowId);
-            if (finalState instanceof WorkflowState) {
-                logContext.setUserInfo(((WorkflowState) finalState).getUserInfo());
-            } else if (finalState instanceof ToolUseWorkflowState) {
-                logContext.setUserInfo(((ToolUseWorkflowState) finalState).getUserInfo());
-            } else if (finalState instanceof SemanticQueryWorkflowState) {
-                logContext.setUserInfo(((SemanticQueryWorkflowState) finalState).getUserInfo());
+            if (!"JOY".equals(selectedWorkflow)) {
+                UserInfo userInfo = workflowExecutionManagerService.extractUserInfo(selectedWorkflow, workflowId, request);
+                logContext.setUserInfo(userInfo);
+            } else {
+                log.debug("JOY 워크플로우는 UserInfo를 로그 컨텍스트에 설정하지 않습니다.");
             }
+
         } catch (Exception e) {
             log.error("로그 컨텍스트 업데이트 실패 - selectedWorkflow: {}, workflowId: {}", selectedWorkflow, workflowId, e);
         }

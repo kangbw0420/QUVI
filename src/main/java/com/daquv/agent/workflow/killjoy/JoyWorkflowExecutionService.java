@@ -2,6 +2,7 @@ package com.daquv.agent.workflow.killjoy;
 
 import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.workflow.WorkflowExecutionService;;
+import com.daquv.agent.workflow.dto.UserInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -118,5 +119,11 @@ public class JoyWorkflowExecutionService implements WorkflowExecutionService {
     public Boolean extractHasNext(String workflowId) {
         // JOY는 페이징이 없음
         return false;
+    }
+
+    @Override
+    public UserInfo extractUserInfo(String workflowId) {
+        log.debug("JOY 워크플로우는 UserInfo를 제공하지 않습니다.");
+        return null;
     }
 }

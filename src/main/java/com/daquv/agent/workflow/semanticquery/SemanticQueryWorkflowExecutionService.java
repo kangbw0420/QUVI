@@ -176,6 +176,20 @@ public class SemanticQueryWorkflowExecutionService implements WorkflowExecutionS
         }
     }
 
+    @Override
+    public UserInfo extractUserInfo(String workflowId) {
+        try {
+            SemanticQueryWorkflowState state = stateManager.getState(workflowId);
+            if (state != null) {
+                return state.getUserInfo();
+            }
+            return null;
+        } catch (Exception e) {
+            log.error("SEMANTICQUERY UserInfo 추출 실패 - workflowId: {}", workflowId, e);
+            return null;
+        }
+    }
+
     /**
      * SEMANTICQUERY 워크플로우 State 초기화
      */
