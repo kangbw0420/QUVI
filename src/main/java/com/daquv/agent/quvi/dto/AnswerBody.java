@@ -23,7 +23,6 @@ public class AnswerBody {
     private String sessionId;                 // 세션 ID
     private String chainId;                   // 체인 ID
     private List<String> recommend;           // 추천 질문 리스트
-    private boolean isApi;                    // API 호출 여부
     private DateInfo dateInfo;                // 날짜 정보
     private String sqlQuery;                  // SQL 쿼리
     private String selectedTable;             // 선택된 테이블
