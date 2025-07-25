@@ -21,7 +21,7 @@ public class SemanticQueryExecutorResultHandler {
     }
 
     /**
-     * SemanticQuery Executor 결과 처리 로직 (기존 DEFAULT 워크플로우 로직 적용)
+     * SemanticQuery Executor 결과 처리 로직
      */
     public void handleSemanticQueryExecutorResults(SemanticQueryWorkflowState state) {
         Map<String, SemanticQueryWorkflowState.SemanticQueryExecution> executionMap = state.getSemanticQueryExecutionMap();

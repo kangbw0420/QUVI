@@ -108,7 +108,7 @@ public class SemanticQueryWorkflowExecutionContext {
                 log.warn("SemanticQuery: 모든 쿼리 실행이 실패하여 후처리를 건너뜁니다.");
             }
 
-            // 7. Executor 결과 처리 (DEFAULT 워크플로우 스타일 통합)
+            // 7. Executor 결과 처리
             log.info("SemanticQuery: Executor 결과 처리 시작");
             executorResultHandler.handleSemanticQueryExecutorResults(state);
 
