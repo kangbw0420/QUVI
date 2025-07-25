@@ -185,7 +185,7 @@ public class WorkflowLogManager {
     private String buildChainLogText(WorkflowLogContext context) {
         StringBuilder logText = new StringBuilder();
 
-        logText.append("=== Chain Log ===\n");
+        logText.append("=== Workflow Log ===\n");
         logText.append("Workflow ID: ").append(context.getWorkflowId()).append("\n");
         logText.append("User ID: ").append(context.getUserId()).append("\n");
         logText.append("Question: ").append(context.getUserQuestion()).append("\n");
