@@ -4,6 +4,7 @@ import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowExecutionCont
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -13,7 +14,11 @@ import java.util.Map;
 public class SemanticQueryExecutorResultHandler {
 
     @Autowired
-    private SemanticQueryWorkflowExecutionContext semanticQueryWorkflowContext;
+    private ApplicationContext applicationContext;
+
+    private SemanticQueryWorkflowExecutionContext getExecutionContext() {
+        return applicationContext.getBean(SemanticQueryWorkflowExecutionContext.class);
+    }
 
     /**
      * SemanticQuery Executor 결과 처리 로직 (기존 DEFAULT 워크플로우 로직 적용)
@@ -84,7 +89,7 @@ public class SemanticQueryExecutorResultHandler {
         if (hasNoData) {
             log.info("SemanticQuery: 모든 entity에서 데이터 없음");
             try {
-                semanticQueryWorkflowContext.executeNode("nodataNode", state);
+                getExecutionContext().executeNode("nodataNode", state);
             } catch (Exception e) {
                 log.warn("nodataNode 실행 실패, 기본 메시지 설정: {}", e.getMessage());
                 state.setFinalAnswer("요청하신 조건에 해당하는 데이터가 없습니다.");
@@ -96,7 +101,7 @@ public class SemanticQueryExecutorResultHandler {
         if (hasQueryError && maxSafeCount < 2) {
             log.info("SemanticQuery: 쿼리 에러 감지, safeguard 실행");
             try {
-                semanticQueryWorkflowContext.executeNode("safeguardNode", state);
+                getExecutionContext().executeNode("safeguardNode", state);
 
                 // safeguard 후 쿼리 변경 확인
                 boolean queryChanged = false;
@@ -109,8 +114,8 @@ public class SemanticQueryExecutorResultHandler {
 
                 if (queryChanged) {
                     // 쿼리가 변경된 경우 DSL부터 다시 실행
-                    semanticQueryWorkflowContext.executeNode("dsl2SqlNode", state);
-                    semanticQueryWorkflowContext.executeNode("runSqlNode", state);
+                    getExecutionContext().executeNode("dsl2SqlNode", state);
+                    getExecutionContext().executeNode("runSqlNode", state);
 
                     // 재실행 후 다시 상태 확인
                     boolean hasInvalidDateAfterRetry = false;
@@ -131,7 +136,7 @@ public class SemanticQueryExecutorResultHandler {
                     }
 
                     if (hasNoDataAfterRetry) {
-                        semanticQueryWorkflowContext.executeNode("nodataNode", state);
+                        getExecutionContext().executeNode("nodataNode", state);
                         return;
                     }
 
@@ -145,7 +150,7 @@ public class SemanticQueryExecutorResultHandler {
                     }
 
                     if (hasValidResultsAfterRetry) {
-                        semanticQueryWorkflowContext.executeNode("postProcessNode", state);
+                        getExecutionContext().executeNode("postProcessNode", state);
                         hasValidResults = true; // 최종 응답 생성을 위해 플래그 업데이트
                     }
                 }
@@ -158,7 +163,7 @@ public class SemanticQueryExecutorResultHandler {
         if (hasValidResults) {
             log.info("SemanticQuery: 유효한 결과 있음, respondent 실행");
             try {
-                semanticQueryWorkflowContext.executeNode("semanticQueryRespondentNode", state);
+                getExecutionContext().executeNode("semanticQueryRespondentNode", state);
             } catch (Exception e) {
                 log.error("semanticQueryRespondentNode 실행 실패: {}", e.getMessage());
                 state.setFinalAnswer("결과를 생성하는 중 오류가 발생했습니다.");
