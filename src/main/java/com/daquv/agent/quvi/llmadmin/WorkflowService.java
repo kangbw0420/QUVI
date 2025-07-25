@@ -76,7 +76,6 @@ public class WorkflowService {
     public boolean completeWorkflow(String workflowId, String finalAnswer) {
         log.info("completeWorkflow start - workflowId: {}, finalAnswer: {}", workflowId, finalAnswer);
 
-        long startTime = System.currentTimeMillis();
         try {
             Workflow workflow = workflowRepository.findById(workflowId)
                     .orElseThrow(() -> new IllegalArgumentException("Chain not found: " + workflowId));
@@ -101,11 +100,10 @@ public class WorkflowService {
      * @return 성공 여부
      */
     @Transactional
-    public void markChainError(String workflowId, String errorMessage, String errorLog) {
-        long startTime = System.currentTimeMillis();
+    public void markWorkflowError(String workflowId, String errorMessage, String errorLog) {
         try {
             Workflow workflow = workflowRepository.findById(workflowId)
-                    .orElseThrow(() -> new RuntimeException("Chain not found: " + workflowId));
+                    .orElseThrow(() -> new RuntimeException("Workflow not found: " + workflowId));
 
             workflow.markError(errorMessage, errorLog);
             workflowRepository.saveAndFlush(workflow); // 즉시 DB에 반영
@@ -113,7 +111,7 @@ public class WorkflowService {
             log.info("✅ 체인 에러 상태 저장 완료 - workflowId: {}", workflowId);
         } catch (Exception e) {
             log.error("❌ 체인 에러 상태 저장 실패 - workflowId: {}, error: {}", workflowId, e.getMessage(), e);
-            throw new RuntimeException("Failed to save chain error", e);
+            throw new RuntimeException("Failed to save workflow workflow", e);
         }
     }
 
@@ -121,18 +119,18 @@ public class WorkflowService {
      * 체인 로그 업데이트
      */
     @Transactional
-    public void updateChainLog(String workflowId, String chainLogText) {
-        long startTime = System.currentTimeMillis();
+    public void updateWorkflowLog(String workflowId, String workflowLogText) {
         try {
             Workflow workflow = workflowRepository.findById(workflowId)
-                    .orElseThrow(() -> new RuntimeException("Chain not found: " + workflowId));
+                    .orElseThrow(() -> new RuntimeException("Workflow not found: " + workflowId));
 
+            workflow.addWorkflowLog(workflowLogText);
             workflowRepository.saveAndFlush(workflow); // 즉시 DB에 반영
 
             log.info("✅ 체인 로그 업데이트 완료 - workflowId: {}", workflowId);
         } catch (Exception e) {
             log.error("❌ 체인 로그 업데이트 실패 - workflowId: {}, error: {}", workflowId, e.getMessage(), e);
-            throw new RuntimeException("Failed to update chain log", e);
+            throw new RuntimeException("Failed to update workflow log", e);
         }
     }
 
