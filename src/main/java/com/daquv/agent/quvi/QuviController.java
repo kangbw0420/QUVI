@@ -10,9 +10,7 @@ import com.daquv.agent.quvi.logging.ChainLogManager;
 import com.daquv.agent.quvi.requests.VectorRequest;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.workflow.WorkflowExecutionManagerService;
-import com.daquv.agent.workflow.ChainStateManager;
 import com.daquv.agent.workflow.SupervisorNode;
-import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.dto.UserInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,8 +32,6 @@ public class QuviController {
 
     private static final Logger log = LoggerFactory.getLogger(QuviController.class);
 
-    private final ChainStateManager stateManager;
-    private final WorkflowExecutionContext workflowContext;
     private final VectorRequest vectorRequest;
     private final SessionService sessionService;
     private final WorkflowService workflowService;
@@ -48,12 +44,9 @@ public class QuviController {
     @Autowired
     private ApplicationContext applicationContext;
 
-    public QuviController(ChainStateManager stateManager, WorkflowExecutionContext workflowContext,
-                          VectorRequest vectorRequest, SessionService sessionService,
+    public QuviController(VectorRequest vectorRequest, SessionService sessionService,
                           WorkflowService workflowService, ChainLogManager chainLogManager,
                           RequestProfiler requestProfiler) {
-        this.stateManager = stateManager;
-        this.workflowContext = workflowContext;
         this.vectorRequest = vectorRequest;
         this.sessionService = sessionService;
         this.workflowService = workflowService;
