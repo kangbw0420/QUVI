@@ -2,8 +2,6 @@ package com.daquv.agent.workflow.killjoy;
 
 import com.daquv.agent.quvi.dto.QuviRequestDto;
 import com.daquv.agent.quvi.workflow.WorkflowExecutionService;;
-import com.daquv.agent.workflow.WorkflowState;
-import com.daquv.agent.workflow.dto.UserInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
