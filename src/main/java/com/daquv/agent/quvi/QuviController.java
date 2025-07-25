@@ -14,13 +14,7 @@ import com.daquv.agent.workflow.ChainStateManager;
 import com.daquv.agent.workflow.SupervisorNode;
 import com.daquv.agent.workflow.WorkflowExecutionContext;
 import com.daquv.agent.workflow.WorkflowState;
-import com.daquv.agent.workflow.dto.UserInfo;
-import com.daquv.agent.workflow.killjoy.KilljoyWorkflowExecutionContext;
-import com.daquv.agent.workflow.semanticquery.SemanticQueryStateManager;
-import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowExecutionContext;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
-import com.daquv.agent.workflow.tooluse.ToolUseStateManager;
-import com.daquv.agent.workflow.tooluse.ToolUseWorkflowExecutionContext;
 import com.daquv.agent.workflow.tooluse.ToolUseWorkflowState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,12 +49,6 @@ public class QuviController {
 
     @Autowired
     private ApplicationContext applicationContext;
-
-    @Autowired
-    private ToolUseStateManager toolUseStateManager;
-
-    @Autowired
-    private SemanticQueryStateManager semanticQueryStateManager;
 
     public QuviController(ChainStateManager stateManager, WorkflowExecutionContext workflowContext,
                           VectorRequest vectorRequest, SessionService sessionService,
@@ -683,7 +671,7 @@ public class QuviController {
                 long vectorTotalTime = (Long) vectorDbStats.getOrDefault("total_time_ms", 0L);
                 double vectorAvgTime = (Double) vectorDbStats.getOrDefault("avg_time_ms", 0.0);
 
-                log.info("📊 🔍 Vector DB 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
+                log.info("📊 🔍 Vector DB 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {}ms",
                         vectorCalls, vectorTotalTime, vectorAvgTime);
             }
 
@@ -692,7 +680,7 @@ public class QuviController {
                 long llmTotalTime = (Long) llmStats.getOrDefault("total_time_ms", 0L);
                 double llmAvgTime = (Double) llmStats.getOrDefault("avg_time_ms", 0.0);
 
-                log.info("📊 🤖 LLM 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
+                log.info("📊 🤖 LLM 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {}ms",
                         llmCalls, llmTotalTime, llmAvgTime);
             }
 
@@ -701,7 +689,7 @@ public class QuviController {
                 long dbMainTotalTime = (Long) dbMainStats.getOrDefault("total_time_ms", 0L);
                 double dbMainAvgTime = (Double) dbMainStats.getOrDefault("avg_time_ms", 0.0);
 
-                log.info("📊 🗄️ DB Main 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
+                log.info("📊 🗄️ DB Main 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {}ms",
                         dbMainCalls, dbMainTotalTime, dbMainAvgTime);
             }
 
@@ -710,7 +698,7 @@ public class QuviController {
                 long dbPromptTotalTime = (Long) dbPromptStats.getOrDefault("total_time_ms", 0L);
                 double dbPromptAvgTime = (Double) dbPromptStats.getOrDefault("avg_time_ms", 0.0);
 
-                log.info("📊 💾 DB Prompt 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {:.2f}ms",
+                log.info("📊 💾 DB Prompt 전체 - 호출횟수: {}회, 총 소요시간: {}ms, 평균 소요시간: {}ms",
                         dbPromptCalls, dbPromptTotalTime, dbPromptAvgTime);
             }
 
@@ -727,7 +715,7 @@ public class QuviController {
                     long totalTimeMs = (Long) nodeData.getOrDefault("total_time_ms", 0L);
                     double avgTime = (Double) nodeData.getOrDefault("avg_time_ms", 0.0);
 
-                    log.info("📊 🔧 {} 노드 - 총 호출: {}회, 총 시간: {}ms, 평균: {:.2f}ms",
+                    log.info("📊 🔧 {} 노드 - 총 호출: {}회, 총 시간: {}ms, 평균: {}ms",
                             nodeId, totalCalls, totalTimeMs, avgTime);
 
                     chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
@@ -746,7 +734,7 @@ public class QuviController {
                             double typeAvg = (Double) typeStats.getOrDefault("avg_time_ms", 0.0);
 
                             String typeIcon = getTypeIcon(type);
-                            log.info("📊   └─ {} {}: {}회, {}ms, 평균 {:.2f}ms",
+                            log.info("📊   └─ {} {}: {}회, {}ms, 평균 {}ms",
                                     typeIcon, type, typeCalls, typeTime, typeAvg);
 
                             chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,
@@ -780,7 +768,7 @@ public class QuviController {
 
             double profiledPercentage = totalTime > 0 ? (double) totalProfiledTime / totalTime * 100 : 0.0;
 
-            log.info("📊 ⭐ 전체 요약 - 총 노드 호출: {}회, 프로파일된 시간: {}ms ({:.1f}%), 기타 처리 시간: {}ms",
+            log.info("📊 ⭐ 전체 요약 - 총 노드 호출: {}회, 프로파일된 시간: {}ms ({}%), 기타 처리 시간: {}ms",
                     totalCalls, totalProfiledTime, profiledPercentage, totalTime - totalProfiledTime);
 
             chainLogManager.addLog(workflowId, "STATISTICS", LogLevel.INFO,

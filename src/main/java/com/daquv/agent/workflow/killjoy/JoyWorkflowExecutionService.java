@@ -1,8 +1,7 @@
 package com.daquv.agent.workflow.killjoy;
 
 import com.daquv.agent.quvi.dto.QuviRequestDto;
-import com.daquv.agent.quvi.workflow.WorkflowExecutionService;
-import com.daquv.agent.workflow.ChainStateManager;
+import com.daquv.agent.quvi.workflow.WorkflowExecutionService;;
 import com.daquv.agent.workflow.WorkflowState;
 import com.daquv.agent.workflow.dto.UserInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -11,16 +10,19 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
-@Service("joyWorkflowExecutionService") // Bean 이름도 변경
+@Service("joyWorkflowExecutionService")
 @Slf4j
 public class JoyWorkflowExecutionService implements WorkflowExecutionService {
 
     @Autowired
-    private ChainStateManager stateManager;
-
-    @Autowired
     private KilljoyWorkflowExecutionContext killjoyWorkflowExecutionContext;
+
+    private final ConcurrentHashMap<String, String> userQuestions = new ConcurrentHashMap<>();
+
+    private final ConcurrentHashMap<String, String> workflowResults = new ConcurrentHashMap<>();
+
 
     @Override
     public String getWorkflowType() {
@@ -31,41 +33,51 @@ public class JoyWorkflowExecutionService implements WorkflowExecutionService {
     public Object createAndInitializeState(QuviRequestDto request, String sessionId, String workflowId) {
         log.info("🎉 JOY 워크플로우 State 생성 및 초기화 시작");
 
-        WorkflowState state = stateManager.createState(workflowId);
-        initializeJoyState(state, request, sessionId, workflowId);
+        userQuestions.put(workflowId, request.getUserQuestion());
 
         log.info("🎉 JOY 워크플로우 State 초기화 완료");
-        return state;
+        return request;
     }
 
     @Override
     public void executeWorkflow(String workflowId) {
         log.info("🎉 JOY 워크플로우 실행 시작 - workflowId: {}", workflowId);
-        killjoyWorkflowExecutionContext.executeKilljoyWorkflow(workflowId);
+
+        String userQuestion = userQuestions.get(workflowId);
+        if (userQuestion == null) {
+            throw new IllegalStateException("사용자 질문을 찾을 수 없습니다: " + workflowId);
+        }
+
+        String finalAnswer = killjoyWorkflowExecutionContext.executeKilljoyWorkflow(workflowId, userQuestion);
+
+        // 결과를 임시 저장
+        workflowResults.put(workflowId, finalAnswer);
+
         log.info("🎉 JOY 워크플로우 실행 완료 - workflowId: {}", workflowId);
     }
 
     @Override
     public Object getFinalState(String workflowId) {
-        return stateManager.getState(workflowId);
+        // 상태 객체 대신 결과 문자열 반환
+        return workflowResults.get(workflowId);
     }
 
     @Override
     public void cleanupState(String workflowId) {
         try {
-            stateManager.removeState(workflowId);
-            log.debug("JOY State 정리 완료 - workflowId: {}", workflowId);
+            workflowResults.remove(workflowId);
+            log.debug("JOY 결과 정리 완료 - workflowId: {}", workflowId);
         } catch (Exception e) {
-            log.warn("JOY State 정리 실패 - workflowId: {}: {}", workflowId, e.getMessage());
+            log.warn("JOY 결과 정리 실패 - workflowId: {}: {}", workflowId, e.getMessage());
         }
     }
 
     @Override
     public String extractFinalAnswer(String workflowId) {
         try {
-            WorkflowState state = stateManager.getState(workflowId);
-            if (state != null && state.getFinalAnswer() != null) {
-                return state.getFinalAnswer();
+            String result = workflowResults.get(workflowId);
+            if (result != null) {
+                return result;
             }
             return "JOY 처리 중 오류가 발생했습니다.";
         } catch (Exception e) {
@@ -76,103 +88,37 @@ public class JoyWorkflowExecutionService implements WorkflowExecutionService {
 
     @Override
     public List<?> extractQueryResult(String workflowId) {
-        try {
-            WorkflowState state = stateManager.getState(workflowId);
-            if (state != null && state.getQueryResult() != null) {
-                return state.getQueryResult();
-            }
-            return new ArrayList<>();
-        } catch (Exception e) {
-            log.error("JOY 쿼리 결과 추출 실패 - workflowId: {}", workflowId, e);
-            return new ArrayList<>();
-        }
+        // JOY는 쿼리 결과가 없음
+        return new ArrayList<>();
     }
 
     @Override
     public String extractStartDate(String workflowId) {
-        try {
-            WorkflowState state = stateManager.getState(workflowId);
-            if (state != null) {
-                return state.getStartDate();
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("JOY 시작 날짜 추출 실패 - workflowId: {}", workflowId, e);
-            return null;
-        }
+        // JOY는 날짜 정보가 없음
+        return null;
     }
 
     @Override
     public String extractEndDate(String workflowId) {
-        try {
-            WorkflowState state = stateManager.getState(workflowId);
-            if (state != null) {
-                return state.getEndDate();
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("JOY 종료 날짜 추출 실패 - workflowId: {}", workflowId, e);
-            return null;
-        }
+        // JOY는 날짜 정보가 없음
+        return null;
     }
 
     @Override
     public String extractSqlQuery(String workflowId) {
-        try {
-            WorkflowState state = stateManager.getState(workflowId);
-            if (state != null) {
-                return state.getSqlQuery();
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("JOY SQL 쿼리 추출 실패 - workflowId: {}", workflowId, e);
-            return null;
-        }
+        // JOY는 SQL 쿼리가 없음
+        return null;
     }
 
     @Override
     public String extractSelectedTable(String workflowId) {
-        try {
-            WorkflowState state = stateManager.getState(workflowId);
-            if (state != null) {
-                return state.getSelectedTable();
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("JOY 선택된 테이블 추출 실패 - workflowId: {}", workflowId, e);
-            return null;
-        }
+        // JOY는 테이블 선택이 없음
+        return null;
     }
 
     @Override
     public Boolean extractHasNext(String workflowId) {
-        try {
-            WorkflowState state = stateManager.getState(workflowId);
-            if (state != null && state.getHasNext() != null) {
-                return state.getHasNext();
-            }
-            return false;
-        } catch (Exception e) {
-            log.error("JOY hasNext 플래그 추출 실패 - workflowId: {}", workflowId, e);
-            return false;
-        }
-    }
-
-    /**
-     * JOY 워크플로우 State 초기화
-     */
-    private void initializeJoyState(WorkflowState state, QuviRequestDto request, String sessionId, String workflowId) {
-        state.setUserQuestion(request.getUserQuestion());
-        state.setUserInfo(UserInfo.builder()
-                .userId(request.getUserId())
-                .companyId(request.getCompanyId())
-                .useInttId(request.getUseInttId())
-                .build());
-        state.setWorkflowId(workflowId);
-        state.setNodeId("node_" + System.currentTimeMillis());
-        state.setSelectedWorkflow("JOY");
-        state.setIsJoy(true);
-
-        log.info("🎉 JOY 워크플로우용 상태 초기화 완료");
+        // JOY는 페이징이 없음
+        return false;
     }
 }
