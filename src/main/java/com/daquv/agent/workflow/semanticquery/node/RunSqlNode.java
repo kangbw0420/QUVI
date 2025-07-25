@@ -208,6 +208,8 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
                         DIALECT
                 );
 
+                sqlMap.put(entry.getKey(), viewQuery);
+
                 // SQL 실행
                 log.debug("Executing SQL for key '{}': {}", queryKey,
                         viewQuery.substring(0, Math.min(100, viewQuery.length())) + "...");
