@@ -122,6 +122,22 @@ public class SessionService {
         return sessionRepository.findBySessionId(sessionId);
     }
 
+    /**
+     * 세션 ID 확인 또는 새로 생성
+     */
+    public String getOrCreateSessionId(QuviRequestDto request) {
+        String sessionId = request.getSessionId();
+
+        if (sessionId != null && !sessionId.isEmpty() && checkSessionId(sessionId)) {
+            log.debug("기존 세션 ID 사용: {}", sessionId);
+            return sessionId;
+        } else {
+            String newSessionId = makeSessionId(request);
+            log.debug("새 세션 ID 생성: {}", newSessionId);
+            return newSessionId;
+        }
+    }
+
     private String getCurrentWorkflowId() {
         try {
             RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
