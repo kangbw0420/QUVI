@@ -6,8 +6,9 @@ import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.daquv.agent.quvi.logging.WorkflowLogContext;
 import com.daquv.agent.quvi.logging.WorkflowLogManager;
 import com.daquv.agent.quvi.util.RequestProfiler;
+import com.daquv.agent.quvi.util.StatisticsUtils;
+import com.daquv.agent.quvi.util.ResponseUtils;
 import com.daquv.agent.quvi.workflow.WorkflowExecutionManagerService;
-import com.daquv.agent.workflow.dto.UserInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.*;
-import com.daquv.agent.quvi.util.StatisticsUtils;
-import com.daquv.agent.quvi.util.ResponseUtils;
+
 
 @RestController
 public class ResumeController {
@@ -78,15 +78,12 @@ public class ResumeController {
 
             workflowExecutionManagerService.resumeWorkflowAfterHil(workflowType, workflowId, request.getUserInput());
 
-            // 최종 결과 조회
-            Object finalState = workflowExecutionManagerService.getFinalStateForWorkflow(workflowType, workflowId);
-
             // Chain 완료
             String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(workflowType, workflowId);
             workflowService.completeWorkflow(workflowId, finalAnswer);
 
             // 로그 컨텍스트 업데이트
-            updateLogContextWithFinalState(logContext, workflowType, workflowId);
+            chainLogManager.updateLogContextWithFinalState(logContext, workflowType, workflowId, null, workflowExecutionManagerService);
 
             // 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
@@ -114,51 +111,8 @@ public class ResumeController {
                 workflowExecutionManagerService.cleanupAllStates(workflowId);
             }
 
-            Map<String, Object> errorResponse = buildErrorResponse(e.getMessage());
+            Map<String, Object> errorResponse = ResponseUtils.buildErrorResponse(e.getMessage(), "HIL 재개 실패");
             return ResponseEntity.ok(errorResponse);
         }
-    }
-
-    /**
-     * 로그 컨텍스트에 최종 상태 업데이트
-     */
-    private void updateLogContextWithFinalState(WorkflowLogContext logContext, String selectedWorkflow, String workflowId) {
-        try {
-            String selectedTable = workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, workflowId);
-            String sqlQuery = workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, workflowId);
-            String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
-
-            logContext.setSelectedTable(selectedTable);
-            logContext.setSqlQuery(sqlQuery);
-            logContext.setFinalAnswer(finalAnswer);
-
-            if (!"JOY".equals(selectedWorkflow)) {
-                UserInfo userInfo = workflowExecutionManagerService.extractUserInfo(selectedWorkflow, workflowId, null);
-                logContext.setUserInfo(userInfo);
-            } else {
-                log.debug("JOY 워크플로우는 UserInfo를 로그 컨텍스트에 설정하지 않습니다.");
-            }
-
-        } catch (Exception e) {
-            log.error("로그 컨텍스트 업데이트 실패 - selectedWorkflow: {}, workflowId: {}", selectedWorkflow, workflowId, e);
-        }
-    }
-
-    /**
-     * 오류 응답 생성
-     */
-    private Map<String, Object> buildErrorResponse(String errorMessage) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", 500);
-        response.put("success", false);
-        response.put("retCd", 500);
-        response.put("message", "HIL 재개 실패");
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("answer", "죄송합니다. HIL 재개 처리 중 오류가 발생했습니다.");
-        body.put("error", errorMessage);
-
-        response.put("body", body);
-        return response;
     }
 } 

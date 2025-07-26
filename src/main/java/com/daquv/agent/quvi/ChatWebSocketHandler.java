@@ -9,8 +9,6 @@ import com.daquv.agent.quvi.dto.LogLevel;
 import com.daquv.agent.quvi.requests.VectorRequest;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.workflow.WorkflowExecutionManagerService;
-import com.daquv.agent.workflow.SupervisorNode;
-import com.daquv.agent.workflow.dto.UserInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +20,6 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.daquv.agent.quvi.util.StatisticsUtils;
@@ -45,7 +40,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private WorkflowExecutionManagerService workflowExecutionManagerService;
 
     @Autowired
-    private ApplicationContext applicationContext;
+    private ChatController chatController;
 
     public ChatWebSocketHandler(VectorRequest vectorRequest, SessionService sessionService,
                                 WorkflowService workflowService, WorkflowLogManager chainLogManager,
@@ -79,7 +74,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             log.error("❌ WebSocket 메시지 처리 중 예외 발생: {}", e.getMessage(), e);
 
             // 에러 응답 전송
-            Map<String, Object> errorResponse = buildErrorResponse(e.getMessage());
+            Map<String, Object> errorResponse = ResponseUtils.buildErrorResponse(e.getMessage(), "WebSocket Chat 실패");
             try {
                 String errorJson = objectMapper.writeValueAsString(errorResponse);
                 session.sendMessage(new TextMessage(errorJson));
@@ -124,13 +119,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     String.format("🔗 체인 생성 완료: %s, 세션 ID: %s", workflowId, sessionId));
 
             // 5. 추천 질문 검색
-            List<String> recommendList = getRecommendations(request.getUserQuestion(), workflowId);
+            List<String> recommendList = chatController.getRecommendations(request.getUserQuestion(), workflowId);
 
             // 6. SupervisorNode 실행하여 워크플로우 결정
             chainLogManager.addLog(workflowId, "CHAT_WEBSOCKET_HANDLER", LogLevel.INFO,
                     "🎯 Supervisor를 통한 워크플로우 선택 시작");
 
-            String selectedWorkflow = selectWorkflowUsingSupervisor(request.getUserQuestion(), workflowId);
+            String selectedWorkflow = chatController.selectWorkflowUsingSupervisor(request.getUserQuestion(), workflowId);
 
             if (selectedWorkflow == null || "ERROR".equals(selectedWorkflow)) {
                 throw new RuntimeException("Supervisor에서 워크플로우 선택 실패");
@@ -163,8 +158,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
                     // HIL 응답 생성 및 반환
                     long totalTime = System.currentTimeMillis() - startTime;
-                    Map<String, Object> hilResponse = buildHilWaitingResponse(
-                            sessionId, workflowId, totalTime, selectedWorkflow);
+                    Map<String, Object> hilResponse = ResponseUtils.buildHilWaitingResponse(
+                            workflowExecutionManagerService, sessionId, workflowId, totalTime, selectedWorkflow, requestProfiler, "HIL 대기 중");
 
                     StatisticsUtils.logNodeExecutionStatistics(log, chainLogManager, workflowId, totalTime, requestProfiler.getProfile(workflowId), "CHAT_WEBSOCKET_STATISTICS");
 
@@ -187,15 +182,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 throw workflowError;
             }
 
-            // 9. 최종 결과 조회
-            Object finalState = workflowExecutionManagerService.getFinalStateForWorkflow(selectedWorkflow, workflowId);
-
             // 10. Chain 완료
             String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
             workflowService.completeWorkflow(workflowId, finalAnswer);
 
             // 로그 컨텍스트에 최종 결과 저장
-            updateLogContextWithFinalState(logContext, selectedWorkflow, workflowId, request);
+            chainLogManager.updateLogContextWithFinalState(logContext, selectedWorkflow, workflowId, request, workflowExecutionManagerService);
 
             // 11. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
@@ -233,32 +225,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 workflowExecutionManagerService.cleanupAllStates(workflowId);
             }
 
-            return buildErrorResponse(e.getMessage());
-        }
-    }
-
-    private String selectWorkflowUsingSupervisor(String userQuestion, String workflowId) {
-        try {
-            Object supervisorNodeBean = applicationContext.getBean("supervisorNode");
-
-            if (supervisorNodeBean instanceof SupervisorNode) {
-                SupervisorNode supervisorNode = (SupervisorNode) supervisorNodeBean;
-
-                log.info("🎯 SupervisorNode 실행 시작 - 질문: {}", userQuestion);
-
-                // userQuestion만으로 워크플로우 선택 실행
-                String selectedWorkflow = supervisorNode.selectWorkflow(userQuestion, workflowId);
-
-                log.info("🎯 SupervisorNode 실행 완료 - 선택된 워크플로우: {}", selectedWorkflow);
-                return selectedWorkflow;
-
-            } else {
-                throw new IllegalArgumentException("SupervisorNode를 찾을 수 없습니다.");
-            }
-
-        } catch (Exception e) {
-            log.error("SupervisorNode 실행 실패: {}", e.getMessage(), e);
-            return "ERROR";
+            return ResponseUtils.buildErrorResponse(e.getMessage(), "WebSocket Chat 실패");
         }
     }
 
@@ -289,133 +256,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.warn("WebSocket 세션 설정 실패 - selectedWorkflow: {}, workflowId: {}", selectedWorkflow, workflowId, e);
         }
-    }
-
-
-
-    private List<String> getRecommendations(String userQuestion, String workflowId) {
-        try {
-            List<String> recommendList = vectorRequest.getRecommend(userQuestion, 4, workflowId);
-            log.info("📚 추천 질문 검색 완료: {}", recommendList);
-            chainLogManager.addLog(workflowId, "CHAT_WEBSOCKET_HANDLER", LogLevel.INFO,
-                    String.format("📚 추천 질문 검색 완료: %d개", recommendList.size()));
-            return recommendList;
-        } catch (Exception e) {
-            log.error("📚 추천 질문 검색 실패: {}", e.getMessage(), e);
-            chainLogManager.addLog(workflowId, "CHAT_WEBSOCKET_HANDLER", LogLevel.ERROR,
-                    "📚 벡터 스토어 연결 실패로 추천 질문을 가져올 수 없습니다");
-            return new ArrayList<>();
-        }
-    }
-
-    /**
-     * 로그 컨텍스트에 최종 상태 업데이트
-     */
-    private void updateLogContextWithFinalState(WorkflowLogContext logContext, String selectedWorkflow, String workflowId, QuviRequestDto request) {
-        try {
-            String selectedTable = workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, workflowId);
-            String sqlQuery = workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, workflowId);
-            String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
-
-            logContext.setSelectedTable(selectedTable);
-            logContext.setSqlQuery(sqlQuery);
-            logContext.setFinalAnswer(finalAnswer);
-
-            if (!"JOY".equals(selectedWorkflow)) {
-                UserInfo userInfo = workflowExecutionManagerService.extractUserInfo(selectedWorkflow, workflowId, request);
-                logContext.setUserInfo(userInfo);
-            } else {
-                log.debug("JOY 워크플로우는 UserInfo를 로그 컨텍스트에 설정하지 않습니다.");
-            }
-
-        } catch (Exception e) {
-            log.error("로그 컨텍스트 업데이트 실패 - selectedWorkflow: {}, workflowId: {}", selectedWorkflow, workflowId, e);
-        }
-    }
-
-    /**
-     * HIL 대기 상태 응답 생성
-     */
-    private Map<String, Object> buildHilWaitingResponse(String sessionId, String workflowId,
-                                                        long totalTime, String selectedWorkflow) {
-        Map<String, Object> response = new HashMap<>();
-
-        // 기본 응답
-        response.put("status", 200);
-        response.put("success", true);
-        response.put("retCd", 200);
-        response.put("message", "HIL 대기 중");
-
-        // 응답 본문
-        Map<String, Object> body = new HashMap<>();
-
-        // HIL 상태에서 필요한 정보들 (매니저를 통해 추출)
-        String hilMessage = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
-
-        if (hilMessage == null || hilMessage.trim().isEmpty()) {
-            hilMessage = "추가 정보가 필요합니다. 사용자 입력을 기다리고 있습니다.";
-        }
-
-        body.put("answer", hilMessage);
-        body.put("session_id", sessionId);
-        body.put("workflow_id", workflowId);
-        body.put("workflow_status", "waiting");
-        body.put("hil_required", true); // HIL이 필요함을 명시
-        body.put("is_api", false);
-        body.put("recommend", new ArrayList<>()); // HIL 상태에서는 추천 질문 없음
-
-        // 프로파일링 정보 (기본값)
-        Map<String, Object> profile = new HashMap<>();
-        if (workflowId != null) {
-            Map<String, Object> profileData = requestProfiler.getProfile(workflowId);
-
-            // 기본 프로파일 구조 유지
-            Map<String, Object> vectorDbDefault = new HashMap<>();
-            vectorDbDefault.put("calls", 0);
-            vectorDbDefault.put("total_time_ms", 0);
-            vectorDbDefault.put("avg_time_ms", 0.0);
-            profile.put("vector_db", profileData.getOrDefault("vector_db", vectorDbDefault));
-
-            Map<String, Object> llmDefault = new HashMap<>();
-            llmDefault.put("calls", 0);
-            llmDefault.put("total_time_ms", 0);
-            llmDefault.put("avg_time_ms", 0.0);
-            profile.put("llm", profileData.getOrDefault("llm", llmDefault));
-
-            Map<String, Object> dbNormalDefault = new HashMap<>();
-            dbNormalDefault.put("calls", 0);
-            dbNormalDefault.put("total_time_ms", 0);
-            dbNormalDefault.put("avg_time_ms", 0.0);
-            profile.put("db_normal", profileData.getOrDefault("db_main", dbNormalDefault));
-
-            Map<String, Object> dbPromptDefault = new HashMap<>();
-            dbPromptDefault.put("calls", 0);
-            dbPromptDefault.put("total_time_ms", 0);
-            dbPromptDefault.put("avg_time_ms", 0.0);
-            profile.put("db_prompt", profileData.getOrDefault("db_prompt", dbPromptDefault));
-        }
-        profile.put("total_time_ms", totalTime);
-        body.put("profile", profile);
-
-        response.put("body", body);
-
-        log.info("HIL 대기 응답 생성 완료 - workflowId: {}, status: waiting", workflowId);
-        return response;
-    }
-
-    private Map<String, Object> buildErrorResponse(String errorMessage) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", 500);
-        response.put("success", false);
-        response.put("retCd", 500);
-        response.put("message", "WebSocket Chat 실패");
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("answer", "죄송합니다. 요청을 처리하는 중 오류가 발생했습니다.");
-        body.put("error", errorMessage);
-
-        response.put("body", body);
-        return response;
     }
 
     private String removeHttpProtocol(String text) {

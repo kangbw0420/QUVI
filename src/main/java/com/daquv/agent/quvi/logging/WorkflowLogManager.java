@@ -5,6 +5,7 @@ import com.daquv.agent.quvi.dto.ChainLogEntry;
 import com.daquv.agent.quvi.dto.LogAlertRule;
 import com.daquv.agent.quvi.dto.LogLevel;
 import com.daquv.agent.quvi.llmadmin.WorkflowService;
+import com.daquv.agent.quvi.workflow.WorkflowExecutionManagerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -248,6 +249,32 @@ public class WorkflowLogManager {
 
         } catch (Exception e) {
             log.error("체인 에러 Flow 알림 전송 실패 - workflowId: {}, error: {}", workflowId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 워크플로우 실행 후 로그 컨텍스트에 최종 상태 업데이트 (request는 null 허용)
+     */
+    public void updateLogContextWithFinalState(WorkflowLogContext logContext, String selectedWorkflow, String workflowId, Object request, WorkflowExecutionManagerService workflowExecutionManagerService) {
+        try {
+            String selectedTable = workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, workflowId);
+            String sqlQuery = workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, workflowId);
+            String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
+
+            logContext.setSelectedTable(selectedTable);
+            logContext.setSqlQuery(sqlQuery);
+            logContext.setFinalAnswer(finalAnswer);
+
+            if (!"JOY".equals(selectedWorkflow)) {
+                // request가 null이 아니면 넘기고, null이면 null로 넘김
+                com.daquv.agent.workflow.dto.UserInfo userInfo = workflowExecutionManagerService.extractUserInfo(selectedWorkflow, workflowId, (com.daquv.agent.quvi.dto.QuviRequestDto) request);
+                logContext.setUserInfo(userInfo);
+            } else {
+                log.debug("JOY 워크플로우는 UserInfo를 로그 컨텍스트에 설정하지 않습니다.");
+            }
+
+        } catch (Exception e) {
+            log.error("로그 컨텍스트 업데이트 실패 - selectedWorkflow: {}, workflowId: {}", selectedWorkflow, workflowId, e);
         }
     }
 }

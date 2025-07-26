@@ -85,4 +85,89 @@ public class ResponseUtils {
         response.put("body", body);
         return response;
     }
+
+    public static Map<String, Object> buildErrorResponse(String errorMessage, String message) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", 500);
+        response.put("success", false);
+        response.put("retCd", 500);
+        response.put("message", message);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("answer", "죄송합니다. 요청을 처리하는 중 오류가 발생했습니다.");
+        body.put("error", errorMessage);
+
+        response.put("body", body);
+        return response;
+    }
+
+    public static Map<String, Object> buildHilWaitingResponse(
+            WorkflowExecutionManagerService workflowExecutionManagerService,
+            String sessionId,
+            String workflowId,
+            long totalTime,
+            String selectedWorkflow,
+            Object requestProfiler,
+            String message
+    ) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", 200);
+        response.put("success", true);
+        response.put("retCd", 200);
+        response.put("message", message);
+
+        Map<String, Object> body = new HashMap<>();
+        String hilMessage = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
+        if (hilMessage == null || hilMessage.trim().isEmpty()) {
+            hilMessage = "추가 정보가 필요합니다. 사용자 입력을 기다리고 있습니다.";
+        }
+        body.put("answer", hilMessage);
+        body.put("session_id", sessionId);
+        body.put("workflow_id", workflowId);
+        body.put("workflow_status", "waiting");
+        body.put("hil_required", true);
+        body.put("is_api", false);
+        body.put("recommend", new ArrayList<>());
+
+        // 프로파일링 정보
+        Map<String, Object> profile = new HashMap<>();
+        if (workflowId != null && requestProfiler != null) {
+            Map<String, Object> profileData = null;
+            try {
+                profileData = (Map<String, Object>) requestProfiler.getClass().getMethod("getProfile", String.class).invoke(requestProfiler, workflowId);
+            } catch (Exception e) {
+                // 무시
+            }
+            if (profileData != null) {
+                Map<String, Object> vectorDbDefault = new HashMap<>();
+                vectorDbDefault.put("calls", 0);
+                vectorDbDefault.put("total_time_ms", 0);
+                vectorDbDefault.put("avg_time_ms", 0.0);
+                profile.put("vector_db", profileData.getOrDefault("vector_db", vectorDbDefault));
+
+                Map<String, Object> llmDefault = new HashMap<>();
+                llmDefault.put("calls", 0);
+                llmDefault.put("total_time_ms", 0);
+                llmDefault.put("avg_time_ms", 0.0);
+                profile.put("llm", profileData.getOrDefault("llm", llmDefault));
+
+                Map<String, Object> dbNormalDefault = new HashMap<>();
+                dbNormalDefault.put("calls", 0);
+                dbNormalDefault.put("total_time_ms", 0);
+                dbNormalDefault.put("avg_time_ms", 0.0);
+                profile.put("db_normal", profileData.getOrDefault("db_main", dbNormalDefault));
+
+                Map<String, Object> dbPromptDefault = new HashMap<>();
+                dbPromptDefault.put("calls", 0);
+                dbPromptDefault.put("total_time_ms", 0);
+                dbPromptDefault.put("avg_time_ms", 0.0);
+                profile.put("db_prompt", profileData.getOrDefault("db_prompt", dbPromptDefault));
+            }
+        }
+        profile.put("total_time_ms", totalTime);
+        body.put("profile", profile);
+
+        response.put("body", body);
+        return response;
+    }
 } 

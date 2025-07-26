@@ -8,9 +8,10 @@ import com.daquv.agent.quvi.logging.WorkflowLogContext;
 import com.daquv.agent.quvi.logging.WorkflowLogManager;
 import com.daquv.agent.quvi.requests.VectorRequest;
 import com.daquv.agent.quvi.util.RequestProfiler;
+import com.daquv.agent.quvi.util.StatisticsUtils;
+import com.daquv.agent.quvi.util.ResponseUtils;
 import com.daquv.agent.quvi.workflow.WorkflowExecutionManagerService;
 import com.daquv.agent.workflow.SupervisorNode;
-import com.daquv.agent.workflow.dto.UserInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,8 +26,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.*;
-import com.daquv.agent.quvi.util.StatisticsUtils;
-import com.daquv.agent.quvi.util.ResponseUtils;
+
 
 @RestController
 public class ChatController {
@@ -131,8 +131,8 @@ public class ChatController {
 
                     // HIL 응답 생성 및 반환 - 여기서 workflow_status: waiting 응답
                     long totalTime = System.currentTimeMillis() - startTime;
-                    Map<String, Object> hilResponse = buildHilWaitingResponse(
-                            sessionService.getOrCreateSessionId(request), workflowId, totalTime, selectedWorkflow);
+                    Map<String, Object> hilResponse = ResponseUtils.buildHilWaitingResponse(
+                            workflowExecutionManagerService, sessionService.getOrCreateSessionId(request), workflowId, totalTime, selectedWorkflow, requestProfiler, "HIL 대기 중");
 
                     StatisticsUtils.logNodeExecutionStatistics(log, chainLogManager, workflowId, totalTime, requestProfiler.getProfile(workflowId), "STATISTICS");
 
@@ -155,15 +155,12 @@ public class ChatController {
                 throw workflowError;
             }
 
-            // 9. 최종 결과 조회
-            Object finalState = workflowExecutionManagerService.getFinalStateForWorkflow(selectedWorkflow, workflowId);
-
             // 10. Chain 완료
             String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
             workflowService.completeWorkflow(workflowId, finalAnswer);
 
             // 로그 컨텍스트에 최종 결과 저장
-            updateLogContextWithFinalState(logContext, selectedWorkflow, workflowId, request);
+            chainLogManager.updateLogContextWithFinalState(logContext, selectedWorkflow, workflowId, request, workflowExecutionManagerService);
 
             // 11. 응답 생성
             long totalTime = System.currentTimeMillis() - startTime;
@@ -201,12 +198,12 @@ public class ChatController {
                 workflowExecutionManagerService.cleanupAllStates(workflowId);
             }
 
-            Map<String, Object> errorResponse = buildErrorResponse(e.getMessage());
+            Map<String, Object> errorResponse = ResponseUtils.buildErrorResponse(e.getMessage(), "질답 실패");
             return ResponseEntity.ok(errorResponse);
         }
     }
 
-    private String selectWorkflowUsingSupervisor(String userQuestion, String workflowId) {
+    public String selectWorkflowUsingSupervisor(String userQuestion, String workflowId) {
         try {
             Object supervisorNodeBean = applicationContext.getBean("supervisorNode");
 
@@ -237,34 +234,9 @@ public class ChatController {
     }
 
     /**
-     * 로그 컨텍스트에 최종 상태 업데이트
-     */
-    private void updateLogContextWithFinalState(WorkflowLogContext logContext, String selectedWorkflow, String workflowId, QuviRequestDto request) {
-        try {
-            String selectedTable = workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, workflowId);
-            String sqlQuery = workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, workflowId);
-            String finalAnswer = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
-
-            logContext.setSelectedTable(selectedTable);
-            logContext.setSqlQuery(sqlQuery);
-            logContext.setFinalAnswer(finalAnswer);
-
-            if (!"JOY".equals(selectedWorkflow)) {
-                UserInfo userInfo = workflowExecutionManagerService.extractUserInfo(selectedWorkflow, workflowId, request);
-                logContext.setUserInfo(userInfo);
-            } else {
-                log.debug("JOY 워크플로우는 UserInfo를 로그 컨텍스트에 설정하지 않습니다.");
-            }
-
-        } catch (Exception e) {
-            log.error("로그 컨텍스트 업데이트 실패 - selectedWorkflow: {}, workflowId: {}", selectedWorkflow, workflowId, e);
-        }
-    }
-
-    /**
      * 추천 질문 검색
      */
-    private List<String> getRecommendations(String userQuestion, String workflowId) {
+    public List<String> getRecommendations(String userQuestion, String workflowId) {
         try {
             List<String> recommendList = vectorRequest.getRecommend(userQuestion, 4, workflowId);
             log.info("📚 추천 질문 검색 완료: {}", recommendList);
@@ -277,94 +249,6 @@ public class ChatController {
                     "📚 벡터 스토어 연결 실패로 추천 질문을 가져올 수 없습니다");
             return new ArrayList<>();
         }
-    }
-
-    /**
-     * HIL 대기 상태 응답 생성
-     */
-    private Map<String, Object> buildHilWaitingResponse(String sessionId, String workflowId,
-                                                        long totalTime, String selectedWorkflow) {
-        Map<String, Object> response = new HashMap<>();
-
-        // 기본 응답
-        response.put("status", 200);
-        response.put("success", true);
-        response.put("retCd", 200);
-        response.put("message", "HIL 대기 중");
-
-        // 응답 본문
-        Map<String, Object> body = new HashMap<>();
-
-        // HIL 상태에서 필요한 정보들 (매니저를 통해 추출)
-        String hilMessage = workflowExecutionManagerService.extractFinalAnswer(selectedWorkflow, workflowId);
-
-        if (hilMessage == null || hilMessage.trim().isEmpty()) {
-            hilMessage = "추가 정보가 필요합니다. 사용자 입력을 기다리고 있습니다.";
-        }
-
-        body.put("answer", hilMessage);
-        body.put("session_id", sessionId);
-        body.put("workflow_id", workflowId);
-        body.put("workflow_status", "waiting");
-        body.put("hil_required", true); // HIL이 필요함을 명시
-        body.put("is_api", false);
-        body.put("recommend", new ArrayList<>()); // HIL 상태에서는 추천 질문 없음
-
-        // 프로파일링 정보 (기본값)
-        Map<String, Object> profile = new HashMap<>();
-        if (workflowId != null) {
-            Map<String, Object> profileData = requestProfiler.getProfile(workflowId);
-
-            // 기본 프로파일 구조 유지
-            Map<String, Object> vectorDbDefault = new HashMap<>();
-            vectorDbDefault.put("calls", 0);
-            vectorDbDefault.put("total_time_ms", 0);
-            vectorDbDefault.put("avg_time_ms", 0.0);
-            profile.put("vector_db", profileData.getOrDefault("vector_db", vectorDbDefault));
-
-            Map<String, Object> llmDefault = new HashMap<>();
-            llmDefault.put("calls", 0);
-            llmDefault.put("total_time_ms", 0);
-            llmDefault.put("avg_time_ms", 0.0);
-            profile.put("llm", profileData.getOrDefault("llm", llmDefault));
-
-            Map<String, Object> dbNormalDefault = new HashMap<>();
-            dbNormalDefault.put("calls", 0);
-            dbNormalDefault.put("total_time_ms", 0);
-            dbNormalDefault.put("avg_time_ms", 0.0);
-            profile.put("db_normal", profileData.getOrDefault("db_main", dbNormalDefault));
-
-            Map<String, Object> dbPromptDefault = new HashMap<>();
-            dbPromptDefault.put("calls", 0);
-            dbPromptDefault.put("total_time_ms", 0);
-            dbPromptDefault.put("avg_time_ms", 0.0);
-            profile.put("db_prompt", profileData.getOrDefault("db_prompt", dbPromptDefault));
-        }
-        profile.put("total_time_ms", totalTime);
-        body.put("profile", profile);
-
-        response.put("body", body);
-
-        log.info("HIL 대기 응답 생성 완료 - workflowId: {}, status: waiting", workflowId);
-        return response;
-    }
-
-    /**
-     * 오류 응답 생성
-     */
-    private Map<String, Object> buildErrorResponse(String errorMessage) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", 500);
-        response.put("success", false);
-        response.put("retCd", 500);
-        response.put("message", "질답 실패");
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("answer", "죄송합니다. 요청을 처리하는 중 오류가 발생했습니다.");
-        body.put("error", errorMessage);
-
-        response.put("body", body);
-        return response;
     }
 
     private String removeHttpProtocol(String text) {
