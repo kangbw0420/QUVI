@@ -309,14 +309,14 @@ public class WorkflowExecutionManagerService { // 클래스 이름도 변경
      * 워크플로우 타입 확인 (기존 QuviController의 determineWorkflowType 로직을 매니저로 이동)
      */
     public String determineWorkflowType(String workflowId) {
-//        try {
-//            Object semanticState = getWorkflowExecutionService("SEMANTICQUERY").getFinalState(workflowId);
-//            if (semanticState != null) {
-//                return "SEMANTICQUERY";
-//            }
-//        } catch (Exception e) {
-//            log.debug("SEMANTICQUERY State 확인 중 예외: {}", e.getMessage());
-//        }
+        try {
+            Object semanticState = getWorkflowExecutionService("SEMANTICQUERY").getFinalState(workflowId);
+            if (semanticState != null) {
+                return "SEMANTICQUERY";
+            }
+        } catch (Exception e) {
+            log.debug("SEMANTICQUERY State 확인 중 예외: {}", e.getMessage());
+        }
 
         try {
             Object semanticState = getWorkflowExecutionService("NL2SQL").getFinalState(workflowId);
