@@ -46,8 +46,8 @@ public class GenerationService {
      * QnA ID를 생성하고 기본 레코드를 생성합니다.
      */
     @Transactional
-    public String createQnaId(String traceId) {
-        log.info("createQnaId start - traceId: {}", traceId);
+    public String createQnaId(String nodeId) {
+        log.info("createQnaId start - nodeId: {}", nodeId);
 
         String workflowId = getCurrentWorkflowId();
         if (workflowId != null) {
@@ -59,8 +59,8 @@ public class GenerationService {
             String qnaId = UUID.randomUUID().toString();
 
             // Trace 조회
-            Node node = nodeRepository.findById(traceId)
-                    .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + traceId));
+            Node node = nodeRepository.findById(nodeId)
+                    .orElseThrow(() -> new IllegalArgumentException("Trace not found: " + nodeId));
 
             // Qna 생성
             Generation generation = new Generation();
@@ -74,7 +74,7 @@ public class GenerationService {
             return qnaId;
 
         } catch (Exception e) {
-            log.error("Error in createQnaId - traceId: {}", traceId, e);
+            log.error("Error in createQnaId - traceId: {}", nodeId, e);
             throw new RuntimeException("Failed to create QnA ID", e);
         }
     }

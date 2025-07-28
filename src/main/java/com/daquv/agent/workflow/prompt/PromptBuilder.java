@@ -579,16 +579,14 @@ public class PromptBuilder {
         systemPromptBuilder.append("- JOY: 일상 대화나 인사말, 단순 질문, 비재무 관련 질문\n");
         systemPromptBuilder.append("- TOOLUSE: 특정 API 함수 호출이 필요한 금융 데이터 요청 (예: 재무제표, 현금흐름표 등)\n");
         systemPromptBuilder.append("- SEMANTICQUERY: 일반적인 데이터베이스 쿼리가 필요한 금융 거래 관련 질문 (예: 거래내역, 잔액, 입출금 등)\n");
-        systemPromptBuilder.append("- DEFAULT: 분류가 애매한 경우\n\n");
 
         systemPromptBuilder.append("분류 기준:\n");
         systemPromptBuilder.append("1. JOY: 인사말, 일상 대화, 감정 표현, 비금융 질문\n");
         systemPromptBuilder.append("2. TOOLUSE: '재무제표', '손익계산서', '현금흐름', '자산', '부채' 등 재무제표 관련 키워드\n");
-        systemPromptBuilder.append("3. SEMANTICQUERY: '거래내역', '입금', '출금', '잔액', '계좌', '이체' 등 거래 관련 키워드\n");
-        systemPromptBuilder.append("4. DEFAULT: 위 분류에 해당하지 않는 경우\n\n");
+        systemPromptBuilder.append("3. NL2SQL: '거래내역', '입금', '출금', '잔액', '계좌', '이체' 등 거래 관련 키워드\n");
 
         systemPromptBuilder.append("위 질문을 분석하여 가장 적합한 워크플로우를 하나만 선택하세요.\n");
-        systemPromptBuilder.append("응답은 JOY, TOOLUSE, SEMANTICQUERY, DEFAULT 중 하나만 출력하세요.");
+        systemPromptBuilder.append("응답은 JOY, TOOLUSE, NL2SQL 중 하나만 출력하세요.");
 
         String systemPrompt = systemPromptBuilder.toString();
 
