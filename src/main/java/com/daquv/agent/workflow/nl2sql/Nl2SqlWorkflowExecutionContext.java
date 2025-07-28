@@ -2,9 +2,13 @@ package com.daquv.agent.workflow.nl2sql;
 
 import com.daquv.agent.quvi.llmadmin.NodeService;
 import com.daquv.agent.workflow.nl2sql.node.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -251,8 +255,7 @@ public class Nl2SqlWorkflowExecutionContext {
             // 노드 완료
             nodeService.completeNode(nodeId);
 
-            // 상태 업데이트
-            stateManager.updateState(state.getWorkflowId(), state);
+            saveStateToDatabase(nodeId, state);
 
             log.info("=== {} 노드 실행 완료 ===", nodeName);
             return true;
@@ -301,6 +304,64 @@ public class Nl2SqlWorkflowExecutionContext {
 
         } catch (Exception ex) {
             log.error("워크플로우 오류 처리 중 추가 오류 발생 - workflowId: {}", workflowId, ex);
+        }
+    }
+
+
+    /**
+     * Nl2SQL State를 DB에 저장
+     */
+    private void saveStateToDatabase(String nodeId, Nl2SqlWorkflowState state) {
+        try {
+            Map<String, Object> stateMap = new HashMap<>();
+
+            if (state.getUserQuestion() != null && !state.getUserQuestion().trim().isEmpty()) {
+                stateMap.put("userQuestion", state.getUserQuestion());
+            }
+            if (state.getSelectedTable() != null && !state.getSelectedTable().trim().isEmpty()) {
+                stateMap.put("selectedTable", state.getSelectedTable());  // 이 부분이 누락됨
+            }
+            if (state.getSqlQuery() != null && !state.getSqlQuery().trim().isEmpty()) {
+                stateMap.put("sqlQuery", state.getSqlQuery());
+            }
+            if (state.getQueryResult() != null && !state.getQueryResult().isEmpty()) {
+                stateMap.put("queryResult", state.getQueryResult());
+            }
+            if (state.getFinalAnswer() != null && !state.getFinalAnswer().trim().isEmpty()) {
+                stateMap.put("finalAnswer", state.getFinalAnswer());
+            }
+            if (state.getSqlError() != null && !state.getSqlError().trim().isEmpty()) {
+                stateMap.put("sqlError", state.getSqlError());
+            }
+            if (state.getQueryResultStatus() != null && !state.getQueryResultStatus().trim().isEmpty()) {
+                stateMap.put("queryResultStatus", state.getQueryResultStatus());
+            }
+            if (state.getTablePipe() != null && !state.getTablePipe().trim().isEmpty()) {
+                stateMap.put("tablePipe", state.getTablePipe());
+            }
+            if (state.getFString() != null && !state.getFString().trim().isEmpty()) {
+                stateMap.put("fstringAnswer", state.getFString());
+            }
+            if (state.getStartDate() != null && !state.getStartDate().trim().isEmpty()) {
+                stateMap.put("startDate", state.getStartDate());
+            }
+            if (state.getEndDate() != null  && !state.getEndDate().trim().isEmpty()) {
+                stateMap.put("endDate", state.getEndDate());
+            }
+            if (state.getUserInfo().getCompanyId() != null  && !state.getUserInfo().getCompanyId().trim().isEmpty()) {
+                stateMap.put("companyId", state.getUserInfo().getCompanyId());
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            String stateJson = objectMapper.writeValueAsString(stateMap);
+            nodeService.updateNodeStateJson(nodeId, stateJson);
+
+            log.debug("Nl2SQL Node state JSON 저장 완료 - nodeId: {}", nodeId);
+
+
+        } catch (Exception e) {
+            log.error("Nl2SQL State DB 저장 실패 - nodeId: {}", nodeId, e);
+            // State 저장 실패는 워크플로우를 중단하지 않음
         }
     }
 }
