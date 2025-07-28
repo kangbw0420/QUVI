@@ -26,7 +26,7 @@ public class WorkflowExecutionManagerService { // 클래스 이름도 변경
         // 워크플로우 타입과 서비스 Bean 이름 매핑 (Bean 이름들도 변경됨)
         workflowServiceMapping.put("JOY", "joyWorkflowExecutionService");
         workflowServiceMapping.put("TOOLUSE", "toolUseWorkflowExecutionService");
-       // workflowServiceMapping.put("SEMANTICQUERY", "semanticQueryWorkflowExecutionService");
+        workflowServiceMapping.put("SEMANTICQUERY", "semanticQueryWorkflowExecutionService");
         workflowServiceMapping.put("NL2SQL", "nl2SqlWorkflowExecutionService");
     }
 
