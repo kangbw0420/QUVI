@@ -175,17 +175,8 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
             }
 
             try {
-                // Cross-database 참조 문제 해결을 위한 SQL 전처리
-                String processedSql = preprocessSqlForCrossDatabase(sql);
-
-                // 페이지네이션 적용
-                String paginatedSql = countAndPaginate(processedSql, workflowId);
-
-                // 일반 쿼리 처리
-                String selectedTable = queryKey;
-
                 // 1. 권한 있는 회사/계좌 검사
-                String queryRightCom = queryUtils.addComCondition(paginatedSql, state.getUserInfo().getCompanyId());
+                String queryRightCom = queryUtils.addComCondition(sql, state.getUserInfo().getCompanyId());
 
                 // 2. 주식종목/은행명 매핑 변환
                 String queryRightStock = nameModifierUtils.modifyStock(queryRightCom);
@@ -196,29 +187,29 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
                 // User Info 추출
                 List<String> listOfUserInfo = state.getUserInfo().toArray();
-
-                // parameters에 userInfo 삽입
                 List<String> parameters = new ArrayList<>(listOfUserInfo);
-
-                // State에서 필요한 부분 삽입
                 parameters.add(state.getStartDate());
                 parameters.add(state.getEndDate());
 
-                // 4. view table 적용
+                // 4. view table 적용 (함수 호출로 변환)
                 String viewQuery = queryRequest.viewTable(
                         queryOrdered,
                         parameters,
                         DIALECT
                 );
 
-                sqlMap.put(entry.getKey(), viewQuery);
+                // 5. 페이지네이션 적용 (view table 적용 후에)
+                String finalQuery = countAndPaginate(viewQuery, workflowId);
+
+                // 최종 쿼리를 맵에 저장
+                sqlMap.put(entry.getKey(), finalQuery);
 
                 // SQL 실행
                 log.debug("Executing SQL for key '{}': {}", queryKey,
-                        viewQuery.substring(0, Math.min(100, viewQuery.length())) + "...");
+                        finalQuery.substring(0, Math.min(100, finalQuery.length())) + "...");
 
                 DatabaseProfilerAspect.setWorkflowId(workflowId);
-                List<Map<String, Object>> result = jdbcTemplate.queryForList(viewQuery);
+                List<Map<String, Object>> result = jdbcTemplate.queryForList(finalQuery);
 
                 // 숫자 자동 변환
                 List<Map<String, Object>> processedResult = autoCastNumeric(result);
