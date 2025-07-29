@@ -223,6 +223,8 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
     }
 
     private String convertSingleFilter(String filter) {
+        log.info("=== 필터 변환 시작 ===");
+        log.info("입력 필터: '{}'", filter);
         log.trace("Converting single filter: '{}'", filter);
 
         // 정규식으로 필터 파싱
@@ -261,6 +263,8 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
                 result = String.format("{{ Dimension('%s') }} %s '%s'", column, op, value);
             }
         }
+        log.info("변환된 필터: '{}'", result);
+        log.info("=== 필터 변환 완료 ===");
 
         return result;
     }

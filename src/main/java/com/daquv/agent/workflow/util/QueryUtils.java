@@ -39,6 +39,11 @@ public class QueryUtils {
      */
     public String addComCondition(String query, String companyId) {
         try {
+            // 먼저 쿼리에 com_nm이 SELECT 절에 있는지 확인
+            if (!isComNmInSelectClause(query)) {
+                log.warn("com_nm이 SELECT 절에 없어서 회사 조건을 추가하지 않습니다: {}", query.substring(0, Math.min(100, query.length())));
+                return query; // com_nm이 없으면 조건 추가하지 않음
+            }
             // UNION 처리 (재귀적으로 각 부분 처리)
             if (query.toUpperCase().contains(" UNION ")) {
                 String[] parts = query.split(" UNION ");
@@ -75,6 +80,30 @@ public class QueryUtils {
         } catch (Exception e) {
             log.error("addComCondition 처리 중 오류 발생: {}", e.getMessage());
             return query;
+        }
+    }
+
+
+    /**
+     * SELECT 절에 com_nm이 있는지 확인
+     */
+    private boolean isComNmInSelectClause(String query) {
+        try {
+            // SELECT와 FROM 사이의 내용 추출
+            Pattern selectPattern = Pattern.compile("SELECT\\s+(.*?)\\s+FROM", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+            Matcher matcher = selectPattern.matcher(query);
+
+            if (matcher.find()) {
+                String selectClause = matcher.group(1);
+                // com_nm이 SELECT 절에 있는지 확인 (별칭 포함)
+                return selectClause.toLowerCase().contains("com_nm") ||
+                        selectClause.contains("*"); // SELECT *인 경우도 포함
+            }
+
+            return false;
+        } catch (Exception e) {
+            log.warn("SELECT 절 com_nm 확인 중 오류: {}", e.getMessage());
+            return false;
         }
     }
 
