@@ -1,6 +1,6 @@
 semantic_models:
   - name: trsc
-    model: ref('fct_trsc')
+    model: ref('aicfo_get_all_trsc')
     description: 한화 금융 계좌의 거래 내역을 관리하는 semantic 모델. 입출금, 대출 거래, 주식 거래 등 다양한 거래 유형의 정보를 포함
     defaults:
       agg_time_dimension: trsc_dt
