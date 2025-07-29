@@ -11,6 +11,7 @@ import com.daquv.agent.workflow.util.PipeTableUtils;
 import com.daquv.agent.workflow.util.QueryUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -30,6 +31,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
     private static final int PAGE_SIZE = 100;
 
+    @Autowired
     @Qualifier("mainJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
     private final WebSocketUtils webSocketUtils;
