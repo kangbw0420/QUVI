@@ -20,10 +20,10 @@ public class PromptBuilder {
 
     @Autowired
     private VectorRequest vectorRequest;
-    
+
     @Autowired
     private GenerationService generationService;
-    
+
     @Autowired
     private HistoryService historyService;
 
@@ -37,17 +37,18 @@ public class PromptBuilder {
             this.retrieveTime = retrieveTime;
         }
     }
-    
+
     // Commander 프롬프트 생성 및 RetrieveTime 반환 (few-shot 포함 + QnA 저장)
-    public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion, String qnaId, String workflowId) {
+    public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion, String qnaId,
+            String workflowId) {
         // 기본 시스템 프롬프트 로드
         PromptTemplate template = PromptTemplate.fromFile("commander");
         String systemPrompt = template.replace("{user_question}", userQuestion);
-        
+
         // Few-shot 예제 검색
         Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-            userQuestion, "shots_selector", 5, workflowId);
-        
+                userQuestion, "shots_selector", 5, workflowId);
+
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
 
@@ -79,7 +80,7 @@ public class PromptBuilder {
                 }
             }
         }
-        
+
         // 프롬프트 구성
         PromptTemplate result = PromptTemplate.from("")
                 .withSystemPrompt(systemPrompt)
@@ -89,7 +90,8 @@ public class PromptBuilder {
         return new PromptWithRetrieveTime(result, lastRetrieveTimeFromResults);
     }
 
-    public PromptWithRetrieveTime buildDateCheckerPromptForHIL(String userQuestion, String generationId, String workflowId) {
+    public PromptWithRetrieveTime buildDateCheckerPromptForHIL(String userQuestion, String generationId,
+            String workflowId) {
         String today = DateUtils.getTodayDash();
         String jsonFormat = "\"from_date\": from_date, \"to_date\": to_date";
 
@@ -97,8 +99,7 @@ public class PromptBuilder {
         PromptTemplate template = PromptTemplate.fromFile("datechecker");
         String systemPrompt = template.replaceAll(
                 "{today}", today,
-                "{json_format}", jsonFormat
-        );
+                "{json_format}", jsonFormat);
 
         // 사용자 질문 포맷팅 (날짜 정보 포함)
         String formattedQuestion = DateUtils.formatQuestionWithDate(userQuestion);
@@ -112,7 +113,7 @@ public class PromptBuilder {
 
     // Dater 프롬프트 생성 및 RetrieveTime 반환
     public PromptWithRetrieveTime buildDaterPromptWithFewShots(String selectedTable, String userQuestion,
-                                                       List<Map<String, Object>> daterHistory, String generationId, String workflowId) {
+            List<Map<String, Object>> daterHistory, String generationId, String workflowId) {
         String today = DateUtils.getTodayDash();
         String jsonFormat = "\"from_date\": from_date, \"to_date\": to_date";
 
@@ -129,12 +130,11 @@ public class PromptBuilder {
 
         String systemPrompt = template.replaceAll(
                 "{today}", today,
-                "{json_format}", jsonFormat
-        );
+                "{json_format}", jsonFormat);
 
         // Few-shot 예제 검색
         Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-                userQuestion, "shots_params_creator", 5, workflowId);
+                userQuestion, "shots_datechecker", 5, workflowId);
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
@@ -184,7 +184,7 @@ public class PromptBuilder {
 
         PromptTemplate result = PromptTemplate.from("")
                 .withSystemPrompt(systemPrompt)
-                .withFewShotsForDater(reversedFewShots)  // 날짜 추가하여 처리
+                .withFewShotsForDater(reversedFewShots) // 날짜 추가하여 처리
                 .withHistory(daterHistory)
                 .withUserMessage(formattedQuestion);
 
@@ -197,8 +197,7 @@ public class PromptBuilder {
         PromptTemplate template = PromptTemplate.fromFile("nl2sql");
         String systemPrompt = template.replaceAll(
                 "{user_question}", questionWithError,
-                "{today}", today
-        );
+                "{today}", today);
 
         return PromptTemplate.from("").withSystemPrompt(systemPrompt);
     }
@@ -206,8 +205,7 @@ public class PromptBuilder {
     // NL2SQL 프롬프트 생성 (few-shot + history + QnA 저장 포함)
     public PromptWithRetrieveTime buildNL2SQLPromptWithFewShotsAndHistory(
             String targetTable, String userQuestion, List<Map<String, Object>> nl2sqlHistory,
-            String qnaId, String companyId, String startDate, String endDate, String workflowId
-    ) {
+            String qnaId, String companyId, String startDate, String endDate, String workflowId) {
         String dateInfoStr = String.format("(%s, %s)", startDate, endDate);
 
         log.info("====NL2SQL HISTORY==== {}", nl2sqlHistory);
@@ -215,13 +213,12 @@ public class PromptBuilder {
         // 기본 시스템 프롬프트 로드
         PromptTemplate template = PromptTemplate.fromFile("nl2sql-" + targetTable.toLowerCase());
         String systemPrompt = template.replaceAll(
-            "{main_com}", companyId,
-            "{date_info}", dateInfoStr
-        );
+                "{main_com}", companyId,
+                "{date_info}", dateInfoStr);
 
         // Few-shot 예제 검색
         Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-            userQuestion, "shots_" + targetTable.toLowerCase(), 3, workflowId);
+                userQuestion, "shots_" + targetTable.toLowerCase(), 3, workflowId);
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
@@ -276,8 +273,7 @@ public class PromptBuilder {
     // Respondent 프롬프트 생성 (few-shot + history + QnA 저장 포함)
     public PromptWithRetrieveTime buildRespondentPromptWithFewShotsAndHistory(
             String userQuestion, String tablePipe, List<Map<String, Object>> respondentHistory, String qnaId,
-            Boolean isApi, String startDate, String endDate, String workflowId
-    ) {
+            Boolean isApi, String startDate, String endDate, String workflowId) {
         try {
             // 기본 시스템 프롬프트 로드
             PromptTemplate template = PromptTemplate.fromFile("respondent");
@@ -304,7 +300,8 @@ public class PromptBuilder {
 
                     if (startDate.length() >= 8) {
                         String normalizedStartDate = DateUtils.convertDateFormat(startDate);
-                        LocalDate fromDate = LocalDate.parse(normalizedStartDate, DateTimeFormatter.ofPattern("yyyyMMdd"));
+                        LocalDate fromDate = LocalDate.parse(normalizedStartDate,
+                                DateTimeFormatter.ofPattern("yyyyMMdd"));
                         formattedFromDate = fromDate.format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일"));
                     }
 
@@ -327,8 +324,7 @@ public class PromptBuilder {
             PromptTemplate humanTemplate = PromptTemplate.fromFile("respondent_human");
             String humanPrompt = humanTemplate.replaceAll(
                     "{table_pipe}", tablePipe,
-                    "{user_question}", formattedUserQuestion
-            );
+                    "{user_question}", formattedUserQuestion);
 
             // Few-shot 예제 역순 처리 (파이썬의 reversed() 구현)
             List<Map<String, Object>> reversedFewShots = new ArrayList<>();
@@ -373,7 +369,7 @@ public class PromptBuilder {
             if (respondentHistory != null) {
                 for (Map<String, Object> historyItem : respondentHistory) {
                     // 히스토리 아이템 유효성 검사 (파이썬의 all() 조건 구현)
-                    String[] requiredKeys = {"user_question", "table_pipe", "fstring_answer"};
+                    String[] requiredKeys = { "user_question", "table_pipe", "fstring_answer" };
                     boolean isValid = true;
 
                     for (String key : requiredKeys) {
@@ -419,12 +415,12 @@ public class PromptBuilder {
     public PromptTemplate buildNodataPromptWithHistory(String userQuestion, List<Map<String, Object>> nodataHistory) {
         PromptTemplate template = PromptTemplate.fromFile("nodata");
         String systemPrompt = template.replace("{user_question}", userQuestion);
-        
+
         // 프롬프트 구성
         return PromptTemplate.from("")
-            .withSystemPrompt(systemPrompt)
-            .withHistory(nodataHistory)
-            .withUserMessage(userQuestion);
+                .withSystemPrompt(systemPrompt)
+                .withHistory(nodataHistory)
+                .withUserMessage(userQuestion);
     }
 
     // Safeguard 프롬프트 생성 (SQL 에러 수정)
@@ -434,11 +430,10 @@ public class PromptBuilder {
         PromptTemplate template = PromptTemplate.fromFile("safeguard");
 
         String prompt = template.replaceAll(
-            "{user_question}", userQuestion,
-            "{today}", today,
-            "{unsafe_query}", unsafeQuery,
-            "{sql_error}", sqlError != null ? sqlError : ""
-        );
+                "{user_question}", userQuestion,
+                "{today}", today,
+                "{unsafe_query}", unsafeQuery,
+                "{sql_error}", sqlError != null ? sqlError : "");
 
         return PromptTemplate.from("")
                 .withSystemPrompt(prompt);
@@ -446,25 +441,25 @@ public class PromptBuilder {
 
     // 유틸리티: Chat history 변환 (노드별 필드 매핑 지원)
     public List<Map<String, Object>> convertToChatHistory(Map<String, List<Map<String, Object>>> historyDict,
-                                                          List<String> requiredFields,
-                                                          String humanField,
-                                                          String aiField) {
+            List<String> requiredFields,
+            String humanField,
+            String aiField) {
         List<Map<String, Object>> chatHistory = new java.util.ArrayList<>();
-        
+
         if (historyDict == null) {
             return chatHistory;
         }
-        
+
         for (List<Map<String, Object>> historyList : historyDict.values()) {
             for (Map<String, Object> historyItem : historyList) {
                 // 모든 필수 필드가 존재하고 None이 아닌 경우에만 추가
                 boolean allFieldsPresent = requiredFields.stream()
-                    .allMatch(field -> historyItem.containsKey(field) && historyItem.get(field) != null);
-                
+                        .allMatch(field -> historyItem.containsKey(field) && historyItem.get(field) != null);
+
                 if (allFieldsPresent) {
                     Object humanValue = historyItem.get(humanField);
                     Object aiValue = historyItem.get(aiField);
-                    
+
                     // null 체크 추가
                     if (humanValue != null && aiValue != null) {
                         Map<String, Object> historyEntry = new HashMap<>();
@@ -475,7 +470,7 @@ public class PromptBuilder {
                 }
             }
         }
-        
+
         return chatHistory;
     }
 
@@ -484,7 +479,8 @@ public class PromptBuilder {
     public List<Map<String, Object>> getDaterHistory(String workflowId) {
         // date_info 대신 start_date, end_date로 조회
         List<String> requiredFields = Arrays.asList("user_question", "start_date", "end_date");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields, "dater", 5);
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields,
+                "dater", 5);
 
         // start_date, end_date를 date_info 배열로 변환하여 반환
         List<Map<String, Object>> chatHistory = new ArrayList<>();
@@ -523,7 +519,8 @@ public class PromptBuilder {
      */
     public List<Map<String, Object>> getNl2sqlHistory(String workflowId) {
         List<String> requiredFields = Arrays.asList("user_question", "sql_query");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields, "nl2sql", 5);
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields,
+                "nl2sql", 5);
         log.info("=====NL2SQL DICT ======");
         log.info("{}", historyDict);
         return convertToChatHistory(historyDict, requiredFields, "user_question", "sql_query");
@@ -534,7 +531,8 @@ public class PromptBuilder {
      */
     public List<Map<String, Object>> getRespondentHistory(String workflowId) {
         List<String> requiredFields = Arrays.asList("user_question", "table_pipe", "fstring_answer", "final_answer");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields, "respondent", 5);
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields,
+                "respondent", 5);
         return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
     }
 
@@ -543,31 +541,34 @@ public class PromptBuilder {
      */
     public List<Map<String, Object>> getNodataHistory(String workflowId) {
         List<String> requiredFields = Arrays.asList("user_question", "final_answer");
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields, "nodata", 5);
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields,
+                "nodata", 5);
         return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
     }
 
     /**
      * 일반적인 history 조회 및 변환 (필드명 지정 가능)
      */
-    public List<Map<String, Object>> getHistory(String workflowId, List<String> requiredFields, String nodeType, int limit) {
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields, nodeType, limit);
+    public List<Map<String, Object>> getHistory(String workflowId, List<String> requiredFields, String nodeType,
+            int limit) {
+        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields,
+                nodeType, limit);
         return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
     }
 
     // Page Respondent 프롬프트 생성 (페이지네이션 응답)
-    public PromptTemplate buildPageRespondentPrompt(String userQuestion, Integer totalRows, List<Map<String, Object>> respondentHistory, String generationId) {
+    public PromptTemplate buildPageRespondentPrompt(String userQuestion, Integer totalRows,
+            List<Map<String, Object>> respondentHistory, String generationId) {
         // 기본 시스템 프롬프트 로드
         PromptTemplate template = PromptTemplate.fromFile("page-respondent");
         String systemPrompt = template.replace("{total_rows}", String.valueOf(totalRows));
-        
+
         // 프롬프트 구성
         return PromptTemplate.from("")
-            .withSystemPrompt(systemPrompt)
-            .withHistory(respondentHistory)
-            .withUserMessage(userQuestion);
+                .withSystemPrompt(systemPrompt)
+                .withHistory(respondentHistory)
+                .withUserMessage(userQuestion);
     }
-
 
     public PromptTemplate buildSupervisorPrompt(String userQuestion, List<Map<String, Object>> history) {
         // 시스템 프롬프트 생성
@@ -596,7 +597,7 @@ public class PromptBuilder {
         // 다른 메서드들과 동일한 패턴으로 프롬프트 구성
         return PromptTemplate.from("")
                 .withSystemPrompt(systemPrompt)
-                .withHistory(history)  // 히스토리가 있으면 추가
+                .withHistory(history) // 히스토리가 있으면 추가
                 .withUserMessage(formattedUserQuestion);
     }
 }
