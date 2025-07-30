@@ -85,10 +85,10 @@ llm:
 # 로깅 설정
 logging:
     level:
-        com.daquv: DEBUG
-        org.springframework.web: DEBUG
-        org.hibernate.SQL: DEBUG
-        org.hibernate.type.descriptor.sql.BasicBinder: DEBUG
+        com.daquv: INFO
+        org.springframework.web: INFO
+        org.hibernate.SQL: INFO
+        org.hibernate.type.descriptor.sql.BasicBinder: INFO
 
 profiling:
     enabled: false
