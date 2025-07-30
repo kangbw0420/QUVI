@@ -95,7 +95,7 @@ public class Nl2SqlDateCheckerNode implements Nl2SqlWorkflowNode {
             // HIL용 날짜 체크 프롬프트 생성 (UNCLEAR 반환하도록 설계됨)
             PromptWithRetrieveTime promptResult = null;
             try {
-                promptResult = promptBuilder.buildDateCheckerPromptForHIL(userQuestion, generationId, workflowId);
+                promptResult = promptBuilder.buildDaterPromptWithFewShots(userQuestion, daterHistory, generationId, workflowId);
                 log.info("HIL용 프롬프트 빌더 호출 성공");
             } catch (Exception e) {
                 log.error("HIL용 프롬프트 빌더 호출 실패", e);
