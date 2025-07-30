@@ -34,6 +34,8 @@ public class MetricFlowRequest {
 
     public Map<String, String> generateSqlFromDsl(Map<String, MetricFlowRequestDto> requests) {
         try {
+            log.info("===========================================");
+            log.info("MetricFlowRequest.generateSqlFromDsl");
             String url = pythonServerUrl + metricflowEndpoint;
 
             // HTTP 헤더 설정
@@ -66,7 +68,7 @@ public class MetricFlowRequest {
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
             log.info("Sending batch MetricFlow request to Python server: {}", url);
-            log.debug("Request body: {}", requestBody);
+//            log.debug("Request body: {}", requestBody);
 
             // Python 서버로 요청 전송
             ResponseEntity<String> response = restTemplate.exchange(
@@ -96,7 +98,6 @@ public class MetricFlowRequest {
                             log.info("Result - {}: {}", key, value);
                         }
                     }
-
                     return results != null ? results : new HashMap<>();
                 } else {
                     String error = (String) responseMap.get("error");

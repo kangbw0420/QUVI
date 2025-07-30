@@ -92,18 +92,26 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
             }
 
             log.info("프롬프트 빌더 호출 시작 - tableForPrompt: {}, userQuestion: {}, historySize: {}",
-                    tableForPrompt, userQuestion, daterHistory.size());
+                    tableForPrompt, userQuestion, daterHistory != null ? daterHistory.size() : 0);
 
-            // HIL용 날짜 체크 프롬프트 생성 (UNCLEAR 반환하도록 설계됨)
+
             PromptWithRetrieveTime promptResult = null;
             try {
-                promptResult = promptBuilder.buildDateCheckerPromptForHIL(userQuestion, generationId, workflowId);
-                log.info("HIL용 프롬프트 빌더 호출 성공");
+                promptResult = promptBuilder.buildDaterPromptWithFewShots(
+                        selectedTable, userQuestion, daterHistory, generationId, workflowId);
+                log.info("buildDaterPromptWithFewShots 호출 성공");
             } catch (Exception e) {
-                log.error("HIL용 프롬프트 빌더 호출 실패", e);
-                setErrorInExecution(state, selectedTable, "프롬프트 생성 실패: " + e.getMessage());
-                state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
-                return;
+                log.error("buildDaterPromptWithFewShots 호출 실패, HIL용 프롬프트로 대체", e);
+                // fallback으로 HIL용 프롬프트 사용
+                try {
+                    promptResult = promptBuilder.buildDateCheckerPromptForHIL(userQuestion, generationId, workflowId);
+                    log.info("HIL용 프롬프트 빌더 호출 성공 (fallback)");
+                } catch (Exception e2) {
+                    log.error("HIL용 프롬프트 빌더 호출도 실패", e2);
+                    setErrorInExecution(state, selectedTable, "프롬프트 생성 실패: " + e2.getMessage());
+                    state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
+                    return;
+                }
             }
 
             PromptTemplate promptTemplate = promptResult.getPromptTemplate();
@@ -145,9 +153,9 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
             Map<String, String> dateInfo = LlmOutputHandler.extractDateInfo(llmResponse);
             log.info("추출된 날짜 정보: {}", dateInfo);
 
-            // 날짜 정보가 UNCLEAR인 경우 HIL 활성화
+            // 날짜 정보가 UNCLEAR이거나 불명확한 경우 HIL 활성화
             if (dateInfo == null || !dateInfo.containsKey("from_date") || !dateInfo.containsKey("to_date")
-                    || "UNCLEAR".equals(dateInfo.get("from_date")) || "UNCLEAR".equals(dateInfo.get("to_date"))) {
+                    || isDateUnclear(dateInfo)) {
 
                 log.warn("날짜 정보가 불명확하여 사용자 입력이 필요합니다. dateInfo: {}", dateInfo);
 
@@ -195,7 +203,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
 
             log.info("명확한 날짜 정보 확인: from_date={}, to_date={}", fromDate, toDate);
 
-            // Python과 동일하게 QnA 응답 기록
+            // QnA 응답 기록
             String outputStr = String.format("{\"from_date\": \"%s\", \"to_date\": \"%s\"}", fromDate, toDate);
             generationService.recordAnswer(generationId, outputStr, retrieveTime);
 

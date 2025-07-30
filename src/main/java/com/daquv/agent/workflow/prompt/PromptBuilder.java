@@ -38,58 +38,6 @@ public class PromptBuilder {
         }
     }
 
-    // Commander 프롬프트 생성 및 RetrieveTime 반환 (few-shot 포함 + QnA 저장)
-    public PromptWithRetrieveTime buildCommanderPromptWithFewShots(String userQuestion, String qnaId,
-            String workflowId) {
-        // 기본 시스템 프롬프트 로드
-        PromptTemplate template = PromptTemplate.fromFile("commander");
-        String systemPrompt = template.replace("{user_question}", userQuestion);
-
-        // Few-shot 예제 검색
-        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-                userQuestion, "shots_selector", 5, workflowId);
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
-
-        List<Map<String, Object>> reversedFewShots = new ArrayList<>();
-        if (fewShots != null) {
-            for (int i = fewShots.size() - 1; i >= 0; i--) {
-                reversedFewShots.add(fewShots.get(i));
-            }
-        }
-
-        BigDecimal lastRetrieveTimeFromResults = BigDecimal.ZERO;
-
-        // QnA ID가 있으면 few-shot 저장
-        if (qnaId != null && reversedFewShots != null) {
-            for (int i = 0; i < reversedFewShots.size(); i++) {
-                Map<String, Object> shot = reversedFewShots.get(i);
-                String input = (String) shot.get("input");
-                String output = (String) shot.get("output");
-                Object retrieveTimeObj = shot.getOrDefault("retrieve_time", 0.0);
-                if (retrieveTimeObj instanceof Double) {
-                    lastRetrieveTimeFromResults = BigDecimal.valueOf((Double) retrieveTimeObj);
-                } else if (retrieveTimeObj instanceof BigDecimal) {
-                    lastRetrieveTimeFromResults = (BigDecimal) retrieveTimeObj;
-                } else if (retrieveTimeObj instanceof Number) {
-                    lastRetrieveTimeFromResults = BigDecimal.valueOf(((Number) retrieveTimeObj).doubleValue());
-                }
-                if (input != null && output != null) {
-                    generationService.recordFewshot(qnaId, input, input, output, i + 1);
-                }
-            }
-        }
-
-        // 프롬프트 구성
-        PromptTemplate result = PromptTemplate.from("")
-                .withSystemPrompt(systemPrompt)
-                .withFewShotsWithoutDateModification(reversedFewShots)
-                .withUserMessage(userQuestion);
-
-        return new PromptWithRetrieveTime(result, lastRetrieveTimeFromResults);
-    }
-
     public PromptWithRetrieveTime buildDateCheckerPromptForHIL(String userQuestion, String generationId,
             String workflowId) {
         String today = DateUtils.getTodayDash();
@@ -543,16 +491,6 @@ public class PromptBuilder {
         List<String> requiredFields = Arrays.asList("user_question", "final_answer");
         Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields,
                 "nodata", 5);
-        return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
-    }
-
-    /**
-     * 일반적인 history 조회 및 변환 (필드명 지정 가능)
-     */
-    public List<Map<String, Object>> getHistory(String workflowId, List<String> requiredFields, String nodeType,
-            int limit) {
-        Map<String, List<Map<String, Object>>> historyDict = historyService.getHistory(workflowId, requiredFields,
-                nodeType, limit);
         return convertToChatHistory(historyDict, requiredFields, "user_question", "final_answer");
     }
 
