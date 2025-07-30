@@ -89,7 +89,7 @@ public class SemanticQueryExecutorResultHandler {
         if (hasNoData) {
             log.info("SemanticQuery: 모든 entity에서 데이터 없음");
             try {
-                getExecutionContext().executeNode("nodataNode", state);
+                getExecutionContext().executeNode("semanticQueryNoDataNode", state);
             } catch (Exception e) {
                 log.warn("nodataNode 실행 실패, 기본 메시지 설정: {}", e.getMessage());
                 state.setFinalAnswer("요청하신 조건에 해당하는 데이터가 없습니다.");
