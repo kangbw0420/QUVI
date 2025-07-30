@@ -51,30 +51,20 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
     @Override
     public void execute(SemanticQueryWorkflowState state) {
         String userQuestion = state.getUserQuestion();
-        String selectedTable = state.getSelectedTable();
         String workflowId = state.getWorkflowId();
 
 
-        log.info("DateCheckerNode 실행 시작 - userQuestion: {}, selectedTable: {}, workflowId: {}",
-                userQuestion, selectedTable, workflowId);
+        log.info("DateCheckerNode 실행 시작 - userQuestion: {}, workflowId: {}",
+                userQuestion, workflowId);
 
         // 사용자 질문 검증
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
-            setErrorInExecution(state, selectedTable, "사용자 질문이 없습니다.");
+            setErrorInExecution(state, "사용자 질문이 없습니다.");
             state.setFinalAnswer("죄송합니다. 사용자 질문을 확인할 수 없습니다.");
             return;
         }
 
-        // selectedTable이 없으면 기본값 설정
-        if (selectedTable == null || selectedTable.trim().isEmpty()) {
-            selectedTable = "AMT"; // 기본 테이블명
-            state.setSelectedTable(selectedTable);
-            log.info("selectedTable이 null이어서 기본값으로 설정: {}", selectedTable);
-        }
-
-        String tableForPrompt = selectedTable;
-        log.info("프롬프트용 테이블명: {} (원본: {})", tableForPrompt, state.getSelectedTable());
 
         try {
             // QnA ID 생성
@@ -91,27 +81,19 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                 daterHistory = new ArrayList<>();
             }
 
-            log.info("프롬프트 빌더 호출 시작 - tableForPrompt: {}, userQuestion: {}, historySize: {}",
-                    tableForPrompt, userQuestion, daterHistory != null ? daterHistory.size() : 0);
+            log.info("프롬프트 빌더 호출 시작 - userQuestion: {}, historySize: {}",
+                    userQuestion, daterHistory != null ? daterHistory.size() : 0);
 
 
             PromptWithRetrieveTime promptResult = null;
             try {
-                promptResult = promptBuilder.buildDaterPromptWithFewShots(
-                        selectedTable, userQuestion, daterHistory, generationId, workflowId);
-                log.info("buildDaterPromptWithFewShots 호출 성공");
+                promptResult = promptBuilder.buildDaterPromptWithFewShots(userQuestion, daterHistory, generationId, workflowId);
+                log.info("HIL용 프롬프트 빌더 호출 성공");
             } catch (Exception e) {
-                log.error("buildDaterPromptWithFewShots 호출 실패, HIL용 프롬프트로 대체", e);
-                // fallback으로 HIL용 프롬프트 사용
-                try {
-                    promptResult = promptBuilder.buildDateCheckerPromptForHIL(userQuestion, generationId, workflowId);
-                    log.info("HIL용 프롬프트 빌더 호출 성공 (fallback)");
-                } catch (Exception e2) {
-                    log.error("HIL용 프롬프트 빌더 호출도 실패", e2);
-                    setErrorInExecution(state, selectedTable, "프롬프트 생성 실패: " + e2.getMessage());
-                    state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
-                    return;
-                }
+                log.error("HIL용 프롬프트 빌더 호출 실패", e);
+                setErrorInExecution(state,  "프롬프트 생성 실패: " + e.getMessage());
+                state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
+                return;
             }
 
             PromptTemplate promptTemplate = promptResult.getPromptTemplate();
@@ -125,7 +107,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                 log.info("프롬프트 빌드 성공, 길이: {}", prompt.length());
             } catch (Exception e) {
                 log.error("프롬프트 빌드 실패", e);
-                setErrorInExecution(state, selectedTable, "프롬프트 빌드 실패: " + e.getMessage());
+                setErrorInExecution(state, "프롬프트 빌드 실패: " + e.getMessage());
                 state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
                 return;
             }
@@ -137,7 +119,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                 log.info("LLM 응답 수신 완료, 길이: {}", llmResponse != null ? llmResponse.length() : 0);
             } catch (Exception e) {
                 log.error("LLM 호출 실패", e);
-                setErrorInExecution(state, selectedTable, "LLM 호출 실패: " + e.getMessage());
+                setErrorInExecution(state, "LLM 호출 실패: " + e.getMessage());
                 state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
                 return;
             }
@@ -166,7 +148,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                     log.info("워크플로우를 waiting 상태로 변경 완료 - workflowId: {}", workflowId);
                 } catch (Exception e) {
                     log.error("워크플로우 waiting 상태 변경 실패 - workflowId: {}", workflowId, e);
-                    setErrorInExecution(state, selectedTable, "워크플로우 상태 변경 실패: " + e.getMessage());
+                    setErrorInExecution(state, "워크플로우 상태 변경 실패: " + e.getMessage());
                     state.setFinalAnswer("죄송합니다. 처리 중 오류가 발생했습니다.");
                     return;
                 }
@@ -228,7 +210,7 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
 
         } catch (Exception e) {
             log.error("DateCheckerNode 실행 중 오류 발생", e);
-            setErrorInExecution(state, selectedTable, "날짜 확인 중 오류가 발생했습니다: " + e.getMessage());
+            setErrorInExecution(state, "날짜 확인 중 오류가 발생했습니다: " + e.getMessage());
             state.setFinalAnswer("죄송합니다. 날짜 정보를 확인하는 중 오류가 발생했습니다.");
         }
     }
@@ -236,12 +218,12 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
     /**
      * SemanticQueryExecution에 에러 설정
      */
-    private void setErrorInExecution(SemanticQueryWorkflowState state, String tableName, String errorMessage) {
+    private void setErrorInExecution(SemanticQueryWorkflowState state, String errorMessage) {
         if (state.getSemanticQueryExecutionMap() == null) {
             state.setSemanticQueryExecutionMap(new HashMap<>());
         }
 
-        String key = tableName != null ? tableName : "default";
+        String key = "default";
         SemanticQueryWorkflowState.SemanticQueryExecution execution =
                 state.getSemanticQueryExecutionMap().computeIfAbsent(key,
                         k -> SemanticQueryWorkflowState.SemanticQueryExecution.builder().build());
