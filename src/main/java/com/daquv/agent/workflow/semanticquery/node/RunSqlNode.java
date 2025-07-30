@@ -81,7 +81,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
                 // SQL 실행 및 결과 저장
                 long startTime = System.currentTimeMillis();
-                Map<String, Object> resultMap = executeSqlMap(sqlMap, workflowId, state);
+                Map<String, Object> resultMap = executeSqlMap(sqlMap, workflowId, state, execution);
                 long endTime = System.currentTimeMillis();
                 
                 double elapsedTime = (endTime - startTime) / 1000.0;
@@ -163,7 +163,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
         }
     }
 
-    private Map<String, Object> executeSqlMap(Map<String, String> sqlMap, String workflowId, SemanticQueryWorkflowState state) {
+    private Map<String, Object> executeSqlMap(Map<String, String> sqlMap, String workflowId, SemanticQueryWorkflowState state, SemanticQueryExecution execution) {
         Map<String, Object> resultMap = new HashMap<>();
 
         for (Map.Entry<String, String> entry : sqlMap.entrySet()) {
@@ -220,9 +220,11 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
                 String finalQuery = viewQuery;
                 if (totalRows > PAGE_SIZE) {
                     log.info("✅ 페이지네이션 적용. 총 행 수: {}, PAGE_SIZE: {}", totalRows, PAGE_SIZE);
+                    execution.setHasNext(true);
                     finalQuery = queryRequest.addLimits(viewQuery, PAGE_SIZE, 0);
                     log.info("LIMIT 추가된 쿼리: {}", finalQuery);
                 } else {
+                    execution.setHasNext(false);
                     log.info("❌ 페이지네이션 불필요. 총 행 수: {}, PAGE_SIZE: {}", totalRows, PAGE_SIZE);
                 }
 
