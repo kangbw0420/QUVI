@@ -45,7 +45,7 @@ public class SemanticQueryWorkflowExecutionContext {
         log.info("=== SemanticQuery DSL 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
 
         try {
-            executeNode("nextPageNode", state);
+            executeNode("semanticQueryNextPageNode", state);
 
             if ("next_page".equals(state.getUserQuestion())) {
                 log.info("next_page 요청 처리 완료 - workflowId: {}", workflowId);

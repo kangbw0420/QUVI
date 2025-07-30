@@ -136,7 +136,7 @@ public class SemanticQueryExecutorResultHandler {
                     }
 
                     if (hasNoDataAfterRetry) {
-                        getExecutionContext().executeNode("nodataNode", state);
+                        getExecutionContext().executeNode("semanticQueryNoDataNode", state);
                         return;
                     }
 

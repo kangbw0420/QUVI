@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-@Component
+@Component("semanticQueryNoDataNode")
 public class NodataNode implements SemanticQueryWorkflowNode {
 
     @Autowired

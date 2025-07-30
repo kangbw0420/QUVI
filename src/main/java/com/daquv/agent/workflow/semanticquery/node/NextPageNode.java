@@ -10,6 +10,7 @@ import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-@Component
+@Component("semanticQueryNextPageNode")
 public class NextPageNode implements SemanticQueryWorkflowNode {
 
     private static final int LIMIT = 100;
