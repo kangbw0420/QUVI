@@ -184,7 +184,7 @@ public class ExtractFilterNode implements SemanticQueryWorkflowNode {
                 .replace("{user_input}", userInput);
 
         log.debug("Calling LLM for filter extraction");
-        String response = llmRequest.callQwenLlm(systemPrompt, qnaId);
+        String response = llmRequest.callQwenLlm(systemPrompt + "\n" + userInput, qnaId);
         log.debug("LLM response received for filters, length: {} characters", response.length());
 
         Map<String, Object> parsedResponse = responseParser.parseResponse(response);
