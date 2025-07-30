@@ -45,6 +45,15 @@ public class SemanticQueryWorkflowExecutionContext {
         log.info("=== SemanticQuery DSL 워크플로우 실행 시작 - workflowId: {} ===", workflowId);
 
         try {
+            executeNode("nextPageNode", state);
+
+            if ("next_page".equals(state.getUserQuestion())) {
+                log.info("next_page 요청 처리 완료 - workflowId: {}", workflowId);
+                workflowService.completeWorkflow(workflowId, state.getFinalAnswer());
+                stateManager.updateState(workflowId, state);
+                return;
+            }
+
             // 0. DateChecker Node - 날짜 정보 확인 및 HIL 처리
             executeNode("dateCheckerNode", state);
 
