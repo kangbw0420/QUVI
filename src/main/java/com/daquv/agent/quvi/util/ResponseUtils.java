@@ -32,13 +32,11 @@ public class ResponseUtils {
         body.put("session_id", sessionId);
         body.put("workflow_id", workflowId);
         body.put("recommend", recommendList);
-        body.put("is_api", false);
         body.put("date_info", Arrays.asList(
                 workflowExecutionManagerService.extractStartDate(selectedWorkflow, workflowId),
                 workflowExecutionManagerService.extractEndDate(selectedWorkflow, workflowId)
         ));
         body.put("sql_query", workflowExecutionManagerService.extractSqlQuery(selectedWorkflow, workflowId));
-        body.put("selected_table", workflowExecutionManagerService.extractSelectedTable(selectedWorkflow, workflowId));
         body.put("has_next", workflowExecutionManagerService.extractHasNext(selectedWorkflow, workflowId));
         body.put("workflow_status", "completed");
         body.put("hil_required", false);
