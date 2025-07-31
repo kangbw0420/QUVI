@@ -239,12 +239,12 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
         String fromDate = dateInfo.get("from_date");
         String toDate = dateInfo.get("to_date");
 
-        log.debug("날짜 명확성 확인: from_date={}, to_date={}", fromDate, toDate);
+        log.info("날짜 명확성 확인: from_date={}, to_date={}", fromDate, toDate);
 
         // null이거나 빈 문자열인 경우
-        if (fromDate == null || fromDate.trim().isEmpty() ||
-                toDate == null || toDate.trim().isEmpty()) {
-            log.debug("날짜가 null이거나 빈 문자열");
+        if (fromDate == null || fromDate.trim().isEmpty() || "null".equals(fromDate) ||
+                toDate == null || toDate.trim().isEmpty() || "null".equals(toDate)) {
+            log.info("날짜가 null이거나 빈 문자열");
             return true;
         }
 
@@ -253,30 +253,16 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
         toDate = toDate.trim();
 
         // "불명확" 또는 "명시되지 않음" 등의 키워드가 포함된 경우
-        String[] uncertainKeywords = {"불명확", "명시되지", "확실하지", "애매", "모호", "unclear", "unknown", "ambiguous", "없음", "정보 없음"};
+        String[] uncertainKeywords = {"불명확", "명시되지", "확실하지", "애매", "모호", "unclear", "unknown", "ambiguous", "없음", "정보 없음" , "null"};
         for (String keyword : uncertainKeywords) {
             if (fromDate.toLowerCase().contains(keyword.toLowerCase()) ||
                     toDate.toLowerCase().contains(keyword.toLowerCase())) {
-                log.debug("불명확한 키워드 발견: {}", keyword);
+                log.info("불명확한 키워드 발견: {}", keyword);
                 return true;
             }
         }
 
-        // 동일한 날짜가 반복되거나 기본값인 경우 (예: 1970-01-01, 9999-12-31 등)
-        if (fromDate.equals(toDate) && (fromDate.equals("1970-01-01") || fromDate.equals("9999-12-31"))) {
-            log.debug("기본값 날짜 발견");
-            return true;
-        }
-
-        // *** 추가: 오늘 날짜와 동일한 경우 불명확한 것으로 판단 ***
-        // 현재 날짜 (YYYYMMDD 형식)
-        String today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
-        if (fromDate.equals(today) && toDate.equals(today)) {
-            log.debug("오늘 날짜로 기본 설정된 것으로 판단 - 불명확한 날짜로 처리");
-            return true;
-        }
-
-        log.debug("날짜 정보가 명확함");
+        log.info("날짜 정보가 명확함");
         return false;
     }
 
