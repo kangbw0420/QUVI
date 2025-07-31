@@ -242,10 +242,24 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
         log.info("날짜 명확성 확인: from_date={}, to_date={}", fromDate, toDate);
 
         // null이거나 빈 문자열인 경우
-        if (fromDate == null || fromDate.trim().isEmpty() || "null".equals(fromDate) ||
-                toDate == null || toDate.trim().isEmpty() || "null".equals(toDate)) {
-            log.info("날짜가 null이거나 빈 문자열");
-            return true;
+//       if ((fromDate == null || fromDate.trim().isEmpty() || "null".equals(fromDate)) &&
+//    (toDate == null || toDate.trim().isEmpty() || "null".equals(toDate))) {
+//            log.info("날짜가 null이거나 빈 문자열");
+//            return true;
+//        }
+
+        // null이거나 빈 문자열인 경우 현재 날짜로 설정
+        if ((fromDate == null || fromDate.trim().isEmpty() || "null".equals(fromDate)) &&
+                (toDate == null || toDate.trim().isEmpty() || "null".equals(toDate))) {
+            log.info("날짜가 null이거나 빈 문자열 - 현재 날짜로 설정");
+
+            // 현재 날짜를 YYYYMMDD 형식으로 설정
+            String today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+            dateInfo.put("from_date", today);
+            dateInfo.put("to_date", today);
+
+            log.info("현재 날짜로 설정 완료: from_date={}, to_date={}", today, today);
+            return false; // 이제 명확한 날짜가 되었으므로 false 반환
         }
 
         // 공백 제거
