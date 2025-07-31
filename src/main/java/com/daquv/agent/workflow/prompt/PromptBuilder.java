@@ -52,9 +52,12 @@ public class PromptBuilder {
                 "{json_format}", jsonFormat);
 
         // Few-shot 예제 검색
-        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
-                userQuestion, "shots_datechecker", 5, workflowId);
+//        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+//                userQuestion, "shots_datechecker", 5, workflowId);
 
+        // Few-shot 예제 검색
+        Map<String, Object> fewShotResult = vectorRequest.getFewShots(
+                userQuestion, "shots_datechecker_hil", 5, workflowId);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> fewShots = (List<Map<String, Object>>) fewShotResult.get("few_shots");
 
