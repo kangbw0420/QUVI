@@ -149,7 +149,7 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
 
         log.debug("Calling LLM for metrics and group by extraction");
 
-        String response = llmRequest.callQwenLlm(userInput + "\n" + prompt, qnaId);
+        String response = llmRequest.callQwenLlm(prompt + "\n" + userInput, qnaId);
         log.debug("LLM response received, length: {} characters", response.length());
 
         Map<String, Object> rawDict = responseParser.parseResponse(response);

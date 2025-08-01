@@ -11,6 +11,7 @@ import com.daquv.agent.workflow.util.PipeTableUtils;
 import com.daquv.agent.workflow.util.QueryUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -30,6 +31,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
     private static final int PAGE_SIZE = 100;
 
+    @Autowired
     @Qualifier("mainJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
     private final WebSocketUtils webSocketUtils;
@@ -79,7 +81,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
                 // SQL 실행 및 결과 저장
                 long startTime = System.currentTimeMillis();
-                Map<String, Object> resultMap = executeSqlMap(sqlMap, workflowId, state);
+                Map<String, Object> resultMap = executeSqlMap(sqlMap, workflowId, state, execution);
                 long endTime = System.currentTimeMillis();
                 
                 double elapsedTime = (endTime - startTime) / 1000.0;
@@ -161,7 +163,7 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
         }
     }
 
-    private Map<String, Object> executeSqlMap(Map<String, String> sqlMap, String workflowId, SemanticQueryWorkflowState state) {
+    private Map<String, Object> executeSqlMap(Map<String, String> sqlMap, String workflowId, SemanticQueryWorkflowState state, SemanticQueryExecution execution) {
         Map<String, Object> resultMap = new HashMap<>();
 
         for (Map.Entry<String, String> entry : sqlMap.entrySet()) {
@@ -175,17 +177,8 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
             }
 
             try {
-                // Cross-database 참조 문제 해결을 위한 SQL 전처리
-                String processedSql = preprocessSqlForCrossDatabase(sql);
-
-                // 페이지네이션 적용
-                String paginatedSql = countAndPaginate(processedSql, workflowId);
-
-                // 일반 쿼리 처리
-                String selectedTable = queryKey;
-
                 // 1. 권한 있는 회사/계좌 검사
-                String queryRightCom = queryUtils.addComCondition(paginatedSql, state.getUserInfo().getCompanyId());
+                String queryRightCom = queryUtils.addComCondition(sql, state.getUserInfo().getCompanyId());
 
                 // 2. 주식종목/은행명 매핑 변환
                 String queryRightStock = nameModifierUtils.modifyStock(queryRightCom);
@@ -196,29 +189,54 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
 
                 // User Info 추출
                 List<String> listOfUserInfo = state.getUserInfo().toArray();
-
-                // parameters에 userInfo 삽입
                 List<String> parameters = new ArrayList<>(listOfUserInfo);
-
-                // State에서 필요한 부분 삽입
                 parameters.add(state.getStartDate());
                 parameters.add(state.getEndDate());
 
-                // 4. view table 적용
+                // 4. view table 적용 (함수 호출로 변환)
                 String viewQuery = queryRequest.viewTable(
                         queryOrdered,
                         parameters,
                         DIALECT
                 );
 
-                sqlMap.put(entry.getKey(), viewQuery);
+                String countResult;
+                log.info("COUNT 쿼리용 workflowId 설정: {}", workflowId);
+                DatabaseProfilerAspect.setWorkflowId(workflowId);
+                countResult = queryRequest.countRows(viewQuery, PAGE_SIZE);
+                log.info("COUNT 쿼리 완료");
+
+                log.info("countRows API 응답: {}", countResult);
+
+                int totalRows = 0;
+                try {
+                    totalRows = Integer.parseInt(countResult);
+                    log.info("파싱된 총 행 수: {}", totalRows);
+                } catch (NumberFormatException e) {
+                    log.warn("행 수 파싱 실패: {}", countResult);
+                    totalRows = 0;
+                }
+
+                String finalQuery = viewQuery;
+                if (totalRows > PAGE_SIZE) {
+                    log.info("✅ 페이지네이션 적용. 총 행 수: {}, PAGE_SIZE: {}", totalRows, PAGE_SIZE);
+                    execution.setHasNext(true);
+                    finalQuery = queryRequest.addLimits(viewQuery, PAGE_SIZE, 0);
+                    log.info("LIMIT 추가된 쿼리: {}", finalQuery);
+                } else {
+                    execution.setHasNext(false);
+                    log.info("❌ 페이지네이션 불필요. 총 행 수: {}, PAGE_SIZE: {}", totalRows, PAGE_SIZE);
+                }
+
+                // 최종 쿼리를 맵에 저장
+                sqlMap.put(entry.getKey(), finalQuery);
 
                 // SQL 실행
                 log.debug("Executing SQL for key '{}': {}", queryKey,
-                        viewQuery.substring(0, Math.min(100, viewQuery.length())) + "...");
+                        finalQuery.substring(0, Math.min(100, finalQuery.length())) + "...");
 
                 DatabaseProfilerAspect.setWorkflowId(workflowId);
-                List<Map<String, Object>> result = jdbcTemplate.queryForList(viewQuery);
+                List<Map<String, Object>> result = jdbcTemplate.queryForList(finalQuery);
 
                 // 숫자 자동 변환
                 List<Map<String, Object>> processedResult = autoCastNumeric(result);
@@ -236,13 +254,37 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
                     try {
                         // SQL에서 데이터베이스 참조 제거하고 재시도
                         String fixedSql = fixCrossDatabaseReferences(sql);
-                        String paginatedFixedSql = countAndPaginate(fixedSql, workflowId);
+                        String queryRightCom = queryUtils.addComCondition(fixedSql, state.getUserInfo().getCompanyId());
+                        String queryRightStock = nameModifierUtils.modifyStock(queryRightCom);
+                        String queryRightBank = nameModifierUtils.modifyBank(queryRightStock);
+                        String queryOrdered = queryUtils.addOrderBy(queryRightBank);
+
+                        List<String> listOfUserInfo = state.getUserInfo().toArray();
+                        List<String> parameters = new ArrayList<>(listOfUserInfo);
+                        parameters.add(state.getStartDate());
+                        parameters.add(state.getEndDate());
+
+                        String viewQuery = queryRequest.viewTable(queryOrdered, parameters, DIALECT);
+
+                        // 수정된 쿼리에도 countRows 적용
+                        String countResult = queryRequest.countRows(viewQuery, PAGE_SIZE);
+                        int totalRows = 0;
+                        try {
+                            totalRows = Integer.parseInt(countResult);
+                        } catch (NumberFormatException ex) {
+                            totalRows = 0;
+                        }
+
+                        String finalFixedQuery = viewQuery;
+                        if (totalRows > PAGE_SIZE) {
+                            finalFixedQuery = queryRequest.addLimits(viewQuery, PAGE_SIZE, 0);
+                        }
 
                         log.debug("Retrying with fixed SQL for key '{}': {}", queryKey,
-                                paginatedFixedSql.substring(0, Math.min(100, paginatedFixedSql.length())) + "...");
+                                finalFixedQuery.substring(0, Math.min(100, finalFixedQuery.length())) + "...");
 
                         DatabaseProfilerAspect.setWorkflowId(workflowId);
-                        List<Map<String, Object>> result = jdbcTemplate.queryForList(paginatedFixedSql);
+                        List<Map<String, Object>> result = jdbcTemplate.queryForList(finalFixedQuery);
                         List<Map<String, Object>> processedResult = autoCastNumeric(result);
 
                         resultMap.put(queryKey, processedResult);
@@ -333,34 +375,6 @@ public class RunSqlNode implements SemanticQueryWorkflowNode {
         }
 
         return fixedSql;
-    }
-
-    private String countAndPaginate(String sql, String workflowId) {
-        String cleanedSql = sql.trim().replaceAll(";\\s*$", "");
-        
-        String countSql = String.format(
-            "SELECT COUNT(*) AS row_count FROM (%s) AS subq_count", 
-            cleanedSql
-        );
-        
-        try {
-            DatabaseProfilerAspect.setWorkflowId(workflowId);
-            Integer rowCount = jdbcTemplate.queryForObject(countSql, Integer.class);
-            
-            if (rowCount != null && rowCount > PAGE_SIZE) {
-                log.debug("Query has {} rows, applying pagination with limit {}", rowCount, PAGE_SIZE);
-                return String.format(
-                    "WITH paginated AS (%s) SELECT * FROM paginated LIMIT %d OFFSET 0",
-                    cleanedSql, PAGE_SIZE
-                );
-            } else {
-                log.debug("Query has {} rows, no pagination needed", rowCount);
-            }
-        } catch (DataAccessException e) {
-            log.warn("Failed to count rows for pagination: {}", e.getMessage());
-        }
-        
-        return sql;
     }
 
     private List<Map<String, Object>> autoCastNumeric(List<Map<String, Object>> data) {

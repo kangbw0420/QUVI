@@ -1,6 +1,6 @@
 semantic_models:
   - name: bal
-    model: ref('fct_bal')
+    model: ref('aicfo_get_all_amt')
     description: 한화 금융 계좌 정보를 관리하는 semantic 모델. 수시, 예적금, 대출, 증권, 신탁, 퇴직연금 등 다양한 금융상품의 잔액 및 계약 정보를 포함
     defaults:
       agg_time_dimension: reg_dt

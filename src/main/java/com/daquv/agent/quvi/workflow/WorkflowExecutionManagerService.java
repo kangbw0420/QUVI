@@ -1,8 +1,8 @@
 package com.daquv.agent.quvi.workflow;
 
 import com.daquv.agent.quvi.dto.QuviRequestDto;
-import com.daquv.agent.quvi.workflow.WorkflowExecutionService;
 import com.daquv.agent.workflow.dto.UserInfo;
+import com.daquv.agent.workflow.nl2sql.Nl2SqlWorkflowState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -27,6 +27,7 @@ public class WorkflowExecutionManagerService { // 클래스 이름도 변경
         workflowServiceMapping.put("JOY", "joyWorkflowExecutionService");
         workflowServiceMapping.put("TOOLUSE", "toolUseWorkflowExecutionService");
         workflowServiceMapping.put("SEMANTICQUERY", "semanticQueryWorkflowExecutionService");
+        workflowServiceMapping.put("NL2SQL", "nl2SqlWorkflowExecutionService");
     }
 
     /**
@@ -254,6 +255,14 @@ public class WorkflowExecutionManagerService { // 클래스 이름도 변경
                     }
                     break;
 
+                case "NL2SQL":
+                    if (state instanceof Nl2SqlWorkflowState) {
+                        Nl2SqlWorkflowState nl2SqlWorkflowState = (Nl2SqlWorkflowState) state;
+                        boolean hilRequired = nl2SqlWorkflowState.isHilRequired();
+                        log.debug("Nl2sql HIL 상태 확인 - workflowId: {}, hilRequired: {}", workflowId, hilRequired);
+                        return hilRequired;
+                    }
+
                 case "TOOLUSE":
                     // ToolUse에서 HIL이 필요한 경우의 로직 (향후 확장)
                     return false; // 현재는 HIL 미지원
@@ -300,7 +309,6 @@ public class WorkflowExecutionManagerService { // 클래스 이름도 변경
      * 워크플로우 타입 확인 (기존 QuviController의 determineWorkflowType 로직을 매니저로 이동)
      */
     public String determineWorkflowType(String workflowId) {
-        // SemanticQuery State가 있는지 확인
         try {
             Object semanticState = getWorkflowExecutionService("SEMANTICQUERY").getFinalState(workflowId);
             if (semanticState != null) {
@@ -308,6 +316,15 @@ public class WorkflowExecutionManagerService { // 클래스 이름도 변경
             }
         } catch (Exception e) {
             log.debug("SEMANTICQUERY State 확인 중 예외: {}", e.getMessage());
+        }
+
+        try {
+            Object semanticState = getWorkflowExecutionService("NL2SQL").getFinalState(workflowId);
+            if (semanticState != null) {
+                return "NL2SQL";
+            }
+        } catch (Exception e) {
+            log.debug("NL2SQL State 확인 중 예외: {}", e.getMessage());
         }
 
         // ToolUse State가 있는지 확인

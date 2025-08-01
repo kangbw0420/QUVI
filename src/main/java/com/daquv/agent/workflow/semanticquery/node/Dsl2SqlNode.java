@@ -11,8 +11,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState.DSL;
 import static com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState.SemanticQueryExecution;
@@ -156,9 +160,10 @@ public class Dsl2SqlNode implements SemanticQueryWorkflowNode {
             String queryKey = entry.getKey();
             DSL dslQuery = entry.getValue();
 
+            List<String> enhancedGroupBy = enhanceGroupByWithFilterDimensions(dslQuery);
             MetricFlowRequestDto request = MetricFlowRequestDto.builder()
                     .metrics(dslQuery.getMetrics())
-                    .groupBy(dslQuery.getGroupBy())
+                    .groupBy(enhancedGroupBy)
                     .filters(dslQuery.getFilters())
                     .orderBy(dslQuery.getOrderBy())
                     .limit(normalizeLimit(dslQuery.getLimit()))
@@ -196,6 +201,66 @@ public class Dsl2SqlNode implements SemanticQueryWorkflowNode {
         }
 
         log.warn("Unsupported limit type: {}", limit.getClass().getSimpleName());
+        return null;
+    }
+
+    private List<String> enhanceGroupByWithFilterDimensions(DSL dsl) {
+        List<String> groupBy = new ArrayList<>(dsl.getGroupBy());
+
+        log.info("=== 필터 dimension 분석 시작 ===");
+        log.info("원본 GROUP BY: {}", groupBy);
+        log.info("필터 목록: {}", dsl.getFilters());
+
+        // 필터에서 사용되는 dimension들 추출
+        for (String filter : dsl.getFilters()) {
+            log.info("필터 분석 중: '{}'", filter);
+
+            String dimension = extractDimensionFromFilter(filter);
+
+            if (dimension != null) {
+                log.info("추출된 dimension: '{}'", dimension);
+
+                if (!groupBy.contains(dimension)) {
+                    groupBy.add(dimension);
+                    log.info("✅ GROUP BY에 추가됨: {}", dimension);
+                } else {
+                    log.info("⚠️ 이미 GROUP BY에 존재: {}", dimension);
+                }
+            } else {
+                log.warn("❌ dimension 추출 실패: '{}'", filter);
+            }
+        }
+
+        log.info("최종 GROUP BY: {}", groupBy);
+        log.info("=== 필터 dimension 분석 완료 ===");
+
+        return groupBy;
+    }
+
+    private String extractDimensionFromFilter(String filter) {
+        log.debug("Dimension 추출 시도: '{}'", filter);
+
+        // "{{ Dimension('acct__com_nm') }} = 'value'" 패턴에서 dimension 추출
+        Pattern pattern = Pattern.compile("Dimension\\('([^']+)'\\)");
+        Matcher matcher = pattern.matcher(filter);
+
+        if (matcher.find()) {
+            String dimensionName = matcher.group(1);
+            log.debug("✅ Dimension 추출 성공: {}", dimensionName);
+            return dimensionName;
+        }
+
+        // TimeDimension도 처리
+        Pattern timePattern = Pattern.compile("TimeDimension\\('([^']+)'\\)");
+        Matcher timeMatcher = timePattern.matcher(filter);
+
+        if (timeMatcher.find()) {
+            String timeDimensionName = timeMatcher.group(1);
+            log.debug("✅ TimeDimension 추출 성공: {}", timeDimensionName);
+            return timeDimensionName;
+        }
+
+        log.warn("❌ Dimension 추출 실패: '{}'", filter);
         return null;
     }
 }

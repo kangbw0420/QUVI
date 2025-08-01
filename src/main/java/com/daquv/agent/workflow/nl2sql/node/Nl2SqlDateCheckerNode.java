@@ -1,15 +1,15 @@
-package com.daquv.agent.workflow.semanticquery.node;
+package com.daquv.agent.workflow.nl2sql.node;
 
 import com.daquv.agent.quvi.llmadmin.GenerationService;
 import com.daquv.agent.quvi.llmadmin.WorkflowService;
 import com.daquv.agent.quvi.util.LlmOutputHandler;
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
+import com.daquv.agent.workflow.nl2sql.Nl2SqlWorkflowNode;
+import com.daquv.agent.workflow.nl2sql.Nl2SqlWorkflowState;
 import com.daquv.agent.workflow.prompt.PromptBuilder;
 import com.daquv.agent.workflow.prompt.PromptBuilder.PromptWithRetrieveTime;
 import com.daquv.agent.workflow.prompt.PromptTemplate;
-import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
-import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.util.LLMRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,7 @@ import java.util.Map;
 
 @Component
 @Slf4j
-public class DateCheckerNode implements SemanticQueryWorkflowNode {
+public class Nl2SqlDateCheckerNode implements Nl2SqlWorkflowNode {
 
     @Autowired
     private PromptBuilder promptBuilder;
@@ -49,22 +49,30 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
     }
 
     @Override
-    public void execute(SemanticQueryWorkflowState state) {
+    public void execute(Nl2SqlWorkflowState state) {
         String userQuestion = state.getUserQuestion();
+        String selectedTable = state.getSelectedTable();
         String workflowId = state.getWorkflowId();
 
-
-        log.info("DateCheckerNode 실행 시작 - userQuestion: {}, workflowId: {}",
-                userQuestion, workflowId);
+        log.info("DateCheckerNode 실행 시작 - userQuestion: {}, selectedTable: {}, workflowId: {}",
+                userQuestion, selectedTable, workflowId);
 
         // 사용자 질문 검증
         if (userQuestion == null || userQuestion.trim().isEmpty()) {
             log.error("사용자 질문이 없습니다.");
-            setErrorInExecution(state, "사용자 질문이 없습니다.");
             state.setFinalAnswer("죄송합니다. 사용자 질문을 확인할 수 없습니다.");
             return;
         }
 
+        // selectedTable이 없으면 기본값 설정
+        if (selectedTable == null || selectedTable.trim().isEmpty()) {
+            selectedTable = "AMT"; // 기본 테이블명
+            state.setSelectedTable(selectedTable);
+            log.info("selectedTable이 null이어서 기본값으로 설정: {}", selectedTable);
+        }
+
+        String tableForPrompt = selectedTable;
+        log.info("프롬프트용 테이블명: {} (원본: {})", tableForPrompt, state.getSelectedTable());
 
         try {
             // QnA ID 생성
@@ -81,17 +89,16 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                 daterHistory = new ArrayList<>();
             }
 
-            log.info("프롬프트 빌더 호출 시작 - userQuestion: {}, historySize: {}",
-                    userQuestion, daterHistory != null ? daterHistory.size() : 0);
+            log.info("프롬프트 빌더 호출 시작 - tableForPrompt: {}, userQuestion: {}, historySize: {}",
+                    tableForPrompt, userQuestion, daterHistory.size());
 
-
+            // HIL용 날짜 체크 프롬프트 생성 (UNCLEAR 반환하도록 설계됨)
             PromptWithRetrieveTime promptResult = null;
             try {
                 promptResult = promptBuilder.buildDaterPromptWithFewShots(userQuestion, daterHistory, generationId, workflowId);
                 log.info("HIL용 프롬프트 빌더 호출 성공");
             } catch (Exception e) {
                 log.error("HIL용 프롬프트 빌더 호출 실패", e);
-                setErrorInExecution(state,  "프롬프트 생성 실패: " + e.getMessage());
                 state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
                 return;
             }
@@ -107,7 +114,6 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                 log.info("프롬프트 빌드 성공, 길이: {}", prompt.length());
             } catch (Exception e) {
                 log.error("프롬프트 빌드 실패", e);
-                setErrorInExecution(state, "프롬프트 빌드 실패: " + e.getMessage());
                 state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
                 return;
             }
@@ -119,7 +125,6 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                 log.info("LLM 응답 수신 완료, 길이: {}", llmResponse != null ? llmResponse.length() : 0);
             } catch (Exception e) {
                 log.error("LLM 호출 실패", e);
-                setErrorInExecution(state, "LLM 호출 실패: " + e.getMessage());
                 state.setFinalAnswer("죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.");
                 return;
             }
@@ -135,10 +140,8 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
             Map<String, String> dateInfo = LlmOutputHandler.extractDateInfo(llmResponse);
             log.info("추출된 날짜 정보: {}", dateInfo);
 
-            // 날짜 정보가 UNCLEAR이거나 불명확한 경우 HIL 활성화
-            if (dateInfo == null || !dateInfo.containsKey("from_date") || !dateInfo.containsKey("to_date")
-                    || isDateUnclear(dateInfo)) {
-
+            // 날짜 정보가 불명확한지 확인
+            if (dateInfo == null || isDateUnclear(dateInfo)) {
                 log.warn("날짜 정보가 불명확하여 사용자 입력이 필요합니다. dateInfo: {}", dateInfo);
 
                 String clarificationMessage = generateDateClarificationMessage(userQuestion, dateInfo);
@@ -148,7 +151,6 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
                     log.info("워크플로우를 waiting 상태로 변경 완료 - workflowId: {}", workflowId);
                 } catch (Exception e) {
                     log.error("워크플로우 waiting 상태 변경 실패 - workflowId: {}", workflowId, e);
-                    setErrorInExecution(state, "워크플로우 상태 변경 실패: " + e.getMessage());
                     state.setFinalAnswer("죄송합니다. 처리 중 오류가 발생했습니다.");
                     return;
                 }
@@ -185,14 +187,13 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
 
             log.info("명확한 날짜 정보 확인: from_date={}, to_date={}", fromDate, toDate);
 
-            // QnA 응답 기록
+            // Python과 동일하게 QnA 응답 기록
             String outputStr = String.format("{\"from_date\": \"%s\", \"to_date\": \"%s\"}", fromDate, toDate);
             generationService.recordAnswer(generationId, outputStr, retrieveTime);
 
             // 상태에 날짜 정보 저장
             state.setStartDate(fromDate);
             state.setEndDate(toDate);
-            state.setDateClarificationNeeded(false);
 
             if (state.hasDateInfo()) {
                 log.info("날짜 정보 설정 완료 확인: from_date={}, to_date={}", fromDate, toDate);
@@ -210,73 +211,66 @@ public class DateCheckerNode implements SemanticQueryWorkflowNode {
 
         } catch (Exception e) {
             log.error("DateCheckerNode 실행 중 오류 발생", e);
-            setErrorInExecution(state, "날짜 확인 중 오류가 발생했습니다: " + e.getMessage());
             state.setFinalAnswer("죄송합니다. 날짜 정보를 확인하는 중 오류가 발생했습니다.");
         }
-    }
-
-    /**
-     * SemanticQueryExecution에 에러 설정
-     */
-    private void setErrorInExecution(SemanticQueryWorkflowState state, String errorMessage) {
-        if (state.getSemanticQueryExecutionMap() == null) {
-            state.setSemanticQueryExecutionMap(new HashMap<>());
-        }
-
-        String key = "default";
-        SemanticQueryWorkflowState.SemanticQueryExecution execution =
-                state.getSemanticQueryExecutionMap().computeIfAbsent(key,
-                        k -> SemanticQueryWorkflowState.SemanticQueryExecution.builder().build());
-
-        execution.setSqlError(errorMessage);
-        log.info("SemanticQueryExecution에 에러 설정: key={}, error={}", key, errorMessage);
     }
 
     /**
      * 날짜 정보가 불명확한지 확인
      */
     private boolean isDateUnclear(Map<String, String> dateInfo) {
+        if (dateInfo == null || dateInfo.isEmpty()) {
+            log.debug("날짜 정보가 null이거나 비어있음");
+            return true;
+        }
+
         String fromDate = dateInfo.get("from_date");
         String toDate = dateInfo.get("to_date");
 
-        log.info("날짜 명확성 확인: from_date={}, to_date={}", fromDate, toDate);
+        log.debug("날짜 명확성 확인: from_date={}, to_date={}", fromDate, toDate);
 
         // null이거나 빈 문자열인 경우
-//       if ((fromDate == null || fromDate.trim().isEmpty() || "null".equals(fromDate)) &&
-//    (toDate == null || toDate.trim().isEmpty() || "null".equals(toDate))) {
-//            log.info("날짜가 null이거나 빈 문자열");
-//            return true;
-//        }
-
-        // null이거나 빈 문자열인 경우 현재 날짜로 설정
-        if ((fromDate == null || fromDate.trim().isEmpty() || "null".equals(fromDate)) &&
-                (toDate == null || toDate.trim().isEmpty() || "null".equals(toDate))) {
-            log.info("날짜가 null이거나 빈 문자열 - 현재 날짜로 설정");
-
-            // 현재 날짜를 YYYYMMDD 형식으로 설정
-            String today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
-            dateInfo.put("from_date", today);
-            dateInfo.put("to_date", today);
-
-            log.info("현재 날짜로 설정 완료: from_date={}, to_date={}", today, today);
-            return false; // 이제 명확한 날짜가 되었으므로 false 반환
+        if (fromDate == null || fromDate.trim().isEmpty() ||
+                toDate == null || toDate.trim().isEmpty()) {
+            log.debug("날짜가 null이거나 빈 문자열");
+            return true;
         }
 
         // 공백 제거
         fromDate = fromDate.trim();
         toDate = toDate.trim();
 
+        // "UNCLEAR" 키워드가 포함된 경우 (LLM이 명시적으로 불명확하다고 반환)
+        if ("UNCLEAR".equalsIgnoreCase(fromDate) || "UNCLEAR".equalsIgnoreCase(toDate)) {
+            log.debug("UNCLEAR 키워드 발견");
+            return true;
+        }
+
         // "불명확" 또는 "명시되지 않음" 등의 키워드가 포함된 경우
-        String[] uncertainKeywords = {"불명확", "명시되지", "확실하지", "애매", "모호", "unclear", "unknown", "ambiguous", "없음", "정보 없음" , "null"};
+        String[] uncertainKeywords = {"불명확", "명시되지", "확실하지", "애매", "모호", "unclear", "unknown", "ambiguous", "없음", "정보 없음"};
         for (String keyword : uncertainKeywords) {
             if (fromDate.toLowerCase().contains(keyword.toLowerCase()) ||
                     toDate.toLowerCase().contains(keyword.toLowerCase())) {
-                log.info("불명확한 키워드 발견: {}", keyword);
+                log.debug("불명확한 키워드 발견: {}", keyword);
                 return true;
             }
         }
 
-        log.info("날짜 정보가 명확함");
+        // 동일한 날짜가 반복되거나 기본값인 경우 (예: 1970-01-01, 9999-12-31 등)
+        if (fromDate.equals(toDate) && (fromDate.equals("1970-01-01") || fromDate.equals("9999-12-31"))) {
+            log.debug("기본값 날짜 발견");
+            return true;
+        }
+
+        // 오늘 날짜와 동일한 경우 불명확한 것으로 판단
+        // 현재 날짜 (YYYYMMDD 형식)
+        String today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        if (fromDate.equals(today) && toDate.equals(today)) {
+            log.debug("오늘 날짜로 기본 설정된 것으로 판단 - 불명확한 날짜로 처리");
+            return true;
+        }
+
+        log.debug("날짜 정보가 명확함");
         return false;
     }
 

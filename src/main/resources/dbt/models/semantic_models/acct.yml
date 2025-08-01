@@ -1,11 +1,11 @@
 semantic_models:
   - name: acct
-    model: ref('dim_acct')
+    model: ref('aicfo_get_all_acct')
     description: 계좌 정보 (trsc/amt 공통 참조)
     entities:
       - name: acct
         type: primary
-        expr: acct_id
+        expr: acct_no
 
     dimensions:
       - name: view_dv
@@ -19,6 +19,7 @@ semantic_models:
           잔액의 group by 조건에 디폴트로 사용됩니다.
       - name: com_nm
         type: categorical
+        is_partition: true
         description: 회사명. 사용자의 회사명이 올수 있고 특별히 발화되지 않으면 넣지 마세요.
       - name: bank_nm
         type: categorical
