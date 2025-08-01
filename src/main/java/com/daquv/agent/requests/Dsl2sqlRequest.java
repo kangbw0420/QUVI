@@ -22,7 +22,7 @@ import java.util.Map;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class MetricFlowRequest {
+public class Dsl2sqlRequest {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;

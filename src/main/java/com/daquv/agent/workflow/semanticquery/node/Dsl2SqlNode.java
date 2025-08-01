@@ -2,7 +2,7 @@ package com.daquv.agent.workflow.semanticquery.node;
 
 import com.daquv.agent.quvi.util.RequestProfiler;
 import com.daquv.agent.quvi.util.WebSocketUtils;
-import com.daquv.agent.requests.MetricFlowRequest;
+import com.daquv.agent.requests.Dsl2sqlRequest;
 import com.daquv.agent.workflow.dto.MetricFlowRequestDto;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowNode;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
@@ -26,7 +26,7 @@ import static com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState.
 @RequiredArgsConstructor
 public class Dsl2SqlNode implements SemanticQueryWorkflowNode {
 
-    private final MetricFlowRequest metricFlowRequest;
+    private final Dsl2sqlRequest dsl2sqlRequest;
     private final SQLCleanUtils sqlCleanUtils;
     private final WebSocketUtils webSocketUtils;
     private final RequestProfiler requestProfiler;
@@ -115,7 +115,7 @@ public class Dsl2SqlNode implements SemanticQueryWorkflowNode {
             log.debug("Converted {} DSL entries to MetricFlow requests", metricFlowRequests.size());
 
             // 2. Python 서버에 일괄 요청
-            Map<String, String> rawSqlResults = metricFlowRequest.generateSqlFromDsl(metricFlowRequests);
+            Map<String, String> rawSqlResults = dsl2sqlRequest.generateSqlFromDsl(metricFlowRequests);
             log.debug("Received {} raw SQL results from MetricFlow", rawSqlResults.size());
 
             // 3. Java에서 SQL 후처리
