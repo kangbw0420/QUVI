@@ -30,7 +30,7 @@ public class MetricFlowRequest {
     @Value("${api.quvi-base-url}")
     private String pythonServerUrl;
 
-    private String metricflowEndpoint = "/metricflow/generate-sql";
+    private String metricflowEndpoint = "/dsl2sql/generate-sql";
 
     public Map<String, String> generateSqlFromDsl(Map<String, MetricFlowRequestDto> requests) {
         try {
