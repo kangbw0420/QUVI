@@ -1,0 +1,6 @@
+
+      - name: acct_bal_won
+        description: 한화잔고
+        expr: acct_bal_won
+        agg: sum
+        agg_time_dimension: reg_dt
