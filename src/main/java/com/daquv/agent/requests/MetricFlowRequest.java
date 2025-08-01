@@ -30,11 +30,11 @@ public class MetricFlowRequest {
     @Value("${api.quvi-base-url}")
     private String pythonServerUrl;
 
-    private String metricflowEndpoint = "/dsl2sql/generate-sql";
+    private String dsl2sqlEndpoint = "/dsl2sql/generate-sql";
 
     public Map<String, String> generateSqlFromDsl(Map<String, MetricFlowRequestDto> requests) {
         try {
-            String url = pythonServerUrl + metricflowEndpoint;
+            String url = pythonServerUrl + dsl2sqlEndpoint;
 
             // HTTP 헤더 설정
             HttpHeaders headers = new HttpHeaders();
