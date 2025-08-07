@@ -241,10 +241,16 @@ public class ExtractMetricsNode implements SemanticQueryWorkflowNode {
 
         // METRICS_STR 빌드
         StringBuilder metricsBuilder = new StringBuilder();
-        for (Map<String, Object> metric : metricsList) {
-            metricsBuilder.append(String.format("- %s: %s\n",
-                    metric.get("name"),
-                    metric.get("description")));
+        for (String entity : ENTITIES) {
+            metricsBuilder.append(String.format("## entity: %s\n", entity));
+            List<Map<String, Object>> entityMetrics = metricsDict.get(entity);
+            if (entityMetrics != null) {
+                for (Map<String, Object> metric : entityMetrics) {
+                    metricsBuilder.append(String.format("- %s: %s\n",
+                            metric.get("name"),
+                            metric.get("description")));
+                }
+            }
         }
         metricsStr = metricsBuilder.toString();
         log.debug("Built metrics string with {} metrics", metricsList.size());
