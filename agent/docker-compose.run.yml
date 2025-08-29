@@ -1,0 +1,18 @@
+version: '3.3'
+
+services:
+  agent:
+    image: back_agent:latest
+    container_name: back_agent
+    ports:
+      - 8004:8004
+    volumes:
+      # 소스 코드만 볼륨 마운트하여 실시간 반영
+      - ./src:/home/kjbank/daquv/qv_kjbank/agent/src
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+networks:
+  agent-network:
+    driver: bridge

@@ -1,0 +1,94 @@
+server:
+    port: 8000
+    address: 0.0.0.0
+    servlet:
+        context-path: /
+
+spring:
+    config:
+        activate:
+            on-profile: prod
+    jackson:
+        time-zone: Asia/Seoul
+        date-format: yyyy-MM-dd HH:mm:ss
+        serialization:
+            write-dates-as-timestamps: false
+            write-date-timestamps-as-nanoseconds: false
+
+    # prompt db
+    datasource:
+        url: jdbc:postgresql://10.130.23.24:54313/cboardrealdb
+        username: aicfoagent_real
+        password: uQa(KSiBzj$5
+        driver-class-name: org.postgresql.Driver
+        hikari:
+            schema: aicfoagent_real
+
+    jpa:
+        hibernate:
+            ddl-auto: validate
+        show-sql: false
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQL10Dialect
+                format_sql: true
+                default_schema: aicfoagent_real
+                use_sql_comments: true
+                jdbc:
+                    lob:
+                        non_contextual_creation: true
+
+# finance db
+db:
+    url: jdbc:postgresql://10.130.23.24:54313/cboardrealdb
+    username: cborad_real
+    password: qTKw7sG*tW!Y
+    driver-class-name: org.postgresql.Driver
+    hikari:
+        schema: cborad_real
+
+system:
+    expire:
+        date: 21251211
+    company:
+        id: aicfo
+
+jwt:
+    secret: uI9xvH1zMf+jrD9PbCkA2JGz0r3YVx/EoMdiZtJd2+E
+    expiration: 86400000 # 24시간
+
+# FLOW API 설정
+flow:
+    project:
+        id: 2605967
+    api:
+        key: 20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144
+        url: https://api.flow.team/v1/bots/daquv@daquv.com/notifications
+    register:
+        email: hajkim@daquv.com
+
+admin:
+    email: anriver@daquv.com
+
+# API 설정
+api:
+    url: http://121.78.125.134:8001/v1/chat/completions
+    vector-store-domain: http://211.233.64.103:8000
+    quvi-base-url: http://localhost:8099
+    quvi-column: ${api.quvi-base-url}/column
+    quvi-query: ${api.quvi-base-url}/query
+    quvi-fstring: ${api.quvi-base-url}/fstring/compute_fstring
+
+llm:
+    base-url: http://121.78.125.134:8001
+
+# 로깅 설정
+logging:
+    level:
+        com.daquv: INFO
+        org.springframework.web: INFO
+        org.hibernate.SQL: INFO
+        org.hibernate.type.descriptor.sql.BasicBinder: INFO
+
+profiling:
+    enabled: false

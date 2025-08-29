@@ -1,0 +1,19 @@
+version: '3.3'
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: back_agent:latest
+    container_name: back_agent_build
+    volumes:
+      # 소스 코드를 볼륨마운트하여 실시간 반영
+      - ./src:/home/kjbank/daquv/qv_kjbank/agent/src
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+networks:
+  agent-network:
+    driver: bridge

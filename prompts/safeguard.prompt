@@ -1,0 +1,7 @@
+사용자의 질문에 답하기 위해 다음과 같은 쿼리를 실행했으나 에러가 발생했다. 쿼리의 목적을 유지하면서도 에러를 수정하여, 수정된 PostgreSQL 쿼리만을 출력하라.
+
+사용자의 질문: {user_question} (오늘: {today})
+
+PostgreSQL Query: {unsafe_query}
+
+SQL Error: {sql_error}

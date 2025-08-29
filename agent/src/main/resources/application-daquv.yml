@@ -1,0 +1,84 @@
+server:
+  port: 8006
+  address: 0.0.0.0
+  servlet:
+    context-path: /
+
+spring:
+  config:
+    activate:
+      on-profile: daquv
+
+  # prompt db
+  datasource:
+    url: jdbc:postgresql://dev.daquv.com:5432/aicfo
+    username: daquv
+    password: daquv123!@()
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: public
+
+  bigquery:
+    jdbc:
+      url: 
+      driver-class-name: 
+    project-id: aicfo
+    service-account:
+      key-path: 
+      email: 
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQL10Dialect
+        type:
+          contributor: com.vladmihalcea.hibernate.type.util.Configuration
+        format_sql: true
+        default_schema: public
+        use_sql_comments: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+# FLOW API 설정
+flow:
+  project:
+    id: 2605967
+  api:
+    key: 20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144
+    url: https://api.flow.team/v1/bots/daquv@daquv.com/notifications
+  register:
+    email: silicao3o@daquv.com
+
+admin:
+  email: anriver@daquv.com
+
+# API 설정
+api:
+  vector-store-domain: http://211.233.64.101:8000
+
+llm:
+  vllm-url: http://121.78.125.134:8000
+  gemini:
+    api-key: 
+
+# 로깅 설정
+logging:
+  level:
+    com.daquv: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+
+profiling:
+  enabled: true
+
+# 개발환경 YAML 리소스 설정
+app:
+  filesystem-base-path: /home/kjbank/daquv/qv_kjbank/agent/src/main/resources/
+
+cors:
+  allowed-origins: http://192.168.0.21:3004,http://192.168.0.21:3004
