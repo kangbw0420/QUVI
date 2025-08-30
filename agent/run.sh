@@ -53,11 +53,27 @@ echo -e "${GREEN}백그라운드에서 애플리케이션을 시작합니다...$
 echo -e "${BLUE}JAR 파일: $JAR_FILE${NC}"
 echo -e "${BLUE}Profile: $PROFILE${NC}"
 
-# JVM 옵션 구성
-JVM_OPTS="-Dspring.profiles.active=$PROFILE -Djava.net.preferIPv4Stack=true --add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED"
+# JVM 옵션 구성 (JDK 버전에 따라 --add-opens 적용)
+# java.specification.version 값 사용: 1.8 -> 8, 그 외(11,17,21 등) 그대로 사용
+JAVA_SPEC_VER=$(java -XshowSettings:properties -version 2>&1 | awk -F'=' '/java.specification.version/{gsub(/ /,"",$2);print $2}')
+JAVA_MAJOR="${JAVA_SPEC_VER%%.*}"
+if [ -z "$JAVA_MAJOR" ]; then
+    # fallback: "java version \"x.y.z\"" 형태 파싱
+    JAVA_MAJOR=$(java -version 2>&1 | awk -F'[".]' '/version/ {print $2}')
+fi
+if [ "$JAVA_MAJOR" = "1" ]; then
+    JAVA_MAJOR=8
+fi
+
+echo -e "${BLUE}Detected Java major version: $JAVA_MAJOR${NC}"
+
+JVM_OPTS="-Dspring.profiles.active=$PROFILE -Djava.net.preferIPv4Stack=true"
+if [ "$JAVA_MAJOR" -ge 9 ] 2>/dev/null; then
+    JVM_OPTS="$JVM_OPTS --add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED"
+fi
 
 # 백그라운드 실행
-nohup java -jar $JVM_OPTS $JAR_FILE > ../back.log 2>&1 &
+nohup java $JVM_OPTS -jar "$JAR_FILE" > ../back.log 2>&1 &
 NEW_PID=$!
 
 echo -e "${GREEN}애플리케이션이 백그라운드에서 시작되었습니다.${NC}"
