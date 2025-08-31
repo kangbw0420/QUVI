@@ -45,7 +45,7 @@ public class RunSql {
             // 행 수 계산 후 페이지네이션 적용 여부 결정
             int totalRows = 0;
             try {
-                String countResult = queryRequest.countRows(sqlQuery, PAGE_SIZE, companyId);
+                String countResult = queryRequest.countRows(sqlQuery, PAGE_SIZE, companyId).block();
                 totalRows = Integer.parseInt(countResult);
             } catch (NumberFormatException e) {
                 totalRows = 0;
@@ -53,7 +53,7 @@ public class RunSql {
 
             String effectiveQuery = sqlQuery;
             if (totalRows > PAGE_SIZE) {
-                execution.setExecutionQuery(queryRequest.addLimits(sqlQuery, PAGE_SIZE, 0, supervisorState.getUserInfo()));
+                execution.setExecutionQuery(queryRequest.addLimits(sqlQuery, PAGE_SIZE, 0, supervisorState.getUserInfo()).block());
                 effectiveQuery = execution.getExecutionQuery();
             } else {
                 execution.setExecutionQuery(sqlQuery);
