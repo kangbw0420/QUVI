@@ -104,4 +104,4 @@ app:
   filesystem-base-path: /home/was/daquv/qv_aicfo/agent/src/main/resources/
 
 cors:
-  allowed-origins: http://aicfodev.daquv.com
+  allowed-origins: http://172.27.111.18:4100
