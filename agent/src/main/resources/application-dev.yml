@@ -23,7 +23,7 @@ spring:
             write-dates-as-timestamps: false
             write-date-timestamps-as-nanoseconds: false
 
-    # prompt db
+    # admin db
     datasource:
         url: jdbc:postgresql://172.27.111.18:54313/cboarddevdb
         username: cboarddev
@@ -52,20 +52,6 @@ spring:
                 jdbc:
                     lob:
                         non_contextual_creation: true
-
-# finance db
-db:
-    url: jdbc:postgresql://172.27.111.18:54313/cboarddevdb
-    username: cboarddev
-    password: cboarddev123
-    driver-class-name: org.postgresql.Driver
-    hikari:
-        schema: cboarddev
-
-        maximum-pool-size: 20
-        minimum-idle: 5
-        connection-timeout: 30000
-        idle-timeout: 600000
 
 system:
     expire:
@@ -115,7 +101,7 @@ profiling:
 
 # 개발환경 YAML 리소스 설정
 app:
-  filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources/
+  filesystem-base-path: /home/was/daquv/qv_aicfo/agent/src/main/resources/
 
 cors:
   allowed-origins: http://aicfodev.daquv.com
