@@ -92,3 +92,6 @@ logging:
 
 profiling:
     enabled: false
+
+cors:
+  allowed-origins: http://aicfodev.daquv.com

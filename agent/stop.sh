@@ -2,7 +2,7 @@
 
 # Script to stop the application by PORT
 
-PORT=8004
+PORT=8006
 
 # Colorful log functions
 print_info() {

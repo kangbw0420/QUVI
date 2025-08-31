@@ -14,14 +14,14 @@ public class LLMModelConfig {
     private final Map<String, String> nodeModelMapping;
     
     // 기본 모델
-    private final String defaultModel = "qwen_llm";
+    private final String defaultModel = "qwen_low";
     
     public LLMModelConfig() {
         modelTypeMapping = new HashMap<>();
         nodeModelMapping = new HashMap<>();
         
         // vLLM 모델들
-        modelTypeMapping.put("qwen_llm", ModelType.VLLM);
+        modelTypeMapping.put("qwen_low", ModelType.VLLM);
         modelTypeMapping.put("qwen_high", ModelType.VLLM);
         modelTypeMapping.put("qwen_boolean", ModelType.VLLM);
         modelTypeMapping.put("selector", ModelType.VLLM);
@@ -32,22 +32,22 @@ public class LLMModelConfig {
         modelTypeMapping.put("gemini", ModelType.API);
 
         // 노드별 LLM 매핑(소문자만 사용)
-        nodeModelMapping.put("classifyjoynode", "qwen_llm");
-        nodeModelMapping.put("killjoynode", "qwen_llm");
+        nodeModelMapping.put("classifyjoynode", "qwen_low");
+        nodeModelMapping.put("killjoynode", "qwen_low");
         
-        nodeModelMapping.put("nextpagenode", "qwen_llm");
-        nodeModelMapping.put("splitquestionnode", "qwen_llm");
+        nodeModelMapping.put("nextpagenode", "qwen_low");
+        nodeModelMapping.put("splitquestionnode", "qwen_low");
         
-        nodeModelMapping.put("datecheckernode", "qwen_llm");
+        nodeModelMapping.put("datecheckernode", "qwen_low");
         
-        nodeModelMapping.put("extractmetricsnode", "qwen_llm");
-        nodeModelMapping.put("extractfilternode", "qwen_llm");
-        nodeModelMapping.put("manipulationnode", "qwen_llm");
-        nodeModelMapping.put("dsl2sqlnode", "qwen_llm");
+        nodeModelMapping.put("extractmetricsnode", "qwen_low");
+        nodeModelMapping.put("extractfilternode", "qwen_low");
+        nodeModelMapping.put("manipulationnode", "qwen_low");
+        nodeModelMapping.put("dsl2sqlnode", "qwen_low");
         
-        nodeModelMapping.put("postprocessnode", "qwen_llm");
-        nodeModelMapping.put("responsednode", "qwen_llm");
-        nodeModelMapping.put("nodata", "qwen_llm");
+        nodeModelMapping.put("postprocessnode", "qwen_low");
+        nodeModelMapping.put("responsednode", "qwen_low");
+        nodeModelMapping.put("nodata", "qwen_low");
     }
     
     public ModelType getModelType(String modelType) {

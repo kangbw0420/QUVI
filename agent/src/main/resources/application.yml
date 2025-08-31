@@ -8,19 +8,15 @@ spring:
       write-dates-as-timestamps: false
       write-date-timestamps-as-nanoseconds: false
 
-customer:
-  name: aicfo_dev
-
 jwt:
   secret: uI9xvH1zMf+jrD9PbCkA2JGz0r3YVx/EoMdiZtJd2+E
-  aes: llmadmin-aes-key
   expiration: 86400000 # 24시간
 
 system:
   expire:
     date: 21251211
   company:
-    id: aicfo_dev
+    id: aicfo
 
 view-table:
   dialect: postgres
@@ -38,5 +34,3 @@ semantic:
 
 app:
   filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources
-
-GOOGLE_APPLICATION_CREDENTIALS: 

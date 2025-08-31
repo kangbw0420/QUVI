@@ -78,7 +78,7 @@ profiling:
 
 # 개발환경 YAML 리소스 설정
 app:
-  filesystem-base-path: /home/kjbank/daquv/qv_kjbank/agent/src/main/resources/
+  filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources/
 
 cors:
-  allowed-origins: http://192.168.0.21:3004,http://192.168.0.21:3004
+  allowed-origins: https://aicfodev.daquv.com
