@@ -80,7 +80,9 @@ api:
     quvi-fstring: ${api.quvi-base-url}/fstring/compute_fstring
 
 llm:
-    base-url: http://121.78.125.134:8001
+  vllm-url: http://121.78.125.134:8001
+  gemini:
+    api-key: 
 
 # 로깅 설정
 logging:
