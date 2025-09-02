@@ -33,4 +33,4 @@ semantic:
   entities: acct, bal, trsc
 
 app:
-  filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources
+  filesystem-base-path: /WAS_DATA/webRoot/quvi2/qv_branch/agent/src/main/resources
