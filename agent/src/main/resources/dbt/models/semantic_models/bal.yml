@@ -3,50 +3,67 @@ semantic_models:
     model: ref('aicfo_get_all_amt')
     description: 한화 금융 계좌 정보를 관리하는 semantic 모델. 수시, 예적금, 대출, 증권, 신탁, 퇴직연금 등 다양한 금융상품의 잔액 및 계약 정보를 포함
     defaults:
-      agg_time_dimension: reg_dt
+      agg_time_dimension: test_dt
 
     entities:
       - name: bal
         type: primary
-      - name: acct
-        type: foreign
-        expr: acct_id
+        expr: acct_no
 
     dimensions:
+      - name: view_dv
+        type: categorical
+        description:
+          계좌 구분. 가능한 값 = [수시, 예적금, 대출, 증권, 신탁, 퇴직연금]. 사용자 질문에 view_dv가 포함되어 있으면 반드시 filter 와 group by에 반드시 포함시켜야합니다.
+            예시) "수시잔액", "수시 거래내역" → acct__view_dv = '수시' , group by에 view_dv 포함 (사용자 질문에 수시가 들어있기 때문)
+                 "예적금 잔액", "예적금 거래내역", "예적금 개설일자", "예적금 만기일자" → acct__view_dv = '예적금' , group by에 view_dv 포함 (사용자 질문에 예적금이 들어있기 때문) 
+                 "외화 대출잔액", "대출 거래내역", "대출 개설일자", "대출 만기일자" → acct__view_dv = '대출' , group by에 view_dv 포함 (사용자 질문에 대출이 들어있기 때문)
+                 "증권잔액", "외화증권 거래내역" → acct__view_dv = '증권' , group by에 view_dv 포함 (사용자 질문에 증권이 들어있기 때문)
+          잔액의 group by 조건에 디폴트로 사용됩니다.
+      - name: com_nm
+        type: categorical
+        is_partition: true
+        description: 회사명. 사용자의 회사명이 올수 있고 특별히 발화되지 않으면 넣지 마세요.
+      - name: bank_nm
+        type: categorical
+        description: 
+          은행명과 증권사명. 가능한 값 = [농협은행, 신한은행, 우리은행, 하나은행, 국민은행, 기업은행, 카카오뱅크, 케이뱅크, 토스뱅크, 삼성증권, 하나증권 등]. 
+          사용자 질문에 은행이라는 단어가 포함되면 **반드시 group by에 넣어주세요. 예시) "은행별 잔액" => group by에 bank_nm 포함.*
+          은행명 조회시 필터는 예시와 같이 걸어주세요. 예시) "오늘 농협은행 거래 내역은" => bank_nm = '농협은행', "오늘 신한은행 거래 내역은" => bank_nm = '신한은행' , "기업은행이랑 신한은행 계좌 잔액 비교" => bank_nm IN ('기업은행', '신한은행')
+      - name: acct_no
+        type: categorical
+        description: 
+          계좌번호. 검색은 like 검색이 필수. 예시) "오늘 110111121 계좌 잔고는?" => filter = acct_no like '%110111121%'
+          사용자 질문에 '계좌'또는 '통장'이라는 단어가 **하나라도 포함되어 있으면 반드시 group by에 acct_no를 반드시 넣어주세요.** 예시) "오늘 농협수시계좌* 잔고는?", "ELS계좌* 현재 잔액" => group by에 반드시 acct_no 포함(사용자질의에 "계좌"단어가 들어가 있기 되어 있기 때문)
+      - name: curr_cd
+        type: categorical
+        description:
+          화폐통화 구분. 가능한 값 = [USD, JPY 등] 
+          잔액과 거래내역의 group by 조건에 디폴트로 사용됩니다.
+      - name: test_dt
+        type: time
+        type_params:
+          time_granularity: day
+        description: 디폴트 시간설정을 위한 임의의 값이므로 무시해주세요. 
       - name: acct_dv
         type: categorical
         description: 
             filter 조건 = 사용자질의에 상품명이 들어가면 like 조건 검색. 예시) "예금 금리 얼마야?" => acct_dv like '%예금%', "적금 금리 얼마야?" => acct_dv like '%적금%'  "ELS 계좌 잔고" => acct_dv like '%ELS%
             group by 조건 = 사용자질의에 상품명이 들어가면 group by에 반드시 넣어주세요. 예시) "예금 계좌 잔액", "적금 금리 얼마야?" => group by 에 acct_dv 포함
       - name: reg_dt
-        type: time
-        expr: TO_DATE(CAST(reg_dt AS TEXT), 'YYYYMMDD')
-        type_params:
-          time_granularity: day
+        type: categorical
         description: 등록일시(YYYY-MM-DD). 기본 시간값. 기간으로 조회시 해당기간의 마지막날만 조회합니다. 반드시 '=' 조건을 사용합니다. 예시) "작년 3분기 잔액" => reg_dt = 작년 9월30일 조회 (작년7월1일부터 작년9월30일까지중 마지막날인 9월30일 조회)
       - name: open_dt
-        type: time
-        expr: TO_DATE(CAST(open_dt AS TEXT), 'YYYYMMDD')
-        type_params:
-          time_granularity: day
+        type: categorical
         description: 개설일자(YYYYMMDD). 사용자가 예적금/대출 개설일자 관련 질문을 했을 경우 filter 조건과 group by에 포함시켜야합니다. 예시) "1년전 개설한 계좌 조회" => filter 조건에 open_dt 추가, group by에 open_dt 포함
       - name: due_dt
-        type: time
-        expr: TO_DATE(CAST(due_dt AS TEXT), 'YYYYMMDD')
-        type_params:
-          time_granularity: day
+        type: categorical
         description: 만기일자(YYYYMMDD). 사용자가 예적금/대출 만기일자 관련 질문을 했을 경우 filter 조건과 group by에 포함시켜야합니다. 예시) "3개월 내로 갚을 대출","올해 만기되는 대출 계좌" => filter 조건에 due_dt 추가, group by에 due_dt 포함 (3개월 내로 갚을, 올해 만기되는 = 만기되는 대출 이므로)
       - name: trmn_dt
-        type: time
-        expr: TO_DATE(CAST(trmn_dt AS TEXT), 'YYYYMMDD')
-        type_params:
-          time_granularity: day
+        type: categorical
         description: 해지일자. 사용자가 계좌 해지일자 관련 질문을 했을 경우 filter 조건과 group by에 포함시켜야합니다. 예시) "해지일자 조회" => filter 조건에 trmn_dt 추가, group by에 trmn_dt 포함. 해지와 만기는 다릅니다.
       - name: acct_bal_upd_dtm
-        type: time
-        expr: acct_bal_upd_dtm
-        type_params:
-          time_granularity: day
+        type: categorical
         description: 잔액 데이터 데이터베이스 로드 시간. 사용자가 정확하게 잔액 데이터가 언제 업데이트 되었는지 물어봤을 때만 사용합니다. 그 외에는 절대 사용하지 마세요. reg_dt를 사용하는 경우 사용하지 마세요.
       - name: mnth_pay_dt
         type: categorical
@@ -55,58 +72,57 @@ semantic_models:
         type: categorical
         description: 해지여부. 가능한 값 = [Y, N]. 사용자의 발화에 명시되지 않으면 이 값은 무시하세요.
 
-
     measures:
       - name: acct_bal
         description: 잔고
         expr: acct_bal_amt
         agg: sum
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: avg_acct_bal
         description: 평균 잔고
         expr: acct_bal_amt
         agg: average
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: real
         description: 인출가능잔액 
         expr: real_amt
         agg: sum
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: avg_real
         description: 평균 인출가능잔액
         expr: real_amt
         agg: average
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: cntrct
         description: 약정금액
         expr: cntrct_amt
         agg: sum
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: appr_amt
         description: 평가금액
         expr: appr_amt
         agg: sum
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: deposit_amt
         description: 예수금
         expr: deposit_amt
         agg: sum
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: mnth_pay
         description: 월납입금액
         expr: mnth_pay_amt
         agg: sum
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: rate
         description: 이자율
         expr: intr_rate::numeric
         agg: average
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
       - name: cnt
         description: 계좌 수
         expr: acct_no
         agg: count_distinct
-        agg_time_dimension: reg_dt
+        agg_time_dimension: test_dt
 
 metrics:
   - name: total_acct_bal_amt

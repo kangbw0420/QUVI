@@ -1,0 +1,11 @@
+webcash:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: dev.daquv.com
+      user: daquv
+      password: "daquv123!@()"
+      port: 5432
+      dbname: webcash
+      schema: public

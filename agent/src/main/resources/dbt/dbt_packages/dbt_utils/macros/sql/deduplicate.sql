@@ -29,17 +29,10 @@
 
 {%- endmacro -%}
 
--- Redshift has the `QUALIFY` syntax:
--- https://docs.aws.amazon.com/redshift/latest/dg/r_QUALIFY_clause.html
+{# Redshift should use default instead of Postgres #}
 {% macro redshift__deduplicate(relation, partition_by, order_by) -%}
 
-    select *
-    from {{ relation }} as tt
-    qualify
-        row_number() over (
-            partition by {{ partition_by }}
-            order by {{ order_by }}
-        ) = 1
+    {{ return(dbt_utils.default__deduplicate(relation, partition_by, order_by=order_by)) }}
 
 {% endmacro %}
 
@@ -61,22 +54,6 @@
 -- https://docs.snowflake.com/en/sql-reference/constructs/qualify.html
 #}
 {%- macro snowflake__deduplicate(relation, partition_by, order_by) -%}
-
-    select *
-    from {{ relation }}
-    qualify
-        row_number() over (
-            partition by {{ partition_by }}
-            order by {{ order_by }}
-        ) = 1
-
-{%- endmacro -%}
-
-{#
--- Databricks also has the `QUALIFY` syntax:
--- https://docs.databricks.com/sql/language-manual/sql-ref-syntax-qry-select-qualify.html
-#}
-{%- macro databricks__deduplicate(relation, partition_by, order_by) -%}
 
     select *
     from {{ relation }}

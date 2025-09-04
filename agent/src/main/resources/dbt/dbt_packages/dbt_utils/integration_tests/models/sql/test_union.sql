@@ -2,7 +2,7 @@
 select
     id,
     name,
-    favorite_color,
-    favorite_number
+    favorite_color
 
 from {{ ref('test_union_base') }}
+

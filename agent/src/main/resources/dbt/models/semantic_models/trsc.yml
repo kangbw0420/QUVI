@@ -3,25 +3,59 @@ semantic_models:
     model: ref('aicfo_get_all_trsc')
     description: 한화 금융 계좌의 거래 내역을 관리하는 semantic 모델. 입출금, 대출 거래, 주식 거래 등 다양한 거래 유형의 정보를 포함
     defaults:
-      agg_time_dimension: trsc_dt
-
+      agg_time_dimension: test_trsc_dt
+ 
     entities:
       - name: trsc
         type: primary
-      - name: acct
+      - name: bal
         type: foreign
-        expr: acct_id
+        expr: acct_no
 
     dimensions:
+      - name: view_dv
+        type: categorical
+        description:
+          계좌 구분. 가능한 값 = [수시, 예적금, 대출, 증권, 신탁, 퇴직연금]. 사용자 질문에 view_dv가 포함되어 있으면 반드시 filter 와 group by에 반드시 포함시켜야합니다.
+            예시) "수시잔액", "수시 거래내역" → acct__view_dv = '수시' , group by에 view_dv 포함 (사용자 질문에 수시가 들어있기 때문)
+                 "예적금 잔액", "예적금 거래내역", "예적금 개설일자", "예적금 만기일자" → acct__view_dv = '예적금' , group by에 view_dv 포함 (사용자 질문에 예적금이 들어있기 때문) 
+                 "외화 대출잔액", "대출 거래내역", "대출 개설일자", "대출 만기일자" → acct__view_dv = '대출' , group by에 view_dv 포함 (사용자 질문에 대출이 들어있기 때문)
+                 "증권잔액", "외화증권 거래내역" → acct__view_dv = '증권' , group by에 view_dv 포함 (사용자 질문에 증권이 들어있기 때문)
+          잔액의 group by 조건에 디폴트로 사용됩니다.
+      - name: com_nm
+        type: categorical
+        is_partition: true
+        description: 회사명. 사용자의 회사명이 올수 있고 특별히 발화되지 않으면 넣지 마세요.
+      - name: bank_nm
+        type: categorical
+        description: 
+          은행명과 증권사명. 가능한 값 = [농협은행, 신한은행, 우리은행, 하나은행, 국민은행, 기업은행, 카카오뱅크, 케이뱅크, 토스뱅크, 삼성증권, 하나증권 등]. 
+          사용자 질문에 은행이라는 단어가 포함되면 **반드시 group by에 넣어주세요. 예시) "은행별 잔액" => group by에 bank_nm 포함.*
+          은행명 조회시 필터는 예시와 같이 걸어주세요. 예시) "오늘 농협은행 거래 내역은" => bank_nm = '농협은행', "오늘 신한은행 거래 내역은" => bank_nm = '신한은행' , "기업은행이랑 신한은행 계좌 잔액 비교" => bank_nm IN ('기업은행', '신한은행')
+      - name: acct_no
+        type: categorical
+        description: 
+          계좌번호. 검색은 like 검색이 필수. 예시) "오늘 110111121 계좌 잔고는?" => filter = acct_no like '%110111121%'
+          사용자 질문에 '계좌'또는 '통장'이라는 단어가 **하나라도 포함되어 있으면 반드시 group by에 acct_no를 반드시 넣어주세요.** 예시) "오늘 농협수시계좌* 잔고는?", "ELS계좌* 현재 잔액" => group by에 반드시 acct_no 포함(사용자질의에 "계좌"단어가 들어가 있기 되어 있기 때문)
+      - name: curr_cd
+        type: categorical
+        description:
+          화폐통화 구분. 가능한 값 = [USD, JPY 등] 
+          잔액과 거래내역의 group by 조건에 디폴트로 사용됩니다.
       - name: acct_dv
         type: categorical
         description: 상품명. 검색은 like 검색이 기본
       - name: seq_no
         type: categorical
         description: 거래순번
-      - name: trsc_dt
+      - name: test_trsc_dt
         type: time
         expr: TO_DATE(CAST(trsc_dt AS TEXT), 'YYYY-MM-DD')
+        type_params:
+          time_granularity: day
+        description: 디폴트 시간설정을 위한 임의의 값이므로 무시해주세요.
+      - name: trsc_dt
+        type: categorical
         type_params:
           time_granularity: day
         description:
@@ -32,7 +66,6 @@ semantic_models:
           특정 날짜 하루만 조회할 경우 trsc에 대해 '=' 조건으로 filter 조건 추가. 예시) "작년 12월31일 거래내역" => trsc_dt = '20241231' 조회
           특정 기간부터 특정 기간까지 연속된 기간이 명시된 경우에는 해당 범위 전체를 조회해야 하며,이때는 trsc_dt에 대해 >=, <= 조건으로 filter 추가. 예시) "2월 12일 부터 3월 14일까지 거래내역" => trsc_dt >= 20250212 , trsc_dt <= 20250314 조회. 
           연속적이지 않은 날짜를 2개 이상 조회할때는 IN 조건으로 조회합니다. 예시) "1월2일, 1월 16일 거래내역" => trsc_dt IN ('20250102', '20250116') 조회
-      
       - name: trsc_tm
         type: categorical
         description: 거래시간. trsc_month가 group by에 존재할시 절대 함께 사용하면 절대 안됩니다.
@@ -65,57 +98,57 @@ semantic_models:
         description: 거래금액
         expr: trsc_amt
         agg: sum
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: avg_trsc_amt
         description: 평균 거래금액
         expr: trsc_amt
         agg: average
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: trsc_balance
         description: 거래 후 잔액. 대출금을 갚고 남은 잔액
         expr: trsc_bal
         agg: average
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: fee_amount
         description: 수수료
         expr: fee_amt
         agg: sum
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: loan_trsc_amount
         description: 대출상환금액
         expr: loan_trsc_amt
         agg: sum
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: trsc_intr_rate
         description: 이자율
         expr: intr_rate
         agg: average
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: loan_intr_amount
         description: 이자납부액
         expr: loan_intr_amt
         agg: sum
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: item_quantity
         description: 수량
         expr: item_qunt
         agg: sum
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: pres_quantity
         description: 금잔수량
         expr: pres_qunt
         agg: sum
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: pres_amount
         description: 금잔금액
         expr: pres_amt
         agg: sum
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: trsc_count
         description: 거래 건수
         expr: 1
         agg: sum
-        agg_time_dimension: trsc_dt
+        agg_time_dimension: test_trsc_dt
       - name: trsc_amount_in
         description: 입금금액
         expr: (CASE WHEN in_out_dv = '입금' THEN trsc_amt ELSE 0 END)

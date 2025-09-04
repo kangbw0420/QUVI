@@ -1,0 +1,147 @@
+semantic_models:
+  - name: stock
+    model: ref('aicfo_get_all_stock')
+    description: 한화 금융 계좌 잔고(증권)을 관리하는 semantic 모델. 증권, 증권자산, 수량, 매입가격, 매입총액, 현재가, 평가금액, 평가손익, 수익률 등 다양한 금융상품의 잔액 및 계약 정보를 포함
+    defaults:
+      agg_time_dimension: test_stock_dt
+
+    entities:
+      - name: stock
+        type: primary
+      - name: bal
+        type: foreign
+        expr: acct_no
+
+    dimensions:
+      - name: item_name
+        type: categorical
+        description: 증권자산
+      - name: com_nm
+        type: categorical
+        is_partition: true
+        description: 회사명. 사용자의 회사명이 올수 있고 특별히 발화되지 않으면 넣지 마세요.
+      - name: bank_nm
+        type: categorical
+        description:
+          은행명과 증권사명. 가능한 값 = [농협은행, 신한은행, 우리은행, 하나은행, 국민은행, 기업은행, 카카오뱅크, 케이뱅크, 토스뱅크, 삼성증권, 하나증권 등]. 
+          사용자 질문에 은행이라는 단어가 포함되면 **반드시 group by에 넣어주세요. 예시) "은행별 잔액" => group by에 bank_nm 포함.*
+          은행명 조회시 필터는 예시와 같이 걸어주세요. 예시) "오늘 농협은행 거래 내역은" => bank_nm = '농협은행', "오늘 신한은행 거래 내역은" => bank_nm = '신한은행' , "기업은행이랑 신한은행 계좌 잔액 비교" => bank_nm IN ('기업은행', '신한은행')
+      - name: acct_no
+        type: categorical
+        description:
+          계좌번호. 검색은 like 검색이 필수. 예시) "오늘 110111121 계좌 잔고는?" => filter = acct_no like '%110111121%'
+          사용자 질문에 '계좌'또는 '통장'이라는 단어가 **하나라도 포함되어 있으면 반드시 group by에 acct_no를 반드시 넣어주세요.** 예시) "오늘 농협수시계좌* 잔고는?", "ELS계좌* 현재 잔액" => group by에 반드시 acct_no 포함(사용자질의에 "계좌"단어가 들어가 있기 되어 있기 때문)
+      - name: curr_cd
+        type: categorical
+        description:
+          화폐통화 구분. 가능한 값 = [USD, JPY 등] 
+          잔액과 거래내역의 group by 조건에 디폴트로 사용됩니다.
+      - name: test_stock_dt
+        type: time
+        type_params:
+          time_granularity: day
+        description: 디폴트 시간설정을 위한 임의의 값이므로 무시해주세요.
+      - name: reg_dt
+        type: categorical
+        description: 등록일시(YYYY-MM-DD). 기본 시간값. 기간으로 조회시 해당기간의 마지막날만 조회합니다. 반드시 '=' 조건을 사용합니다. 예시) "작년 3분기 잔액" => reg_dt = 작년 9월30일 조회 (작년7월1일부터 작년9월30일까지중 마지막날인 9월30일 조회)
+      - name: stock_cd
+        type: categorical
+        description: 자산코드
+      - name: stock_nm
+        type: categorical
+        description: 자산명
+      - name: reg_dtm_upd
+        type: categorical
+        description: 최종잔액일시. 최종잔액 데이터 데이터베이스 로드 시간. 사용자가 정확하게 잔액 데이터가 언제 업데이트 되었는지 물어봤을 때만 사용합니다.
+
+    measures:
+      - name: acct_bal_amt_name
+        description: 잔고
+        expr: acct_bal_amt
+        agg: sum
+        agg_time_dimension: test_stock_dt
+      - name: bal_qunt_name
+        description: 보유수량
+        expr: bal_qunt
+        agg: sum
+        agg_time_dimension: test_stock_dt
+      - name: prchs_price_name
+        description: 매입가격
+        expr: prchs_price
+        agg: sum
+        agg_time_dimension: test_stock_dt
+      - name: prchs_amt_name
+        description: 매입총액
+        expr: prchs_amt
+        agg: sum
+        agg_time_dimension: test_stock_dt
+      - name: curr_price_name
+        description: 현재가
+        expr: curr_price
+        agg: sum
+        agg_time_dimension: test_stock_dt
+      - name: appr_amt_name
+        description: 평가금액
+        expr: appr_amt
+        agg: sum
+        agg_time_dimension: test_stock_dt
+      - name: valu_gain_loss_name
+        description: 평가손익
+        expr: valu_gain_loss
+        agg: sum
+        agg_time_dimension: test_stock_dt
+      - name: return_rate_name
+        description: 수익률
+        expr: return_rate
+        agg: average
+        agg_time_dimension: test_stock_dt
+
+metrics:
+  - name: total_acct_bal_amt_name
+    description: 잔고
+    type: simple
+    label: total_acct_bal_amt_name
+    type_params:
+      measure: acct_bal_amt_name
+  - name: total_bal_qunt_name
+    description: 보유수량
+    type: simple
+    label: total_bal_qunt_name
+    type_params:
+      measure: bal_qunt_name
+  - name: total_prchs_price_name
+    description: 매입가격
+    type: simple
+    label: total_prchs_price_name
+    type_params:
+      measure: prchs_price_name
+  - name: total_prchs_amt_name
+    description: 매입총액
+    type: simple
+    label: total_prchs_amt_name
+    type_params:
+      measure: prchs_amt_name
+  - name: total_curr_price_name
+    description: 현재가
+    type: simple
+    label: total_curr_price_name
+    type_params:
+      measure: curr_price_name
+  - name: total_appr_amt_name
+    description: 평가금액
+    type: simple
+    label: total_appr_amt_name
+    type_params:
+      measure: appr_amt_name
+  - name: total_valu_gain_loss_name
+    description: 평가손익
+    type: simple
+    label: total_valu_gain_loss_name
+    type_params:
+      measure: valu_gain_loss_name
+  - name: avg_return_rate_name
+    description: 수익률
+    type: simple
+    label: avg_return_rate_name
+    type_params:
+      measure: return_rate_name

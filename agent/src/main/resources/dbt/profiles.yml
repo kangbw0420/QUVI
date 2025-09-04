@@ -7,5 +7,5 @@ webcash:
       user: daquv
       password: "daquv123!@()"
       port: 5432
-      dbname: webcash
+      database: webcash
       schema: public

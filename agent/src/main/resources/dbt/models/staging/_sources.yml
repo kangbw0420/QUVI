@@ -6,7 +6,5 @@ sources:
     schema: public
     tables:
       - name: aicfo_get_all_amt
-      - name: aicfo_get_all_amt_fore
       - name: aicfo_get_all_trsc
-      - name: aicfo_get_all_trsc_fore
       - name: aicfo_get_all_stock

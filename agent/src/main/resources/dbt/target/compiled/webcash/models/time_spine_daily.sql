@@ -129,7 +129,7 @@ base_dates as (
         select (
             
 
-    DATE('2000-01-01') + ((interval '1 day') * (row_number() over (order by 1) - 1))
+    '2000-01-01' + ((interval '1 day') * (row_number() over (order by 1) - 1))
 
 
         ) as date_day
@@ -141,7 +141,7 @@ base_dates as (
 
         select *
         from all_periods
-        where date_day <= DATE('2030-01-01')
+        where date_day <= '2030-01-01'
 
     )
 
@@ -152,11 +152,12 @@ base_dates as (
 
 final as (
     select
-        to_char(date_day, 'YYYYMMDD') as date_ymd
+        FORMAT(date_day, 'yyyyMMdd') as date_ymd
     from base_dates
 )
 
 select *
 from final
-where date_ymd::int > to_char(current_date - interval '5 years', 'YYYYMMDD')::int
-  and date_ymd::int < to_char(current_date + interval '30 days', 'YYYYMMDD')::int
+where 
+    CAST(date_ymd AS INT) > CAST(FORMAT(DATEADD(DAY, -365*5, GETDATE()), 'yyyyMMdd') AS INT)
+  and CAST(date_ymd AS INT) < CAST(FORMAT(DATEADD(DAY, 30, GETDATE()), 'yyyyMMdd') AS INT)
