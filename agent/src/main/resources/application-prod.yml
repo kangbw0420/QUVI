@@ -80,7 +80,9 @@ api:
     quvi-fstring: ${api.quvi-base-url}/fstring/compute_fstring
 
 llm:
-    base-url: http://121.78.125.134:8001
+  vllm-url: http://121.78.125.134:8001
+  gemini:
+    api-key: 
 
 # 로깅 설정
 logging:
@@ -94,4 +96,15 @@ profiling:
     enabled: false
 
 cors:
-  allowed-origins: http://aicfodev.daquv.com
+  allowed-origins: http://172.27.111.84:4100,https://quvi2-dev.appplay.co.kr
+
+# 고객사 DB 연결 설정
+db:
+  connection:
+    strategy: COMPANY_ID  # COMPANY_ID, DYNAMIC_COMPANY, ENTITY_BASED
+    default:
+      connection-id: 1  # 기본 DB 연결 ID (DBConnection 테이블의 id)
+    entity:
+      mappings:  # entity:connection_id 형식으로 매핑. 띄어쓰기 없는 쉼표로 구분
+    bigquery:
+      exception: true  # BigQuery 예외 처리 여부

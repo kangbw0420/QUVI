@@ -2,8 +2,8 @@ package com.daquv.agent.integration;
 
 import com.daquv.agent.admin.entity.DBConnection;
 import com.daquv.agent.admin.entity.DBConnectionType;
-import com.daquv.agent.quvi.admin.DbConnectionService;
-import com.daquv.agent.quvi.requests.QueryRequest;
+import com.daquv.agent.quvi.config.DbConnectionConfig;
+// import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.JdbcTemplateResolver;
 import com.daquv.agent.quvi.util.BigQueryService;
 import com.daquv.agent.workflow.supervisor.SupervisorWorkflowState;
@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -26,65 +27,104 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class RunSql {
 
-    private static final int PAGE_SIZE = 100;
+    // private static final int PAGE_SIZE = 100;
 
     private final JdbcTemplateResolver jdbcTemplateResolver;
-    private final QueryRequest queryRequest;
+    // private final QueryRequest queryRequest;
     private final BigQueryService bigQueryService;
-    private final DbConnectionService dbConnectionService;
+    private final DbConnectionConfig dbConnectionConfig;
 
     /**
      * SQL을 실행하고 결과를 execution에 채워 넣는다.
      */
     public void executeSqlAndFillExecution(String sqlQuery,
-                                            SupervisorWorkflowState supervisorState,
-                                            SupervisorWorkflowState.WorkflowExecution execution) {
+            SupervisorWorkflowState supervisorState,
+            SupervisorWorkflowState.WorkflowExecution execution) {
         try {
             String companyId = supervisorState.getUserInfo().getCompanyId();
 
             // 행 수 계산 후 페이지네이션 적용 여부 결정
-            int totalRows = 0;
-            try {
-                String countResult = queryRequest.countRows(sqlQuery, PAGE_SIZE, companyId).block();
-                totalRows = Integer.parseInt(countResult);
-            } catch (NumberFormatException e) {
-                totalRows = 0;
+            // int totalRows = 0;
+            // try {
+            // String countResult = queryRequest.countRows(sqlQuery, PAGE_SIZE,
+            // companyId).block();
+            // totalRows = Integer.parseInt(countResult);
+            // } catch (NumberFormatException e) {
+            // totalRows = 0;
+            // }
+
+            // final String effectiveQuery;
+            // if (totalRows > PAGE_SIZE) {
+            // execution.setExecutionQuery(queryRequest.addLimits(sqlQuery, PAGE_SIZE, 0,
+            // supervisorState.getUserInfo()).block());
+            // effectiveQuery = execution.getExecutionQuery();
+            // } else {
+            // execution.setExecutionQuery(sqlQuery);
+            // effectiveQuery = sqlQuery;
+            // }
+            // temp
+            final String effectiveQuery = sqlQuery;
+
+            // DbConnectionConfig를 사용하여 DB 연결 해결
+            // Entity 정보는 executionDsl.groupBy에서 추출
+            List<String> groupByFields = null;
+            if (execution.getExecutionDsl() != null && execution.getExecutionDsl().getGroupBy() != null) {
+                groupByFields = execution.getExecutionDsl().getGroupBy();
             }
 
-            String effectiveQuery = sqlQuery;
-            if (totalRows > PAGE_SIZE) {
-                execution.setExecutionQuery(queryRequest.addLimits(sqlQuery, PAGE_SIZE, 0, supervisorState.getUserInfo()).block());
-                effectiveQuery = execution.getExecutionQuery();
-            } else {
-                execution.setExecutionQuery(sqlQuery);
-            }
+            Optional<DBConnection> dbConnectionOpt = dbConnectionConfig.resolveDbConnectionByEntity(companyId,
+                    groupByFields);
+            if (dbConnectionOpt.isPresent()) {
+                DBConnection dbConnection = dbConnectionOpt.get();
 
-            // DB 타입 확인하여 BigQuery면 전용 경로 사용
-            Optional<DBConnection> dbConnectionOpt = dbConnectionService.getDbConnectionByCompanyId(companyId);
-            if (dbConnectionOpt.isPresent() && dbConnectionOpt.get().getDbType() == DBConnectionType.BIGQUERY) {
-                TableResult tableResult = bigQueryService.executeQuery(companyId, effectiveQuery);
-                ArrowData arrowData = ArrowData.fromTableResult(tableResult);
-                execution.setExecutionArrowData(arrowData);
-                return;
-            }
+                if (dbConnection.getDbType() == DBConnectionType.BIGQUERY) {
+                    // BigQuery 처리
+                    TableResult tableResult = bigQueryService.executeQuery(companyId, effectiveQuery);
+                    ArrowData arrowData = ArrowData.fromTableResult(tableResult);
+                    execution.setExecutionArrowData(arrowData);
+                    return;
+                } else {
+                    // 일반 DB 처리 - 결정된 DB 연결 사용
+                    log.info("🔌 Entity 기반 DB 연결 사용 - 연결 ID: {}, 타입: {}, 호스트: {}:{}",
+                            dbConnection.getId(), dbConnection.getDbType(),
+                            dbConnection.getHost(), dbConnection.getPort());
 
-            // Cross-database 참조 제거
-            String sqlWithoutDbname = removeCrossDatabaseReferences(effectiveQuery);
-
-            JdbcTemplate jdbcTemplate = jdbcTemplateResolver.getJdbcTemplate(companyId);
-            ArrowData arrowData = jdbcTemplate.execute((ConnectionCallback<ArrowData>) connection -> {
-                try (java.sql.PreparedStatement stmt = connection.prepareStatement(
-                        sqlWithoutDbname,
-                        ResultSet.TYPE_SCROLL_INSENSITIVE,
-                        ResultSet.CONCUR_READ_ONLY);
-                     ResultSet rs = stmt.executeQuery()) {
-                    return ArrowData.fromResultSet(rs);
-                } catch (SQLException e) {
-                    throw new RuntimeException("Arrow 데이터 생성 실패", e);
+                    JdbcTemplate jdbcTemplate = jdbcTemplateResolver.getJdbcTemplateByConnection(dbConnection);
+                    ArrowData arrowData = jdbcTemplate.execute((ConnectionCallback<ArrowData>) connection -> {
+                        try (java.sql.PreparedStatement stmt = connection.prepareStatement(
+                                effectiveQuery,
+                                ResultSet.TYPE_SCROLL_INSENSITIVE,
+                                ResultSet.CONCUR_READ_ONLY);
+                                ResultSet rs = stmt.executeQuery()) {
+                            return ArrowData.fromResultSet(rs);
+                        } catch (SQLException e) {
+                            throw new RuntimeException("Arrow 데이터 생성 실패", e);
+                        }
+                    });
+                    execution.setExecutionArrowData(arrowData);
+                    return;
                 }
-            });
+            } else {
+                // Fallback: 기존 방식 (companyId 기반)
+                log.info("🔌 Entity 기반 연결 실패, companyId 기반 연결 사용: {}", companyId);
 
-            execution.setExecutionArrowData(arrowData);
+                // Cross-database 참조 제거
+                String sqlWithoutDbname = removeCrossDatabaseReferences(effectiveQuery);
+
+                JdbcTemplate jdbcTemplate = jdbcTemplateResolver.getJdbcTemplate(companyId);
+                ArrowData arrowData = jdbcTemplate.execute((ConnectionCallback<ArrowData>) connection -> {
+                    try (java.sql.PreparedStatement stmt = connection.prepareStatement(
+                            sqlWithoutDbname,
+                            ResultSet.TYPE_SCROLL_INSENSITIVE,
+                            ResultSet.CONCUR_READ_ONLY);
+                            ResultSet rs = stmt.executeQuery()) {
+                        return ArrowData.fromResultSet(rs);
+                    } catch (SQLException e) {
+                        throw new RuntimeException("Arrow 데이터 생성 실패", e);
+                    }
+                });
+                execution.setExecutionArrowData(arrowData);
+            }
 
         } catch (DataAccessException e) {
             // Cross-database 오류 처리: 참조 제거 후 재시도
@@ -98,7 +138,7 @@ public class RunSql {
                             q,
                             ResultSet.TYPE_SCROLL_INSENSITIVE,
                             ResultSet.CONCUR_READ_ONLY);
-                         ResultSet rs = stmt.executeQuery()) {
+                            ResultSet rs = stmt.executeQuery()) {
                         return ArrowData.fromResultSet(rs);
                     } catch (SQLException ex) {
                         throw new RuntimeException("Arrow 데이터 생성 실패", ex);
@@ -118,19 +158,21 @@ public class RunSql {
     }
 
     private String removeCrossDatabaseReferences(String sql) {
-        if (sql == null) return sql;
-        return sql.replaceAll("\\b[a-zA-Z_][a-zA-Z0-9_]*\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)", "$1.$2");
+        if (sql == null)
+            return sql;
+        return sql.replaceAll("\\b[a-zA-Z_][a-zA-Z0-9_]*\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)",
+                "$1.$2");
     }
 
     private String fixCrossDatabaseReferences(String sql) {
-        if (sql == null) return sql;
+        if (sql == null)
+            return sql;
         String fixedSql = sql;
         fixedSql = fixedSql.replaceAll("\"[^\"]+\"\\.\"([^\"]+)\"\\.\"([^\"]+)\"", "\"$1\".\"$2\"");
-        fixedSql = fixedSql.replaceAll("\\b[a-zA-Z_][a-zA-Z0-9_]*\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)", "$1.$2");
+        fixedSql = fixedSql
+                .replaceAll("\\b[a-zA-Z_][a-zA-Z0-9_]*\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)", "$1.$2");
         fixedSql = fixedSql.replaceAll("\\b[a-zA-Z_][a-zA-Z0-9_]*\\.\"([^\"]+)\"\\.\"([^\"]+)\"", "\"$1\".\"$2\"");
         fixedSql = fixedSql.replaceAll("\"[^\"]+\"\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)", "$1.$2");
         return fixedSql;
     }
 }
-
-
