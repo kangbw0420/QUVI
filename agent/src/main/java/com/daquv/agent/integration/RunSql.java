@@ -3,7 +3,7 @@ package com.daquv.agent.integration;
 import com.daquv.agent.admin.entity.DBConnection;
 import com.daquv.agent.admin.entity.DBConnectionType;
 import com.daquv.agent.quvi.config.DbConnectionConfig;
-// import com.daquv.agent.quvi.requests.QueryRequest;
+import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.JdbcTemplateResolver;
 import com.daquv.agent.quvi.util.BigQueryService;
 import com.daquv.agent.workflow.supervisor.SupervisorWorkflowState;
@@ -16,10 +16,12 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
 
 @Slf4j
@@ -30,9 +32,12 @@ public class RunSql {
     // private static final int PAGE_SIZE = 100;
 
     private final JdbcTemplateResolver jdbcTemplateResolver;
-    // private final QueryRequest queryRequest;
+    private final QueryRequest queryRequest;
     private final BigQueryService bigQueryService;
     private final DbConnectionConfig dbConnectionConfig;
+
+    @Value("${view-table.dialect}")
+    private String DIALECT;
 
     /**
      * SQL을 실행하고 결과를 execution에 채워 넣는다.
@@ -42,6 +47,32 @@ public class RunSql {
             SupervisorWorkflowState.WorkflowExecution execution) {
         try {
             String companyId = supervisorState.getUserInfo().getCompanyId();
+
+            log.info("🔌 raw sqlQuery: {}", sqlQuery);
+
+            // 1. 권한 있는 회사 검사
+            // String queryWithComCondition
+
+            // 2. 종목명/은행명 매핑 변환
+            // String queryWithStock
+            // String queryWithBank
+
+            // 3. orderby clause 추가
+            String queryWithOrderBy = queryRequest.addOrderBy(sqlQuery);
+            log.info("🔌 queryWithOrderBy: {}", queryWithOrderBy);
+
+            // 4. view_table 파라미터 준비
+            List<String> userInfoList = supervisorState.getUserInfo().toArray();
+            List<String> parameters = new ArrayList<>(userInfoList);
+
+            parameters.add(execution.getExecutionStartDate());
+            parameters.add(execution.getExecutionEndDate());
+
+            String viewQuery = queryRequest.viewTable(
+                    queryWithOrderBy,
+                    parameters,
+                    DIALECT);
+            log.info("🔌 viewQuery: {}", viewQuery);
 
             // 행 수 계산 후 페이지네이션 적용 여부 결정
             // int totalRows = 0;
@@ -63,7 +94,7 @@ public class RunSql {
             // effectiveQuery = sqlQuery;
             // }
             // temp
-            final String effectiveQuery = sqlQuery;
+            String effectiveQuery = viewQuery;
 
             // DbConnectionConfig를 사용하여 DB 연결 해결
             // Entity 정보는 executionDsl.groupBy에서 추출
