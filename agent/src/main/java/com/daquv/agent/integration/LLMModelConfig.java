@@ -44,48 +44,78 @@ public class LLMModelConfig {
 
         // API 모델들
         // API 모델 상세 설정
+
+        apiModelConfigs.put("gpt5_low_minimal", new ApiModelConfig(
+                "gpt5",
+                "https://api.openai.com/v1/responses",
+                0,
+                0,
+                ModelProvider.GPT5,
+                0,
+                "low",
+                "minimal"
+        ));
+
         apiModelConfigs.put("gemini_flash_low_0", new ApiModelConfig(
                 "gemini-2.5-flash",
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                 0.1,
                 16384,
                 ModelProvider.GEMINI,
-                0));
+                0,
+                "",
+                ""
+        ));
         apiModelConfigs.put("gemini_flash_low_100", new ApiModelConfig(
                 "gemini-2.5-flash",
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                 0.1,
                 16384,
                 ModelProvider.GEMINI,
-                100));
+                100,
+                "",
+                ""
+        ));
         apiModelConfigs.put("gemini_flash_low_300", new ApiModelConfig(
                 "gemini-2.5-flash",
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                 0.1,
                 16384,
                 ModelProvider.GEMINI,
-                300));
+                300,
+                "",
+                ""
+        ));
         apiModelConfigs.put("gemini_flash_low_500", new ApiModelConfig(
                 "gemini-2.5-flash",
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                 0.1,
                 16384,
                 ModelProvider.GEMINI,
-                500));
+                500,
+                "",
+                ""
+        ));
         apiModelConfigs.put("gemini_flash_low_1000", new ApiModelConfig(
                 "gemini-2.5-flash",
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                 0.1,
                 16384,
                 ModelProvider.GEMINI,
-                1000));
+                1000,
+                "",
+                ""
+        ));
         apiModelConfigs.put("gemini_flash_low_3000", new ApiModelConfig(
                 "gemini-2.5-flash",
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                 0.1,
                 16384,
                 ModelProvider.GEMINI,
-                3000));
+                3000,
+                "",
+                ""
+        ));
 
         // 노드별 LLM 매핑(소문자만 사용)
         nodeModelMapping.put("classifyjoynode", "qwen_low");
@@ -149,7 +179,8 @@ public class LLMModelConfig {
     }
 
     public enum ModelProvider {
-        GEMINI
+        GEMINI,
+        GPT5
     }
 
     public static class ApiModelConfig {
@@ -159,40 +190,28 @@ public class LLMModelConfig {
         private final int maxTokens;
         private final ModelProvider provider;
         private final int thinkingBudget;
+        private final String verbosity;
+        private final String effort;
 
-        public ApiModelConfig(String modelName, String endpoint, double temperature, int maxTokens,
-                ModelProvider provider, int thinkingBudget) {
+        public ApiModelConfig(String modelName, String endpoint, double temperature, int maxTokens, ModelProvider provider, int thinkingBudget, String verbosity, String effort) {
             this.modelName = modelName;
             this.endpoint = endpoint;
             this.temperature = temperature;
             this.maxTokens = maxTokens;
             this.provider = provider;
             this.thinkingBudget = thinkingBudget;
+            this.verbosity = verbosity;
+            this.effort = effort;
         }
 
-        public String getModelName() {
-            return modelName;
-        }
-
-        public String getEndpoint() {
-            return endpoint;
-        }
-
-        public double getTemperature() {
-            return temperature;
-        }
-
-        public int getMaxTokens() {
-            return maxTokens;
-        }
-
-        public ModelProvider getProvider() {
-            return provider;
-        }
-
-        public int getThinkingBudget() {
-            return thinkingBudget;
-        }
+        public String getModelName() { return modelName; }
+        public String getEndpoint() { return endpoint; }
+        public double getTemperature() { return temperature; }
+        public int getMaxTokens() { return maxTokens; }
+        public ModelProvider getProvider() { return provider; }
+        public int getThinkingBudget() { return thinkingBudget; }
+        public String getVerbosity() { return verbosity; }
+        public String getEffort() { return effort; }
     }
 
     public static class VLLMModelConfig {
