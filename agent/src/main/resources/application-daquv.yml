@@ -94,3 +94,6 @@ db:
       mappings:  # entity:connection_id 형식으로 매핑. 띄어쓰기 없는 쉼표로 구분
     bigquery:
       exception: true  # BigQuery 예외 처리 여부
+
+ifserver:
+  base-url: http://172.27.111.87:8181
