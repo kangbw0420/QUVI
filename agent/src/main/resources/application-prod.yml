@@ -82,7 +82,9 @@ api:
 llm:
   vllm-url: http://121.78.125.134:8001
   gemini:
-    api-key: 
+    api-key:
+  gpt:
+    api-key:
 
 # 로깅 설정
 logging:
