@@ -3,6 +3,7 @@ package com.daquv.agent.integration;
 import com.daquv.agent.admin.entity.DBConnection;
 import com.daquv.agent.admin.entity.DBConnectionType;
 import com.daquv.agent.quvi.config.DbConnectionConfig;
+import com.daquv.agent.quvi.requests.ColumnRequest;
 import com.daquv.agent.quvi.requests.QueryRequest;
 import com.daquv.agent.quvi.util.JdbcTemplateResolver;
 import com.daquv.agent.quvi.util.BigQueryService;
@@ -22,6 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -32,7 +34,9 @@ public class RunSql {
     // private static final int PAGE_SIZE = 100;
 
     private final JdbcTemplateResolver jdbcTemplateResolver;
+    private final ColumnRequest columnRequest;
     private final QueryRequest queryRequest;
+    private final NameMappingService nameMappingService;
     private final BigQueryService bigQueryService;
     private final DbConnectionConfig dbConnectionConfig;
 
@@ -51,11 +55,15 @@ public class RunSql {
             log.info("🔌 raw sqlQuery: {}", sqlQuery);
 
             // 1. 권한 있는 회사 검사
-            // String queryWithComCondition
+            String queryWithComCondition = columnRequest.addCompanyCondition(sqlQuery, companyId);
+            log.info("회사 조건 추가 후: {}", queryWithComCondition);
 
-            // 2. 종목명/은행명 매핑 변환
-            // String queryWithStock
-            // String queryWithBank
+            Map<String, String> stockMappings = nameMappingService.getStockMappings();
+            Map<String, String> bankMappings = nameMappingService.getBankMappings();
+            // 2. 주식종목/은행명 매핑 변환
+            String queryWithStock = columnRequest.transformStockNames(queryWithComCondition, stockMappings);
+            String queryWithBank = columnRequest.transformBankNames(queryWithStock, bankMappings);
+            log.info("주식종목/은행명 매핑 후: {}", queryWithBank);
 
             // 3. orderby clause 추가
             String queryWithOrderBy = queryRequest.addOrderBy(sqlQuery);
