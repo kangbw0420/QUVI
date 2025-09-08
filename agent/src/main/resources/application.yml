@@ -30,7 +30,7 @@ api:
 
 # 띄어쓰기 없는 쉼표로 구분하여 여러 엔티티 설정
 semantic:
-  entities: bal, trsc
+  entities: bal, trsc, stock
 
 app:
   filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources

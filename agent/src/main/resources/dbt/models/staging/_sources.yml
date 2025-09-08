@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: public
-    database: webcash
+    database: aicfo
     schema: public
     tables:
       - name: aicfo_get_all_amt

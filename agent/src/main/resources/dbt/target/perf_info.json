@@ -1,28 +1,18 @@
 {
     "path_count": 187,
-    "parsed_path_count": 1,
+    "parsed_path_count": 0,
     "static_analysis_path_count": 0,
     "static_analysis_parsed_path_count": 0,
     "is_partial_parse_enabled": true,
     "is_static_analysis_enabled": true,
-    "read_files_elapsed": 0.022458295337855816,
-    "load_macros_elapsed": 0.0005409969016909599,
-    "parse_project_elapsed": 0.008845258969813585,
-    "patch_sources_elapsed": 1.9665807485580444e-05,
-    "process_manifest_elapsed": 0.015353015158325434,
-    "load_all_elapsed": 0.08273954084143043,
+    "read_files_elapsed": 0.013868508860468864,
+    "load_all_elapsed": 0.14057847391813993,
     "projects": [
         {
-            "project_name": "webcash",
-            "elapsed": 0.00878292415291071,
-            "parsers": [
-                {
-                    "parser": "test",
-                    "elapsed": 0.008775598835200071,
-                    "parsed_path_count": 1
-                }
-            ],
-            "parsed_path_count": 1
+            "project_name": "aicfo",
+            "elapsed": 0,
+            "parsers": [],
+            "parsed_path_count": 0
         },
         {
             "project_name": "dbt_postgres",

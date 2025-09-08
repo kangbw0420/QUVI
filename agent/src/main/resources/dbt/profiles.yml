@@ -1,4 +1,4 @@
-webcash:
+aicfo:
   target: dev
   outputs:
     dev:
@@ -7,5 +7,5 @@ webcash:
       user: daquv
       password: "daquv123!@()"
       port: 5432
-      database: webcash
+      database: aicfo
       schema: public
