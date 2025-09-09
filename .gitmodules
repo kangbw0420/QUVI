@@ -1,0 +1,12 @@
+[submodule "agent/src/main/java/com/daquv/agent/admin"]
+	path = agent/src/main/java/com/daquv/agent/admin
+	url = git@github.com:Webcash-AI/quvi2_agent_admin.git
+[submodule "agent/src/main/java/com/daquv/agent/quvi"]
+	path = agent/src/main/java/com/daquv/agent/quvi
+	url = git@github.com:Webcash-AI/quvi2_agent_quvi.git
+[submodule "agent/src/main/java/com/daquv/agent/web"]
+	path = agent/src/main/java/com/daquv/agent/web
+	url = git@github.com:Webcash-AI/quvi2_agent_web.git
+[submodule "agent/src/main/java/com/daquv/agent/workflow"]
+	path = agent/src/main/java/com/daquv/agent/workflow
+	url = git@github.com:Webcash-AI/quvi2_agent_workflow.git
