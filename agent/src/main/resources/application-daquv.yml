@@ -82,7 +82,7 @@ app:
   filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources/
 
 cors:
-  allowed-origins: https://aicfodev.daquv.com
+  allowed-origins: https://aicfodev.daquv.com,https://app.daquv.com
 
 # 고객사 DB 연결 설정
 db:

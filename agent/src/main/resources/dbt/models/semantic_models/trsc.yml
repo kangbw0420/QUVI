@@ -84,7 +84,7 @@ semantic_models:
         description: 증권거래구분
       - name: trsc_month
         type: categorical
-        expr: TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYY-MM-DD'), 'YYYYMM')
+        expr: TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYYMMDD'), 'YYYYMM')
         description:
           사용자질문에서 "거래내역" 이라고 명시했으면 filter조건과 group by조건에 절대 사용하지 않습니다. 
           거래일자를 월(YYYYMM) 단위로 변환한 값. 월별로 보여줄때 사용합니다.
@@ -92,6 +92,20 @@ semantic_models:
           특정 월만 조회할 경우 trsc에 대해 '=' 조건으로 filter 조건 추가. 예시) "올해1월 거래내역" => trsc_month = '202501' 조회
           특정 month부터 특정 month까지 연속된 기간이 명시된 경우에는 해당 범위 전체를 조회해야 하며,이때는 trsc_month에 대해 >=, <= 조건으로 filter 추가. 예시) "2월부터 5월까지 거래내역" => trsc_month >= 202502 , trsc_month <= 202505 조회. 
           연속적이지 않은 month를 **2개 이상** 조회할때는 IN 조건으로 조회합니다. 예시) "1월과 4월 거래내역" => 1월과 4월은 연속적이지 않은 month임으로, trsc_month IN ('202501', '202504'). "2월과 4월 거래내역 조회" =>  2월과 4월은 연속적이지 않은 month임으로, trsc_month IN ('202502', '202504') 조회
+      - name: trsc_quarter
+        type: categorical
+        expr: 
+          CASE 
+            WHEN CAST(TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYYMMDD'), 'MM') AS INT) BETWEEN 1 AND 3 THEN TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYYMMDD'), 'YYYY') || 'Q1'
+            WHEN CAST(TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYYMMDD'), 'MM') AS INT) BETWEEN 4 AND 6 THEN TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYYMMDD'), 'YYYY') || 'Q2'
+            WHEN CAST(TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYYMMDD'), 'MM') AS INT) BETWEEN 7 AND 9 THEN TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYYMMDD'), 'YYYY') || 'Q3'
+            ELSE TO_CHAR(TO_DATE(CAST(trsc_dt AS TEXT), 'YYYYMMDD'), 'YYYY') || 'Q4'
+          END
+        description:
+          사용자 질문에서 "거래내역" 이라고 명시했으면 filter조건과 group by조건에 절대 사용하지 않습니다. 거래일자를 분기(YYYYQn) 단위로 변환한 값. **분기별로 보여줄 때 사용합니다.**
+          사용자 질문에서 시간(quarter 조회) 관련 단어가 있을 경우 group by에 포함시켜야 합니다. 특정 분기만 조회할 경우 trsc_quarter에 대해 '=' 조건으로 filter 조건 추가. 예시) "올해 1분기 거래내역" → trsc_quarter = '2025Q1' 조회
+          특정 분기부터 특정 분기까지 연속된 기간이 명시된 경우 해당 범위 전체를 조회해야 하며,  이때는 trsc_quarter에 대해 >=, <= 조건으로 filter 추가. 예시) "1분기부터 3분기까지 거래내역" → trsc_quarter >= '2025Q1' AND trsc_quarter <= '2025Q3'
+          연속적이지 않은 분기를 2개 이상 조회할 때는 IN 조건으로 조회합니다.  예시) "1분기와 4분기 거래내역" → trsc_quarter IN ('2025Q1', '2025Q4').  "2분기와 4분기 거래내역" → trsc_quarter IN ('2025Q2', '2025Q4') 
 
     measures:
       - name: trsc_amount

@@ -6,4 +6,4 @@
 Select
     *
 
-FROM {{ source('public', 'aicfo_get_all_trsc') }}
+FROM {{ source('aicfo', 'aicfo_get_all_trsc') }}

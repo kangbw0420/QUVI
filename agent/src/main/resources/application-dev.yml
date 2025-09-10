@@ -104,7 +104,7 @@ profiling:
     enabled: false
 
 cors:
-  allowed-origins: http://172.27.111.84:4100,https://quvi2-dev.appplay.co.kr
+  allowed-origins: http://172.27.111.84:4100,https://quvi2-dev.appplay.co.kr,https://app.daquv.com
 
 # 고객사 DB 연결 설정
 db:
