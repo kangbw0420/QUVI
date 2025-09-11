@@ -40,6 +40,19 @@ echo ""
 echo -e "${YELLOW}선택된 프로필: $PROFILE${NC}"
 echo ""
 
+CONFIG_PATH="src/main/resources/profile/$PROFILE/"
+CONFIG_FILE="$CONFIG_PATH/application.yml"
+
+# 설정 파일 존재 확인
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo -e "${RED}설정 파일을 찾을 수 없습니다: $CONFIG_FILE${NC}"
+    echo -e "${YELLOW}다음 경로에 application.yml 파일이 있는지 확인해주세요: $CONFIG_PATH${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}설정 파일: $CONFIG_FILE${NC}"
+echo ""
+
 # JAR 파일 찾기
 JAR_FILE=$(find target -name "*.jar" -not -name "*sources.jar" -not -name "*javadoc.jar" | head -1)
 
@@ -67,6 +80,8 @@ fi
 
 echo -e "${BLUE}Detected Java major version: $JAVA_MAJOR${NC}"
 
+JVM_OPTS="-Dspring.profiles.active=$PROFILE"
+JVM_OPTS="$JVM_OPTS -Dspring.config.location=classpath:/,$CONFIG_PATH"
 JVM_OPTS="-Dspring.profiles.active=$PROFILE -Djava.net.preferIPv4Stack=true"
 if [ "$JAVA_MAJOR" -ge 9 ] 2>/dev/null; then
     JVM_OPTS="$JVM_OPTS --add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED"

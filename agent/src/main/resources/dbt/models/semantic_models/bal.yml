@@ -9,6 +9,9 @@ semantic_models:
       - name: bal
         type: primary
         expr: acct_no
+      - name: trsc
+        type: foreign
+        expr: acct_no
 
     dimensions:
       - name: view_dv

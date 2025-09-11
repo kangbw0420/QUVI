@@ -8,6 +8,7 @@ semantic_models:
     entities:
       - name: trsc
         type: primary
+        expr: acct_no
       - name: bal
         type: foreign
         expr: acct_no

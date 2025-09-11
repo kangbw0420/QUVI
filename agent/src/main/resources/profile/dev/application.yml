@@ -1,0 +1,158 @@
+spring:
+  profiles:
+    default: daquv
+  jackson:
+    time-zone: Asia/Seoul
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+      write-date-timestamps-as-nanoseconds: false
+
+jwt:
+  secret: uI9xvH1zMf+jrD9PbCkA2JGz0r3YVx/EoMdiZtJd2+E
+  expiration: 86400000 # 24시간
+
+system:
+  expire:
+    date: 21251211
+  company:
+    id: aicfo
+
+view-table:
+  dialect: postgres
+  view-func: aicfo_get_all_
+
+api:
+  quvi-base-url: http://localhost:8099
+  quvi-column: ${api.quvi-base-url}/column
+  quvi-query: ${api.quvi-base-url}/query
+  quvi-fstring: ${api.quvi-base-url}/fstring/compute_fstring
+
+# 띄어쓰기 없는 쉼표로 구분하여 여러 엔티티 설정
+semantic:
+  entities: bal, trsc, stock
+
+app:
+  filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources
+
+server:
+    port: 8100
+    address: 0.0.0.0
+    servlet:
+        context-path: /
+
+    tomcat:
+        threads:
+          max: 200
+          min-spare: 25
+        max-connections: 8192
+        accept-count: 100
+        connection-timeout: 20000
+
+spring:
+    config:
+        activate:
+            on-profile: dev
+    jackson:
+        time-zone: Asia/Seoul
+        date-format: yyyy-MM-dd HH:mm:ss
+        serialization:
+            write-dates-as-timestamps: false
+            write-date-timestamps-as-nanoseconds: false
+
+    # admin db
+    datasource:
+        url: jdbc:postgresql://172.27.111.18:54313/cboarddevdb
+        username: cboarddev
+        password: cboarddev123
+        driver-class-name: org.postgresql.Driver
+        hikari:
+            schema: aicfoagentdev
+
+            maximum-pool-size: 30      # 최대 커넥션 수
+            minimum-idle: 10           # 최소 유휴 커넥션
+            connection-timeout: 30000  # 30초
+            idle-timeout: 600000       # 10분
+            max-lifetime: 1800000      # 30분
+            leak-detection-threshold: 60000  # 1분
+
+    jpa:
+        hibernate:
+            ddl-auto: validate
+        show-sql: false
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQL10Dialect
+                format_sql: true
+                default_schema: aicfoagentdev
+                use_sql_comments: true
+                jdbc:
+                    lob:
+                        non_contextual_creation: true
+
+system:
+    expire:
+        date: 21251211
+    company:
+        id: aicfo_dev
+
+jwt:
+    secret: uI9xvH1zMf+jrD9PbCkA2JGz0r3YVx/EoMdiZtJd2+E
+    expiration: 86400000 # 24시간
+
+# FLOW API 설정
+flow:
+    project:
+        id: 2605967
+    api:
+        key: 20240903104057549-a1b44794-1dc5-42e4-9098-36939ab89144
+        url: https://api.flow.team/v1/bots/daquv@daquv.com/notifications
+    register:
+        email: hajkim@daquv.com
+
+admin:
+    email: anriver@daquv.com
+
+# API 설정
+api:
+    url: http://121.78.125.134:8000/v1/chat/completions
+    vector-store-domain: http://211.233.64.101:8000
+    quvi-base-url: http://localhost:8099
+    quvi-column: ${api.quvi-base-url}/column
+    quvi-query: ${api.quvi-base-url}/query
+    quvi-fstring: ${api.quvi-base-url}/fstring/compute_fstring
+
+llm:
+  vllm-url: http://121.78.125.134:8000
+  gemini:
+    api-key:
+  gpt:
+    api-key:
+
+# 로깅 설정
+logging:
+    level:
+        com.daquv: INFO
+        org.springframework.web: INFO
+        org.hibernate.SQL: INFO
+        org.hibernate.type.descriptor.sql.BasicBinder: INFO
+
+profiling:
+    enabled: false
+
+cors:
+  allowed-origins: http://172.27.111.84:4100,https://quvi2-dev.appplay.co.kr,https://app.daquv.com
+
+# 고객사 DB 연결 설정
+db:
+  connection:
+    strategy: COMPANY_ID  # COMPANY_ID, DYNAMIC_COMPANY, ENTITY_BASED
+    default:
+      connection-id: 1  # 기본 DB 연결 ID (DBConnection 테이블의 id)
+    entity:
+      mappings:  # entity:connection_id 형식으로 매핑. 띄어쓰기 없는 쉼표로 구분
+    bigquery:
+      exception: true  # BigQuery 예외 처리 여부
+
+ifserver:
+    base-url: http://172.27.111.87:8181
