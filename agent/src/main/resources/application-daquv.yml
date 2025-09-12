@@ -1,13 +1,13 @@
-server:
-  port: 8006
-  address: 0.0.0.0
-  servlet:
-    context-path: /
-
 spring:
   config:
     activate:
       on-profile: daquv
+  jackson:
+    time-zone: Asia/Seoul
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+      write-date-timestamps-as-nanoseconds: false
 
   # prompt db
   datasource:
@@ -43,6 +43,40 @@ spring:
           lob:
             non_contextual_creation: true
 
+jwt:
+  secret: uI9xvH1zMf+jrD9PbCkA2JGz0r3YVx/EoMdiZtJd2+E
+  expiration: 86400000 # 24시간
+
+system:
+  expire:
+    date: 21251211
+  company:
+    id: aicfo
+
+view-table:
+  dialect: postgres
+  view-func: aicfo_get_all_
+
+api:
+  quvi-base-url: http://localhost:8099
+  quvi-column: ${api.quvi-base-url}/column
+  quvi-query: ${api.quvi-base-url}/query
+  quvi-fstring: ${api.quvi-base-url}/fstring/compute_fstring
+  vector-store-domain: http://211.233.64.101:8000
+
+# 띄어쓰기 없는 쉼표로 구분하여 여러 엔티티 설정
+semantic:
+  entities: bal, trsc, stock
+
+app:
+  filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources
+
+server:
+  port: 8006
+  address: 0.0.0.0
+  servlet:
+    context-path: /
+
 # FLOW API 설정
 flow:
   project:
@@ -55,10 +89,6 @@ flow:
 
 admin:
   email: anriver@daquv.com
-
-# API 설정
-api:
-  vector-store-domain: http://211.233.64.101:8000
 
 llm:
   vllm-url: http://121.78.125.134:8000

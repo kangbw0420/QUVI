@@ -1,18 +1,28 @@
 {
     "path_count": 187,
-    "parsed_path_count": 0,
+    "parsed_path_count": 1,
     "static_analysis_path_count": 0,
     "static_analysis_parsed_path_count": 0,
     "is_partial_parse_enabled": true,
     "is_static_analysis_enabled": true,
-    "read_files_elapsed": 0.022296744864434004,
-    "load_all_elapsed": 0.20344655169174075,
+    "read_files_elapsed": 0.01919683301821351,
+    "load_macros_elapsed": 0.0004287990741431713,
+    "parse_project_elapsed": 0.007098774891346693,
+    "patch_sources_elapsed": 1.6120262444019318e-05,
+    "process_manifest_elapsed": 0.012857012916356325,
+    "load_all_elapsed": 0.06864937394857407,
     "projects": [
         {
             "project_name": "aicfo",
-            "elapsed": 0,
-            "parsers": [],
-            "parsed_path_count": 0
+            "elapsed": 0.007010460831224918,
+            "parsers": [
+                {
+                    "parser": "test",
+                    "elapsed": 0.007004039362072945,
+                    "parsed_path_count": 1
+                }
+            ],
+            "parsed_path_count": 1
         },
         {
             "project_name": "dbt_postgres",
