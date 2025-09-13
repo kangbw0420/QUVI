@@ -68,9 +68,6 @@ api:
 semantic:
   entities: bal, trsc, stock
 
-app:
-  filesystem-base-path: /home/daquv/src/qv_aicfo/agent/src/main/resources
-
 server:
   port: 8006
   address: 0.0.0.0
