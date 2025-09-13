@@ -4,7 +4,7 @@ import com.daquv.agent.integration.RunSql;
 import com.daquv.agent.quvi.admin.WorkflowService;
 import com.daquv.agent.quvi.util.NodeExecutor;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
-import com.daquv.agent.workflow.killjoy.KilljoyWorkflowGrpah;
+import com.daquv.agent.workflow.killjoy.KilljoyWorkflowGraph;
 import com.daquv.agent.quvi.util.WorkflowStateManager;
 import com.daquv.agent.quvi.util.ResumeUtil;
 import com.daquv.agent.workflow.supervisor.SupervisorWorkflowState;
@@ -33,7 +33,7 @@ public class SupervisorWorkflowGraph {
     @Autowired
     private SemanticQueryWorkflowGraph semanticQueryWorkflowGraph;
     @Autowired
-    private KilljoyWorkflowGrpah killjoyWorkflowGrpah;
+    private KilljoyWorkflowGraph killjoyWorkflowGraph;
     @Autowired
     private RunSql runSql;
 
@@ -77,7 +77,7 @@ public class SupervisorWorkflowGraph {
                 workflowService.completeWorkflow(workflowId, finalAnswer);
             } else {
                 // JOY 워크플로우 직접 실행
-                supervisorState = killjoyWorkflowGrpah.executeKilljoyWorkflow(
+                supervisorState = killjoyWorkflowGraph.executeKilljoyWorkflow(
                         supervisorState
                 );
             }
