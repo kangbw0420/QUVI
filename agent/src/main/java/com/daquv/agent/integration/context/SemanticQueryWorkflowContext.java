@@ -3,9 +3,10 @@ package com.daquv.agent.integration.context;
 import com.daquv.agent.quvi.admin.NodeService;
 // import com.daquv.agent.quvi.admin.WorkflowService;
 import com.daquv.agent.quvi.util.NodeExecutor;
-import com.daquv.agent.workflow.semanticquery.SemanticQueryStateManager;
+import com.daquv.agent.quvi.util.WorkflowStateManager;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.util.SaveStateUtil;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -17,7 +18,7 @@ import java.util.Map;
 public class SemanticQueryWorkflowContext {
 
     @Autowired
-    private SemanticQueryStateManager stateManager;
+    private WorkflowStateManager<SemanticQueryWorkflowState> stateManager;
 
     @Autowired
     private NodeExecutor nodeExecutor;

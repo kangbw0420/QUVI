@@ -5,14 +5,13 @@ import com.daquv.agent.quvi.admin.WorkflowService;
 import com.daquv.agent.quvi.util.NodeExecutor;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
 import com.daquv.agent.workflow.killjoy.KilljoyWorkflowContext;
-import com.daquv.agent.workflow.semanticquery.SemanticQueryStateManager;
+import com.daquv.agent.quvi.util.WorkflowStateManager;
 import com.daquv.agent.quvi.util.ResumeUtil;
-import com.daquv.agent.workflow.supervisor.SupervisorStateManager;
 import com.daquv.agent.workflow.supervisor.SupervisorWorkflowState;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 
 import java.util.Comparator;
 import java.util.List;
@@ -24,13 +23,13 @@ import java.util.stream.Collectors;
 public class SupervisorWorkflowContext {
 
     @Autowired
-    private SupervisorStateManager stateManager;
+    private WorkflowStateManager<SupervisorWorkflowState> stateManager;
     @Autowired
     private WorkflowService workflowService;
     @Autowired
     private NodeExecutor nodeExecutor;
     @Autowired
-    private SemanticQueryStateManager semanticQueryStateManager;
+    private WorkflowStateManager<SemanticQueryWorkflowState> semanticQueryStateManager;
     @Autowired
     private SemanticQueryWorkflowContext semanticQueryWorkflowContext;
     @Autowired
@@ -114,7 +113,7 @@ public class SupervisorWorkflowContext {
         for (SupervisorWorkflowState.WorkflowExecution execution : sortedExecutions) {
             try {
                 // SemanticQuery State 생성 및 설정
-                SemanticQueryWorkflowState semanticQueryState = semanticQueryStateManager.createState(workflowId);
+                SemanticQueryWorkflowState semanticQueryState = semanticQueryStateManager.createState(workflowId, new SemanticQueryWorkflowState());
                 semanticQueryState.setSplitedQuestion(execution.getSplitedQuestion());
                 semanticQueryState.setUserInfo(supervisorState.getUserInfo());
                 semanticQueryState.setWorkflowId(workflowId);

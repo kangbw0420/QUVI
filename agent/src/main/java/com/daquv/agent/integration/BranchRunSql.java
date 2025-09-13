@@ -71,8 +71,7 @@ public class BranchRunSql {
             }
 
             // 3. 날짜 조건 추가
-            String queryRightDate = columnRequest.whereClause(queryWithBank, columnName, conditionType,
-                    transformValues, true);
+            String queryRightDate = columnRequest.whereClause(queryWithBank, columnName, conditionType, transformValues, true);
 
             // 3. ORDER BY 추가
             String queryWithOrderBy = queryRequest1.addOrderBy(queryRightDate);
