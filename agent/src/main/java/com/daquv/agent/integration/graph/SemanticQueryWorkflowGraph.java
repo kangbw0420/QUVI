@@ -1,4 +1,4 @@
-package com.daquv.agent.integration.context;
+package com.daquv.agent.integration.graph;
 
 import com.daquv.agent.quvi.admin.NodeService;
 // import com.daquv.agent.quvi.admin.WorkflowService;
@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Component
 @Slf4j
-public class SemanticQueryWorkflowContext {
+public class SemanticQueryWorkflowGraph {
 
     @Autowired
     private WorkflowStateManager<SemanticQueryWorkflowState> stateManager;
@@ -54,7 +54,7 @@ public class SemanticQueryWorkflowContext {
             if (semanticQueryState.getDateClarificationNeeded() != null && semanticQueryState.getDateClarificationNeeded()) {
                 log.info("SemanticQuery: 날짜 명확화가 필요하여 워크플로우를 대기 상태로 전환합니다.");
 
-                SaveStateUtil.saveSemanticQueryState(nodeService, semanticQueryState.getNodeId(), semanticQueryState);
+                SaveStateUtil.saveState(nodeService, semanticQueryState.getNodeId(), semanticQueryState);
 
                 log.info("=== SemanticQuery DSL 워크플로우 대기 상태 - workflowId: {} ===", workflowId);
                 return; // 워크플로우 중단, 사용자 입력 대기

@@ -1,10 +1,10 @@
-package com.daquv.agent.integration.context;
+package com.daquv.agent.integration.graph;
 
 import com.daquv.agent.integration.RunSql;
 import com.daquv.agent.quvi.admin.WorkflowService;
 import com.daquv.agent.quvi.util.NodeExecutor;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
-import com.daquv.agent.workflow.killjoy.KilljoyWorkflowContext;
+import com.daquv.agent.workflow.killjoy.KilljoyWorkflowGrpah;
 import com.daquv.agent.quvi.util.WorkflowStateManager;
 import com.daquv.agent.quvi.util.ResumeUtil;
 import com.daquv.agent.workflow.supervisor.SupervisorWorkflowState;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Component
 @Slf4j
-public class SupervisorWorkflowContext {
+public class SupervisorWorkflowGraph {
 
     @Autowired
     private WorkflowStateManager<SupervisorWorkflowState> stateManager;
@@ -31,9 +31,9 @@ public class SupervisorWorkflowContext {
     @Autowired
     private WorkflowStateManager<SemanticQueryWorkflowState> semanticQueryStateManager;
     @Autowired
-    private SemanticQueryWorkflowContext semanticQueryWorkflowContext;
+    private SemanticQueryWorkflowGraph semanticQueryWorkflowGraph;
     @Autowired
-    private KilljoyWorkflowContext killjoyWorkflowContext;
+    private KilljoyWorkflowGrpah killjoyWorkflowGrpah;
     @Autowired
     private RunSql runSql;
 
@@ -77,7 +77,7 @@ public class SupervisorWorkflowContext {
                 workflowService.completeWorkflow(workflowId, finalAnswer);
             } else {
                 // JOY 워크플로우 직접 실행
-                supervisorState = killjoyWorkflowContext.executeKilljoyWorkflow(
+                supervisorState = killjoyWorkflowGrpah.executeKilljoyWorkflow(
                         supervisorState
                 );
             }
@@ -88,7 +88,6 @@ public class SupervisorWorkflowContext {
             log.info("=== Supervisor 워크플로우 실행 완료 - workflowId: {} ===", workflowId);
 
         } catch (Exception e) {
-            log.error("Supervisor 워크플로우 실행 실패 - workflowId: {}", workflowId, e);
             stateManager.updateState(workflowId, supervisorState);
             throw e;
         }
@@ -121,7 +120,7 @@ public class SupervisorWorkflowContext {
                 semanticQueryState.setWebSocketSession(supervisorState.getWebSocketSession());
 
                 // SemanticQuery 워크플로우 실행
-                semanticQueryWorkflowContext.executeSemanticQueryWorkflow(semanticQueryState);
+                semanticQueryWorkflowGraph.executeSemanticQueryWorkflow(semanticQueryState);
 
                 // 실행 결과를 execution에 저장
                 SemanticQueryWorkflowState resultState = semanticQueryStateManager.getState(workflowId);

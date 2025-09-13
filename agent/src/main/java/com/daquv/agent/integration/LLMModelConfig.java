@@ -129,10 +129,21 @@ public class LLMModelConfig {
         nodeModelMapping.put("extractmetricsnode", "qwen_low");
         nodeModelMapping.put("extractfilternode", "qwen_low");
         nodeModelMapping.put("manipulationnode", "qwen_low");
+        nodeModelMapping.put("nl2dslnode", "qwen_low");
 
         nodeModelMapping.put("postprocessnode", "qwen_low");
         nodeModelMapping.put("responsednode", "qwen_low");
         nodeModelMapping.put("nodatanode", "qwen_low");
+
+        // NL2SQL 노드들
+        nodeModelMapping.put("commandernode", "selector");
+        nodeModelMapping.put("daternode", "qwen_low");
+        nodeModelMapping.put("nl2sqlnode", "nl2sql");
+
+        // TemplateQuery 노드들
+        nodeModelMapping.put("funknode", "qwen_low");
+        nodeModelMapping.put("paramsnode", "qwen_low");
+        nodeModelMapping.put("yqmdnode", "qwen_low");
 
         vllmModelConfigs.put("qwen_low", new VLLMModelConfig("Qwen/Qwen2.5-Coder-14B-Instruct-AWQ", 0.01, 1000));
         vllmModelConfigs.put("exaone_low", new VLLMModelConfig("LGAI-EXAONE/EXAONE-3.5-32B-Instruct-AWQ", 0.01, 1000));

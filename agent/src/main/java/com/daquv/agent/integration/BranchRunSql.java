@@ -55,26 +55,27 @@ public class BranchRunSql {
 
             Map<String, String> stockMappings = nameMappingService.getStockMappings();
             Map<String, String> bankMappings = nameMappingService.getBankMappings();
+
             // 2. 주식종목/은행명 매핑 변환
             String queryWithStock = columnRequest.transformStockNames(queryWithComCondition, stockMappings);
             String queryWithBank = columnRequest.transformBankNames(queryWithStock, bankMappings);
             log.info("주식종목/은행명 매핑 후: {}", queryWithBank);
 
-            String columnName = selectedTable.equals("trsc") ? "trsc_dt" : "reg_dt";
-            String conditionType = selectedTable.equals("trsc") ? "between" : "equals";
-            List<String> transformValues = new ArrayList<>();
-            if (selectedTable.equals("trsc")) {
-                transformValues.add(execution.getExecutionStartDate());
-                transformValues.add(execution.getExecutionEndDate());
-            } else {
-                transformValues.add(execution.getExecutionEndDate());
-            }
+            // String columnName = selectedTable.equals("trsc") ? "trsc_dt" : "reg_dt";
+            // String conditionType = selectedTable.equals("trsc") ? "between" : "equals";
+            // List<String> transformValues = new ArrayList<>();
+            // if (selectedTable.equals("trsc")) {
+            //     transformValues.add(execution.getExecutionStartDate());
+            //     transformValues.add(execution.getExecutionEndDate());
+            // } else {
+            //     transformValues.add(execution.getExecutionEndDate());
+            // }
 
             // 3. 날짜 조건 추가
-            String queryRightDate = columnRequest.whereClause(queryWithBank, columnName, conditionType, transformValues, true);
+            // String queryRightDate = columnRequest.whereClause(queryWithBank, columnName, conditionType, transformValues, true);
 
             // 3. ORDER BY 추가
-            String queryWithOrderBy = queryRequest1.addOrderBy(queryRightDate);
+            String queryWithOrderBy = queryRequest1.addOrderBy(queryWithBank);
             log.info("ORDER BY 추가 후: {}", queryWithOrderBy);
 
             // 4. View Table 적용을 위한 파라미터 준비
