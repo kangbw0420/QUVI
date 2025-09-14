@@ -148,7 +148,7 @@ public class SupervisorWorkflowGraph {
                     execution.setExecutionEndDate(resultState.getEndDate());
 
                     try {
-                        runSql.executeSqlAndFillExecution(resultState.getSqlQuery(), supervisorState, execution);
+                        runSql.executeSql(resultState.getSqlQuery(), supervisorState, execution);
                         execution.setExecutionStatus("completed");
                     } catch (Exception e) {
                         execution.setExecutionStatus("error");

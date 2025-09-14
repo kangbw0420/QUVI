@@ -46,7 +46,7 @@ public class RunSql {
     /**
      * SQL을 실행하고 결과를 execution에 채워 넣는다.
      */
-    public void executeSqlAndFillExecution(String sqlQuery,
+    public void executeSql(String sqlQuery,
             SupervisorWorkflowState supervisorState,
             SupervisorWorkflowState.WorkflowExecution execution) {
         try {
@@ -188,11 +188,23 @@ public class RunSql {
                 execution.setExecutionError(true);
                 execution.setExecutionStatus("error");
                 execution.setExecutionErrorMessage("SQL 실행 실패: " + e.getMessage());
+
+                // 사용자에게 전달할 에러 메시지 설정
+                String errorMessage = "SQL 실행 중 오류가 발생했습니다: " + retryEx.getMessage();
+                supervisorState.setFinalAnswer(errorMessage);
+
+                throw retryEx;
             }
         } catch (Exception e) {
             execution.setExecutionError(true);
             execution.setExecutionStatus("error");
             execution.setExecutionErrorMessage("SQL 실행 실패: " + e.getMessage());
+
+            // 사용자에게 전달할 에러 메시지 설정
+            String errorMessage = "SQL 실행 중 오류가 발생했습니다: " + e.getMessage();
+            supervisorState.setFinalAnswer(errorMessage);
+
+            throw e;
         }
     }
 

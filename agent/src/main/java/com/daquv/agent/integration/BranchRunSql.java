@@ -40,7 +40,7 @@ public class BranchRunSql {
     /**
      * SQL을 실행하고 결과를 execution에 채워 넣는다.
      */
-    public void executeSqlAndFillExecution(String sqlQuery,
+    public void executeSql(String sqlQuery,
                                            SupervisorWorkflowState supervisorState,
                                            SupervisorWorkflowState.WorkflowExecution execution) {
         try {
