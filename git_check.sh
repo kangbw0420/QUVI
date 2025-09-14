@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # Git 작업 자동화 스크립트
-# 5개 하위 디렉토리에서 git 작업을 수행합니다.
+# 메인 디렉토리와 5개 하위 디렉토리에서 git 작업을 수행합니다.
 
 # 작업할 디렉토리 목록
 DIRECTORIES=(
+    "."  # 메인 디렉토리 (현재 디렉토리)
     "front"
     "agent/src/main/java/com/daquv/agent/admin"
     "agent/src/main/java/com/daquv/agent/web"
@@ -24,7 +25,11 @@ show_menu() {
     echo -e "${BLUE}=== Git 작업 자동화 스크립트 ===${NC}"
     echo -e "${YELLOW}작업할 디렉토리:${NC}"
     for dir in "${DIRECTORIES[@]}"; do
-        echo "  - $dir"
+        if [ "$dir" = "." ]; then
+            echo "  - . (메인 디렉토리)"
+        else
+            echo "  - $dir"
+        fi
     done
     echo ""
     echo -e "${GREEN}선택하세요:${NC}"
@@ -42,7 +47,11 @@ git_status() {
     echo ""
     
     for dir in "${DIRECTORIES[@]}"; do
-        echo -e "${YELLOW}📁 $dir${NC}"
+        if [ "$dir" = "." ]; then
+            echo -e "${YELLOW}📁 . (메인 디렉토리)${NC}"
+        else
+            echo -e "${YELLOW}📁 $dir${NC}"
+        fi
         echo "----------------------------------------"
         
         if [ -d "$dir" ]; then
@@ -95,7 +104,11 @@ git_pull() {
     echo ""
     
     for dir in "${DIRECTORIES[@]}"; do
-        echo -e "${YELLOW}📁 $dir${NC}"
+        if [ "$dir" = "." ]; then
+            echo -e "${YELLOW}📁 . (메인 디렉토리)${NC}"
+        else
+            echo -e "${YELLOW}📁 $dir${NC}"
+        fi
         echo "----------------------------------------"
         
         if [ -d "$dir" ]; then
@@ -142,7 +155,11 @@ git_commit_push() {
     echo ""
     
     for dir in "${DIRECTORIES[@]}"; do
-        echo -e "${YELLOW}📁 $dir${NC}"
+        if [ "$dir" = "." ]; then
+            echo -e "${YELLOW}📁 . (메인 디렉토리)${NC}"
+        else
+            echo -e "${YELLOW}📁 $dir${NC}"
+        fi
         echo "----------------------------------------"
         
         if [ -d "$dir" ]; then
