@@ -60,6 +60,7 @@ public class RunSql {
 
             Map<String, String> stockMappings = nameMappingService.getStockMappings();
             Map<String, String> bankMappings = nameMappingService.getBankMappings();
+
             // 2. 주식종목/은행명 매핑 변환
             String queryWithStock = columnRequest.transformStockNames(queryWithComCondition, stockMappings);
             String queryWithBank = columnRequest.transformBankNames(queryWithStock, bankMappings);
@@ -70,8 +71,12 @@ public class RunSql {
             log.info("🔌 queryWithOrderBy: {}", queryWithOrderBy);
 
             // 4. view_table 파라미터 준비
-            List<String> userInfoList = supervisorState.getUserInfo().toArray();
-            List<String> parameters = new ArrayList<>(userInfoList);
+            // UserInfo 안에서 use_intt_id, user_id, company_id를 뽑아 parameters에 넣어야 함
+            List<String> parameterFromUserInfo = new ArrayList<>();
+            parameterFromUserInfo.add(supervisorState.getUserInfo().getUseInttId());
+            parameterFromUserInfo.add(supervisorState.getUserInfo().getUserId());
+            parameterFromUserInfo.add(supervisorState.getUserInfo().getCompanyId());
+            List<String> parameters = new ArrayList<>(parameterFromUserInfo);
 
             parameters.add(execution.getExecutionStartDate());
             parameters.add(execution.getExecutionEndDate());
