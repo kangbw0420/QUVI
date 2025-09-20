@@ -107,7 +107,8 @@ public class RunSql {
             // effectiveQuery = sqlQuery;
             // }
             // temp
-            String effectiveQuery = viewQuery;
+            // String effectiveQuery = viewQuery;
+            String effectiveQuery = queryWithOrderBy;
 
             // DbConnectionConfig를 사용하여 DB 연결 해결
             // Entity 정보는 executionDsl.groupBy에서 추출
