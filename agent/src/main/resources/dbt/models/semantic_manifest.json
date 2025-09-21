@@ -463,7 +463,7 @@
         {
           "name": "trsc_count",
           "description": "거래 건수",
-          "expr": "1",
+          "expr": 1,
           "agg": "sum",
           "agg_time_dimension": "test_trsc_dt",
           "create_metric": false,
@@ -481,8 +481,7 @@
           "agg_params": null,
           "metadata": null,
           "non_additive_dimension": null,
-          "label": null,
-          "agg_time_dimension": null
+          "label": null
         },
         {
           "name": "trsc_amount_out",
@@ -493,8 +492,7 @@
           "agg_params": null,
           "metadata": null,
           "non_additive_dimension": null,
-          "label": null,
-          "agg_time_dimension": null
+          "label": null
         },
         {
           "name": "trsc_count_in",
@@ -505,8 +503,7 @@
           "agg_params": null,
           "metadata": null,
           "non_additive_dimension": null,
-          "label": null,
-          "agg_time_dimension": null
+          "label": null
         },
         {
           "name": "trsc_count_out",
@@ -517,8 +514,7 @@
           "agg_params": null,
           "metadata": null,
           "non_additive_dimension": null,
-          "label": null,
-          "agg_time_dimension": null
+          "label": null
         }
       ],
       "dimensions": [
@@ -705,8 +701,7 @@
           "description": null,
           "role": null,
           "metadata": null,
-          "label": null,
-          "expr": null
+          "label": null
         },
         {
           "name": "bal",
