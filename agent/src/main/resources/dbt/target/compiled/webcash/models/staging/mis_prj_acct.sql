@@ -1,6 +1,0 @@
-
-
-SELECT
-    *
-
-FROM "SANRPM_MIS"."dbo"."MIS_PRJ_ACCT"
