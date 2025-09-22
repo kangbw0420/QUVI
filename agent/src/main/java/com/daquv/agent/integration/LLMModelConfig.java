@@ -132,7 +132,7 @@ public class LLMModelConfig {
         nodeModelMapping.put("nl2dslnode", "qwen_low");
 
         nodeModelMapping.put("postprocessnode", "qwen_low");
-        nodeModelMapping.put("responsednode", "qwen_low");
+        nodeModelMapping.put("respondentnode", "qwen_low");
         nodeModelMapping.put("nodatanode", "qwen_low");
 
         // NL2SQL 노드들
