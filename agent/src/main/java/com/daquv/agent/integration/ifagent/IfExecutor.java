@@ -68,11 +68,11 @@ public class IfExecutor {
             MultiValueMap<String, String> data = new LinkedMultiValueMap<>();
             data.add("sql", sql);
 
-            log.info("외부 서버로 SQL 쿼리 전송: {}{}", IFSERVER, url);
+            log.info("외부 서버로 SQL 쿼리 전송: {}", url);
 
             // WebClient로 API 호출
             String responseBody = webClient.post()
-                    .uri(IFSERVER + url)
+                    .uri(url)
                     .header("X-TIMEOUT", "600000")
                     .header("Authorization", token)
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
