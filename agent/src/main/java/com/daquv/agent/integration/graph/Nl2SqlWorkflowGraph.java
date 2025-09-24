@@ -19,7 +19,7 @@ public class Nl2SqlWorkflowGraph {
     private NodeExecutor nodeExecutor;
 
     /**
-     * NL2SQL 워크플로우 실행
+     * NL2SQL 워크플로우 실행2
      * - 일반 요청: Dater -> Nl2sql
      * - next_page 요청: NextPage
      */
