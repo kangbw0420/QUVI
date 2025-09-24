@@ -62,9 +62,9 @@ public class RunSql {
             // 4. view_table 파라미터 준비
             // UserInfo 안에서 use_intt_id, user_id, company_id를 뽑아 parameters에 넣어야 함
             List<String> parameterFromUserInfo = new ArrayList<>();
-            parameterFromUserInfo.add(supervisorState.getUserInfo().getUseInttId());
-            parameterFromUserInfo.add(supervisorState.getUserInfo().getUserId());
-            parameterFromUserInfo.add(supervisorState.getUserInfo().getCompanyId());
+            parameterFromUserInfo.add(supervisorState.getUserInfo().getLinkCntrctId());
+            parameterFromUserInfo.add(supervisorState.getUserInfo().getLinkUserId());
+            parameterFromUserInfo.add(supervisorState.getUserInfo().getLinkBizNo());
             List<String> parameters = new ArrayList<>(parameterFromUserInfo);
 
             parameters.add(execution.getExecutionStartDate());
