@@ -1,18 +1,17 @@
-package com.daquv.agent.integration.context;
+package com.daquv.agent.integration.graph;
 
 import com.daquv.agent.integration.RunSql;
 import com.daquv.agent.quvi.admin.WorkflowService;
 import com.daquv.agent.quvi.util.NodeExecutor;
 import com.daquv.agent.workflow.semanticquery.SemanticQueryWorkflowState;
-import com.daquv.agent.workflow.killjoy.KilljoyWorkflowContext;
-import com.daquv.agent.workflow.semanticquery.SemanticQueryStateManager;
+import com.daquv.agent.workflow.killjoy.KilljoyWorkflowGraph;
+import com.daquv.agent.quvi.util.WorkflowStateManager;
 import com.daquv.agent.quvi.util.ResumeUtil;
-import com.daquv.agent.workflow.supervisor.SupervisorStateManager;
 import com.daquv.agent.workflow.supervisor.SupervisorWorkflowState;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 
 import java.util.Comparator;
 import java.util.List;
@@ -21,20 +20,20 @@ import java.util.stream.Collectors;
 
 @Component
 @Slf4j
-public class SupervisorWorkflowContext {
+public class SupervisorWorkflowGraph {
 
     @Autowired
-    private SupervisorStateManager stateManager;
+    private WorkflowStateManager<SupervisorWorkflowState> stateManager;
     @Autowired
     private WorkflowService workflowService;
     @Autowired
     private NodeExecutor nodeExecutor;
     @Autowired
-    private SemanticQueryStateManager semanticQueryStateManager;
+    private WorkflowStateManager<SemanticQueryWorkflowState> semanticQueryStateManager;
     @Autowired
-    private SemanticQueryWorkflowContext semanticQueryWorkflowContext;
+    private SemanticQueryWorkflowGraph semanticQueryWorkflowGraph;
     @Autowired
-    private KilljoyWorkflowContext killjoyWorkflowContext;
+    private KilljoyWorkflowGraph killjoyWorkflowGraph;
     @Autowired
     private RunSql runSql;
 
@@ -78,7 +77,7 @@ public class SupervisorWorkflowContext {
                 workflowService.completeWorkflow(workflowId, finalAnswer);
             } else {
                 // JOY 워크플로우 직접 실행
-                supervisorState = killjoyWorkflowContext.executeKilljoyWorkflow(
+                supervisorState = killjoyWorkflowGraph.executeKilljoyWorkflow(
                         supervisorState
                 );
             }
@@ -89,7 +88,6 @@ public class SupervisorWorkflowContext {
             log.info("=== Supervisor 워크플로우 실행 완료 - workflowId: {} ===", workflowId);
 
         } catch (Exception e) {
-            log.error("Supervisor 워크플로우 실행 실패 - workflowId: {}", workflowId, e);
             stateManager.updateState(workflowId, supervisorState);
             throw e;
         }
@@ -114,7 +112,7 @@ public class SupervisorWorkflowContext {
         for (SupervisorWorkflowState.WorkflowExecution execution : sortedExecutions) {
             try {
                 // SemanticQuery State 생성 및 설정
-                SemanticQueryWorkflowState semanticQueryState = semanticQueryStateManager.createState(workflowId);
+                SemanticQueryWorkflowState semanticQueryState = semanticQueryStateManager.createState(workflowId, new SemanticQueryWorkflowState());
                 semanticQueryState.setSplitedQuestion(execution.getSplitedQuestion());
                 semanticQueryState.setUserInfo(supervisorState.getUserInfo());
                 semanticQueryState.setWorkflowId(workflowId);
@@ -122,7 +120,7 @@ public class SupervisorWorkflowContext {
                 semanticQueryState.setWebSocketSession(supervisorState.getWebSocketSession());
 
                 // SemanticQuery 워크플로우 실행
-                semanticQueryWorkflowContext.executeSemanticQueryWorkflow(semanticQueryState);
+                semanticQueryWorkflowGraph.executeSemanticQueryWorkflow(semanticQueryState);
 
                 // 실행 결과를 execution에 저장
                 SemanticQueryWorkflowState resultState = semanticQueryStateManager.getState(workflowId);
@@ -150,7 +148,7 @@ public class SupervisorWorkflowContext {
                     execution.setExecutionEndDate(resultState.getEndDate());
 
                     try {
-                        runSql.executeSqlAndFillExecution(resultState.getSqlQuery(), supervisorState, execution);
+                        runSql.executeSql(resultState.getSqlQuery(), supervisorState, execution);
                         execution.setExecutionStatus("completed");
                     } catch (Exception e) {
                         execution.setExecutionStatus("error");

@@ -6,4 +6,4 @@
 Select
     *
 
-FROM {{ source('public', 'aicfo_get_all_stock') }}
+FROM {{ source('aicfo', 'aicfo_get_all_stock') }}

@@ -13,6 +13,14 @@ semantic_models:
         expr: acct_no
 
     dimensions:
+      - name: view_dv
+        type: categorical
+        description:
+          계좌 구분. 가능한 값 = [수시, 예적금, 대출, 증권, 신탁, 퇴직연금]. 사용자 질문에 view_dv가 포함되어 있으면 반드시 filter 와 group by에 반드시 포함시켜야합니다.
+            예시) "수시잔액", "수시 거래내역" → acct__view_dv = '수시' , group by에 view_dv 포함 (사용자 질문에 수시가 들어있기 때문)
+                 "예적금 잔액", "예적금 거래내역", "예적금 개설일자", "예적금 만기일자" → acct__view_dv = '예적금' , group by에 view_dv 포함 (사용자 질문에 예적금이 들어있기 때문) 
+                 "외화 대출잔액", "대출 거래내역", "대출 개설일자", "대출 만기일자" → acct__view_dv = '대출' , group by에 view_dv 포함 (사용자 질문에 대출이 들어있기 때문)
+                 "증권잔액", "외화증권 거래내역" → acct__view_dv = '증권' , group by에 view_dv 포함 (사용자 질문에 증권이 들어있기 때문)증권 잔액의 group by 조건에 디폴트로 사용됩니다.
       - name: item_name
         type: categorical
         description: 증권자산
@@ -55,93 +63,82 @@ semantic_models:
         description: 최종잔액일시. 최종잔액 데이터 데이터베이스 로드 시간. 사용자가 정확하게 잔액 데이터가 언제 업데이트 되었는지 물어봤을 때만 사용합니다.
 
     measures:
-      - name: acct_bal_amt_name
-        description: 잔고
-        expr: acct_bal_amt
-        agg: sum
-        agg_time_dimension: test_stock_dt
-      - name: bal_qunt_name
+      - name: bal_qunt_stock
         description: 보유수량
         expr: bal_qunt
         agg: sum
         agg_time_dimension: test_stock_dt
-      - name: prchs_price_name
+      - name: prchs_price_stock
         description: 매입가격
         expr: prchs_price
         agg: sum
         agg_time_dimension: test_stock_dt
-      - name: prchs_amt_name
+      - name: prchs_amt_stock
         description: 매입총액
         expr: prchs_amt
         agg: sum
         agg_time_dimension: test_stock_dt
-      - name: curr_price_name
+      - name: curr_price_stock
         description: 현재가
         expr: curr_price
         agg: sum
         agg_time_dimension: test_stock_dt
-      - name: appr_amt_name
+      - name: appr_amt_stock
         description: 평가금액
         expr: appr_amt
         agg: sum
         agg_time_dimension: test_stock_dt
-      - name: valu_gain_loss_name
+      - name: valu_gain_loss_stock
         description: 평가손익
         expr: valu_gain_loss
         agg: sum
         agg_time_dimension: test_stock_dt
-      - name: return_rate_name
+      - name: return_rate_stock
         description: 수익률
         expr: return_rate
         agg: average
         agg_time_dimension: test_stock_dt
 
 metrics:
-  - name: total_acct_bal_amt_name
-    description: 잔고
-    type: simple
-    label: total_acct_bal_amt_name
-    type_params:
-      measure: acct_bal_amt_name
-  - name: total_bal_qunt_name
+  - name: total_bal_qunt_stock
     description: 보유수량
     type: simple
-    label: total_bal_qunt_name
+    label: total_bal_qunt_stock
     type_params:
-      measure: bal_qunt_name
-  - name: total_prchs_price_name
+      measure: bal_qunt_stock
+  - name: total_prchs_price_stock
     description: 매입가격
     type: simple
-    label: total_prchs_price_name
+    label: total_prchs_price_stock
     type_params:
-      measure: prchs_price_name
-  - name: total_prchs_amt_name
+      measure: prchs_price_stock
+  - name: total_prchs_amt_stock
     description: 매입총액
     type: simple
-    label: total_prchs_amt_name
+    label: total_prchs_amt_stock
     type_params:
-      measure: prchs_amt_name
-  - name: total_curr_price_name
+      measure: prchs_amt_stock
+  - name: total_curr_price_stock
     description: 현재가
     type: simple
-    label: total_curr_price_name
+    label: total_curr_price_stock
     type_params:
-      measure: curr_price_name
-  - name: total_appr_amt_name
+      measure: curr_price_stock
+  - name: total_appr_amt_stock
     description: 평가금액
     type: simple
-    label: total_appr_amt_name
+    label: total_appr_amt_stock
     type_params:
-      measure: appr_amt_name
-  - name: total_valu_gain_loss_name
+      measure: appr_amt_stock
+  - name: total_valu_gain_loss_stock
     description: 평가손익
     type: simple
-    label: total_valu_gain_loss_name
+    label: total_valu_gain_loss_stock
     type_params:
-      measure: valu_gain_loss_name
-  - name: avg_return_rate_name
+      measure: valu_gain_loss_stock
+  - name: avg_return_rate_stock
     description: 수익률
     type: simple
-    label: avg_return_rate_name
+    label: avg_return_rate_stock
     type_params:
-      measure: return_rate_name
+      measure: return_rate_stock
