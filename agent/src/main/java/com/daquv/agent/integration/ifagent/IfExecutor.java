@@ -104,22 +104,26 @@ public class IfExecutor {
      * 각 줄이 개별 JSON 객체인 응답을 처리합니다.
      */
     private List<Map<String, Object>> parseResponse(String responseBody) {
-        List<Map<String, Object>> results = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> results = new ArrayList<>();
 
         if (responseBody == null || responseBody.trim().isEmpty()) {
+            log.warn("응답 바디가 비어있습니다.");
             return results;
         }
+
+        log.info("파싱할 응답 데이터: {}", responseBody);
 
         BufferedReader reader = null;
         try {
             reader = new BufferedReader(new StringReader(responseBody));
             String line;
-            boolean isFirstLine = true;
+            int lineNumber = 0;
 
             while ((line = reader.readLine()) != null) {
+                lineNumber++;
                 line = line.trim();
                 if (line.isEmpty()) {
-                    continue; // 빈 줄은 건너뛰기
+                    continue;
                 }
 
                 try {
@@ -127,16 +131,17 @@ public class IfExecutor {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> result = objectMapper.convertValue(jsonNode, Map.class);
 
-                    // 첫 번째 항목이 메타데이터인 경우 로깅만 하고 건너뛰기
-                    if (isFirstLine && result.containsKey("success") && result.containsKey("result_cd")) {
-                        log.info("쿼리 메타데이터: {}", result);
-                        isFirstLine = false;
+                    log.info("파싱된 라인 {}: {}", lineNumber, result);
+
+                    // 메타데이터 판별 로직을 더 간단하게
+                    if (lineNumber == 1 && result.containsKey("success") && result.containsKey("result_cd")) {
+                        log.info("메타데이터로 판별하여 건너뜀: {}", result);
                     } else {
                         results.add(result);
-                        isFirstLine = false;
+                        log.info("데이터로 추가: {}", result);
                     }
                 } catch (Exception e) {
-                    log.error("라인 파싱 실패: {}, 오류: {}", line, e.getMessage());
+                    log.error("라인 {} 파싱 실패: {}, 오류: {}", lineNumber, line, e.getMessage());
                 }
             }
         } catch (Exception e) {
@@ -151,6 +156,7 @@ public class IfExecutor {
             }
         }
 
+        log.info("최종 파싱 결과 개수: {}", results.size());
         return results;
     }
 
@@ -183,15 +189,15 @@ public class IfExecutor {
      * List<Map<String, Object>>에서 Arrow 데이터 생성
      */
     public static ArrowData fromMapList(List<Map<String, Object>> mapList) {
-        if (mapList.isEmpty()) {
-            RootAllocator allocator = new RootAllocator();
-            return new ArrowData(allocator);
-        }
-
         RootAllocator allocator = new RootAllocator();
         ArrowData df = new ArrowData(allocator);
 
         try {
+            if (mapList == null || mapList.isEmpty()) {
+                log.warn("Map list가 비어있습니다. 빈 ArrowData를 반환합니다.");
+                return df;  // 빈 ArrowData 반환
+            }
+
             loadFromMapList(df, mapList);
             return df;
         } catch (Exception e) {
@@ -204,17 +210,41 @@ public class IfExecutor {
     /**
      * List<Map>에서 데이터 로드
      */
+    /**
+     * List<Map>에서 데이터 로드
+     */
     private static void loadFromMapList(ArrowData arrowData, List<Map<String, Object>> mapList) {
-        if (mapList.isEmpty()) {
+        if (mapList == null || mapList.isEmpty()) {
+            log.warn("mapList가 null이거나 비어있습니다. 로드를 건너뜁니다.");
             return;
         }
 
-        // 첫 번째 맵에서 컬럼 정보 추출
-        Map<String, Object> firstRow = mapList.get(0);
+        // 안전한 방식으로 첫 번째 행 접근
+        Map<String, Object> firstRow = null;
+        try {
+            firstRow = mapList.get(0);
+        } catch (IndexOutOfBoundsException e) {
+            log.error("mapList 크기: {}, 하지만 get(0) 접근 실패: {}", mapList.size(), e.getMessage());
+            return;
+        }
+
+        if (firstRow == null || firstRow.isEmpty()) {
+            log.warn("첫 번째 행이 null이거나 비어있습니다.");
+            return;
+        }
+
         List<String> columnNamesList = new ArrayList<>(firstRow.keySet());
         int totalRows = mapList.size();
 
         log.info("Map List Arrow 데이터 로드 시작: {} 컬럼, {} 행", columnNamesList.size(), totalRows);
+        log.info("실제 mapList 첫 번째 요소: {}", firstRow);
+        log.info("컬럼명 리스트: {}", columnNamesList);
+
+        // 컬럼명이 없으면 종료
+        if (columnNamesList.isEmpty()) {
+            log.error("컬럼명 리스트가 비어있습니다. 데이터 로드를 중단합니다.");
+            return;
+        }
 
         // 컬럼 정보 수집 및 벡터 생성
         for (String columnName : columnNamesList) {
@@ -222,7 +252,7 @@ public class IfExecutor {
             arrowData.columnIndexMap.put(columnName, arrowData.columnNames.size() - 1);
 
             // 타입 추론
-            Types.MinorType arrowType = inferTypeFromMapList(mapList, columnName);
+            Types.MinorType arrowType = inferTypeFromMapList(firstRow, columnName);
             Field field = Field.nullable(columnName, arrowType.getType());
 
             // 벡터 생성
@@ -237,15 +267,52 @@ public class IfExecutor {
             arrowData.getVectors().add(vector);
         }
 
-        // 데이터 로드
-        for (Map<String, Object> row : mapList) {
-            for (int i = 0; i < columnNamesList.size(); i++) {
-                String columnName = columnNamesList.get(i);
-                FieldVector vector = arrowData.getVectors().get(i);
-                Object value = row.get(columnName);
-                arrowData.setVectorValue(vector, arrowData.rowCount, value);
+        log.info("벡터 생성 완료. 벡터 개수: {}, 컬럼명 개수: {}", arrowData.getVectors().size(), columnNamesList.size());
+
+        // 데이터 로드 - 안전한 인덱스 기반 반복
+        for (int rowIndex = 0; rowIndex < mapList.size(); rowIndex++) {
+            try {
+                Map<String, Object> row = mapList.get(rowIndex);
+                if (row == null) {
+                    log.warn("행 {}가 null입니다. 건너뜁니다.", rowIndex);
+                    continue;
+                }
+
+                log.info("데이터 로드 중 - 행 {}: {}", rowIndex, row);
+
+                // 벡터 리스트 크기 검증
+                if (arrowData.getVectors().size() != columnNamesList.size()) {
+                    log.error("벡터 개수({})와 컬럼명 개수({})가 일치하지 않습니다.",
+                            arrowData.getVectors().size(), columnNamesList.size());
+                    break;
+                }
+
+                for (int i = 0; i < columnNamesList.size(); i++) {
+                    String columnName = columnNamesList.get(i);
+
+                    // 벡터 리스트 범위 검증
+                    if (i >= arrowData.getVectors().size()) {
+                        log.error("벡터 인덱스 {} 접근 실패. 벡터 리스트 크기: {}", i, arrowData.getVectors().size());
+                        break;
+                    }
+
+                    FieldVector vector = arrowData.getVectors().get(i);
+                    Object value = row.get(columnName);
+
+                    log.info("벡터에 값 설정 - 행: {}, 컬럼: {}, 값: {}", arrowData.rowCount, columnName, value);
+
+                    arrowData.setVectorValue(vector, arrowData.rowCount, value);
+                }
+                arrowData.rowCount++;
+
+            } catch (IndexOutOfBoundsException e) {
+                log.error("데이터 로드 중 인덱스 {} 접근 실패. mapList 크기: {}, 벡터 크기: {}, 컬럼명 크기: {}, 오류: {}",
+                        rowIndex, mapList.size(), arrowData.getVectors().size(), columnNamesList.size(), e.getMessage());
+                break;
+            } catch (Exception e) {
+                log.error("데이터 로드 중 행 {} 처리 실패: {}", rowIndex, e.getMessage(), e);
+                break;
             }
-            arrowData.rowCount++;
         }
 
         // 모든 벡터의 value count 설정
@@ -256,25 +323,22 @@ public class IfExecutor {
         log.info("Map List Arrow 데이터 생성 완료: {} 컬럼, {} 행", columnNamesList.size(), arrowData.rowCount);
     }
 
-
     /**
      * Map List에서 컬럼 타입 추론
      */
-    private static Types.MinorType inferTypeFromMapList(List<Map<String, Object>> mapList, String columnName) {
-        for (Map<String, Object> row : mapList) {
-            Object value = row.get(columnName);
-            if (value != null) {
-                if (value instanceof Long || value instanceof Integer) {
-                    return Types.MinorType.BIGINT;
-                } else if (value instanceof Double || value instanceof Float) {
-                    return Types.MinorType.FLOAT8;
-                } else if (value instanceof Boolean) {
-                    return Types.MinorType.BIT;
-                } else if (value instanceof java.sql.Timestamp || value instanceof java.sql.Date) {
-                    return Types.MinorType.TIMESTAMPMICRO;
-                } else {
-                    return Types.MinorType.VARCHAR;
-                }
+    private static Types.MinorType inferTypeFromMapList(Map<String, Object> firstRow, String columnName) {
+        Object value = firstRow.get(columnName);
+        if (value != null) {
+            log.info("타입 추론 - 컬럼: {}, 값: {}, 타입: {}", columnName, value, value.getClass().getSimpleName());
+
+            if (value instanceof Long || value instanceof Integer) {
+                return Types.MinorType.BIGINT;
+            } else if (value instanceof Double || value instanceof Float) {
+                return Types.MinorType.FLOAT8;
+            } else if (value instanceof Boolean) {
+                return Types.MinorType.BIT;
+            } else if (value instanceof java.sql.Timestamp || value instanceof java.sql.Date) {
+                return Types.MinorType.TIMESTAMPMICRO;
             }
         }
         return Types.MinorType.VARCHAR;
